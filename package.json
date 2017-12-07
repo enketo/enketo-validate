@@ -1,0 +1,45 @@
+{
+    "name": "enketo-validate",
+    "version": "1.0.0",
+    "description": "An XForm validator around Enketo's form engine",
+    "main": "src/validator.js",
+    "scripts": {
+        "test": "mocha test/spec/*.spec.js",
+        "build": "browserify src/FormModel.js > build/FormModel-bundle.js",
+        "oc-build": "browserify -g aliasify src/FormModel.js > build/FormModel-bundle.js"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/enketo/enketo-validate.git"
+    },
+    "keywords": [
+        "Enketo",
+        "XForms",
+        "ODK",
+        "Validator"
+    ],
+    "author": "Martijn van de Rijdt",
+    "license": "Apache-2.0",
+    "bugs": {
+        "url": "https://github.com/enketo/enketo-validate/issues"
+    },
+    "homepage": "https://github.com/enketo/enketo-validate#readme",
+    "dependencies": {
+        "commander": "^2.12.2",
+        "enketo-xslt": "^1.15.1",
+        "jsdom": "^11.5.1",
+        "libxslt": "^0.7.0"
+    },
+    "devDependencies": {
+        "aliasify": "^2.1.0",
+        "chai": "^4.1.2",
+        "enketo-core": "^4.41.6",
+        "enketo-xpathjs-oc": "git+https://github.com/OpenClinica/enketo-xpathjs-oc.git",
+        "mocha": "^4.0.1"
+    },
+    "aliasify": {
+        "aliases": {
+            "enketo-xpathjs": "enketo-xpathjs-oc"
+        }
+    }
+}

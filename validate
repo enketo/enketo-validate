@@ -1,0 +1,66 @@
+#!/usr/bin/env node
+
+'use strict';
+
+let program = require( 'commander' );
+const pkg = require( './package' );
+const fs = require( 'fs' );
+const validator = require( './src/validator' );
+
+const _getFileContents = filePath => {
+    return new Promise( function( resolve, reject ) {
+        fs.readFile( filePath, 'utf8', function( err, xform ) {
+            if ( err ) {
+                if ( err.code === 'ENOENT' ) {
+                    err = `File: ${filePath} does not exist.`;
+                }
+                reject( err );
+            } else {
+                resolve( xform );
+            }
+        } );
+    } );
+};
+
+program
+    .usage( '[options] <file>' )
+    .version( pkg.version )
+    .option( '-m, --me', 'get personal validation' )
+    .option( '-d, --debug', 'output raw errors')
+    .parse( process.argv );
+
+const xformFile = program.args[ 0 ];
+const options = { debug: program.debug }; 
+
+if ( program.me ) {
+    console.log( 'You are correct.\nYour feelings matter.\nYou are wonderful and the world is better with you in it.' );
+    process.exit( 0 );
+} else if ( xformFile ) {
+    console.log( `Enketo validating ${xformFile}` );
+
+    _getFileContents( xformFile )
+        .then( xformStr => validator.validate( xformStr, options ) )
+        .catch( function( errors = [] ) {
+            errors = Array.isArray(errors) ? errors : [errors];
+            console.error( errors.join('\n') );
+            console.log( '\nResult: Invalid\n\n' );
+            process.exit( 1 );
+        } )
+        .then( function( result = {} ) {
+            if (result.warnings.length){
+                console.log( result.warnings.join( '\n\n' ) );
+            }
+            if (result.errors.length) {
+                console.error( result.errors.join('\n\n') );
+                console.error( '\nResult: Invalid' );
+                process.exit( 1 );
+            } else {
+                console.log( '\n>> XForm is valid! See above for any warnings.\n\n' );
+                process.exit( 0 );
+            }
+        } );
+
+} else {
+    console.log( 'Nothing to do. No XForm File provided. Use --help flag to see manual.' );
+    process.exit(1);
+}
