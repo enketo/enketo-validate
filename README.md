@@ -1,4 +1,4 @@
-Enketo Validate [![Build Status](https://travis-ci.org/enketo/enketo-validate.svg?branch=master)](https://travis-ci.org/enketo/enketo-validate)
+Enketo Validate [![npm version](https://badge.fury.io/js/enketo-validate.svg)](http://badge.fury.io/js/enketo-validate) [![Build Status](https://travis-ci.org/enketo/enketo-validate.svg?branch=master)](https://travis-ci.org/enketo/enketo-validate) [![Dependency Status](https://david-dm.org/enketo/enketo-validate/status.svg)](https://david-dm.org/enketo/enketo-validate) [![devDependency Status](https://david-dm.org/enketo/enketo-validate/dev-status.svg)](https://david-dm.org/enketo/enketo-validate?type=dev)
 ==============
 
 _Validate [ODK XForms](https://opendatakit.github.io/xforms-spec/) using Enketo's form engine_
@@ -8,7 +8,7 @@ This app can be used:
 1. via the command-line, e.g. in a non-javascript form builder such as [pyxform](https://github.com/XLSForm/pyxform).
 2. as a nodeJS module to be used in your own javascript application
 
-Live demo web application (meant for testing purposes only) that uses Enketo Validate (and ODK Validate) as a module: https://validate.enketo.org [source code](https://github.com/enketo/enketo-validate-webapp)
+Live demo web application (meant for testing purposes only) that uses Enketo Validate (and ODK Validate) as a module: https://validate.enketo.org \([source code](https://github.com/enketo/enketo-validate-webapp)\)
 
 ### Via Command-line
 
