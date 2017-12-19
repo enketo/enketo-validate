@@ -46,14 +46,14 @@ let validate = ( xformStr, options ) => {
                 return;
             }
 
-            [ 'calculate', 'constraint', 'relevant', 'required' ].forEach( function( logicName ) {
+            [ 'calculate', 'constraint', 'relevant', 'required' ].forEach( logicName => {
                 const logicExpr = bind.getAttribute( logicName );
                 const calculation = logicName === 'calculate';
                 if ( logicExpr ) {
                     try {
-                        xform.enketoEvaluate( logicExpr,( calculation ? 'string' : 'boolean' ), path );
+                        xform.enketoEvaluate( logicExpr, ( calculation ? 'string' : 'boolean' ), path );
                     } catch ( e ) {
-                        let friendlyLogicName =  calculation ? 'calculation' : logicName;
+                        let friendlyLogicName = calculation ? 'calculation' : logicName;
                         friendlyLogicName = friendlyLogicName[ 0 ].toUpperCase() + friendlyLogicName.substring( 1 );
                         errors.push( `${friendlyLogicName} formula for "${nodeName}": ${e}` );
                     }
