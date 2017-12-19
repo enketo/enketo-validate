@@ -32,6 +32,7 @@
     },
     "devDependencies": {
         "aliasify": "^2.1.0",
+        "browserify": "^14.5.0",
         "chai": "^4.1.2",
         "enketo-core": "^4.41.6",
         "enketo-xpathjs-oc": "git+https://github.com/OpenClinica/enketo-xpathjs-oc.git",
