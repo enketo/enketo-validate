@@ -60,7 +60,6 @@ class XForm {
             let newExpr = this._stripJrChoiceName( expr );
             return this.model.evaluate( newExpr, type, contextPath );
         } catch ( e ) {
-            //console.error( 'caught XPath exception', e );
             throw this._cleanXPathException( e );
         }
     }
@@ -169,10 +168,9 @@ class XForm {
     }
 
     _getExternalDummyContent() {
-        const dummyXmlStr = '<something/>';
         let external = [];
-        this.doc.querySelectorAll( 'instance[id][src]' ).forEach( function( instance ) {
-            external.push( { id: instance.id, xmlStr: dummyXmlStr } );
+        this.doc.querySelectorAll( 'instance[id][src]' ).forEach( instance => {
+            external.push( { id: instance.id, xmlStr: '<something/>' } );
         } );
         return external;
     }

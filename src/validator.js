@@ -10,7 +10,6 @@ let validate = ( xformStr, options ) => {
     try {
         xform = new XForm( xformStr, options );
     } catch ( e ) {
-        //console.error( 'parsing failed: ', e );
         errors.push( e );
     }
 
