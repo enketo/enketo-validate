@@ -61,6 +61,6 @@ if ( program.me ) {
         } );
 
 } else {
-    console.log( 'Nothing to do. No XForm File provided. Use --help flag to see manual.' );
+    console.error( 'Nothing to do. No XForm File provided. Use --help flag to see manual.' );
     process.exit(1);
 }
