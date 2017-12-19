@@ -64,10 +64,7 @@ let validate = ( xformStr, options ) => {
 
     }
 
-    return {
-        warnings: warnings,
-        errors: errors
-    };
+    return { warnings, errors };
 };
 
 module.exports = {
