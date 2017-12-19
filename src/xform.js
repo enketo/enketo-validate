@@ -13,7 +13,7 @@ class XForm {
 
     constructor( xformStr, options = {} ) {
         if ( !xformStr || !xformStr.trim() ) {
-            throw 'Empty form. [general]';
+            throw 'Empty form.';
         }
         this.xformStr = xformStr;
         this.dom = this._getDom();
