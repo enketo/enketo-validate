@@ -29,7 +29,7 @@ let validate = ( xformStr, options ) => {
     if ( xform && errors.length === 0 ) {
 
         // Find binds
-        xform.binds.forEach( function( bind, index ) {
+        xform.binds.forEach( ( bind, index ) => {
             const path = bind.getAttribute( 'nodeset' );
 
             if ( !path ) {
