@@ -1,4 +1,4 @@
-/* global describe, xdescribe, it*/
+/* eslint-env mocha */
 'use strict';
 
 const { XForm } = require( '../../src/xform' );

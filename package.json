@@ -1,6 +1,6 @@
 {
     "name": "enketo-validate",
-    "version": "1.0.2",
+    "version": "1.0.3",
     "description": "An XForm validator around Enketo's form engine",
     "main": "src/validator.js",
     "scripts": {
@@ -26,9 +26,9 @@
     "homepage": "https://github.com/enketo/enketo-validate#readme",
     "dependencies": {
         "commander": "^2.12.2",
-        "enketo-xslt": "^1.15.1",
+        "enketo-xslt": "^1.15.5",
         "jsdom": "^11.5.1",
-        "libxslt": "^0.7.0"
+        "libxslt": "0.6.5"
     },
     "devDependencies": {
         "aliasify": "^2.1.0",

@@ -1,4 +1,5 @@
-/* global describe, it*/
+/* eslint-env mocha */
+
 'use strict';
 
 const validator = require( '../../src/validator' );
