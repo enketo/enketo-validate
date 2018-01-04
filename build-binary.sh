@@ -13,15 +13,15 @@ TARGET_OS="$TARGET_BASE/${OS}"
 NODE_VERSION="8"
 
 # assuming npm modules are currently installed for different OS
-rm -R node_modules
-npm install
+# rm -R node_modules
+# npm install
 
 # Install pkg module if it doesn't already exist
-sudo npm install -g pkg
+# sudo npm install -g pkg
 
 # default linux
 # run build again just in case the current build is a custom build
-npm run build 
+# npm run build 
 pkg validate --targets node${NODE_VERSION}-${OS}-x64 --output validate-${OS}
 mkdir -p ${TARGET_OS}
 mv ./validate-${OS} ${TARGET_OS}/validate-${OS}
