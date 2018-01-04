@@ -7,7 +7,7 @@ deploy:
   provider: releases
   api_key:
     secure: adeL+UGFBd5kDqN+7zN8j55ngskdM+KtSt58UWNajscKpc8D9Sqj7cPKECpIbhbAqaERZV6fcfrRlFSHW5BGfeZjPuU++SlWrmVewycaehnVbBnXoMHtBfTL9KUc5uOHlMSxwyd+FtS5N00DrNsR2coPA8b3Zi4DOYM8PVpQ6LU=
-  file: ../enketo-validate-binaries/linux.zip
+  file: ../enketo-validate-binaries/linux.tar.gz
   skip_cleanup: true
   on:
     tags: true
