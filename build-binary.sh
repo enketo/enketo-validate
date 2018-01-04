@@ -2,7 +2,7 @@
 if [ $1 = "linux" -o $1 = "macos" ] ; then
   OS=$1
 else
-  echo "This script needs either the 'linux' or 'macos' parameter"
+  echo "This script needs to be run with either the 'linux' or 'macos' parameter"
   exit 1
 fi
 
@@ -15,7 +15,7 @@ NODE_VERSION="8"
 rm -R node_modules
 npm install
 
-# pkg module
+# Install pkg module if it doesn't already exist
 sudo npm install -g pkg
 
 # default linux
@@ -23,11 +23,13 @@ sudo npm install -g pkg
 npm run build 
 pkg validate --targets node${NODE_VERSION}-${OS}-x64 --output validate-${OS}
 
-# oc linux
-npm run oc-build
-pkg validate --targets node${NODE_VERSION}-${OS}-x64 --output validate-${OS}-oc
+# custom oc build (for linux)
+if [ $OS = 'linux'] ; then
+  npm run oc-build
+  pkg validate --targets node${NODE_VERSION}-${OS}-x64 --output validate-${OS}-oc
+fi
 
-# copy stuffs
+# Copy binaries
 mkdir -p ${TARGET_MAIN}
 cp ./validate-${OS} ${TARGET_MAIN}/validate-${OS}
 cp ./validate-${OS}-oc ${TARGET_MAIN}/validate-${OS}-oc
@@ -41,4 +43,4 @@ mkdir -p ${TARGET_MAIN}/node_modules/libxslt/build/Release
 cp -r node_modules/libxslt/build/Release ${TARGET_MAIN}/node_modules/libxslt/build/
 
 # Test
-${TARGET_MAIN}/validate-linux --me
+${TARGET_MAIN}/validate-${OS} --help
