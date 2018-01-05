@@ -42,7 +42,7 @@ if [ $OS = 'linux' ] ; then
 fi
 
 # Create a zip file
-tar czf ${TARGET_BASE}/${OS}.tar.gz ${TARGET_OS}/*
+tar czf ${OS}.tar.gz ${TARGET_OS}
 
 # Test
 ${TARGET_OS}/validate-${OS} --help
