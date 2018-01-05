@@ -1,5 +1,5 @@
 #!/bin/sh
-if [ $1 = "linux" -o $1 = "macos" ] ; then
+if [ $1 = "linux" -o $1 = "osx" ] ; then
   OS=$1
 else
   echo "This script needs to be run with either the 'linux' or 'macos' parameter"

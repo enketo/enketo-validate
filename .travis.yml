@@ -1,8 +1,11 @@
 language: node_js
 node_js:
   - '8'
+os:
+  - linux
+  - osx
 before_deploy:
-  ./build-binary.sh linux
+  ./build-binary.sh $TRAVIS_OS_NAME
 deploy:
   provider: releases
   api_key:
