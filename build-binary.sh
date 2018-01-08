@@ -24,11 +24,11 @@ mv ./validate-${OS} ${TARGET_OS}/${FILENAME}
 
 # Copy the compiled libxmljs-mt files:
 mkdir -p ${TARGET_OS}/node_modules/libxmljs-mt/build/Release
-cp -r node_modules/libxmljs-mt/build/Release ${TARGET_OS}/node_modules/libxmljs-mt/build/
+cp -f node_modules/libxmljs-mt/build/Release/*.node ${TARGET_OS}/node_modules/libxmljs-mt/build/Release/
 
 # Copy the compiled libxslt files:
 mkdir -p ${TARGET_OS}/node_modules/libxslt/build/Release
-cp -r node_modules/libxslt/build/Release ${TARGET_OS}/node_modules/libxslt/build/
+cp -f node_modules/libxslt/build/Release/*.node ${TARGET_OS}/node_modules/libxslt/build/Release/
 
 # Custom oc build (for linux only)
 if [ "$OS" = "linux" ] ; then
