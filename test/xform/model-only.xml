@@ -4,7 +4,7 @@
     <h:title>Form</h:title>
     <model>
         <instance>
-            <data>
+            <data id="model-only">
                 <a/>
                 <b/>
                 <c/>

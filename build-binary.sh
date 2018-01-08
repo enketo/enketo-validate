@@ -1,9 +1,9 @@
 #!/bin/sh
-echo 'TRAVIS_OS_NAME:${TRAVIS_OS_NAME}'
+echo "TRAVIS_OS_NAME:${TRAVIS_OS_NAME}"
 
-if [ $TRAVIS_OS_NAME = "osx" ] ; then
-  OS = "macos"
-elif [ $TRAVIS_OS_NAME = "linux" -o  $TRAVIS_OS_NAME = "macos" ] ; then
+if [ $TRAVIS_OS_NAME == "osx" ] ; then
+  OS="macos"
+elif [ $TRAVIS_OS_NAME == "linux" -o  $TRAVIS_OS_NAME = "macos" ] ; then
   OS=$TRAVIS_OS_NAME
 else
   echo "This script needs to be run with \$TRAVIS_OS_NAME value 'linux', 'macos' or 'osx'"
@@ -44,7 +44,7 @@ cp -r node_modules/libxslt/build/Release ${TARGET_OS}/node_modules/libxslt/build
 zip -r9 ${OS}.zip ${TARGET_OS}
 
 # custom oc build (for linux only)
-if [ $OS = 'linux' ] ; then
+if [ $OS = "linux" ] ; then
   npm run oc-build
   mkdir -p ${TARGET_OS}-oc
   pkg validate --targets node${NODE_VERSION}-${OS}-x64 --output validate-${OS}-oc
@@ -55,4 +55,4 @@ if [ $OS = 'linux' ] ; then
 fi
 
 # Test
-${TARGET_OS}/${FILENAME} --help
+${TARGET_OS}/${FILENAME} test/xform/xpath-fails.xml
