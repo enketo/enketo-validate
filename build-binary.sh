@@ -54,5 +54,5 @@ if [ "$OS" = "linux" ] ; then
   zip -r9 ${OS}-oc.zip ${TARGET_OS}
 fi
 
-# Test
-${TARGET_OS}/${FILENAME} test/xform/xpath-fails.xml
+# Test (a valid form, so it exits with 0)
+${TARGET_OS}/${FILENAME} test/xform/model-only.xml
