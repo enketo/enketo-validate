@@ -1,5 +1,6 @@
 environment:
-  nodejs_version: "8"
+  - nodejs_version: "8"
+  - APPVEYOR_OS_NAME: windows
 
 # Install scripts. (runs after repo cloning)
 install:
@@ -15,10 +16,10 @@ test_script:
   - npm test
 
 artifacts:
-- path: windows.zip
+  - path: windows.zip
 
 build_script:
-- cmd: echo.>windows.zip
+  - sh ./build-binary.sh
 
 deploy:
   provider: GitHub
