@@ -3,9 +3,7 @@ environment:
 
 # Install scripts. (runs after repo cloning)
 install:
-  # Get the latest stable version of Node.js or io.js
-  # - ps: Install-Product node $env:nodejs_version
-  # install modules
+  - ps: Install-Product node $env:nodejs_version
   - npm install
 
 # Post-install test scripts.
@@ -15,6 +13,9 @@ test_script:
   - npm --version
   # run tests
   - npm test
+
+artifacts:
+- path: ../enketo-validate-binaries/windows.zip
 
 # Don't actually build.
 build: off
