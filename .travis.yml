@@ -4,9 +4,11 @@ node_js:
 os:
   - linux
   - osx
+addons:
+  apt:
+    packages:
+      - zip
 before_deploy:
-  - sudo apt-get -qq update
-  - sudo apt-get install -y zip
   - sh ./build-binary.sh
 deploy:
   provider: releases
