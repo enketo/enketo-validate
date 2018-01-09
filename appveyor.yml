@@ -1,0 +1,31 @@
+environment:
+  nodejs_version: "8"
+
+# Install scripts. (runs after repo cloning)
+install:
+  # Get the latest stable version of Node.js or io.js
+  # - ps: Install-Product node $env:nodejs_version
+  # install modules
+  - npm install
+
+# Post-install test scripts.
+test_script:
+  # Output useful info for debugging.
+  - node --version
+  - npm --version
+  # run tests
+  - npm test
+
+# Don't actually build.
+build: off
+
+deploy:
+  provider: GitHub
+  auth_token:
+    secure: xw+3stgHlQ4km3dfxkxdrWT38WH6s+fXCf5gPVMjWS9O1s9GpZUVq2lA6QyEuGup
+  artifact: /windows\.zip/              # TODO: check folder
+  draft: false
+  prerelease: false
+  on:
+    branch: feature/windows-build   # release from master branch only
+    appveyor_repo_tag: true        # deploy on tag push only
