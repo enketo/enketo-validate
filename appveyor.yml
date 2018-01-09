@@ -15,16 +15,17 @@ test_script:
   - npm test
 
 artifacts:
-- path: ../enketo-validate-binaries/windows.zip
+- path: windows.zip
 
 # Don't actually build.
-build: off
+build:
+- CMD: echo.>windows.zip
 
 deploy:
   provider: GitHub
   auth_token:
     secure: xw+3stgHlQ4km3dfxkxdrWT38WH6s+fXCf5gPVMjWS9O1s9GpZUVq2lA6QyEuGup
-  artifact: /windows\.zip/              # TODO: check folder
+  artifact: /windows\.zip/            
   draft: false
   prerelease: false
   on:
