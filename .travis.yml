@@ -19,5 +19,6 @@ deploy:
     ../enketo-validate-binaries/*.zip
   skip_cleanup: true
   on:
+    tags: true
     repo: enketo/enketo-validate
     branch: feature/build-script
