@@ -5,6 +5,8 @@ if [ "$TRAVIS_OS_NAME" = "osx" ] ; then
   OS="macos"
 elif [ "$TRAVIS_OS_NAME" = "linux" -o  "$TRAVIS_OS_NAME" = "macos" ] ; then
   OS=$TRAVIS_OS_NAME
+elif [ "$APPVEYOR_OS_NAME" = "windows" ] ; then
+  OS=$APPVEYOR_OS_NAME
 else
   echo "This script needs to be run with \$TRAVIS_OS_NAME value 'linux', 'macos' or 'osx'"
   exit 1
