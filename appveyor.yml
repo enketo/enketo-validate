@@ -17,9 +17,8 @@ test_script:
 artifacts:
 - path: windows.zip
 
-# Don't actually build.
-build:
-- CMD: echo.>windows.zip
+build_script:
+- cmd: echo.>windows.zip
 
 deploy:
   provider: GitHub
