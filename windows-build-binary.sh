@@ -49,4 +49,4 @@ fi
 
 echo "All done, let us check if it works:"
 # Test (a valid form, so it exits with 0)
-./"$OS"/"$FILENAME" ../enketo-validate/test/xform/model-only.xml
+#./"$OS"/"$FILENAME" ../enketo-validate/test/xform/model-only.xml
