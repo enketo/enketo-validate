@@ -44,9 +44,9 @@ fi
 
 # Create a zip file
 cd "$TARGET_BASE" || exit
-zip -r9 "$OS".zip "$OS"
+7z a -r "$OS".zip "$OS"
 if [ "$OS" = "linux" ] ; then
-  zip -r9 "$OS"-oc.zip "$OS"-oc
+  7z a -r "$OS"-oc.zip "$OS"-oc
 fi
 
 # Test (a valid form, so it exits with 0)
