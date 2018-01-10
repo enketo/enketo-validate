@@ -4,25 +4,21 @@ environment:
   NODEJS_VERSION: 8
   APPVEYOR_OS_NAME: windows
 
-# Install scripts. (runs after repo cloning)
 install:
   - ps: Install-Product node $env:NODEJS_VERSION
   - npm install
   - npm install -g pkg
 
-# Post-install test scripts.
 test_script:
-  # Output useful info for debugging.
   - node --version
   - npm --version
-  # run tests
   - npm test
   - ./validate --help
 
 artifacts:
   - path: enketo-validate-binaries\windows.zip
 
-build_script:
+deploy_script:
   - sh ./windows-build-binary.sh
 
 deploy:
