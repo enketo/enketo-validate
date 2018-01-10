@@ -15,6 +15,7 @@ test_script:
   - npm --version
   # run tests
   - npm test
+  - ./validate --help
 
 artifacts:
   - path: enketo-validate-binaries\windows.zip

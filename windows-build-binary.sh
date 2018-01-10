@@ -18,7 +18,7 @@ FILENAME="validate"
 NODE_VERSION="8"
 
 # Create the binary 
-pkg validate --targets node"$NODE_VERSION"-"$OS"-x64 --output validate-"$OS"
+pkg validate --targets node"$NODE_VERSION"-win-x64 --output validate-"$OS"
 mkdir -p "$TARGET_OS"
 mv ./validate-"$OS" "$TARGET_OS"/"$FILENAME"
 
