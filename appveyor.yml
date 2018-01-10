@@ -19,7 +19,7 @@ artifacts:
   - path: windows.zip
 
 build_script:
-  - sh ./build-binary.sh
+  - sh ./windows-build-binary.sh
 
 deploy:
   provider: GitHub
