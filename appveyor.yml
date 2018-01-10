@@ -21,7 +21,7 @@ test_script:
 artifacts:
   - path: enketo-validate-binaries\windows.zip
 
-deploy_script:
+after_test:
   - sh ./windows-build-binary.sh
 
 deploy:
