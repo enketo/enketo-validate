@@ -36,7 +36,8 @@
         "chai": "^4.1.2",
         "enketo-core": "^4.42.3",
         "enketo-xpathjs-oc": "git+https://github.com/OpenClinica/enketo-xpathjs-oc.git",
-        "mocha": "^4.1.0"
+        "mocha": "^4.1.0",
+        "pkg": "^4.3.0-beta.5"
     },
     "aliasify": {
         "aliases": {
