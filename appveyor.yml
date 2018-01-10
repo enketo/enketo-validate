@@ -17,7 +17,7 @@ test_script:
   - npm test
 
 artifacts:
-  - path: windows.zip
+  - path: enketo-validate-binaries\windows.zip
 
 build_script:
   - sh ./windows-build-binary.sh
@@ -26,7 +26,7 @@ deploy:
   provider: GitHub
   auth_token:
     secure: xw+3stgHlQ4km3dfxkxdrWT38WH6s+fXCf5gPVMjWS9O1s9GpZUVq2lA6QyEuGup
-  artifact: /windows\.zip/            
+  artifact: enketo-validate-binaries\windows.zip            
   draft: false
   prerelease: false
   on:

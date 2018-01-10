@@ -1,6 +1,4 @@
 #!/bin/sh
-echo "TRAVIS_OS_NAME: ${TRAVIS_OS_NAME}"
-
 if [ "$TRAVIS_OS_NAME" = "osx" ] ; then
   OS="macos"
 elif [  "$TRAVIS_OS_NAME" = "linux" ] || [ "$TRAVIS_OS_NAME" = "macos" ] ; then
