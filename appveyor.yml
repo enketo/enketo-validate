@@ -8,7 +8,7 @@ install:
   - ps: Install-Product node $env:NODEJS_VERSION
   - npm install
   - npm install -g pkg
-  - ./validate --me
+  - node validate --me
 
 build: off
 
@@ -16,7 +16,7 @@ test_script:
   - node --version
   - npm --version
   - npm test
-  - ./validate --help
+  - node validate --help
 
 artifacts:
   - path: enketo-validate-binaries\windows.zip
