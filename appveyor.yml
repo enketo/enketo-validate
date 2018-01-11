@@ -11,7 +11,7 @@ install:
   - node validate --me
 
 build: 
-  - cmd: windows-build-binary.bat
+  cmd: windows-build-binary.bat
 
 test_script:
   - node --version
