@@ -10,8 +10,8 @@ install:
   - npm install -g pkg
   - node validate --me
 
-build: 
-  cmd: windows-build-binary.bat
+build_script: 
+  - cmd: windows-build-binary.bat
 
 test_script:
   - node --version
