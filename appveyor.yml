@@ -24,6 +24,9 @@ artifacts:
 after_test:
   - cmd: windows-build-binary.bat
 
+after_build:
+  - 7z a -r windows.zip enketo-validate-binaries\windows
+
 deploy:
   provider: GitHub
   auth_token:
