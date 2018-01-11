@@ -22,7 +22,7 @@ artifacts:
   - path: enketo-validate-binaries\windows.zip
 
 after_test:
-  - sh ./windows-build-binary.sh
+  - cmd: windows-build-binary.bat
 
 deploy:
   provider: GitHub
