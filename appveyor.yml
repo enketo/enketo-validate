@@ -10,7 +10,8 @@ install:
   - npm install -g pkg
   - node validate --me
 
-build: off
+build: 
+  - cmd: windows-build-binary.bat
 
 test_script:
   - node --version
@@ -20,9 +21,6 @@ test_script:
 
 artifacts:
   - path: enketo-validate-binaries\windows.zip
-
-after_test:
-  - cmd: windows-build-binary.bat
 
 after_build:
   - 7z a -r windows.zip enketo-validate-binaries\windows
