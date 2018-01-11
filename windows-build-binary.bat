@@ -6,10 +6,9 @@ SET NODE_VERSION="8"
 
 ECHO Building binaries for %OS%...
 
-REM Create the binary 
-pkg validate --targets node%NODE_VERSION%-win-x64 --output validate-%OS%
+REM Create the binary
 MKDIR %TARGET_OS%
-MOVE validate-%OS%.exe %TARGET_OS%\%FILENAME%
+pkg validate --targets node%NODE_VERSION%-win-x64 --output %TARGET_OS%\validate.exe
 
 ECHO Copying the node_module packages
 
