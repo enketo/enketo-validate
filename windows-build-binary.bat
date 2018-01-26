@@ -4,12 +4,12 @@ SET TARGET_OS=%TARGET_BASE%\%OS%
 SET FILENAME=validate
 SET NODE_VERSION=8
 
-ECHO Building binaries for %OS%...
+echo Building binaries for %OS%...
 
-REM Create the binary
-MKDIR %TARGET_OS%
-ECHO created %TARGET_OS%
-pkg validate --targets node%NODE_VERSION%-win-x64 --output %FILENAME% --debug
+rem Create the binary
+mkdir %TARGET_OS%
+echo created %TARGET_OS%
+call pkg validate --targets node%NODE_VERSION%-win-x64 --output %FILENAME% --debug
 
 ECHO Moving executable
 MOVE %FILENAME%.exe %TARGET_OS%
