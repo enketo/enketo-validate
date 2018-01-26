@@ -27,4 +27,4 @@ echo Done copying
 
 echo All done, let us check if it works:
 rem Test (a valid form, so it exits with 0) 
-%TARGET_OS%\%FILENAME% test\xform\model-only.xml
+call %TARGET_OS%\%FILENAME% test\xform\model-only.xml
