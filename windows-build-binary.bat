@@ -25,6 +25,6 @@ copy node_modules\libxslt\build\Release\*.node %TARGET_OS%\node_modules\libxslt\
 
 echo Done copying
 
-echo All done, let us check if it works:
+rem echo All done, let us check if it works:
 rem Test (a valid form, so it exits with 0) 
-call %TARGET_OS%\%FILENAME% test\xform\model-only.xml
+rem call %TARGET_OS%\%FILENAME% test\xform\model-only.xml
