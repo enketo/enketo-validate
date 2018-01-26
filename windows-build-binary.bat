@@ -8,9 +8,10 @@ ECHO Building binaries for %OS%...
 
 REM Create the binary
 MKDIR %TARGET_OS%
-pkg validate --targets node%NODE_VERSION%-win-x64 --output 
+ECHO created %TARGET_OS%
+pkg validate --targets node%NODE_VERSION%-win-x64 --output validate --debug
 
-ECHO Moving exetable
+ECHO Moving executable
 MOVE validate.exe %TARGET_OS%
 
 REM Copy the compiled libxmljs-mt files:
