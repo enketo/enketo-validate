@@ -26,11 +26,12 @@ program
     .usage( '[options] <file>' )
     .version( pkg.version )
     .option( '-m, --me', 'get personal validation' )
-    .option( '-d, --debug', 'output raw errors')
+    .option( '-d, --debug', 'output raw errors' )
+    .option( '-o, --oc', 'run additional custom OpenClinica validation rules and use a custom XPath evaluator' )
     .parse( process.argv );
 
 const xformFile = program.args[ 0 ];
-const options = { debug: program.debug }; 
+const options = { debug: program.debug, openclinica: program.oc };
 
 if ( program.me ) {
     console.log( 'You are correct.\nYour feelings matter.\nYou are wonderful and the world is better with you in it.' );
@@ -40,18 +41,18 @@ if ( program.me ) {
 
     _getFileContents( xformFile )
         .then( xformStr => validator.validate( xformStr, options ) )
-        .catch( (errors = []) => {
-            errors = Array.isArray(errors) ? errors : [errors];
-            console.error( errors.join('\n') );
+        .catch( ( errors = [] ) => {
+            errors = Array.isArray( errors ) ? errors : [ errors ];
+            console.error( errors.join( '\n' ) );
             console.log( '\nResult: Invalid\n\n' );
             process.exit( 1 );
         } )
         .then( ( result = {} ) => {
-            if (result.warnings.length){
+            if ( result.warnings.length ) {
                 console.log( result.warnings.join( '\n\n' ) );
             }
-            if (result.errors.length) {
-                console.error( result.errors.join('\n\n') );
+            if ( result.errors.length ) {
+                console.error( result.errors.join( '\n\n' ) );
                 console.error( '\nResult: Invalid' );
                 process.exit( 1 );
             } else {
@@ -62,5 +63,5 @@ if ( program.me ) {
 
 } else {
     console.error( 'Nothing to do. No XForm File provided. Use --help flag to see manual.' );
-    process.exit(1);
+    process.exit( 1 );
 }

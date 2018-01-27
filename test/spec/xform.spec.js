@@ -84,4 +84,14 @@ describe( 'XForm', () => {
         } );
     } );
 
+    describe( 'validated with custom OpenClinica rules', () => {
+        const xf1 = loadXForm( 'openclinica.xml' );
+        const result1 = validator.validate( xf1, { openclinica: true } );
+        it( 'outputs errors for calculations without form control that refer to external ' +
+            'clinicaldata instance but do not have the oc:external="clinicaldata" bind', () => {
+                expect( result1.errors.length ).to.equal( 7 );
+                expect( arrContains( result1.errors, /refers to external clinicaldata without the required "external" attribute/i ) ).to.equal( true );
+            } );
+    } );
+
 } );

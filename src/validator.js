@@ -2,7 +2,7 @@
 
 const { XForm } = require( './xform' );
 
-let validate = ( xformStr, options ) => {
+let validate = ( xformStr, options = {} ) => {
     let warnings = [];
     let errors = [];
     let xform;
@@ -15,6 +15,9 @@ let validate = ( xformStr, options ) => {
 
     if ( xform ) {
         xform.checkStructure( warnings, errors );
+        if ( options.openclinica ) {
+            xform._checkOpenClinicaRules( warnings, errors );
+        }
     }
 
     try {

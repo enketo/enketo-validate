@@ -45,7 +45,7 @@ const validator = require('enketo-validate');
 
 // read the xform as string
 
-let result = validator.validate( xformStr );
+let result = validator.validate( xformStr, options );
 
 // The result has the following format:
 // {

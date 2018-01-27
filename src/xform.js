@@ -12,13 +12,13 @@ const xslModelSheet = libxslt.parse( sheets.xslModel );
 class XForm {
 
     constructor( xformStr, options = {} ) {
+        this.options = options;
         if ( !xformStr || !xformStr.trim() ) {
             throw 'Empty form.';
         }
         this.xformStr = xformStr;
         this.dom = this._getDom();
         this.doc = this.dom.window.document;
-        this.debug = !!options.debug;
     }
 
     get binds() {
@@ -28,7 +28,10 @@ class XForm {
     // The reason this is not included in the constructor is to separate different types of errors,
     // and keep the constructor just for XML parse errors.
     parseModel() {
-        const scriptContent = fs.readFileSync( path.join( __dirname, '../build/FormModel-bundle.js' ), { encoding: 'utf-8' } );
+        // Be careful here, the pkg module to create binaries is surprisingly sophisticated, but the paths cannot be dynamic.
+        const scriptContent = this.options.openclinica ?
+            fs.readFileSync( path.join( __dirname, '../build/FormModel-bundle-oc.js' ), { encoding: 'utf-8' } ) :
+            fs.readFileSync( path.join( __dirname, '../build/FormModel-bundle.js' ), { encoding: 'utf-8' } );
 
         // This window is not to be confused with this.dom.window which contains the XForm.
         const window = this._getWindow( scriptContent );
@@ -150,8 +153,28 @@ class XForm {
 
         // ODK Build output
         if ( this.doc.querySelector( 'group:not([ref]) > repeat' ) ) {
-            warnings.push( 'Found <repeat> that has a parent <group> without a ref attribute. If the repeat has relevant logic, this will make the form very slow.' );
+            warnings.push( 'Found <repeat> that has a parent <group> without a ref attribute. ' +
+                'If the repeat has relevant logic, this will make the form very slow.' );
         }
+    }
+
+    _checkOpenClinicaRules( warnings, errors ) {
+        const OC_NS = 'http://openclinica.org/xforms';
+        const CLINICALDATA_REF = /instance\(\s*(["'])((?:(?!\1)clinicaldata)*)\1\s*\)/;
+        const bindsWithCalc = [ ...this.doc.querySelectorAll( 'bind[calculate]' ) ];
+        bindsWithCalc
+            .filter( this._noFormControl.bind( this ) )
+            .filter( bind => {
+                // If both are true we have found an error (in an efficient manner)
+                return CLINICALDATA_REF.test( bind.getAttribute( 'calculate' ) ) &&
+                    bind.getAttributeNS( OC_NS, 'external' ) !== 'clinicaldata';
+            } )
+            .forEach( bind => {
+                const path = bind.getAttribute( 'nodeset' );
+                const nodeName = path.substring( path.lastIndexOf( '/' ) + 1 );
+                errors.push( `Found calculation for "${nodeName}" that refers to ` +
+                    'external clinicaldata without the required "external" attribute in the correct namespace.' );
+            } );
     }
 
     /*
@@ -202,8 +225,24 @@ class XForm {
         }
     }
 
+    /**
+     * Determines whether bind element has corresponding input form control.
+     * 
+     * @param {Element} bind The XForm <bind> element
+     * @returns {boolean}
+     * @memberof XForm
+     */
+    _noFormControl( bind ) {
+        const nodeset = bind.getAttribute( 'nodeset' );
+        // We are not checking for <group> and <repeat>,
+        // as the purpose of this function is to identify calculations without form control
+        return !this.doc.querySelector( `input[ref="${nodeset}"], select[ref="${nodeset}"], ` +
+            `select1[ref="${nodeset}"], trigger[ref="${nodeset}"]` );
+    }
+
     _cleanXmlDomParserError( error ) {
-        if ( this.debug ) {
+        console.log( 'this.options', this.options );
+        if ( this.options.debug ) {
             return error;
         }
         let parts = error.message.split( '\n' );
@@ -211,7 +250,7 @@ class XForm {
     }
 
     _cleanXPathException( error ) {
-        if ( this.debug ) {
+        if ( this.options.debug ) {
             return error;
         }
         let parts = [ error.message.split( '\n' )[ 0 ], error.name, error.code ]
