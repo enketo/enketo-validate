@@ -9,6 +9,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ##### Added
 - Custom OC rule for external clinical data.
+- Rule to require calculations without form control to have readonly="true" attribute.
 
 ##### Changed
 - The `--oc` flag will now run all OC customizations. No separate build/binary required.

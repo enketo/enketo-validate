@@ -50,7 +50,7 @@
       <bind calculate="instance(&quot;clinicaldata&quot;)/path/to/node" nodeset="/openclinica-validation-rules/one/invalid2" type="string"/>
       <bind calculate="instance( 'clinicaldata' )/path/to/node" nodeset="/openclinica-validation-rules/one/invalid3" type="string"/>
       <bind calculate="instance( &quot;clinicaldata&quot; )/path/to/node" nodeset="/openclinica-validation-rules/one/invalid4" type="string"/>
-      <bind calculate="instance('clinicaldata')/path/to/node" nodeset="/openclinica-validation-rules/one/valid5" type="string"/>
+      <bind calculate="instance('clinicaldata')/path/to/node" nodeset="/openclinica-validation-rules/one/valid5" type="string" readonly="true()"/>
       <bind nodeset="/openclinica-validation-rules/two"/>
       <bind calculate="1+2" nodeset="/openclinica-validation-rules/two/two-valid" type="string"/>
       <bind calculate="1+3" nodeset="/openclinica-validation-rules/two/two-valid1" readonly="true()" type="string"/>

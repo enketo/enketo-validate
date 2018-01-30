@@ -24,17 +24,17 @@
     },
     "homepage": "https://github.com/enketo/enketo-validate#readme",
     "dependencies": {
+        "aliasify": "^2.1.0",
+        "browserify": "^15.2.0",
         "commander": "^2.13.0",
+        "enketo-core": "^4.42.3",
+        "enketo-xpathjs-oc": "git+https://github.com/OpenClinica/enketo-xpathjs-oc.git#3279e19",
         "enketo-xslt": "^1.16.1",
         "jsdom": "^11.6.1",
         "libxslt": "0.6.5"
     },
     "devDependencies": {
-        "aliasify": "^2.1.0",
-        "browserify": "^15.2.0",
         "chai": "^4.1.2",
-        "enketo-core": "^4.42.3",
-        "enketo-xpathjs-oc": "git+https://github.com/OpenClinica/enketo-xpathjs-oc.git#3279e19",
         "mocha": "^5.0.0",
         "pkg": "^4.3.0"
     },

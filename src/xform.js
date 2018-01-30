@@ -22,7 +22,13 @@ class XForm {
     }
 
     get binds() {
-        return this.doc.querySelectorAll( 'bind' );
+        this._binds = this._binds || [ ...this.doc.querySelectorAll( 'bind' ) ];
+        return this._binds;
+    }
+
+    get bindsWithCalc() {
+        this._bindsWithCalc = this._bindsWithCalc || [ ...this.doc.querySelectorAll( 'bind[calculate]' ) ];
+        return this._bindsWithCalc;
     }
 
     // The reason this is not included in the constructor is to separate different types of errors,
@@ -158,23 +164,35 @@ class XForm {
         }
     }
 
-    _checkOpenClinicaRules( warnings, errors ) {
+    checkRules( warnings, errors ) {
+        // Check for use of form controls with calculations that are not readonly
+        this.bindsWithCalc
+            .filter( this._withFormControl.bind( this ) )
+            .filter( bind => {
+                const readonly = bind.getAttribute( 'readonly' );
+                // TODO: the check for true() should be probably be done in XPath,
+                // using XPath boolean conversion rules.
+                return !readonly || readonly.trim() !== 'true()';
+            } )
+            .map( this._nodeNames.bind( this ) )
+            .forEach( nodeName => errors.push( `Question "${nodeName}" has a calculation is not set to readonly.` ) );
+    }
+
+    checkOpenClinicaRules( warnings, errors ) {
         const OC_NS = 'http://openclinica.org/xforms';
-        const CLINICALDATA_REF = /instance\(\s*(["'])((?:(?!\1)clinicaldata)*)\1\s*\)/;
-        const bindsWithCalc = [ ...this.doc.querySelectorAll( 'bind[calculate]' ) ];
-        bindsWithCalc
-            .filter( this._noFormControl.bind( this ) )
+        const CLINICALDATA_REF = /instance\(\s*(["'])((?:(?!\1)clinicaldata))\1\s*\)/;
+
+        // Check for use of external data in instance "clinicaldata"
+        this.bindsWithCalc
+            .filter( this._withoutFormControl.bind( this ) )
             .filter( bind => {
                 // If both are true we have found an error (in an efficient manner)
                 return CLINICALDATA_REF.test( bind.getAttribute( 'calculate' ) ) &&
                     bind.getAttributeNS( OC_NS, 'external' ) !== 'clinicaldata';
             } )
-            .forEach( bind => {
-                const path = bind.getAttribute( 'nodeset' );
-                const nodeName = path.substring( path.lastIndexOf( '/' ) + 1 );
-                errors.push( `Found calculation for "${nodeName}" that refers to ` +
-                    'external clinicaldata without the required "external" attribute in the correct namespace.' );
-            } );
+            .map( this._nodeNames.bind( this ) )
+            .forEach( nodeName => errors.push( `Found calculation for "${nodeName}" that refers to ` +
+                'external clinicaldata without the required "external" attribute in the correct namespace.' ) );
     }
 
     /*
@@ -232,12 +250,21 @@ class XForm {
      * @returns {boolean}
      * @memberof XForm
      */
-    _noFormControl( bind ) {
+    _withFormControl( bind ) {
         const nodeset = bind.getAttribute( 'nodeset' );
         // We are not checking for <group> and <repeat>,
         // as the purpose of this function is to identify calculations without form control
-        return !this.doc.querySelector( `input[ref="${nodeset}"], select[ref="${nodeset}"], ` +
+        return !!this.doc.querySelector( `input[ref="${nodeset}"], select[ref="${nodeset}"], ` +
             `select1[ref="${nodeset}"], trigger[ref="${nodeset}"]` );
+    }
+
+    _withoutFormControl( bind ) {
+        return !this._withFormControl( bind );
+    }
+
+    _nodeNames( bind ) {
+        const path = bind.getAttribute( 'nodeset' );
+        return path.substring( path.lastIndexOf( '/' ) + 1 );
     }
 
     _cleanXmlDomParserError( error ) {

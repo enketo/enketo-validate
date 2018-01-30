@@ -15,8 +15,9 @@ let validate = ( xformStr, options = {} ) => {
 
     if ( xform ) {
         xform.checkStructure( warnings, errors );
+        xform.checkRules( warnings, errors );
         if ( options.openclinica ) {
-            xform._checkOpenClinicaRules( warnings, errors );
+            xform.checkOpenClinicaRules( warnings, errors );
         }
     }
 
