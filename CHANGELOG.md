@@ -4,8 +4,14 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 [Unreleased]
 ---------------------
+##### Removed
+- Separate OC build
+
 ##### Added
 - Custom OC rule for external clinical data.
+
+##### Changed
+- The `--oc` flag will now run all OC customizations. No separate build/binary required.
 
 [1.0.3] - 2017-01-03
 ---------------------

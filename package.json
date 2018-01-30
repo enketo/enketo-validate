@@ -5,8 +5,7 @@
     "main": "src/validator.js",
     "scripts": {
         "test": "mocha test/spec/*.spec.js",
-        "build": "browserify src/FormModel.js > build/FormModel-bundle.js",
-        "oc-build": "browserify -g aliasify src/FormModel.js > build/FormModel-bundle.js"
+        "install": "browserify src/FormModel.js > build/FormModel-bundle.js && browserify -g aliasify src/FormModel.js > build/FormModel-bundle-oc.js"
     },
     "repository": {
         "type": "git",

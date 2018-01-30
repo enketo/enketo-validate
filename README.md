@@ -66,19 +66,6 @@ In it's current iteration, the validator does the following:
 
 \* Note, that `/path/to/nonexisting/node` is perfectly valid XPath.
 
-In the future, some ideas to extend validation further are:
-
-* Check itemsets.
-* Check more thoroughly whether XForms syntax is valid using an XML Schema.
-* Check whether all itext elements referred to anywhere exist in model.
-
-### Using a custom XPath Evaluator
-
-The following example shows how to swap Enketo's XPath evaluator with OpenClinica's custom XPath evaluator in command-line mode:
-
-1. Instead of using `npm install --production` do `npm install` which which will also install devDepencies.
-2. Run `npm run oc-build`. This will replace the bundle file in the /build folder.
-
 ### Funding
 
 The development of this application was funded by [OpenClinica](https://openclinica.com). 

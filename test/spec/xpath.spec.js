@@ -100,7 +100,22 @@ describe( 'XPath expressions', () => {
         } );
     } );
 
-    xdescribe( 'with comment-status() calls', () => {
+    // Needs to fail here as we're not in openclinica mode.
+    describe( 'with comment-status() calls', () => {
+        it( 'should not throw an error message', () => {
+            const expr = 'comment-status(/data/a)';
+            const evaluationFn = () => xf.enketoEvaluate( expr );
+            expect( evaluationFn ).to.throw();
+        } );
+    } );
+
+} );
+
+describe( 'XPath expressions (in custom OpenClinica evaluator)', () => {
+
+    const xf = new XForm( loadXForm( 'model-only.xml' ), { openclinica: true } );
+
+    describe( 'with comment-status() calls', () => {
         it( 'should not throw an error message', () => {
             const expr = 'comment-status(/data/a)';
             const evaluationFn = () => xf.enketoEvaluate( expr );
