@@ -175,7 +175,7 @@ class XForm {
                 return !readonly || readonly.trim() !== 'true()';
             } )
             .map( this._nodeNames.bind( this ) )
-            .forEach( nodeName => errors.push( `Question "${nodeName}" has a calculation is not set to readonly.` ) );
+            .forEach( nodeName => errors.push( `Question "${nodeName}" has a calculation that is not set to readonly.` ) );
     }
 
     checkOpenClinicaRules( warnings, errors ) {
