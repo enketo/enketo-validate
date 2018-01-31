@@ -193,6 +193,17 @@ class XForm {
             .map( this._nodeNames.bind( this ) )
             .forEach( nodeName => errors.push( `Found calculation for "${nodeName}" that refers to ` +
                 'external clinicaldata without the required "external" attribute in the correct namespace.' ) );
+
+        this.bindsWithCalc
+            .filter( bind => bind.getAttributeNS( OC_NS, 'external' ) === 'clinicaldata' )
+            .filter( bind => {
+                const calculation = bind.getAttribute( 'calculate' );
+                console.log( 'checking calc', calculation );
+                return !calculation || !CLINICALDATA_REF.test( calculation );
+            } )
+            .map( this._nodeNames.bind( this ) )
+            .forEach( nodeName => errors.push( `Found bind with clinicaldata attribute for "${nodeName}" that does not ` +
+                'have a calculation referring to instance(\'clinicaldata\').' ) );
     }
 
     /*

@@ -36,6 +36,10 @@
           <three>
             <comment-status/>
           </three>
+          <four>
+            <four-one/>
+            <four-two/>
+          </four>
           <meta>
             <instanceID/>
           </meta>
@@ -60,6 +64,8 @@
       <bind calculate="1+2" nodeset="/openclinica-validation-rules/two/two-invalid2" type="int"/>
       <bind calculate="1+3" nodeset="/openclinica-validation-rules/two/two-invalid3" type="select1"/>
       <bind calculate="comment-status(/openclinica/one/valid1)" nodeset="/openclinica-validation-rules/three/comment-status" type="select1"/>
+      <bind calculate="instance('notclinicaldata')/data" nodeset="/openclinica-validation-rules/four/four-one" oc:external="clinicaldata" type="string"/>
+      <bind calculate="1+1" nodeset="/openclinica-validation-rules/four/four-two" oc:external="clinicaldata" type="string"/>
       <bind calculate="concat('uuid:', uuid())" nodeset="/openclinica-validation-rules/meta/instanceID" readonly="true()" type="string"/>
     </model>
   </h:head>

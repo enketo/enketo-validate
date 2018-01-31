@@ -87,10 +87,20 @@ describe( 'XForm', () => {
     describe( 'validated with custom OpenClinica rules', () => {
         const xf1 = loadXForm( 'openclinica.xml' );
         const result1 = validator.validate( xf1, { openclinica: true } );
+        const ERRORS = 9;
+
+        it( `outputs ${ERRORS} errors`, () => {
+            expect( result1.errors.length ).to.equal( ERRORS );
+        } );
+
         it( 'outputs errors for calculations without form control that refer to external ' +
             'clinicaldata instance but do not have the oc:external="clinicaldata" bind', () => {
-                expect( result1.errors.length ).to.equal( 7 );
                 expect( arrContains( result1.errors, /refers to external clinicaldata without the required "external" attribute/i ) ).to.equal( true );
+            } );
+
+        it( 'outputs errors for binds with oc:external="clinicaldata" that do not ' +
+            'do not have a calculation that refers to instance(\'clinicaldata\')', () => {
+                expect( arrContains( result1.errors, /not .* calculation referring to instance\('clinicaldata'\)/i ) ).to.equal( true );
             } );
     } );
 

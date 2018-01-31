@@ -30,6 +30,10 @@ $ ./validate ~/myform.xml
 $ ./validate --help
 ```
 
+#### Command-line update
+
+1. `git pull && npm install --production`
+
 ### As NodeJS module
 
 #### Module installation 
