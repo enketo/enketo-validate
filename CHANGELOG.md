@@ -2,7 +2,7 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
-[Unreleased]
+[1.1.0] - 2018-01-30
 ---------------------
 ##### Removed
 - Separate OC build
@@ -12,7 +12,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 - Rule to require calculations without form control to have readonly="true" attribute.
 
 ##### Changed
-- The `--oc` flag will now run all OC customizations. No separate build/binary required.
+- The `--oc` flag will now run all OC customizations. No separate build/binary required any more.
 
 [1.0.3] - 2017-01-03
 ---------------------
