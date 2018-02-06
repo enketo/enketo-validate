@@ -22,7 +22,7 @@ Live demo web application (meant for testing purposes only) that uses Enketo Val
 #### Command-line Use
 
 ```bash
-$ ./validate ~/myform.xml
+$ ./validate test/xform/xpath-fails.xml
 ```
 
 #### Command-line Help
