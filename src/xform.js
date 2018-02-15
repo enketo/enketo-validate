@@ -2,6 +2,7 @@
 
 const jsdom = require( 'jsdom' );
 const { JSDOM } = jsdom;
+const utils = require( 'enketo-core/src/js/utils' );
 const fs = require( 'fs' );
 const path = require( 'path' );
 const libxslt = require( 'libxslt' );
@@ -198,7 +199,6 @@ class XForm {
             .filter( bind => bind.getAttributeNS( OC_NS, 'external' ) === 'clinicaldata' )
             .filter( bind => {
                 const calculation = bind.getAttribute( 'calculate' );
-                console.log( 'checking calc', calculation );
                 return !calculation || !CLINICALDATA_REF.test( calculation );
             } )
             .map( this._nodeNames.bind( this ) )
@@ -232,7 +232,10 @@ class XForm {
      * and cannot be evaluated in XPath, and I hate it, we just strip it out.
      */
     _stripJrChoiceName( expr ) {
-        return expr.replace( /jr:choice-name\(.*\)/g, '"a"' );
+        utils.parseFunctionFromExpression( expr, 'jr:choice-name' ).forEach( choiceFn => {
+            expr = expr.replace( choiceFn[ 0 ], '"a"' );
+        } );
+        return expr;
     }
 
     /*

@@ -93,8 +93,28 @@ describe( 'XPath expressions', () => {
     } );
 
     describe( 'with jr:choice-name() calls', () => {
-        it( 'should not throw an error message', () => {
+        it( 'should not throw an error message for simple usage with double quotes', () => {
             const expr = 'jr:choice-name("yes", "/data/a")';
+            const evaluationFn = () => xf.enketoEvaluate( expr );
+            expect( evaluationFn ).not.to.throw();
+        } );
+
+        it( 'should not throw an error message for simple usage with single quotes', () => {
+            const expr = 'jr:choice-name("yes", \'/data/a\')';
+            const evaluationFn = () => xf.enketoEvaluate( expr );
+            expect( evaluationFn ).not.to.throw();
+        } );
+
+        it( 'should not throw an error message for complex usage', () => {
+            // additional logic, with brackets, after jr:choice-name()
+            const expr = 'if(string-length(/K/p/i/a) !=0, jr:choice-name(/K/p/i/a,\'/K/p/i/a\'),\'unspecified\')';
+            const evaluationFn = () => xf.enketoEvaluate( expr );
+            expect( evaluationFn ).not.to.throw();
+        } );
+
+        it( 'should not throw an error message for very complex usage', () => {
+            // nested function inside jr:choice-name()
+            const expr = 'if(string-length(/K/p/i/a) !=0, jr:choice-name(concat("a", "b"),\'/K/p/i/a\'),\'unspecified\')';
             const evaluationFn = () => xf.enketoEvaluate( expr );
             expect( evaluationFn ).not.to.throw();
         } );
