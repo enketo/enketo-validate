@@ -1,11 +1,11 @@
 {
     "name": "enketo-validate",
-    "version": "1.2.1",
+    "version": "1.2.2",
     "description": "An XForm validator around Enketo's form engine",
     "main": "src/validator.js",
     "scripts": {
         "test": "mocha test/spec/*.spec.js",
-        "install": "browserify src/FormModel.js > build/FormModel-bundle.js && browserify -g aliasify src/FormModel.js > build/FormModel-bundle-oc.js"
+        "install": "browserify src/FormModel.js > build/FormModel-bundle.js"
     },
     "repository": {
         "type": "git",
@@ -24,12 +24,11 @@
     },
     "homepage": "https://github.com/enketo/enketo-validate#readme",
     "dependencies": {
-        "aliasify": "^2.1.0",
-        "browserify": "16.1.x",
+        "browserify": "16.2.x",
         "commander": "^2.14.1",
-        "enketo-core": "4.46.x",
-        "enketo-xpathjs-oc": "git+https://github.com/OpenClinica/enketo-xpathjs-oc.git#3279e19",
-        "enketo-xslt": "^1.16.1",
+        "enketo-core": "4.51.2",
+        "enketo-xpath-extensions-oc": "git+https://github.com/OpenClinica/enketo-xpath-extensions-oc.git#a30e5f9",
+        "enketo-xslt": "1.17.x",
         "jsdom": "^11.6.2",
         "libxslt": "0.6.5"
     },
@@ -37,10 +36,5 @@
         "chai": "^4.1.2",
         "mocha": "^5.0.1",
         "pkg": "^4.3.0"
-    },
-    "aliasify": {
-        "aliases": {
-            "enketo-xpathjs": "enketo-xpathjs-oc"
-        }
     }
 }

@@ -9,6 +9,7 @@ const libxslt = require( 'libxslt' );
 const libxmljs = libxslt.libxmljs;
 const sheets = require( 'enketo-xslt' );
 const xslModelSheet = libxslt.parse( sheets.xslModel );
+const addXPathExtensionsOc = require( 'enketo-xpath-extensions-oc' );
 
 class XForm {
 
@@ -36,9 +37,7 @@ class XForm {
     // and keep the constructor just for XML parse errors.
     parseModel() {
         // Be careful here, the pkg module to create binaries is surprisingly sophisticated, but the paths cannot be dynamic.
-        const scriptContent = this.options.openclinica ?
-            fs.readFileSync( path.join( __dirname, '../build/FormModel-bundle-oc.js' ), { encoding: 'utf-8' } ) :
-            fs.readFileSync( path.join( __dirname, '../build/FormModel-bundle.js' ), { encoding: 'utf-8' } );
+        const scriptContent = fs.readFileSync( path.join( __dirname, '../build/FormModel-bundle.js' ), { encoding: 'utf-8' } );
 
         // This window is not to be confused with this.dom.window which contains the XForm.
         const window = this._getWindow( scriptContent );
@@ -52,6 +51,13 @@ class XForm {
 
         // Instantiate an Enketo Core Form Model
         this.model = new window.FormModel( { modelStr: modelStr, external: external } );
+
+        // Add custom XPath functions
+        if ( this.options.openclinica ) {
+            this.model.bindJsEvaluator( addXPathExtensionsOc );
+        }
+
+        // Initialize form model
         let loadErrors = this.model.init();
 
         if ( loadErrors.length ) {
