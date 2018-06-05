@@ -10,6 +10,7 @@ const libxmljs = libxslt.libxmljs;
 const sheets = require( 'enketo-xslt' );
 const xslModelSheet = libxslt.parse( sheets.xslModel );
 const addXPathExtensionsOc = require( 'enketo-xpath-extensions-oc' );
+const appearanceRules = require( './appearances' );
 
 class XForm {
 
@@ -31,6 +32,47 @@ class XForm {
     get bindsWithCalc() {
         this._bindsWithCalc = this._bindsWithCalc || [ ...this.doc.querySelectorAll( 'bind[calculate]' ) ];
         return this._bindsWithCalc;
+    }
+
+    get formControls() {
+        // TODO: wrong to use h: namespace prefix without resolver here!
+        // fix in JSDom might be forthcoming: 
+        // * https://github.com/jsdom/jsdom/issues/2159, 
+        // * https://github.com/jsdom/jsdom/issues/2028
+        // doc.evaluate does not support namespaces at all (nsResolver is not used) in JSDom, hence this clever not() trick
+        // to use querySelectorAll instead.
+        this._formControls = this._formControls || [ ...this.doc.querySelectorAll( 'h\\:body *:not(item):not(label):not(hint):not(value):not(itemset):not(output)' ) ];
+        return this._formControls;
+    }
+
+    get NAMESPACES() {
+        return {
+            '': 'http://www.w3.org/2002/xforms',
+            h: 'http://www.w3.org/1999/xhtml',
+            oc: 'http://openclinica.org/xforms',
+            odk: 'http://opendatakit.org/xforms',
+            enk: 'http://enketo.org/xforms',
+            orx: 'http://openrosa.org/xforms',
+            xsd: 'http://www.w3.org/2001/XMLSchema',
+        };
+    }
+
+    bind( nodeset ) {
+        return this.doc.querySelector( `bind[nodeset="${nodeset}"]` );
+    }
+
+    nsPrefixResolver( ns ) {
+        let prefix = null;
+        if ( !ns ) {
+            return prefix;
+        }
+        Object.entries( this.NAMESPACES ).some( obj => {
+            if ( obj[ 1 ] === ns ) {
+                prefix = obj[ 0 ];
+                return true;
+            }
+        } );
+        return prefix;
     }
 
     // The reason this is not included in the constructor is to separate different types of errors,
@@ -81,15 +123,12 @@ class XForm {
     }
 
     checkStructure( warnings, errors ) {
-        const htmlNamespace = 'http://www.w3.org/1999/xhtml';
-        const xformsNamespace = 'http://www.w3.org/2002/xforms';
-
         const rootEl = this.doc.documentElement;
         const rootElNodeName = rootEl.nodeName;
         if ( !( /^[A-z]+:html$/.test( rootElNodeName ) ) ) {
             errors.push( 'Root element should be <html>.' );
         }
-        if ( rootEl.namespaceURI !== htmlNamespace ) {
+        if ( rootEl.namespaceURI !== this.NAMESPACES.h ) {
             errors.push( 'Root element has incorrect namespace.' );
         }
 
@@ -105,13 +144,13 @@ class XForm {
         if ( !headEl ) {
             errors.push( 'No head element found as child of <html>.' );
         }
-        if ( headEl && headEl.namespaceURI !== htmlNamespace ) {
+        if ( headEl && headEl.namespaceURI !== this.NAMESPACES.h ) {
             errors.push( 'Head element has incorrect namespace.' );
         }
         if ( !bodyEl ) {
             errors.push( 'No body element found as child of <html>.' );
         }
-        if ( bodyEl && bodyEl.namespaceURI !== htmlNamespace ) {
+        if ( bodyEl && bodyEl.namespaceURI !== this.NAMESPACES.h ) {
             errors.push( 'Body element has incorrect namespace.' );
         }
 
@@ -126,7 +165,7 @@ class XForm {
             if ( !modelEl ) {
                 errors.push( 'No model element found as child of <head>.' );
             }
-            if ( modelEl && modelEl.namespaceURI !== xformsNamespace ) {
+            if ( modelEl && modelEl.namespaceURI !== this.NAMESPACES[ '' ] ) {
                 errors.push( 'Model element has incorrect namespace.' );
             }
         }
@@ -142,7 +181,7 @@ class XForm {
             if ( !primInstanceEl ) {
                 errors.push( 'No primary instance element found as first instance child of <model>.' );
             }
-            if ( primInstanceEl && primInstanceEl.namespaceURI !== xformsNamespace ) {
+            if ( primInstanceEl && primInstanceEl.namespaceURI !== this.NAMESPACES[ '' ] ) {
                 errors.push( 'Primary instance element has incorrect namespace.' );
             }
         }
@@ -171,7 +210,7 @@ class XForm {
         }
     }
 
-    checkRules( warnings, errors ) {
+    checkBinds( warnings, errors ) {
         // Check for use of form controls with calculations that are not readonly
         this.bindsWithCalc
             .filter( this._withFormControl.bind( this ) )
@@ -185,8 +224,58 @@ class XForm {
             .forEach( nodeName => errors.push( `Question "${nodeName}" has a calculation that is not set to readonly.` ) );
     }
 
+    checkAppearances( warnings, errors ) {
+        this.formControls
+            .forEach( control => {
+                const appearanceVal = control.getAttribute( 'appearance' );
+                if ( !appearanceVal || appearanceVal.indexOf( 'ex:' ) === 0 ) {
+                    return;
+                }
+                const appearances = appearanceVal.split( ' ' );
+                appearances.forEach( appearance => {
+                    let rules = appearanceRules[ appearance ];
+                    if ( typeof rules === 'string' ) {
+                        rules = appearanceRules[ rules ];
+                    }
+                    const ref = control.getAttribute( 'ref' );
+                    if ( !ref ) {
+                        errors.push( 'Question found in body that has no ref attribute' );
+                        return;
+                    }
+                    const nodeName = ref.substring( ref.lastIndexOf( '/' ) + 1 ); // in model!
+                    const controlNsPrefix = this.nsPrefixResolver( control.namespaceURI );
+                    const bindEl = this.bind( ref );
+                    const controlName = controlNsPrefix && /:/.test( control.nodeName ) ? controlNsPrefix + ':' + control.nodeName.split( ':' )[ 1 ] : control.nodeName;
+                    let dataType = bindEl ? bindEl.getAttribute( 'type' ) : 'string';
+                    // Convert ns prefix to properly evaluate XML Schema datatypes regardless of namespace prefix used in XForm.
+                    const typeValNs = /:/.test( dataType ) ? bindEl.lookupNamespaceURI( dataType.split( ':' )[ 0 ] ) : null;
+                    dataType = typeValNs ? `${this.nsPrefixResolver(typeValNs)}:${dataType.split(':')[1]}` : dataType;
+                    if ( !rules ) {
+                        warnings.push( `Appearance "${appearance}" for question "${nodeName}" is not supported` );
+                        return;
+                    }
+                    if ( rules.controls && !rules.controls.includes( controlName ) ) {
+                        warnings.push( `Appearance "${appearance}" for question "${nodeName}" is not valid for this question type (${control.nodeName})` );
+                        return;
+                    }
+                    if ( rules.types && !rules.types.includes( dataType ) ) {
+                        // Only check types if controls check passed.
+                        // TODO check namespaced types when it becomes applicable (for XML Schema types).
+                        warnings.push( `Appearance "${appearance}" for question "${nodeName}" is not valid for this data type (${dataType})` );
+                        return;
+                    }
+                    if ( rules.preferred ) {
+                        warnings.push( `Appearance "${appearance}" for question "${nodeName}" is deprecated, use "${rules.preferred}" instead` );
+                    }
+                    // Possibilities for future additions:
+                    // - check accept/mediaType
+                    // - check conflicting combinations of appearances
+                } );
+
+            } );
+    }
+
     checkOpenClinicaRules( warnings, errors ) {
-        const OC_NS = 'http://openclinica.org/xforms';
         const CLINICALDATA_REF = /instance\(\s*(["'])((?:(?!\1)clinicaldata))\1\s*\)/;
 
         // Check for use of external data in instance "clinicaldata"
@@ -195,14 +284,14 @@ class XForm {
             .filter( bind => {
                 // If both are true we have found an error (in an efficient manner)
                 return CLINICALDATA_REF.test( bind.getAttribute( 'calculate' ) ) &&
-                    bind.getAttributeNS( OC_NS, 'external' ) !== 'clinicaldata';
+                    bind.getAttributeNS( this.NAMESPACES.oc, 'external' ) !== 'clinicaldata';
             } )
             .map( this._nodeNames.bind( this ) )
             .forEach( nodeName => errors.push( `Found calculation for "${nodeName}" that refers to ` +
                 'external clinicaldata without the required "external" attribute in the correct namespace.' ) );
 
         this.bindsWithCalc
-            .filter( bind => bind.getAttributeNS( OC_NS, 'external' ) === 'clinicaldata' )
+            .filter( bind => bind.getAttributeNS( this.NAMESPACES.oc, 'external' ) === 'clinicaldata' )
             .filter( bind => {
                 const calculation = bind.getAttribute( 'calculate' );
                 return !calculation || !CLINICALDATA_REF.test( calculation );

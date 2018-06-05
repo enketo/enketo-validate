@@ -66,6 +66,7 @@ In it's current iteration, the validator does the following:
 * It checks whether the XForm is a valid XML document.
 * It performs some basic ODK XForm structure checks.
 * It checks if each bind `nodeset` exists in the primary instance.
+* It checks if appearance values are supported.
 * It checks for each `<bind>` whether the `relevant`, `constraint`, `calculate`, and `required` expressions are supported and valid\* XPath.
 
 \* Note, that `/path/to/nonexisting/node` is perfectly valid XPath.

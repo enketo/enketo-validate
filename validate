@@ -52,7 +52,7 @@ if ( program.me ) {
                 console.log( result.warnings.join( '\n\n' ) );
             }
             if ( result.errors.length ) {
-                console.error( result.errors.join( '\n\n' ) );
+                console.error( '\n' + result.errors.join( '\n\n' ) );
                 console.error( '\nResult: Invalid' );
                 process.exit( 1 );
             } else {

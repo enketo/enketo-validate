@@ -15,9 +15,14 @@ let validate = ( xformStr, options = {} ) => {
 
     if ( xform ) {
         xform.checkStructure( warnings, errors );
-        xform.checkRules( warnings, errors );
+        xform.checkBinds( warnings, errors );
+
         if ( options.openclinica ) {
             xform.checkOpenClinicaRules( warnings, errors );
+            // OpenClinica would like all appearance warnings to be output as errors, for now
+            xform.checkAppearances( errors, errors );
+        } else {
+            xform.checkAppearances( warnings, errors );
         }
     }
 

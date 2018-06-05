@@ -104,4 +104,37 @@ describe( 'XForm', () => {
             } );
     } );
 
+    describe( 'with incorrect appearance usage', () => {
+        const xf = loadXForm( 'appearances.xml' );
+        const result = validator.validate( xf );
+        const resultOc = validator.validate( xf, { openclinica: true } );
+        const ISSUES = 12;
+
+        it( 'outputs warnings', () => {
+            expect( result.warnings.length ).to.equal( ISSUES );
+            expect( arrContains( result.warnings, /"minimal" for question "b"/i ) ).to.equal( true );
+            expect( arrContains( result.warnings, /"compact-2" for question "b"/i ) ).to.equal( true );
+            expect( arrContains( result.warnings, /"maximal" for question "c"/i ) ).to.equal( true );
+            expect( arrContains( result.warnings, /"hide-input" for question "d"/i ) ).to.equal( true );
+            expect( arrContains( result.warnings, /"search" for question "d" .+ deprecated.+"autocomplete"/i ) ).to.equal( true );
+            expect( arrContains( result.warnings, /"compact" for question "e"/i ) ).to.equal( true );
+            expect( arrContains( result.warnings, /"compact-19" for question "f"/i ) ).to.equal( true );
+            expect( arrContains( result.warnings, /"numbers" for question "g"/i ) ).to.equal( true );
+            expect( arrContains( result.warnings, /"field-list" for question "two"/i ) ).to.equal( true );
+        } );
+
+        it( 'outputs no errors', () => {
+            expect( result.errors.length ).to.equal( 0 );
+        } );
+
+        it( 'outputs no warnings with --oc flag', () => {
+            expect( resultOc.warnings.length ).to.equal( 0 );
+        } );
+
+        it( 'outputs errors with --oc flag', () => {
+            expect( resultOc.errors.length ).to.equal( ISSUES );
+        } );
+
+    } );
+
 } );
