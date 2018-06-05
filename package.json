@@ -26,10 +26,10 @@
     "dependencies": {
         "browserify": "16.2.x",
         "commander": "^2.14.1",
-        "enketo-core": "4.51.2",
+        "enketo-core": "4.52.x",
         "enketo-xpath-extensions-oc": "git+https://github.com/OpenClinica/enketo-xpath-extensions-oc.git#a30e5f9",
-        "enketo-xslt": "1.17.x",
-        "jsdom": "^11.6.2",
+        "enketo-xslt": "1.18.x",
+        "jsdom": "11.11.x",
         "libxslt": "0.6.5"
     },
     "devDependencies": {
