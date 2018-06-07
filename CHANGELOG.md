@@ -5,7 +5,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 Unreleased
 ---------------------
 ##### Added
-- version property when used as CommonJS module
+- Version property when used as CommonJS module
 
 [1.3.0] - 2018-06-07
 ---------------------

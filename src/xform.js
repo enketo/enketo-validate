@@ -377,7 +377,6 @@ class XForm {
     }
 
     _cleanXmlDomParserError( error ) {
-        console.log( 'this.options', this.options );
         if ( this.options.debug ) {
             return error;
         }

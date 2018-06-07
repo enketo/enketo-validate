@@ -10,7 +10,7 @@ This app can be used:
 
 Live demo web application (meant for testing purposes only) that uses Enketo Validate (and ODK Validate) as a module: [validate.enketo.org](https://validate.enketo.org) \([source code](https://github.com/enketo/enketo-validate-webapp)\)
 
-### Via Command-line
+## Via Command-line
 
 #### Command-line Install
 
@@ -34,7 +34,7 @@ $ ./validate --help
 
 1. `git pull && npm install --production`
 
-### As NodeJS module
+## As NodeJS module
 
 #### Module installation 
 
@@ -47,9 +47,13 @@ npm install enketo-validate --save
 ```js
 const validator = require('enketo-validate');
 
-// read the xform as string
+// Options:
+// debug: [boolean] outputs unadulterated errors instead of cleaned ones
+// oc: [boolean] runs the validator in a special OpenClinica mode
+const options = {}; 
 
-let result = validator.validate( xformStr, options );
+// Read the xform as string
+const result = validator.validate( xformStr, options );
 
 // The result has the following format:
 // {
@@ -59,26 +63,26 @@ let result = validator.validate( xformStr, options );
 // if errors.length is 0, the form passed validation
 ```
 
-### How it works
+## How it works
 
 In it's current iteration, the validator does the following:
 
 * It checks whether the XForm is a valid XML document.
 * It performs some basic ODK XForm structure checks.
 * It checks if each bind `nodeset` exists in the primary instance.
-* It checks if appearance values are supported.
+* It checks if appearance values are supported for that type of question.
 * It checks for each `<bind>` whether the `relevant`, `constraint`, `calculate`, and `required` expressions are supported and valid\* XPath.
 
 \* Note, that `/path/to/nonexisting/node` is perfectly valid XPath.
 
-### Funding
+## Funding
 
 The development of this application was funded by [OpenClinica](https://openclinica.com). 
 
-### License
+## License
 
 See [the license document](LICENSE) for this application's license.
 
-### Change log
+## Change log
 
 See [change log](./CHANGELOG.md)
