@@ -25,6 +25,8 @@ Live demo web application (meant for testing purposes only) that uses Enketo Val
 $ ./validate test/xform/xpath-fails.xml
 ```
 
+Errors are returned to `stderr` and warnings to `stdout`. If there is no `stderr` output the form is valid.
+
 #### Command-line Help
 ```bash
 $ ./validate --help
