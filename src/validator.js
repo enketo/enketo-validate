@@ -1,6 +1,7 @@
 'use strict';
 
 const { XForm } = require( './xform' );
+const pkg = require( '../package' );
 
 let validate = ( xformStr, options = {} ) => {
     let warnings = [];
@@ -76,5 +77,6 @@ let validate = ( xformStr, options = {} ) => {
 };
 
 module.exports = {
-    validate: validate
+    validate: validate,
+    version: pkg.version
 };
