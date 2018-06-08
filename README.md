@@ -14,7 +14,7 @@ Live demo web application (meant for testing purposes only) that uses Enketo Val
 
 #### Command-line Install
 
-1. install nodeJS 6+
+1. install nodeJS 8+
 2. install build tools for native modules with `apt-get install build-essential`
 3. clone repo 
 4. `npm install --production`
