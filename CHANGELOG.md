@@ -7,6 +7,13 @@ Unreleased
 ##### Added
 - Version property when used as CommonJS module
 
+##### Changed
+- Ignore deprecated appearance usage errors in --oc mode.
+- No longer providing final 'Valid' or 'Invalid' line in output in --oc mode.
+
+##### Fixed
+- Analog-scale appearance outputs warning.
+
 [1.3.0] - 2018-06-07
 ---------------------
 ###### Added

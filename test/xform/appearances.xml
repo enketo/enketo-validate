@@ -23,6 +23,7 @@
                         <h/>
                         <i/>
                         <j/>
+                        <k/>
                     </one>
                     <two/>
                     <meta>
@@ -39,7 +40,7 @@
             <bind nodeset="/data/one/g" type="int"/>
             <bind nodeset="/data/one/h" type="xsdddd:string"/>
             <bind nodeset="/data/one/i" type="string"/>
-            <bind nodeset="/data/one/j" type="string" />
+            <bind nodeset="/data/one/j" type="int" />
             <bind nodeset="/data/meta/instanceID" type="string"/>
         </model>
     </h:head>
@@ -72,20 +73,32 @@
                     <value>AK</value>
                 </item>
             </select1>
+
             <input ref="/data/one/g" appearance="numbers">
                 <label>label</label>
             </input>
             <input ref="/data/one/h" appearance="numbers maps signature">                <!-- numbers is correct -->
                 <label>label</label>
             </input>
+
+            <odkkkkkk:rank ref="/data/one/i" appearance="pulldown">
+                <label>label</label>
+                <item>
+                    <label>Alaska</label>
+                    <value>AK</value>
+                </item>
+            </odkkkkkk:rank>
+            <input ref="/data/one/j" appearance="analog-scale no-ticks">
+                <label>label</label>
+            </input>
+            <select1 ref="/data/one/k" appearance="horizontal-compact">
+                <label>label</label>
+                <item>
+                    <label>Alaska</label>
+                    <value>AK</value>
+                </item>
+            </select1>
         </group>
-        <odkkkkkk:rank ref="/data/one/i" appearance="pulldown">
-            <label>label</label>
-            <item>
-                <label>Alaska</label>
-                <value>AK</value>
-            </item>
-        </odkkkkkk:rank>
         <repeat ref="/data/two" appearance="field-list"/>
     </h:body>
 </h:html>

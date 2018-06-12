@@ -22,7 +22,7 @@
         "controls": [ "select1", "select" ]
     },
     "horizontal": {
-        "controls": [ "select", "select1", "range" ]
+        "controls": [ "select", "select1", "range", "input" ]
     },
     "vertical": "horizontal",
     "compact": {
@@ -116,5 +116,10 @@
     "w7": "w1",
     "w8": "w1",
     "w9": "w1",
-    "w10": "w1"
+    "w10": "w1",
+    "analog-scale": {
+        "controls": [ "input" ],
+        "types": [ "decimal", "xsd:decimal", "int", "xsd:int" ]
+    },
+    "no-ticks": "analog-scale"
 }

@@ -264,7 +264,10 @@ class XForm {
                         warnings.push( `Appearance "${appearance}" for question "${nodeName}" is not valid for this data type (${dataType})` );
                         return;
                     }
-                    if ( rules.preferred ) {
+                    // TODO: if an appearance is only valid when another appearance is used (e.g. no-ticks)
+
+                    // switched off when warnings are output as errors (for OC) - may need different approach
+                    if ( rules.preferred && warnings !== errors ) {
                         warnings.push( `Appearance "${appearance}" for question "${nodeName}" is deprecated, use "${rules.preferred}" instead` );
                     }
                     // Possibilities for future additions:

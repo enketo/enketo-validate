@@ -22,6 +22,8 @@ const _getFileContents = filePath => {
     } );
 };
 
+const _output = ( issues = [], error = false ) => console[ error ? 'error' : 'log' ]( `${issues.join( '\n\n' )}` );
+
 program
     .usage( '[options] <file>' )
     .version( pkg.version )
@@ -43,20 +45,18 @@ if ( program.me ) {
         .then( xformStr => validator.validate( xformStr, options ) )
         .catch( ( errors = [] ) => {
             errors = Array.isArray( errors ) ? errors : [ errors ];
-            console.error( errors.join( '\n' ) );
-            console.log( '\nResult: Invalid\n\n' );
+            _output( errors, true );
             process.exit( 1 );
         } )
         .then( ( result = {} ) => {
-            if ( result.warnings.length ) {
-                console.log( result.warnings.join( '\n\n' ) );
-            }
+            _output( result.warnings );
+            _output( result.errors, true );
+
             if ( result.errors.length ) {
-                console.error( '\n' + result.errors.join( '\n\n' ) );
-                console.error( '\nResult: Invalid' );
+                _output( [ options.openclinica ? '' : '\n\nResult: Invalid\n\n' ], true );
                 process.exit( 1 );
             } else {
-                console.log( '\n>> XForm is valid! See above for any warnings.\n\n' );
+                _output( [ options.openclinica ? '' : '\n\n>> XForm is valid! See above for any warnings.\n\n' ] );
                 process.exit( 0 );
             }
         } );
