@@ -121,5 +121,11 @@
         "controls": [ "input" ],
         "types": [ "decimal", "xsd:decimal", "int", "xsd:int" ]
     },
-    "no-ticks": "analog-scale"
+    "no-ticks": {
+        "appearances": [ "analog-scale" ]
+    },
+    "comment": {
+        "types": [ "string", "xsd:string" ]
+    },
+    "dn": "comment"
 }

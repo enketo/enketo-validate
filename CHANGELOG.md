@@ -2,10 +2,11 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
-Unreleased
----------------------
+[1.4.0] - 2018-06-13
+--------------------
 ##### Added
-- Version property when used as CommonJS module
+- Version property when used as CommonJS module.
+- Validation for appearances that depend on other appearances.
 
 ##### Changed
 - Ignore deprecated appearance usage errors in --oc mode.
@@ -13,6 +14,7 @@ Unreleased
 
 ##### Fixed
 - Analog-scale appearance outputs warning.
+- False error for repeat without ref attribute.
 
 [1.3.0] - 2018-06-07
 ---------------------

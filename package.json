@@ -1,8 +1,9 @@
 {
     "name": "enketo-validate",
-    "version": "1.3.0",
+    "version": "1.4.0",
     "description": "An XForm validator around Enketo's form engine",
     "main": "src/validator.js",
+    "bin": "./validate",
     "scripts": {
         "test": "mocha test/spec/*.spec.js",
         "install": "browserify src/FormModel.js > build/FormModel-bundle.js"

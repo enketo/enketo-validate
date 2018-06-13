@@ -108,7 +108,7 @@ describe( 'XForm', () => {
         const xf = loadXForm( 'appearances.xml' );
         const result = validator.validate( xf );
         const resultOc = validator.validate( xf, { openclinica: true } );
-        const ISSUES = 13;
+        const ISSUES = 14;
 
         it( 'outputs warnings', () => {
             expect( result.warnings.length ).to.equal( ISSUES );
@@ -122,6 +122,7 @@ describe( 'XForm', () => {
             expect( arrContains( result.warnings, /"numbers" for question "g"/i ) ).to.equal( true );
             expect( arrContains( result.warnings, /"horizontal-compact" for question "k" .+ deprecated.+"compact"/i ) ).to.equal( true );
             expect( arrContains( result.warnings, /"field-list" for question "two"/i ) ).to.equal( true );
+            expect( arrContains( result.warnings, /"no-ticks" for question "g"/i ) ).to.equal( true );
         } );
 
         it( 'outputs no errors', () => {

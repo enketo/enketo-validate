@@ -22,7 +22,11 @@ const _getFileContents = filePath => {
     } );
 };
 
-const _output = ( issues = [], error = false ) => console[ error ? 'error' : 'log' ]( `${issues.join( '\n\n' )}` );
+const _output = ( issues = [], error = false ) => {
+    if ( issues.length ) {
+        console[ error ? 'error' : 'log' ]( `\n\n${issues.join( '\n\n' )}` );
+    }
+};
 
 program
     .usage( '[options] <file>' )
@@ -53,10 +57,10 @@ if ( program.me ) {
             _output( result.errors, true );
 
             if ( result.errors.length ) {
-                _output( [ options.openclinica ? '' : '\n\nResult: Invalid\n\n' ], true );
+                _output( [ options.openclinica ? '' : 'Result: Invalid\n\n' ], true );
                 process.exit( 1 );
             } else {
-                _output( [ options.openclinica ? '' : '\n\n>> XForm is valid! See above for any warnings.\n\n' ] );
+                _output( [ options.openclinica ? '' : '>> XForm is valid! See above for any warnings.\n\n' ] );
                 process.exit( 0 );
             }
         } );

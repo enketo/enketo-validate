@@ -237,38 +237,41 @@ class XForm {
                     if ( typeof rules === 'string' ) {
                         rules = appearanceRules[ rules ];
                     }
-                    const ref = control.getAttribute( 'ref' );
+                    const controlNsPrefix = this.nsPrefixResolver( control.namespaceURI );
+                    const controlName = controlNsPrefix && /:/.test( control.nodeName ) ? controlNsPrefix + ':' + control.nodeName.split( ':' )[ 1 ] : control.nodeName;
+                    const pathAttr = controlName === 'repeat' ? 'nodeset' : 'ref';
+                    const ref = control.getAttribute( pathAttr );
                     if ( !ref ) {
-                        errors.push( 'Question found in body that has no ref attribute' );
+                        errors.push( `Question found in body that has no ${pathAttr} attribute (${control.nodeName}).` );
                         return;
                     }
                     const nodeName = ref.substring( ref.lastIndexOf( '/' ) + 1 ); // in model!
-                    const controlNsPrefix = this.nsPrefixResolver( control.namespaceURI );
                     const bindEl = this.bind( ref );
-                    const controlName = controlNsPrefix && /:/.test( control.nodeName ) ? controlNsPrefix + ':' + control.nodeName.split( ':' )[ 1 ] : control.nodeName;
                     let dataType = bindEl ? bindEl.getAttribute( 'type' ) : 'string';
                     // Convert ns prefix to properly evaluate XML Schema datatypes regardless of namespace prefix used in XForm.
                     const typeValNs = /:/.test( dataType ) ? bindEl.lookupNamespaceURI( dataType.split( ':' )[ 0 ] ) : null;
                     dataType = typeValNs ? `${this.nsPrefixResolver(typeValNs)}:${dataType.split(':')[1]}` : dataType;
                     if ( !rules ) {
-                        warnings.push( `Appearance "${appearance}" for question "${nodeName}" is not supported` );
+                        warnings.push( `Appearance "${appearance}" for question "${nodeName}" is not supported.` );
                         return;
                     }
                     if ( rules.controls && !rules.controls.includes( controlName ) ) {
-                        warnings.push( `Appearance "${appearance}" for question "${nodeName}" is not valid for this question type (${control.nodeName})` );
+                        warnings.push( `Appearance "${appearance}" for question "${nodeName}" is not valid for this question type (${control.nodeName}).` );
                         return;
                     }
                     if ( rules.types && !rules.types.includes( dataType ) ) {
                         // Only check types if controls check passed.
                         // TODO check namespaced types when it becomes applicable (for XML Schema types).
-                        warnings.push( `Appearance "${appearance}" for question "${nodeName}" is not valid for this data type (${dataType})` );
+                        warnings.push( `Appearance "${appearance}" for question "${nodeName}" is not valid for this data type (${dataType}).` );
                         return;
                     }
-                    // TODO: if an appearance is only valid when another appearance is used (e.g. no-ticks)
-
+                    if ( rules.appearances && !rules.appearances.some( appearanceMatch => appearances.includes( appearanceMatch ) ) ) {
+                        warnings.push( `Appearance "${appearance}" for question "${nodeName}" requires any of these appearances: ${rules.appearances}.` );
+                        return;
+                    }
                     // switched off when warnings are output as errors (for OC) - may need different approach
                     if ( rules.preferred && warnings !== errors ) {
-                        warnings.push( `Appearance "${appearance}" for question "${nodeName}" is deprecated, use "${rules.preferred}" instead` );
+                        warnings.push( `Appearance "${appearance}" for question "${nodeName}" is deprecated, use "${rules.preferred}" instead.` );
                     }
                     // Possibilities for future additions:
                     // - check accept/mediaType

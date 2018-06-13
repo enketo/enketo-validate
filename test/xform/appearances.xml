@@ -74,7 +74,7 @@
                 </item>
             </select1>
 
-            <input ref="/data/one/g" appearance="numbers">
+            <input ref="/data/one/g" appearance="numbers no-ticks">
                 <label>label</label>
             </input>
             <input ref="/data/one/h" appearance="numbers maps signature">                <!-- numbers is correct -->
@@ -99,6 +99,6 @@
                 </item>
             </select1>
         </group>
-        <repeat ref="/data/two" appearance="field-list"/>
+        <repeat nodeset="/data/two" appearance="field-list"/>
     </h:body>
 </h:html>
