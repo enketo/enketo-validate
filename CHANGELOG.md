@@ -2,6 +2,11 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+[Unreleased]
+---------------------
+#### Changed
+- Added version property to CommonJS module output.
+
 [1.4.0] - 2018-06-13
 --------------------
 ##### Added

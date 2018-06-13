@@ -10,31 +10,38 @@ This app can be used:
 
 Live demo web application (meant for testing purposes only) that uses Enketo Validate (and ODK Validate) as a module: [validate.enketo.org](https://validate.enketo.org) \([source code](https://github.com/enketo/enketo-validate-webapp)\)
 
+## Prerequisites
+
+1. install nodeJS 8+
+2. install build tools for native modules with `apt-get install build-essential`
+
 ## Via Command-line
 
 #### Command-line Install
 
-1. install nodeJS 8+
-2. install build tools for native modules with `apt-get install build-essential`
-3. clone repo 
-4. `npm install --production`
+To make the `enketo-validate` command available from any folder on your machine.
+```bash
+$ npm install -g --production enketo-validate`
+```
+
+Alternatively, you can clone the repo and run `npm install --production`. This will make the `./validate` command available from within the clone folder. Running `npm link` makes the `enketo-validate` command available from any folder on your machine.
 
 #### Command-line Use
 
 ```bash
-$ ./validate test/xform/xpath-fails.xml
+$ enketo-validate path/to/form.xml
 ```
 
 Errors are returned to `stderr` and warnings to `stdout`. If there is no `stderr` output the form is valid.
 
 #### Command-line Help
 ```bash
-$ ./validate --help
+$ enketo-validate --help
 ```
 
 #### Command-line update
 
-1. `git pull && npm install --production`
+1. `npm install -g --production enketo-validate`
 
 ## As NodeJS module
 
@@ -60,7 +67,8 @@ const result = validator.validate( xformStr, options );
 // The result has the following format:
 // {
 //      warnings: [ 'a warning', 'another warning'],
-//      errors: ['an error', 'another error']
+//      errors: ['an error', 'another error'],
+//      version: "0.0.0"
 // }
 // if errors.length is 0, the form passed validation
 ```
