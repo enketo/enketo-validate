@@ -6,7 +6,7 @@
     "bin": "./validate",
     "scripts": {
         "test": "mocha test/spec/*.spec.js",
-        "install": "browserify src/FormModel.js > build/FormModel-bundle.js"
+        "install": "npx rollup --config && npx rollup --config rollup.utils.config.js"
     },
     "repository": {
         "type": "git",
@@ -25,13 +25,15 @@
     },
     "homepage": "https://github.com/enketo/enketo-validate#readme",
     "dependencies": {
-        "browserify": "16.2.x",
         "commander": "^2.14.1",
-        "enketo-core": "4.52.x",
-        "enketo-xpath-extensions-oc": "git+https://github.com/OpenClinica/enketo-xpath-extensions-oc.git#a30e5f9",
-        "enketo-xslt": "1.18.x",
-        "jsdom": "11.11.x",
-        "libxslt": "0.6.5"
+        "enketo-core": "5.0.x",
+        "enketo-xpath-extensions-oc": "git+https://github.com/OpenClinica/enketo-xpath-extensions-oc.git#22c6b94",
+        "enketo-xslt": "1.21.x",
+        "jsdom": "13.1.x",
+        "libxslt": "0.6.5",
+        "rollup": "^0.68.1",
+        "rollup-plugin-commonjs": "^9.2.0",
+        "rollup-plugin-node-resolve": "^4.0.0"
     },
     "devDependencies": {
         "chai": "^4.1.2",

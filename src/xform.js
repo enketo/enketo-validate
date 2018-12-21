@@ -2,14 +2,13 @@
 
 const jsdom = require( 'jsdom' );
 const { JSDOM } = jsdom;
-const utils = require( 'enketo-core/src/js/utils' );
+const utils = require( '../build/utils-cjs-bundle' );
 const fs = require( 'fs' );
 const path = require( 'path' );
 const libxslt = require( 'libxslt' );
 const libxmljs = libxslt.libxmljs;
 const sheets = require( 'enketo-xslt' );
 const xslModelSheet = libxslt.parse( sheets.xslModel );
-const addXPathExtensionsOc = require( 'enketo-xpath-extensions-oc' );
 const appearanceRules = require( './appearances' );
 
 class XForm {
@@ -50,7 +49,7 @@ class XForm {
             '': 'http://www.w3.org/2002/xforms',
             h: 'http://www.w3.org/1999/xhtml',
             oc: 'http://openclinica.org/xforms',
-            odk: 'http://opendatakit.org/xforms',
+            odk: 'http://www.opendatakit.org/xforms',
             enk: 'http://enketo.org/xforms',
             orx: 'http://openrosa.org/xforms',
             xsd: 'http://www.w3.org/2001/XMLSchema',
@@ -92,11 +91,11 @@ class XForm {
         const external = this._getExternalDummyContent();
 
         // Instantiate an Enketo Core Form Model
-        this.model = new window.FormModel( { modelStr: modelStr, external: external } );
+        this.model = new window.FormModel( { modelStr, external } );
 
         // Add custom XPath functions
         if ( this.options.openclinica ) {
-            this.model.bindJsEvaluator( addXPathExtensionsOc );
+            this.model.bindJsEvaluator( utils.addXPathExtensionsOc );
         }
 
         // Initialize form model
@@ -314,6 +313,12 @@ class XForm {
         // Let any logging by Enketo Core fall into the abyss.
         const virtualConsole = new jsdom.VirtualConsole();
         const { window } = new JSDOM( '', { runScripts: 'dangerously', virtualConsole: virtualConsole } );
+
+        // add polyfill for document.createRange
+        window.document.createRange = () => ( {
+            createContextualFragment: str => JSDOM.fragment( str )
+        } );
+
         const scriptEl = window.document.createElement( 'script' );
         scriptEl.textContent = scriptContent;
         window.document.body.appendChild( scriptEl );
@@ -323,7 +328,8 @@ class XForm {
     _getExternalDummyContent() {
         let external = [];
         this.doc.querySelectorAll( 'instance[id][src]' ).forEach( instance => {
-            external.push( { id: instance.id, xmlStr: '<something/>' } );
+            const { document } = ( new JSDOM( '<something/>', { contentType: 'text/xml' } ) ).window;
+            external.push( { id: instance.id, xml: document } );
         } );
         return external;
     }

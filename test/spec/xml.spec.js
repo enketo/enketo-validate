@@ -25,7 +25,7 @@ describe( 'XML', () => {
         it( 'should return an error', () => {
             const result = validator.validate( xf );
             expect( result.errors.length ).to.equal( 1 );
-            expect( result.errors[ 0 ] ).to.include( 'Unencoded <' );
+            expect( result.errors[ 0 ] ).to.include( 'disallowed character' );
         } );
     } );
 

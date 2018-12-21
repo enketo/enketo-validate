@@ -5,12 +5,13 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 [Unreleased]
 ---------------------
 #### Changed
-- Added version property to CommonJS module output.
+- Added version property to CommonJS module validation output.
+- Updated to Enketo Core 5.0.x
 
 [1.4.0] - 2018-06-13
 --------------------
 ##### Added
-- Version property when used as CommonJS module.
+- Version property to CommonJS module.
 - Validation for appearances that depend on other appearances.
 
 ##### Changed

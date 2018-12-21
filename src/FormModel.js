@@ -1,3 +1,3 @@
-'use strict';
+import { FormModel } from 'enketo-core';
 
-window.FormModel = require('enketo-core/src/js/Form-model');
+window.FormModel = FormModel;
