@@ -2,9 +2,14 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+[1.5.1] - 2018-12-22
+---------------------
+##### Fixed
+- Installation of this library with `npm install enketo-validate` fails.
+
 [1.5.0] - 2018-12-21
 ---------------------
-#### Added
+##### Added
 - Detect disallowed logic references to node itself.
   
 #### Changed

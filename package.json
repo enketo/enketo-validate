@@ -1,12 +1,12 @@
 {
     "name": "enketo-validate",
-    "version": "1.5.0",
+    "version": "1.5.1",
     "description": "An XForm validator around Enketo's form engine",
     "main": "src/validator.js",
     "bin": "./validate",
     "scripts": {
         "test": "mocha test/spec/*.spec.js",
-        "install": "npx rollup --config && npx rollup --config rollup.utils.config.js"
+        "prepublish": "rollup --config && rollup --config rollup.utils.config.js"
     },
     "repository": {
         "type": "git",
@@ -26,18 +26,18 @@
     "homepage": "https://github.com/enketo/enketo-validate#readme",
     "dependencies": {
         "commander": "^2.14.1",
-        "enketo-core": "5.0.x",
         "enketo-xpath-extensions-oc": "git+https://github.com/OpenClinica/enketo-xpath-extensions-oc.git#22c6b94",
         "enketo-xslt": "1.21.x",
         "jsdom": "13.1.x",
-        "libxslt": "0.6.5",
-        "rollup": "^0.68.1",
-        "rollup-plugin-commonjs": "^9.2.0",
-        "rollup-plugin-node-resolve": "^4.0.0"
+        "libxslt": "0.6.5"
     },
     "devDependencies": {
         "chai": "^4.1.2",
+        "enketo-core": "5.0.x",
         "mocha": "^5.0.1",
-        "pkg": "^4.3.0"
+        "pkg": "^4.3.0",
+        "rollup": "^0.68.1",
+        "rollup-plugin-commonjs": "^9.2.0",
+        "rollup-plugin-node-resolve": "^4.0.0"
     }
 }
