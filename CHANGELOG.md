@@ -2,8 +2,11 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
-[Unreleased]
+[1.5.0] - 2018-12-21
 ---------------------
+#### Added
+- Detect disallowed logic references to node itself.
+  
 #### Changed
 - Added version property to CommonJS module validation output.
 - Updated to Enketo Core 5.0.x

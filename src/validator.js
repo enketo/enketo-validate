@@ -58,14 +58,26 @@ let validate = ( xformStr, options = {} ) => {
             [ 'calculate', 'constraint', 'relevant', 'required' ].forEach( logicName => {
                 const logicExpr = bind.getAttribute( logicName );
                 const calculation = logicName === 'calculate';
+
                 if ( logicExpr ) {
+                    const friendlyLogicName = calculation ? 'Calculation' : logicName[ 0 ].toUpperCase() + logicName.substring( 1 );;
+
                     try {
                         xform.enketoEvaluate( logicExpr, ( calculation ? 'string' : 'boolean' ), path );
+
+                        // After checking that the non-constraint expression is valid, check for self-references.
+                        // Make an exception for a calculate="." as it does no harm.
+                        if ( logicName !== 'constraint' && !( logicName === 'calculate' && logicExpr.trim() === '.' ) ) {
+                            if ( xform.hasSelfReference( logicExpr, path ) ) {
+                                throw new Error( 'refers to itself' );
+                                //errors.push( `${friendlyLogicName} formula for "${nodeName}" refers to itself` );
+                            }
+                        }
+                        // TODO: check for cyclic dependencies between calculations, e.g. triangular calculation dependencies
                     } catch ( e ) {
-                        let friendlyLogicName = calculation ? 'calculation' : logicName;
-                        friendlyLogicName = friendlyLogicName[ 0 ].toUpperCase() + friendlyLogicName.substring( 1 );
                         errors.push( `${friendlyLogicName} formula for "${nodeName}": ${e}` );
                     }
+
                 }
             } );
 

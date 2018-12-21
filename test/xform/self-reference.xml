@@ -1,0 +1,29 @@
+<?xml version="1.0"?>
+<h:html xmlns="http://www.w3.org/2002/xforms" xmlns:ev="http://www.w3.org/2001/xml-events" xmlns:h="http://www.w3.org/1999/xhtml" xmlns:jr="http://openrosa.org/javarosa" xmlns:orx="http://openrosa.org/xforms" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <h:head>
+    <h:title>skeleton</h:title>
+    <model>
+      <instance>
+        <data id="snapshot_xml">
+          <calc1>1</calc1>
+          <cons/>
+          <calc2/>
+          <rel/>
+          <answer_is_calc/>
+          <meta>
+            <instanceID/>
+          </meta>
+        </data>
+      </instance>
+      <bind calculate="( /data/calc1  + 1)" nodeset="/data/calc1" type="string"/>
+      <bind constraint="/data/cons > 1" nodeset="/data/cons"  type="string"/>
+      <bind calculate="." nodeset="/data/calc2"  type="string"/>
+      <bind relevant="/data/rel = '' " nodeset="/data/rel" type="string"/>
+      <bind nodeset="/data/answer_is_calc" readonly="true()" type="string"/>
+    </model>
+  </h:head>
+  <h:body>
+    <input ref="/data/answer_is_calc">
+      <label>answer is... <output value=" /data/calc1 "/></label></input>
+  </h:body>
+</h:html>

@@ -11,6 +11,7 @@ const loadXForm = filename => fs.readFileSync( path.join( process.cwd(), 'test/x
 describe( 'XPath expressions', () => {
 
     const xf = new XForm( loadXForm( 'model-only.xml' ) );
+    xf.parseModel();
 
     describe( 'with function calls with an insufficient number of parameters', () => {
 
@@ -67,6 +68,32 @@ describe( 'XPath expressions', () => {
             const evaluationFn = () => xf.enketoEvaluate( expr );
             expect( evaluationFn ).to.throw();
         } );
+
+    } );
+
+
+    describe( 'with expressions that refer to self when not allowed', () => {
+        // There is an integration test in xform.spec.js
+        const FULL_PATH_TO_SELF = '/data/a';
+        [
+            '. + 1',
+            `${FULL_PATH_TO_SELF} + 1`,
+            'string-length(.)',
+            `string-length(${FULL_PATH_TO_SELF})`,
+            '../a + 1',
+            'string-length(../a)',
+            '.',
+            ' .',
+            '../*',
+            `weighted-checklist(${FULL_PATH_TO_SELF}, 9, /thedata/somenodes/*, /thedata/someweights/*)`,
+            'concat(/thedata/somenodes/*, sum(/data/*))',
+            `concat(/thedata/somenodes/*, sum(/data/b)) + 1 *${FULL_PATH_TO_SELF}`,
+            `something -${FULL_PATH_TO_SELF} *5`,
+        ].forEach( expr => {
+            it( `should be detected: ${expr}`, () => {
+                expect( xf.hasSelfReference( expr, FULL_PATH_TO_SELF ) ).to.equal( true );
+            } );
+        } )
 
     } );
 
@@ -134,6 +161,7 @@ describe( 'XPath expressions', () => {
 describe( 'XPath expressions (in custom OpenClinica evaluator)', () => {
 
     const xf = new XForm( loadXForm( 'model-only.xml' ), { openclinica: true } );
+    xf.parseModel();
 
     describe( 'with comment-status() calls', () => {
         it( 'should not throw an error message', () => {
