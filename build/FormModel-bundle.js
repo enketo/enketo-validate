@@ -11341,7 +11341,7 @@
 	            let date;
 	            const o = {};
 	            let parts;
-	            let time$$1;
+	            let time;
 	            let secs;
 	            let tz;
 	            let offset;
@@ -11366,13 +11366,13 @@
 	                return '';
 	            }
 
-	            time$$1 = parts[ 0 ].split( ':' );
+	            time = parts[ 0 ].split( ':' );
 	            tz = parts[ 2 ] ? [ parts[ 1 ] ].concat( parts[ 2 ].split( ':' ) ) : ( parts[ 1 ] === 'Z' ? [ '+', '00', '00' ] : [] );
 
-	            o.hours = time$$1[ 0 ].pad( 2 );
-	            o.minutes = time$$1[ 1 ].pad( 2 );
+	            o.hours = time[ 0 ].pad( 2 );
+	            o.minutes = time[ 1 ].pad( 2 );
 
-	            secs = time$$1[ 2 ] ? time$$1[ 2 ].split( '.' ) : [ '00' ];
+	            secs = time[ 2 ] ? time[ 2 ].split( '.' ) : [ '00' ];
 
 	            o.seconds = secs[ 0 ];
 	            o.milliseconds = secs[ 1 ] || ( requireMillis ? '000' : undefined );
@@ -21802,14 +21802,14 @@
 	    } );
 	};
 
-	FormModel.prototype.addTemplate = function( repeatPath, repeat, empty$$1 ) {
+	FormModel.prototype.addTemplate = function( repeatPath, repeat, empty ) {
 	    this.addRepeatComments( repeatPath );
 
 	    if ( !this.templates[ repeatPath ] ) {
 	        const clone = repeat.cloneNode( true );
 	        clone.removeAttribute( 'template' );
 	        clone.removeAttribute( 'jr:template' );
-	        if ( empty$$1 ) {
+	        if ( empty ) {
 	            Array.prototype.slice.call( clone.querySelectorAll( '*' ) )
 	                .filter( node => node.children.length === 0 )
 	                .forEach( node => {
@@ -22853,7 +22853,7 @@
 	        }
 	        return this.getWrapNodes( this.form.view.$.find( `[${attr}="${name}"]` ) ).eq( index ).find( `[${attr}="${name}"]:not(.ignore)` ).eq( 0 );
 	    },
-	    setVal( $input, value, event$$1 = event.InputUpdate() ) {
+	    setVal( $input, value, event$1 = event.InputUpdate() ) {
 	        let $inputs;
 	        const type = this.getInputType( $input );
 	        const $question = this.getWrapNodes( $input );
@@ -22918,8 +22918,8 @@
 	            if ( curVal === undefined || curVal.toString() !== value.toString() ) {
 	                $inputs.val( value );
 	                // don't trigger on all radiobuttons/checkboxes
-	                if ( event$$1 ) {
-	                    $inputs[ 0 ].dispatchEvent( event$$1 );
+	                if ( event$1 ) {
+	                    $inputs[ 0 ].dispatchEvent( event$1 );
 	                }
 	            }
 	        }
@@ -23518,24 +23518,24 @@
 	    },
 	    _setRepeatHandlers() {
 	        // TODO: can be optimized by smartly updating the active pages
-	        this.form.view.html.addEventListener( event.AddRepeat().type, event$$1 => {
-	            const byCountUpdate = event$$1.detail ? event$$1.detail[ 1 ] : undefined;
+	        this.form.view.html.addEventListener( event.AddRepeat().type, event => {
+	            const byCountUpdate = event.detail ? event.detail[ 1 ] : undefined;
 	            this._updateAllActive();
 	            // Don't flip if the user didn't create the repeat with the + button.
 	            // or if is the default first instance created during loading.
 	            // except if the new repeat is actually first page in the form.
-	            if ( !byCountUpdate || this.$activePages[ 0 ] === event$$1.target ) {
-	                this.flipToPageContaining( jquery( event$$1.target ) );
+	            if ( !byCountUpdate || this.$activePages[ 0 ] === event.target ) {
+	                this.flipToPageContaining( jquery( event.target ) );
 	            }
 	        } );
-	        this.form.view.html.addEventListener( event.RemoveRepeat().type, event$$1 => {
+	        this.form.view.html.addEventListener( event.RemoveRepeat().type, event => {
 	            // if the current page is removed
 	            // note that that.$current will have length 1 even if it was removed from DOM!
 	            if ( this.$current.closest( 'html' ).length === 0 ) {
 	                this._updateAllActive();
-	                let $target = jquery( event$$1.target ).prev();
+	                let $target = jquery( event.target ).prev();
 	                if ( $target.length === 0 ) {
-	                    $target = jquery( event$$1.target );
+	                    $target = jquery( event.target );
 	                }
 	                // is it best to go to previous page always?
 	                this.flipToPageContaining( $target );
@@ -41150,7 +41150,7 @@
 	    {
 	        factory(jquery);
 	    }
-	}(function($, undefined){
+	}(function($, undefined$1){
 		function UTCDate(){
 			return new Date(Date.UTC.apply(Date, arguments));
 		}
@@ -41167,7 +41167,7 @@
 		}
 		function alias(method, deprecationMsg){
 			return function(){
-				if (deprecationMsg !== undefined) {
+				if (deprecationMsg !== undefined$1) {
 					$.fn.datepicker.deprecated(deprecationMsg);
 				}
 
@@ -41318,7 +41318,7 @@
 			_check_template: function(tmp){
 				try {
 					// If empty
-					if (tmp === undefined || tmp === "") {
+					if (tmp === undefined$1 || tmp === "") {
 						return false;
 					}
 					// If no html, everything ok
@@ -41452,7 +41452,7 @@
 				for (var i=0, el, ch, ev; i < evs.length; i++){
 					el = evs[i][0];
 					if (evs[i].length === 2){
-						ch = undefined;
+						ch = undefined$1;
 						ev = evs[i][1];
 					} else if (evs[i].length === 3){
 						ch = evs[i][1];
@@ -41465,7 +41465,7 @@
 				for (var i=0, el, ev, ch; i < evs.length; i++){
 					el = evs[i][0];
 					if (evs[i].length === 2){
-						ch = undefined;
+						ch = undefined$1;
 						ev = evs[i][1];
 					} else if (evs[i].length === 3){
 						ch = evs[i][1];
@@ -41697,7 +41697,7 @@
 
 			getUTCDate: function(){
 				var selected_date = this.dates.get(-1);
-				if (selected_date !== undefined) {
+				if (selected_date !== undefined$1) {
 					return new Date(selected_date);
 				} else {
 					return null;
@@ -41739,7 +41739,7 @@
 			},
 
 			getFormattedDate: function(format){
-				if (format === undefined)
+				if (format === undefined$1)
 					format = this.o.format;
 
 				var lang = this.o.language;
@@ -42065,7 +42065,7 @@
 
 					if (beforeFn !== $.noop) {
 						before = beforeFn(new Date(currVal, 0, 1));
-						if (before === undefined) {
+						if (before === undefined$1) {
 							before = {};
 						} else if (typeof before === 'boolean') {
 							before = {enabled: before};
@@ -42155,7 +42155,7 @@
 
 					if (this.o.beforeShowDay !== $.noop){
 						before = this.o.beforeShowDay(this._utc_to_local(prevMonth));
-						if (before === undefined)
+						if (before === undefined$1)
 							before = {};
 						else if (typeof before === 'boolean')
 							before = {enabled: before};
@@ -42215,7 +42215,7 @@
 					$.each(months, function(i, month){
 	          var moDate = new Date(year, i, 1);
 	          var before = that.o.beforeShowMonth(moDate);
-						if (before === undefined)
+						if (before === undefined$1)
 							before = {};
 						else if (typeof before === 'boolean')
 							before = {enabled: before};
@@ -42685,7 +42685,7 @@
 
 				var dp = $.data(e.target, 'datepicker');
 
-				if (dp === undefined) {
+				if (dp === undefined$1) {
 					return;
 				}
 
@@ -42794,7 +42794,7 @@
 			});
 
 			if (
-				internal_return === undefined ||
+				internal_return === undefined$1 ||
 				internal_return instanceof Datepicker ||
 				internal_return instanceof DateRangePicker
 			)
@@ -42919,7 +42919,7 @@
 			},
 			parseDate: function(date, format, language, assumeNearby){
 				if (!date)
-					return undefined;
+					return undefined$1;
 				if (date instanceof Date)
 					return date;
 				if (typeof format === 'string')
@@ -45085,34 +45085,34 @@
 	        const that = this;
 
 	        jquery( this.element )
-	            .on( 'click', event$$1 => {
+	            .on( 'click', event => {
 	                // The purpose of this handler is to block the filepicker window
 	                // when the label is clicked outside of the input.
-	                if ( that.props.readonly || event$$1.namespace !== 'propagate' ) {
+	                if ( that.props.readonly || event.namespace !== 'propagate' ) {
 	                    that.fakeInput.focus();
-	                    event$$1.stopImmediatePropagation();
+	                    event.stopImmediatePropagation();
 	                    return false;
 	                }
 	            } )
-	            .on( 'change.propagate', event$$1 => {
+	            .on( 'change.propagate', event => {
 	                let file;
 	                let fileName;
 	                let postfix;
 	                const loadedFileName = this.element.getAttribute( 'data-loaded-file-name' );
 	                const now = new Date();
 
-	                if ( event$$1.namespace === 'propagate' ) {
+	                if ( event.namespace === 'propagate' ) {
 	                    // Trigger eventhandler to update instance value
 	                    jquery( this.element ).trigger( 'change.file' );
 	                    return false;
 	                } else {
-	                    event$$1.stopImmediatePropagation();
+	                    event.stopImmediatePropagation();
 	                }
 
 	                // Get the file
-	                file = event$$1.target.files[ 0 ];
+	                file = event.target.files[ 0 ];
 	                postfix = `-${now.getHours()}_${now.getMinutes()}_${now.getSeconds()}`;
-	                event$$1.target.dataset.filenamePostfix = postfix;
+	                event.target.dataset.filenamePostfix = postfix;
 	                fileName = getFilename( file, postfix );
 
 	                // Process the file
@@ -45140,7 +45140,7 @@
 	                    } );
 	            } );
 
-	        this.fakeInput.addEventListener( 'click', event$$1 => {
+	        this.fakeInput.addEventListener( 'click', event => {
 	            /* 
 	                The purpose of this handler is to selectively propagate clicks on the fake
 	                input to the underlying file input (to show the file picker window).
@@ -45148,19 +45148,19 @@
 	                clearing files in a loaded record, hereby blocking native browser file input behavior
 	                to clear values. Instead the reset button is the only way to clear a value.
 	            */
-	            event$$1.preventDefault();
+	            event.preventDefault();
 	            if ( this.props.readonly || this.originalInputValue || this.value ) {
 	                this.fakeInput.focus();
-	                event$$1.stopImmediatePropagation();
+	                event.stopImmediatePropagation();
 	                return;
 	            }
 	            jquery( that.element ).trigger( 'click.propagate' );
 	        } );
 
 	        // For robustness, avoid any editing of filenames by user.
-	        this.fakeInput.addEventListener( 'change', event$$1 => {
-	            event$$1.preventDefault();
-	            event$$1.stopPropagation();
+	        this.fakeInput.addEventListener( 'change', event => {
+	            event.preventDefault();
+	            event.stopPropagation();
 	        } );
 	    }
 
@@ -48474,8 +48474,8 @@
 	function _setValChangeListener( Widget, els ) {
 	    // avoid adding eventhandlers on widgets that apply to the <form> or <label> element
 	    if ( els.length > 0 && els[ 0 ].matches( 'input, select, textarea' ) ) {
-	        els.forEach( el => el.addEventListener( event.InputUpdate.type, event$$1 => {
-	            new Collection( event$$1.target ).update( Widget );
+	        els.forEach( el => el.addEventListener( event.InputUpdate.type, event => {
+	            new Collection( event.target ).update( Widget );
 	        } ) );
 	    }
 	}
@@ -48565,13 +48565,13 @@
 	            return;
 	        }
 
-	        this.formLanguages.addEventListener( event.Change().type, event$$1 => {
-	            event$$1.preventDefault();
-	            this._currentLang = event$$1.target.value;
+	        this.formLanguages.addEventListener( event.Change().type, event => {
+	            event.preventDefault();
+	            this._currentLang = event.target.value;
 	            this.setUi( this._currentLang );
 	        } );
 
-	        this.form.view.html.addEventListener( event.AddRepeat().type, event$$1 => this.setUi( this._currentLang, event$$1.target ) );
+	        this.form.view.html.addEventListener( event.AddRepeat().type, event => this.setUi( this._currentLang, event.target ) );
 	    },
 	    get currentLang() {
 	        return this._currentLang;
@@ -49282,11 +49282,11 @@
 	    }
 
 	    // Before initializing form view, passthrough some model events externally
-	    this.model.events.addEventListener( 'dataupdate', event$$1 => {
-	        that.view.$.trigger( 'dataupdate.enketo', event$$1.detail );
+	    this.model.events.addEventListener( 'dataupdate', event => {
+	        that.view.$.trigger( 'dataupdate.enketo', event.detail );
 	    } );
-	    this.model.events.addEventListener( 'removed', event$$1 => {
-	        that.view.$.trigger( 'removed.enketo', event$$1.detail );
+	    this.model.events.addEventListener( 'removed', event => {
+	        that.view.$.trigger( 'removed.enketo', event.detail );
 	    } );
 
 	    this.pages = this.addModule( pageModule );
@@ -49758,22 +49758,22 @@
 	        } );
 
 	    // doing this on the focus event may have little effect on performance, because nothing else is happening :)
-	    this.view.$.on( 'focus fakefocus', 'input:not(.ignore), select:not(.ignore), textarea:not(.ignore)', event$$1 => {
+	    this.view.$.on( 'focus fakefocus', 'input:not(.ignore), select:not(.ignore), textarea:not(.ignore)', event => {
 	        // update the form progress status
-	        that.progress.update( event$$1.target );
+	        that.progress.update( event.target );
 	    } );
 
-	    this.model.events.addEventListener( 'dataupdate', event$$1 => {
+	    this.model.events.addEventListener( 'dataupdate', event => {
 	        that.evaluationCascade.forEach( fn => {
-	            fn.call( that, event$$1.detail );
+	            fn.call( that, event.detail );
 	        }, true );
 	        // edit is fired when the model changes after the form has been initialized
 	        that.editStatus = true;
 	    } );
 
-	    this.view.html.addEventListener( event.AddRepeat().type, event$$1 => {
-	        const index = event$$1.detail ? event$$1.detail[ 0 ] : undefined;
-	        const $clone = jquery( event$$1.target );
+	    this.view.html.addEventListener( event.AddRepeat().type, event => {
+	        const index = event.detail ? event.detail[ 0 ] : undefined;
+	        const $clone = jquery( event.target );
 	        const updated = {
 	            repeatPath: $clone.attr( 'name' ),
 	            repeatIndex: index,
