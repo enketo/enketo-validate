@@ -144,11 +144,11 @@ describe( 'XForm', () => {
         const xf = loadXForm( 'self-reference.xml' );
         const result = validator.validate( xf );
 
-        it( 'outputs errors for dissallowed self-referencing', () => {
+        it( 'outputs errors for disallowed self-referencing', () => {
             expect( result.errors.length ).to.equal( 2 );
             expect( arrContains( result.errors, /Calculation formula for "calc1".*refers to itself/i ) ).to.equal( true );
             expect( arrContains( result.errors, /Relevant formula for "rel".*refers to itself/i ) ).to.equal( true );
         } );
-    } )
+    } );
 
 } );

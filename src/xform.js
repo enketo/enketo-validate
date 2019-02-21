@@ -125,7 +125,7 @@ class XForm {
      * A function that performs a basic check for references to a path or self-as-dot.
      * Note that this could easily be circumvented e.g. with a triangular dependency cycle 
      * between nodes with expressions or using paths with predicates.
-     * It is a start of detecting obvious errors.
+     * It is just a start with detecting the most obvious dependency errors.
      * 
      * @param {string} expr 
      * @param {string} selfPath 
@@ -138,7 +138,7 @@ class XForm {
 
         return this._extractNodeReferences( expr )
             .some( path => {
-                // The path could return muliple nodes, and self cannot be one of them.
+                // The path could return multiple nodes, and self cannot be one of them.
                 const nodes = this.enketoEvaluate( path, 'nodes', selfPath );
                 return nodes.includes( self );
             } );
@@ -365,6 +365,7 @@ class XForm {
         utils.parseFunctionFromExpression( expr, 'jr:choice-name' ).forEach( choiceFn => {
             expr = expr.replace( choiceFn[ 0 ], '"a"' );
         } );
+
         return expr;
     }
 
@@ -446,7 +447,7 @@ class XForm {
             // functions
             .replace( /[a-z-:]+\(/g, ' ' )
             .replace( /\)/g, ' ' )
-            .replace( /,/g, ' ' )
+            .replace( /,/g, ' ' ) // VERY WRONG: a string could contain a comma!
             // * character when used for multiplication only
             .replace( /(?<!\/)\*/g, ' ' )
             // other operators (- character only when used for deduction)

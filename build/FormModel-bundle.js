@@ -11396,7 +11396,11 @@
 	                const timeParts = parts[ 0 ].split( ':' );
 	                if ( parts.length > 0 ) {
 	                    // This will only work for latin numbers but that should be fine because that's what the widget supports.
-	                    timeParts[ 0 ] = parts[ 1 ] === time.pmNotation ? Number( timeParts[ 0 ] ) + 12 : timeParts[ 0 ];
+	                    if ( parts[ 1 ] === time.pmNotation ) {
+	                        timeParts[ 0 ] = ( ( Number( timeParts[ 0 ] ) % 12 ) + 12 ).toString().pad( 2 );
+	                    } else if ( parts[ 1 ] === time.amNotation ) {
+	                        timeParts[ 0 ] = ( Number( timeParts[ 0 ] ) % 12 ).toString().pad( 2 );
+	                    }
 	                    x = timeParts.join( ':' );
 	                }
 	            }
@@ -11449,41 +11453,37 @@
 	};
 
 	// TODO: add second "propagate" parameter to constructors to add .enketo namespace to event.
-	// TODO: I'm not sure what the instanceof check does
 
 	function DataUpdate( detail ) {
-	    if ( !( this instanceof DataUpdate ) ) {
-	        return new DataUpdate( detail );
-	    }
 	    return new CustomEvent( 'dataupdate', { detail } );
 	}
 
 	function FakeFocus() {
-	    if ( !( this instanceof FakeFocus ) ) {
-	        return new FakeFocus();
-	    }
 	    return new CustomEvent( 'fakefocus' );
 	}
 
 	function ApplyFocus() {
-	    if ( !( this instanceof ApplyFocus ) ) {
-	        return new ApplyFocus();
-	    }
 	    return new CustomEvent( 'applyfocus' );
 	}
 
 	function PageFlip() {
-	    if ( !( this instanceof PageFlip ) ) {
-	        return new PageFlip();
-	    }
 	    return new CustomEvent( 'pageflip' );
 	}
 
 	function Removed( detail ) {
-	    if ( !( this instanceof Removed ) ) {
-	        return new Removed( detail );
-	    }
 	    return new CustomEvent( 'removed', { detail } );
+	}
+
+	function AddRepeat( detail ) {
+	    return new CustomEvent( 'addrepeat', { detail, bubbles: true } );
+	}
+
+	function RemoveRepeat() {
+	    return new CustomEvent( 'removerepeat', { bubbles: true } );
+	}
+
+	function ChangeLanguage() {
+	    return new CustomEvent( 'changelanguage', { bubbles: true } );
 	}
 
 	function Change() {
@@ -11494,14 +11494,22 @@
 	    return new Event( 'input', { bubbles: true } );
 	}
 
+	function InputUpdate() {
+	    return new CustomEvent( 'inputupdate', { bubbles: true } );
+	}
+
 	var event = {
 	    DataUpdate,
 	    FakeFocus,
 	    ApplyFocus,
 	    PageFlip,
 	    Removed,
+	    AddRepeat,
+	    RemoveRepeat,
+	    ChangeLanguage,
 	    Change,
 	    Input,
+	    InputUpdate
 	};
 
 	/**
@@ -21106,7 +21114,7 @@
 	                instanceDoc.removeChild( secondaryInstanceChildren[ i ] );
 	            }
 	            let rootEl;
-	            // instanceof Document is only supported for Enketo Validate. It is not meant to be used otherwise.
+	            // instanceof Document is only supported for Enketo Validate. It is not meant to be used otherwise as it could create problems.
 	            if ( instance.xml instanceof XMLDocument || instance.xml instanceof Document ) {
 	                if ( window.navigator.userAgent.indexOf( 'Trident/' ) >= 0 ) {
 	                    // IE does not support importNode
@@ -21464,6 +21472,9 @@
 	    let index;
 	    const steps = [];
 	    let position = '';
+	    if ( !node || node.nodeType !== 1 ) {
+	        return null;
+	    }
 	    const nodeName = node.nodeName;
 	    let parent = node.parentElement;
 	    let parentName = parent ? parent.nodeName : null;
@@ -21586,9 +21597,12 @@
 	    return REPEAT_COMMENT_PREFIX + path;
 	};
 
+	FormModel.prototype.getRepeatCommentSelector = function( repeatPath ) {
+	    return `//comment()[self::comment()="${this.getRepeatCommentText( repeatPath )}"]`;
+	};
+
 	FormModel.prototype.getRepeatCommentEl = function( repeatPath, repeatSeriesIndex ) {
-	    const xPath = `//comment()[self::comment()="${this.getRepeatCommentText( repeatPath )}"]`;
-	    return this.evaluate( xPath, 'nodes', null, null, true )[ repeatSeriesIndex ];
+	    return this.evaluate( this.getRepeatCommentSelector( repeatPath ), 'nodes', null, null, true )[ repeatSeriesIndex ];
 	};
 
 	/**
@@ -21872,6 +21886,12 @@
 	 */
 	FormModel.prototype.makeBugCompliant = function( expr, selector, index ) {
 	    let target = this.node( selector, index ).getElement();
+
+	    // target is null for nested repeats if no repeats exist
+	    if ( !target ) {
+	        return expr;
+	    }
+
 	    const parents = [ target ];
 	    const that = this;
 
@@ -22023,7 +22043,9 @@
 	 */
 	FormModel.prototype.replaceCurrentFn = ( expr, contextSelector ) => {
 	    // relative paths
-	    expr = expr.replace( 'current()/.', `${contextSelector}/.` );
+	    if ( contextSelector ) {
+	        expr = expr.replace( 'current()/.', `${contextSelector}/.` );
+	    }
 	    // absolute paths
 	    expr = expr.replace( 'current()/', '/' );
 
@@ -22145,7 +22167,7 @@
 	 *
 	 * @param  { string }     expr        the expression to evaluate
 	 * @param  { string= }    resTypeStr  boolean, string, number, node, nodes (best to always supply this)
-	 * @param  { string= }    selector    jQuery selector which will be use to provide the context to the evaluator
+	 * @param  { string= }    selector    query selector which will be use to provide the context to the evaluator
 	 * @param  { number= }    index       0-based index of selector in document
 	 * @param  { boolean= }   tryNative   whether an attempt to try the Native Evaluator is safe (ie. whether it is
 	 *                                    certain that there are no date comparisons)
@@ -22154,7 +22176,7 @@
 	FormModel.prototype.evaluate = function( expr, resTypeStr, selector, index, tryNative ) {
 	    let j, context, doc, resTypeNum, resultTypes, result, collection, response, repeats, cacheKey, original, cacheable;
 
-	    //console.debug( 'evaluating expr: ' + expr + ' with context selector: ' + selector + ', 0-based index: ' +
+	    // console.debug( 'evaluating expr: ' + expr + ' with context selector: ' + selector + ', 0-based index: ' +
 	    //    index + ' and result type: ' + resTypeStr );
 	    original = expr;
 	    tryNative = tryNative || false;
@@ -22188,12 +22210,14 @@
 	    expr = this.replacePullDataFn( expr, selector, index );
 	    cacheable = ( original === expr );
 
+	    let intermediate = '';
 	    // if no cached conversion exists
 	    if ( !this.convertedExpressions[ cacheKey ] ) {
 	        expr = expr.trim();
 	        expr = this.replaceInstanceFn( expr );
 	        expr = this.replaceVersionFn( expr );
 	        expr = this.replaceCurrentFn( expr, this.getXPath( context, 'instance', true ) );
+	        intermediate = expr;
 	        // shiftRoot should come after replaceCurrentFn
 	        expr = this.shiftRoot( expr );
 	        // path corrections for repeated nodes: http://opendatakit.github.io/odk-xform-spec/#a-big-deviation-with-xforms
@@ -22201,9 +22225,9 @@
 	            expr = this.makeBugCompliant( expr, selector, index );
 	        }
 	        // decode
-	        expr = expr.replace( /&lt;/g, '<' );
-	        expr = expr.replace( /&gt;/g, '>' );
-	        expr = expr.replace( /&quot;/g, '"' );
+	        // expr = expr.replace( /&lt;/g, '<' );
+	        //expr = expr.replace( /&gt;/g, '>' );
+	        // expr = expr.replace( /&quot;/g, '"' );
 	        if ( cacheable ) {
 	            this.convertedExpressions[ cacheKey ] = expr;
 	        }
@@ -22252,7 +22276,8 @@
 	            // console.log( 'trying the slow enketo-xpathjs "openrosa" evaluator for', expr, index );
 	            result = doc.jsEvaluate( expr, context, this.getNsResolver(), resTypeNum, null );
 	        } catch ( e ) {
-	            throw new FormLogicError( `Could not evaluate: ${expr}, message: ${e.message}` );
+	            console.error( e );
+	            throw new FormLogicError( `Could not evaluate: "${expr}", message: "${e.message}", original:"${original}", intermediate:"${intermediate}"` );
 	        }
 	    }
 
@@ -22653,6 +22678,12 @@
 	        'gotonotfound': {
 	            'msg': 'Failed to find question \'__path__\' in form. Is it a valid path?'
 	        }
+	    },
+	    'confirm': {
+	        'repeatremove': {
+	            'heading': 'Delete this group of responses?',
+	            'msg': 'This action is irreversible. Are you sure you want to proceed?'
+	        }
 	    }
 	};
 
@@ -22822,7 +22853,7 @@
 	        }
 	        return this.getWrapNodes( this.form.view.$.find( `[${attr}="${name}"]` ) ).eq( index ).find( `[${attr}="${name}"]:not(.ignore)` ).eq( 0 );
 	    },
-	    setVal( $input, value, event = 'inputupdate.enketo' ) {
+	    setVal( $input, value, event$$1 = event.InputUpdate() ) {
 	        let $inputs;
 	        const type = this.getInputType( $input );
 	        const $question = this.getWrapNodes( $input );
@@ -22887,8 +22918,8 @@
 	            if ( curVal === undefined || curVal.toString() !== value.toString() ) {
 	                $inputs.val( value );
 	                // don't trigger on all radiobuttons/checkboxes
-	                if ( event ) {
-	                    $inputs.eq( 0 ).trigger( 'inputupdate.enketo' );
+	                if ( event$$1 ) {
+	                    $inputs[ 0 ].dispatchEvent( event$$1 );
 	                }
 	            }
 	        }
@@ -22898,6 +22929,36 @@
 	    validate( $input ) {
 	        return this.form.validateInput( $input );
 	    }
+	};
+
+	/*
+	 * This file is meant to be overidden with one that uses the app's dialogs.
+	 */
+
+	/**
+	 * @param {String | {message: String, heading: String}} content Dialog content
+	 */
+	function alert( content ) {
+	    window.alert( content );
+	    return Promise.resolve();
+	}
+
+	/**
+	 * @param {String | {message: String, heading: String}} content Dialog content
+	 */
+	function confirm( content ) {
+	    const msg = content.message ? content.message : content;
+	    return Promise.resolve( window.confirm( msg ) );
+	}
+
+	function prompt( content, def ) {
+	    return Promise.resolve( window.prompt( content, def ) );
+	}
+
+	var dialog = {
+	    alert,
+	    confirm,
+	    prompt
 	};
 
 	/**
@@ -22983,13 +23044,24 @@
 	            return false;
 	        } );
 	        this.form.view.$.on( 'click', 'button.remove:enabled', function() {
-	            //remove clone
-	            that.remove( jquery( this ).closest( '.or-repeat' ) );
+	            that.confirmDelete( this.closest( '.or-repeat' ) );
 	            //prevent default
 	            return false;
 	        } );
 
 	        this.countUpdate();
+	    },
+	    // Make this function overwritable
+	    confirmDelete( repeatEl ) {
+	        const that = this;
+	        dialog.confirm( { heading: t( 'confirm.repeatremove.heading' ), msg: t( 'confirm.repeatremove.msg' ) } )
+	            .then( confirmed => {
+	                if ( confirmed ) {
+	                    //remove clone
+	                    that.remove( jquery( repeatEl ) );
+	                }
+	            } )
+	            .catch( console.error );
 	    },
 	    /*
 	     * Obtains the absolute index of the provided repeat or repeat-info element
@@ -23017,6 +23089,19 @@
 	            checkEl = parent ? parent.closest( '.or-repeat' ) : null;
 	        }
 	        return count - 1;
+	    },
+	    /*
+	     * Obtains the absolute index of the provided repeat-info element
+	     */
+	    getInfoIndex( repeatInfo ) {
+	        if ( !this.form.repeatsPresent ) {
+	            return 0;
+	        }
+	        if ( !repeatInfo || !repeatInfo.classList.contains( 'or-repeat-info' ) ) {
+	            return null;
+	        }
+	        const name = repeatInfo.dataset.name;
+	        return [ ...repeatInfo.closest( 'form.or' ).querySelectorAll( `.or-repeat-info[data-name="${name}"` ) ].indexOf( repeatInfo );
 	    },
 	    /**
 	     * [updateViewInstancesFromModel description]
@@ -23079,12 +23164,7 @@
 	    updateRepeatInstancesFromCount( idx, repeatInfo ) {
 	        const that = this;
 	        let $last;
-	        let repCountNodes;
 	        let numRepsInCount;
-	        let numRepsInView;
-	        let toCreate;
-	        let repPath;
-	        let repIndex;
 	        const $repeatInfo = jquery( repeatInfo );
 	        const repCountPath = repeatInfo.dataset.repeatCount || '';
 
@@ -23093,28 +23173,22 @@
 	        }
 
 	        /*
-	         * We cannot pass a context to model.evaluate() if the number or repeats in a series is zero.
+	         * We cannot pass an .or-repeat context to model.evaluate() if the number or repeats in a series is zero.
 	         * However, but we do still need a context for nested repeats where the count of the nested repeat
-	         * is determined in a node inside the parent repeat. To do so we use this method:
-	         *
-	         * 1. determine the index from the view (always 0 for not-nested-repeats)
-	         * 2. obtain ALL repCount nodes from the model
-	         * 3. select the correct node from the result array
-	         * 
+	         * is determined in a node inside the parent repeat. To do so we use the repeat comment in model as context.
 	         */
-	        repPath = repeatInfo.dataset.name;
-	        repIndex = this.getIndex( repeatInfo );
-	        repCountNodes = this.form.model.evaluate( repCountPath, 'nodes', null, null, true );
+	        const repPath = repeatInfo.dataset.name;
+	        const repCountNode = this.form.model.evaluate( repCountPath, 'node', this.form.model.getRepeatCommentSelector( repPath ), this.getInfoIndex( repeatInfo ), true );
 
-	        if ( repCountNodes.length && repCountNodes[ repIndex ] ) {
-	            numRepsInCount = Number( repCountNodes[ repIndex ].textContent );
+	        if ( repCountNode ) {
+	            numRepsInCount = Number( repCountNode.textContent );
 	        } else {
 	            console.error( 'Unexpectedly, could not obtain repeat count node' );
 	        }
 
 	        numRepsInCount = isNaN( numRepsInCount ) ? 0 : numRepsInCount;
-	        numRepsInView = $repeatInfo.siblings( `.or-repeat[name="${repPath}"]` ).length;
-	        toCreate = numRepsInCount - numRepsInView;
+	        const numRepsInView = $repeatInfo.siblings( `.or-repeat[name="${repPath}"]` ).length;
+	        let toCreate = numRepsInCount - numRepsInView;
 
 	        if ( toCreate > 0 ) {
 	            that.add( repeatInfo, toCreate );
@@ -23212,8 +23286,8 @@
 	            // This is the index of the new repeat in relation to all other repeats of the same name,
 	            // even if they are in different series.
 	            repeatIndex = repeatIndex || this.getIndex( $clone[ 0 ] );
-	            // This will trigger setting default values, calculations, readonly, relevancy, and automatic page flips.
-	            $clone.trigger( 'addrepeat', [ repeatIndex, byCountUpdate ] );
+	            // This will trigger setting default values, calculations, readonly, relevancy, language updates, and automatic page flips.
+	            $clone[ 0 ].dispatchEvent( event.AddRepeat( [ repeatIndex, byCountUpdate ] ) );
 	            // Initialize widgets in clone after default values have been set
 	            if ( this.form.widgetsInitialized ) {
 	                this.form.widgets.init( $clone, this.form.options );
@@ -23257,7 +23331,7 @@
 	            that.toggleButtons( repeatInfo );
 	            // Trigger the removerepeat on the next repeat or repeat-info(always present)
 	            // so that removerepeat handlers know where the repeat was removed
-	            $next.trigger( 'removerepeat' );
+	            $next[ 0 ].dispatchEvent( event.RemoveRepeat() );
 	            // Now remove the data node
 	            that.form.model.node( repeatPath, repeatIndex ).remove();
 	        } );
@@ -23443,31 +23517,30 @@
 	            } );
 	    },
 	    _setRepeatHandlers() {
-	        const that = this;
 	        // TODO: can be optimized by smartly updating the active pages
-	        this.form.view.$
-	            .on( 'addrepeat.pagemode', ( event$$1, index, byCountUpdate ) => {
-	                that._updateAllActive();
-	                // Don't flip if the user didn't create the repeat with the + button.
-	                // or if is the default first instance created during loading.
-	                // except if the new repeat is actually first page in the form.
-	                if ( !byCountUpdate || that.$activePages[ 0 ] === event$$1.target ) {
-	                    that.flipToPageContaining( jquery( event$$1.target ) );
+	        this.form.view.html.addEventListener( event.AddRepeat().type, event$$1 => {
+	            const byCountUpdate = event$$1.detail ? event$$1.detail[ 1 ] : undefined;
+	            this._updateAllActive();
+	            // Don't flip if the user didn't create the repeat with the + button.
+	            // or if is the default first instance created during loading.
+	            // except if the new repeat is actually first page in the form.
+	            if ( !byCountUpdate || this.$activePages[ 0 ] === event$$1.target ) {
+	                this.flipToPageContaining( jquery( event$$1.target ) );
+	            }
+	        } );
+	        this.form.view.html.addEventListener( event.RemoveRepeat().type, event$$1 => {
+	            // if the current page is removed
+	            // note that that.$current will have length 1 even if it was removed from DOM!
+	            if ( this.$current.closest( 'html' ).length === 0 ) {
+	                this._updateAllActive();
+	                let $target = jquery( event$$1.target ).prev();
+	                if ( $target.length === 0 ) {
+	                    $target = jquery( event$$1.target );
 	                }
-	            } )
-	            .on( 'removerepeat.pagemode', event$$1 => {
-	                // if the current page is removed
-	                // note that that.$current will have length 1 even if it was removed from DOM!
-	                if ( that.$current.closest( 'html' ).length === 0 ) {
-	                    that._updateAllActive();
-	                    let $target = jquery( event$$1.target ).prev();
-	                    if ( $target.length === 0 ) {
-	                        $target = jquery( event$$1.target );
-	                    }
-	                    // is it best to go to previous page always?
-	                    that.flipToPageContaining( $target );
-	                }
-	            } );
+	                // is it best to go to previous page always?
+	                this.flipToPageContaining( $target );
+	            }
+	        } );
 	    },
 	    _setBranchHandlers() {
 	        const that = this;
@@ -23484,10 +23557,9 @@
 	            } );
 	    },
 	    _setLangChangeHandlers() {
-	        const that = this;
-	        this.form.view.$
-	            .on( 'changelanguage.pagemode', () => {
-	                that._updateToc();
+	        this.form.view.html
+	            .addEventListener( event.ChangeLanguage().type, () => {
+	                this._updateToc();
 	            } );
 	    },
 	    _getCurrent() {
@@ -23615,13 +23687,20 @@
 	        if ( this.$toc.length ) {
 	            // regenerate complete ToC from first enabled question/group label of each page
 	            this.tocItems = this.$activePages.get()
-	                .filter( pageEl => !pageEl.classList.contains( 'or-repeat-info' ) ).map( pageEl => {
+	                .filter( pageEl => !pageEl.classList.contains( 'or-repeat-info' ) )
+	                .map( ( pageEl, index ) => {
+	                    let tocItemText = `[${index + 1}]`;
 	                    const labelEl = pageEl.querySelector( '.question-label.active' );
-	                    if ( !labelEl ) {
-	                        return false;
+	                    if ( labelEl ) {
+	                        tocItemText = labelEl.textContent;
+	                    } else {
+	                        const hintEl = pageEl.querySelector( '.or-hint.active' );
+	                        if ( hintEl ) {
+	                            tocItemText = hintEl.textContent;
+	                        }
 	                    }
-	                    const label = labelEl.textContent;
-	                    return { pageEl, label };
+	                    tocItemText = tocItemText.length > 20 ? `${tocItemText.substring(0,20)}...` : tocItemText;
+	                    return { pageEl, tocItemText };
 	                } );
 	            this.$toc.empty()[ 0 ].append( this._getTocHtmlFragment( this.tocItems ) );
 	            this.$toc.closest( '.pages-toc' ).removeClass( 'hide' );
@@ -23633,7 +23712,7 @@
 	            const li = document.createElement( 'li' );
 	            const a = document.createElement( 'a' );
 	            a.setAttribute( 'href', `#${item.pageEl.querySelector( '[name]' ).getAttribute( 'name' )}` );
-	            a.textContent = item.label;
+	            a.textContent = item.tocItemText;
 	            li.append( a );
 	            items.appendChild( li );
 	        } );
@@ -23832,6 +23911,9 @@
 	            this.form.calc.update( {
 	                relevantPath: path
 	            } );
+	            this.form.itemset.update( {
+	                relevantPath: path
+	            } );
 	            // Update outputs that are children of branch
 	            // TODO this re-evaluates all outputs in the form which is not efficient!
 	            this.form.output.update();
@@ -23875,7 +23957,7 @@
 	    clear( $branchNode, path ) {
 	        // A change event ensures the model is updated
 	        // An inputupdate event is required to update widgets
-	        $branchNode.clearInputs( 'change', 'inputupdate.enketo' );
+	        $branchNode.clearInputs( 'change', event.InputUpdate().type );
 	        // Update calculated items if branch is a group
 	        // We exclude question branches here because those will have been cleared already in the previous line.
 	        if ( $branchNode.is( '.or-group, .or-group-data' ) ) {
@@ -23927,15 +24009,28 @@
 	 */
 
 	var itemsetModule = {
-	    update( updated ) {
+	    update( updated = {} ) {
 	        const that = this;
 	        const itemsCache = {};
+	        let $nodes;
 
 	        if ( !this.form ) {
 	            throw new Error( 'Output module not correctly instantiated with form property.' );
 	        }
 
-	        const $nodes = this.form.getRelatedNodes( 'data-items-path', '.itemset-template', updated );
+	        if ( updated.relevantPath ) {
+	            // Questions that are descendants of a group:
+	            $nodes = this.form.getRelatedNodes( 'data-items-path', `[name^="${updated.relevantPath}/"]` )
+	                .add( this.form.getRelatedNodes( 'data-items-path', `[name^="${updated.relevantPath}/"] ~ datalist > .itemset-template` ) )
+	                // Individual questions (autocomplete)
+	                .add( this.form.getRelatedNodes( 'data-items-path', `[name="${updated.relevantPath}"]` ) )
+	                .add( this.form.getRelatedNodes( 'data-items-path', `[name="${updated.relevantPath}"] ~ datalist > .itemset-template` ) )
+	                // Individual radiobutton questions with an itemset...:
+	                .add( this.form.getRelatedNodes( 'data-items-path', `[data-name="${updated.relevantPath}"]` ) )
+	                .add( this.form.getRelatedNodes( 'data-items-path', `[data-name="${updated.relevantPath}"] ~ datalist > .itemset-template` ) );
+	        } else {
+	            $nodes = this.form.getRelatedNodes( 'data-items-path', '.itemset-template', updated );
+	        }
 
 	        const clonedRepeatsPresent = this.form.repeatsPresent && this.form.view.html.querySelector( '.or-repeat.clone' );
 
@@ -23997,7 +24092,6 @@
 	             */
 	            const insideRepeat = ( clonedRepeatsPresent && $input.parentsUntil( '.or', '.or-repeat' ).length > 0 ) ? true : false;
 	            const insideRepeatClone = ( clonedRepeatsPresent && $input.parentsUntil( '.or', '.or-repeat.clone' ).length > 0 ) ? true : false;
-
 	            const index = ( insideRepeatClone ) ? that.form.input.getIndex( $input ) : 0;
 
 	            if ( typeof itemsCache[ itemsXpath ] !== 'undefined' ) {
@@ -24924,7 +25018,7 @@
 
 	    // Fill empty fake datalist
 	    $datalist.find( 'option' ).each( function() {
-	        tempItem = jquery( '<li />', {
+	        const tempItem = jquery( '<li />', {
 	            // .val is required here, not .text or .html
 	            // HTML *needs* to be <option value='xxx'> not <option>xxx</option>  (IE)
 	            'text': jquery( this ).val()
@@ -25133,7 +25227,7 @@
 	             * However, for some reason !item.dataset.value is failing in Safari, which as a result sets all dataset.value attributes to "null" 
 	             * To workaround this, we check for the value attribute instead.
 	             */
-	            if ( !item.classList.contains( 'itemset-template' ) && value !== undefined && value !== null ) {
+	            if ( !item.classList.contains( 'itemset-template' ) && item.textContent && value !== undefined && value !== null ) {
 	                item.dataset.value = value;
 	                item.setAttribute( 'value', item.textContent );
 	                item.textContent = '';
@@ -25237,11 +25331,12 @@
 	    }
 
 	    disable() {
-	        this.fakeInput.querySelector( 'li' ).classList.add( 'disabled' );
+	        this.fakeInput.classList.add( 'disabled' );
 	    }
 
 	    enable() {
-	        this.fakeInput.querySelector( 'li' ).classList.remove( 'disabled' );
+	        this.fakeInput.classList.remove( 'disabled' );
+
 	    }
 
 	    update() {
@@ -25260,14 +25355,14 @@
 
 	var leafletSrc = createCommonjsModule(function (module, exports) {
 	/* @preserve
-	 * Leaflet 1.3.4, a JS library for interactive maps. http://leafletjs.com
+	 * Leaflet 1.4.0, a JS library for interactive maps. http://leafletjs.com
 	 * (c) 2010-2018 Vladimir Agafonkin, (c) 2010-2011 CloudMade
 	 */
 
 	(function (global, factory) {
 		factory(exports);
 	}(commonjsGlobal, (function (exports) {
-	var version = "1.3.4";
+	var version = "1.4.0";
 
 	/*
 	 * @namespace Util
@@ -27548,7 +27643,7 @@
 	// Makes `el` the last child of its parent, so it renders in front of the other children.
 	function toFront(el) {
 		var parent = el.parentNode;
-		if (parent.lastChild !== el) {
+		if (parent && parent.lastChild !== el) {
 			parent.appendChild(el);
 		}
 	}
@@ -27557,7 +27652,7 @@
 	// Makes `el` the first child of its parent, so it renders behind the other children.
 	function toBack(el) {
 		var parent = el.parentNode;
-		if (parent.firstChild !== el) {
+		if (parent && parent.firstChild !== el) {
 			parent.insertBefore(el, parent.firstChild);
 		}
 	}
@@ -27610,6 +27705,11 @@
 	// @function getClass(el: HTMLElement): String
 	// Returns the element's class.
 	function getClass(el) {
+		// Check if the element is an SVGElementInstance and use the correspondingElement instead
+		// (Required for linked SVG elements in IE11.)
+		if (el.correspondingElement) {
+			el = el.correspondingElement;
+		}
 		return el.className.baseVal === undefined ? el.className : el.className.baseVal;
 	}
 
@@ -28371,6 +28471,13 @@
 		initialize: function (id, options) { // (HTMLElement or String, Object)
 			options = setOptions(this, options);
 
+			// Make sure to assign internal flags at the beginning,
+			// to avoid inconsistent state in some edge cases.
+			this._handlers = [];
+			this._layers = {};
+			this._zoomBoundLayers = {};
+			this._sizeChanged = true;
+
 			this._initContainer(id);
 			this._initLayout();
 
@@ -28390,11 +28497,6 @@
 			if (options.center && options.zoom !== undefined) {
 				this.setView(toLatLng(options.center), options.zoom, {reset: true});
 			}
-
-			this._handlers = [];
-			this._layers = {};
-			this._zoomBoundLayers = {};
-			this._sizeChanged = true;
 
 			this.callInitHooks();
 
@@ -28751,6 +28853,51 @@
 			}
 
 			this._enforcingBounds = false;
+			return this;
+		},
+
+		// @method panInside(latlng: LatLng, options?: options): this
+		// Pans the map the minimum amount to make the `latlng` visible. Use
+		// `padding`, `paddingTopLeft` and `paddingTopRight` options to fit
+		// the display to more restricted bounds, like [`fitBounds`](#map-fitbounds).
+		// If `latlng` is already within the (optionally padded) display bounds,
+		// the map will not be panned.
+		panInside: function (latlng, options) {
+			options = options || {};
+
+			var paddingTL = toPoint(options.paddingTopLeft || options.padding || [0, 0]),
+			    paddingBR = toPoint(options.paddingBottomRight || options.padding || [0, 0]),
+			    center = this.getCenter(),
+			    pixelCenter = this.project(center),
+			    pixelPoint = this.project(latlng),
+			    pixelBounds = this.getPixelBounds(),
+			    halfPixelBounds = pixelBounds.getSize().divideBy(2),
+			    paddedBounds = toBounds([pixelBounds.min.add(paddingTL), pixelBounds.max.subtract(paddingBR)]);
+
+			if (!paddedBounds.contains(pixelPoint)) {
+				this._enforcingBounds = true;
+				var diff = pixelCenter.subtract(pixelPoint),
+				    newCenter = toPoint(pixelPoint.x + diff.x, pixelPoint.y + diff.y);
+
+				if (pixelPoint.x < paddedBounds.min.x || pixelPoint.x > paddedBounds.max.x) {
+					newCenter.x = pixelCenter.x - diff.x;
+					if (diff.x > 0) {
+						newCenter.x += halfPixelBounds.x - paddingTL.x;
+					} else {
+						newCenter.x -= halfPixelBounds.x - paddingBR.x;
+					}
+				}
+				if (pixelPoint.y < paddedBounds.min.y || pixelPoint.y > paddedBounds.max.y) {
+					newCenter.y = pixelCenter.y - diff.y;
+					if (diff.y > 0) {
+						newCenter.y += halfPixelBounds.y - paddingTL.y;
+					} else {
+						newCenter.y -= halfPixelBounds.y - paddingBR.y;
+					}
+				}
+				this.panTo(this.unproject(newCenter), options);
+				this._enforcingBounds = false;
+			}
 			return this;
 		},
 
@@ -29872,7 +30019,7 @@
 			}
 
 			// @event zoomanim: ZoomAnimEvent
-			// Fired on every frame of a zoom animation
+			// Fired at least once per zoom animation. For continous zoom, like pinch zooming, fired once per frame during zoom.
 			this.fire('zoomanim', {
 				center: center,
 				zoom: zoom,
@@ -30228,13 +30375,13 @@
 		// Expand the control container if collapsed.
 		expand: function () {
 			addClass(this._container, 'leaflet-control-layers-expanded');
-			this._form.style.height = null;
+			this._section.style.height = null;
 			var acceptableHeight = this._map.getSize().y - (this._container.offsetTop + 50);
-			if (acceptableHeight < this._form.clientHeight) {
-				addClass(this._form, 'leaflet-control-layers-scrollbar');
-				this._form.style.height = acceptableHeight + 'px';
+			if (acceptableHeight < this._section.clientHeight) {
+				addClass(this._section, 'leaflet-control-layers-scrollbar');
+				this._section.style.height = acceptableHeight + 'px';
 			} else {
-				removeClass(this._form, 'leaflet-control-layers-scrollbar');
+				removeClass(this._section, 'leaflet-control-layers-scrollbar');
 			}
 			this._checkDisabledLayers();
 			return this;
@@ -30258,7 +30405,7 @@
 			disableClickPropagation(container);
 			disableScrollPropagation(container);
 
-			var form = this._form = create$1('form', className + '-list');
+			var section = this._section = create$1('section', className + '-list');
 
 			if (collapsed) {
 				this._map.on('click', this.collapse, this);
@@ -30286,11 +30433,11 @@
 				this.expand();
 			}
 
-			this._baseLayersList = create$1('div', className + '-base', form);
-			this._separator = create$1('div', className + '-separator', form);
-			this._overlaysList = create$1('div', className + '-overlays', form);
+			this._baseLayersList = create$1('div', className + '-base', section);
+			this._separator = create$1('div', className + '-separator', section);
+			this._overlaysList = create$1('div', className + '-overlays', section);
 
-			container.appendChild(form);
+			container.appendChild(section);
 		},
 
 		_getLayer: function (id) {
@@ -31715,7 +31862,7 @@
 			pane: 'overlayPane',
 
 			// @option attribution: String = null
-			// String to be shown in the attribution control, describes the layer data, e.g. "© Mapbox".
+			// String to be shown in the attribution control, e.g. "© OpenStreetMap contributors". It describes the layer data and is often a legal obligation towards copyright holders and tile providers.
 			attribution: null,
 
 			bubblingMouseEvents: true
@@ -34950,7 +35097,8 @@
 		},
 
 		_adjustPan: function () {
-			if (!this.options.autoPan || (this._map._panAnim && this._map._panAnim._inProgress)) { return; }
+			if (!this.options.autoPan) { return; }
+			if (this._map._panAnim) { this._map._panAnim.stop(); }
 
 			var map = this._map,
 			    marginBottom = parseInt(getStyle(this._container, 'marginBottom'), 10) || 0,
@@ -36641,12 +36789,12 @@
 	 * @class TileLayer
 	 * @inherits GridLayer
 	 * @aka L.TileLayer
-	 * Used to load and display tile layers on the map. Extends `GridLayer`.
+	 * Used to load and display tile layers on the map. Note that most tile servers require attribution, which you can set under `Layer`. Extends `GridLayer`.
 	 *
 	 * @example
 	 *
 	 * ```js
-	 * L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png?{foo}', {foo: 'bar'}).addTo(map);
+	 * L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png?{foo}', {foo: 'bar', attribution: 'Map data &copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors, <a href="https://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>'}).addTo(map);
 	 * ```
 	 *
 	 * @section URL template
@@ -36746,7 +36894,13 @@
 
 		// @method setUrl(url: String, noRedraw?: Boolean): this
 		// Updates the layer's URL template and redraws it (unless `noRedraw` is set to `true`).
+		// If the URL does not change, the layer will not be redrawn unless
+		// the noRedraw parameter is set to false.
 		setUrl: function (url, noRedraw) {
+			if (this._url === url && noRedraw === undefined) {
+				noRedraw = true;
+			}
+
 			this._url = url;
 
 			if (!noRedraw) {
@@ -37253,8 +37407,6 @@
 		_update: function () {
 			if (this._map._animatingZoom && this._bounds) { return; }
 
-			this._drawnLayers = {};
-
 			Renderer.prototype._update.call(this);
 
 			var b = this._bounds,
@@ -37324,8 +37476,6 @@
 				this._drawFirst = next;
 			}
 
-			delete this._drawnLayers[layer._leaflet_id];
-
 			delete layer._order;
 
 			delete this._layers[stamp(layer)];
@@ -37353,9 +37503,13 @@
 			if (typeof layer.options.dashArray === 'string') {
 				var parts = layer.options.dashArray.split(/[, ]+/),
 				    dashArray = [],
+				    dashValue,
 				    i;
 				for (i = 0; i < parts.length; i++) {
-					dashArray.push(Number(parts[i]));
+					dashValue = Number(parts[i]);
+					// Ignore dash array containing invalid lengths
+					if (isNaN(dashValue)) { return; }
+					dashArray.push(dashValue);
 				}
 				layer.options._dashArray = dashArray;
 			} else {
@@ -37437,8 +37591,6 @@
 
 			if (!len) { return; }
 
-			this._drawnLayers[layer._leaflet_id] = layer;
-
 			ctx.beginPath();
 
 			for (i = 0; i < len; i++) {
@@ -37464,8 +37616,6 @@
 			    ctx = this._ctx,
 			    r = Math.max(Math.round(layer._radius), 1),
 			    s = (Math.max(Math.round(layer._radiusY), 1) || r) / r;
-
-			this._drawnLayers[layer._leaflet_id] = layer;
 
 			if (s !== 1) {
 				ctx.save();
@@ -37571,6 +37721,9 @@
 
 		_bringToFront: function (layer) {
 			var order = layer._order;
+
+			if (!order) { return; }
+
 			var next = order.next;
 			var prev = order.prev;
 
@@ -37599,6 +37752,9 @@
 
 		_bringToBack: function (layer) {
 			var order = layer._order;
+
+			if (!order) { return; }
+
 			var next = order.next;
 			var prev = order.prev;
 
@@ -37654,7 +37810,6 @@
 	/*
 	 * @class SVG
 	 *
-	 * Although SVG is not available on IE7 and IE8, these browsers support [VML](https://en.wikipedia.org/wiki/Vector_Markup_Language), and the SVG renderer will fall back to VML in this case.
 	 *
 	 * VML was deprecated in 2012, which means VML functionality exists only for backwards compatibility
 	 * with old versions of Internet Explorer.
@@ -39129,35 +39284,6 @@
 	});
 
 	/*
-	 * This file is meant to be overidden with one that uses the app's dialogs.
-	 */
-
-	/**
-	 * @param {String | {message: String, heading: String}} content Dialog content
-	 */
-	function alert( content ) {
-	    window.alert( content );
-	    return Promise.resolve();
-	}
-
-	/**
-	 * @param {String | {message: String, heading: String}} content Dialog content
-	 */
-	function confirm( content ) {
-	    return Promise.resolve( window.confirm( content ) );
-	}
-
-	function prompt( content, def ) {
-	    return Promise.resolve( window.prompt( content, def ) );
-	}
-
-	var dialog = {
-	    alert,
-	    confirm,
-	    prompt
-	};
-
-	/*
 	 Leaflet.draw 1.0.4+838a63b, a plugin that adds drawing and editing tools to Leaflet powered maps.
 	 (c) 2012-2017, Jacob Toye, Jon West, Smartrak, Leaflet
 
@@ -39264,8 +39390,8 @@
 
 		onRemove: function (map) {
 			L.GridLayer.prototype.onRemove.call(this, map);
+			this._observer.disconnect();
 			map._container.removeChild(this._mutantContainer);
-			this._mutantContainer = undefined;
 
 			google.maps.event.clearListeners(map, 'idle');
 			google.maps.event.clearListeners(this._mutant, 'idle');
@@ -39320,8 +39446,8 @@
 				
 				L.DomEvent.off(this._mutantContainer);
 
-				this._map.getContainer().appendChild(this._mutantContainer);
 			}
+			this._map.getContainer().appendChild(this._mutantContainer);
 
 			this.setOpacity(this.options.opacity);
 			this.setElementSize(this._mutantContainer, this._map.getSize());
@@ -39331,6 +39457,13 @@
 
 		_initMutant: function () {
 			if (!this._ready || !this._mutantContainer) return;
+
+			if (this._mutant) {
+				// reuse old _mutant, just make sure it has the correct size
+				this._resize();
+				return;
+			}
+
 			this._mutantCenter = new google.maps.LatLng(0, 0);
 
 			var map = new google.maps.Map(this._mutantContainer, {
@@ -39365,10 +39498,18 @@
 		_attachObserver: function _attachObserver (node) {
 	// 		console.log('Gonna observe', node);
 
-			var observer = new MutationObserver(this._onMutations.bind(this));
+			if (!this._observer)
+				this._observer = new MutationObserver(this._onMutations.bind(this));
 
 			// pass in the target node, as well as the observer options
-			observer.observe(node, { childList: true, subtree: true });
+			this._observer.observe(node, { childList: true, subtree: true });
+
+			// if we are reusing an old _mutantContainer, we must manually detect
+			// all existing tiles in it
+			Array.prototype.forEach.call(
+				node.querySelectorAll('img'),
+				this._boundOnMutatedImage
+			);
 		},
 
 		_onMutations: function _onMutations (mutations) {
@@ -44855,7 +44996,6 @@
 	        const existingFileName = this.element.getAttribute( 'data-loaded-file-name' );
 	        const that = this;
 
-	        this.element.disabled = true;
 	        this.element.classList.add( 'hide' );
 	        this.question.classList.add( 'with-media', 'clearfix' );
 
@@ -44865,32 +45005,24 @@
                     <div class="file-feedback"></div>
                     <div class="file-preview"></div>
                 </div>` );
-	        if ( !this.props.readonly ) {
-	            fragment.querySelector( 'input' ).after( this.downloadButtonHtml );
-	            fragment.querySelector( 'input' ).after( this.resetButtonHtml );
-	        }
+
+	        fragment.querySelector( 'input' ).after( this.downloadButtonHtml );
+	        fragment.querySelector( 'input' ).after( this.resetButtonHtml );
 
 	        this.element.after( fragment );
+
+	        this.disable();
+
 	        const widget = this.question.querySelector( '.widget' );
 	        this.feedback = widget.querySelector( '.file-feedback' );
 	        this.preview = widget.querySelector( '.file-preview' );
 	        this.fakeInput = widget.querySelector( '.fake-file-input' );
 	        this.downloadLink = widget.querySelector( '.btn-download' );
 
-	        widget.querySelector( '.btn-reset' ).addEventListener( 'click', () => {
-	            if ( ( this.originalInputValue || this.value ) ) {
-	                dialog.confirm( t( 'filepicker.resetWarning', { item: t( 'filepicker.file' ) } ) )
-	                    .then( confirmed => {
-	                        if ( confirmed ) {
-	                            this.originalInputValue = '';
-	                        }
-	                    } )
-	                    .catch( () => {} );
-	            }
-	        } );
+	        that._setResetButtonListener( widget.querySelector( '.btn-reset' ) );
 
 	        // Focus listener needs to be added synchronously
-	        that._focusListener();
+	        that._setFocusListener();
 
 	        // show loaded file name or placeholder regardless of whether widget is supported
 	        this._showFileName( existingFileName );
@@ -44907,8 +45039,10 @@
 	        fileManager.init()
 	            .then( () => {
 	                that._showFeedback();
-	                that._changeListener();
-	                that.element.disabled = false;
+	                that._setChangeListener();
+	                if ( !that.props.readonly ) {
+	                    that.enable();
+	                }
 	                if ( existingFileName ) {
 	                    fileManager.getFileUrl( existingFileName )
 	                        .then( url => {
@@ -44931,7 +45065,23 @@
 	        this.fakeInput.setAttribute( 'placeholder', t( 'filepicker.placeholder', { maxSize: fileManager.getMaxSizeReadable() || '?MB' } ) );
 	    }
 
-	    _changeListener() {
+	    _setResetButtonListener( resetButton ) {
+	        if ( resetButton ) {
+	            resetButton.addEventListener( 'click', () => {
+	                if ( ( this.originalInputValue || this.value ) ) {
+	                    dialog.confirm( t( 'filepicker.resetWarning', { item: t( 'filepicker.file' ) } ) )
+	                        .then( confirmed => {
+	                            if ( confirmed ) {
+	                                this.originalInputValue = '';
+	                            }
+	                        } )
+	                        .catch( () => {} );
+	                }
+	            } );
+	        }
+	    }
+
+	    _setChangeListener() {
 	        const that = this;
 
 	        jquery( this.element )
@@ -45014,17 +45164,15 @@
 	        } );
 	    }
 
-	    _focusListener() {
-	        const that = this;
-
+	    _setFocusListener() {
 	        // Handle focus on widget input
 	        this.fakeInput.addEventListener( 'focus', () => {
-	            that.element.dispatchEvent( event.FakeFocus() );
+	            this.element.dispatchEvent( event.FakeFocus() );
 	        } );
 
 	        // Handle focus on original input (goTo functionality)
 	        this.element.addEventListener( 'applyfocus', () => {
-	            that.fakeInput.focus();
+	            this.fakeInput.focus();
 	        } );
 	    }
 
@@ -45058,11 +45206,9 @@
 	            case 'video/*':
 	                htmlStr = '<video controls="controls"/>';
 	                break;
-	            default:
-	                break;
 	        }
 
-	        if ( url ) {
+	        if ( url && htmlStr ) {
 	            const fragment = document.createRange().createContextualFragment( htmlStr );
 	            fragment.querySelector( '*' ).src = url;
 	            this.preview.append( fragment );
@@ -45071,6 +45217,15 @@
 
 	    _updateDownloadLink( objectUrl, fileName ) {
 	        updateDownloadLink( this.downloadLink, objectUrl, fileName );
+	    }
+
+	    disable() {
+	        this.element.disabled = true;
+	        this.question.querySelector( '.btn-reset' ).disabled = true;
+	    }
+	    enable() {
+	        this.element.disabled = false;
+	        this.question.querySelector( '.btn-reset' ).disabled = false;
 	    }
 
 	    get props() {
@@ -45689,6 +45844,8 @@
 	  return this._data;
 	};
 
+	const DELAY = 1500;
+
 	/**
 	 * SignaturePad.prototype.fromDataURL is asynchronous and does not return a 
 	 * Promise. This is a rewrite returning a promise and the objectUrl.
@@ -45751,8 +45908,6 @@
 	    this._data = pointGroups;
 	};
 
-
-
 	/**
 	 * Widget to obtain user-provided drawings or signature.
 	 */
@@ -45785,10 +45940,20 @@
 	            this._handleFiles( existingFilename );
 	        }
 
+	        // We built a delay in saving on stroke "end", to avoid excessive updating
+	        // This event does not fire on touchscreens for which we use the .hide-canvas-btn click
+	        // to do the same thing.
+	        canvas.addEventListener( 'blur', this._forceUpdate.bind( this ) );
+
 	        this.initialize = fileManager.init()
 	            .then( () => {
 	                that.pad = new SignaturePad( canvas, {
-	                    onEnd: that._updateValue.bind( that ),
+	                    onEnd: () => {
+	                        // keep replacing this timer so continuous drawing
+	                        // doesn't update the value after every stroke.
+	                        clearTimeout( that._updateWithDelay );
+	                        that._updateWithDelay = setTimeout( that._updateValue.bind( that ), DELAY );
+	                    },
 	                    penColor: that.props.colors[ 0 ] || 'black'
 	                } );
 	                that.pad.off();
@@ -45836,6 +46001,7 @@
 	                        that.$widget.removeClass( 'full-screen' );
 	                        that.pad.off();
 	                        that._resizeCanvas( canvas );
+	                        that._forceUpdate();
 	                        return false;
 	                    } ).click();
 
@@ -45864,6 +46030,11 @@
 	                // https://github.com/kobotoolbox/enketo-express/issues/844
 	                that._resizeCanvas( canvas );
 	            } );
+	    }
+
+	    _forceUpdate() {
+	        clearTimeout( this._updateWithDelay );
+	        this._updateValue();
 	    }
 
 	    // All this is copied from the file-picker widget
@@ -46140,7 +46311,7 @@
 	    }
 
 	    get value() {
-	        return this.cache ? this.props.filename : '';
+	        return this.cache || '';
 	    }
 
 	    set value( dataUrl ) {
@@ -46159,7 +46330,7 @@
 	class HorizontalChoices extends Widget {
 
 	    static get selector() {
-	        return '.or-appearance-horizontal';
+	        return '.question.or-appearance-horizontal';
 	    }
 
 	    _init() {
@@ -48270,7 +48441,7 @@
 	function _setLangChangeListener( Widget, els ) {
 	    // call update for all widgets when language changes 
 	    if ( els.length > 0 ) {
-	        jquery( formHtml ).on( 'changelanguage', () => {
+	        formHtml.addEventListener( event.ChangeLanguage().type, () => {
 	            new Collection( els ).update( Widget );
 	        } );
 	    }
@@ -48303,9 +48474,9 @@
 	function _setValChangeListener( Widget, els ) {
 	    // avoid adding eventhandlers on widgets that apply to the <form> or <label> element
 	    if ( els.length > 0 && els[ 0 ].matches( 'input, select, textarea' ) ) {
-	        jquery( els ).on( 'inputupdate.enketo', function() {
-	            new Collection( this ).update( Widget );
-	        } );
+	        els.forEach( el => el.addEventListener( event.InputUpdate.type, event$$1 => {
+	            new Collection( event$$1.target ).update( Widget );
+	        } ) );
 	    }
 	}
 
@@ -48359,7 +48530,6 @@
 
 	var languageModule = {
 	    init() {
-	        const that = this;
 	        if ( !this.form ) {
 	            throw new Error( 'Language module not correctly instantiated with form property.' );
 	        }
@@ -48367,63 +48537,68 @@
 	        if ( !root ) {
 	            return;
 	        }
-	        const $langSelector = jquery( root.querySelector( '.form-language-selector' ) );
-	        this.$formLanguages = jquery( this.form.view.html.querySelector( '#form-languages' ) );
-	        this._currentLang = this.$formLanguages.attr( 'data-default-lang' ) || this.$formLanguages.find( 'option' ).eq( 0 ).attr( 'value' );
-	        const currentDirectionality = this.$formLanguages.find( `[value="${this._currentLang}"]` ).attr( 'data-dir' ) || 'ltr';
+	        const langSelector = root.querySelector( '.form-language-selector' );
+	        const formLanguages = this.form.view.html.querySelector( '#form-languages' );
 
-	        if ( $langSelector.length && this.$formLanguages.find( 'option' ).length > 1 ) {
-	            this.$formLanguages
-	                .detach()
-	                .appendTo( $langSelector );
-	            $langSelector.removeClass( 'hide' );
-	        }
-
-	        this.$formLanguages.val( this._currentLang );
-
-	        this.form.view.$
-	            .attr( 'dir', currentDirectionality );
-
-	        if ( this.$formLanguages.find( 'option' ).length < 2 ) {
+	        if ( !formLanguages ) {
 	            return;
 	        }
 
-	        this.$formLanguages.change( function( event ) {
-	            event.preventDefault();
-	            that._currentLang = jquery( this ).val();
-	            that.setAll( that._currentLang );
+	        const languages = [ ...formLanguages.querySelectorAll( 'option' ) ].map( option => option.value );
+	        if ( langSelector ) {
+	            langSelector
+	                .append( formLanguages );
+	            if ( languages.length > 1 ) {
+	                langSelector.classList.remove( 'hide' );
+	            }
+	        }
+	        this.formLanguages = root.querySelector( '#form-languages' );
+	        this._currentLang = this.formLanguages.dataset.defaultLang || languages[ 0 ] || '';
+	        const langOption = this.formLanguages.querySelector( `[value="${this._currentLang}"]` );
+	        const currentDirectionality = langOption && langOption.dataset.dir || 'ltr';
+
+	        this.formLanguages.value = this._currentLang;
+
+	        this.form.view.html.setAttribute( 'dir', currentDirectionality );
+
+	        if ( languages.length < 2 ) {
+	            return;
+	        }
+
+	        this.formLanguages.addEventListener( event.Change().type, event$$1 => {
+	            event$$1.preventDefault();
+	            this._currentLang = event$$1.target.value;
+	            this.setUi( this._currentLang );
 	        } );
+
+	        this.form.view.html.addEventListener( event.AddRepeat().type, event$$1 => this.setUi( this._currentLang, event$$1.target ) );
 	    },
 	    get currentLang() {
 	        return this._currentLang;
 	    },
 	    get currentLangDesc() {
-	        return this.$formLanguages.find( `[value="${this._currentLang}"]` ).text();
+	        const langOption = this.formLanguages.querySelector( `[value="${this._currentLang}"]` );
+	        return langOption ? langOption.textContent : null;
 	    },
-	    setAll( lang ) {
-	        const that = this;
-	        const dir = this.$formLanguages.find( `[value="${lang}"]` ).attr( 'data-dir' ) || 'ltr';
+	    setUi( lang, group = this.form.view.html ) {
+	        const dir = this.formLanguages.querySelector( `[value="${lang}"]` ).dataset.dir || 'ltr';
+	        const translations = [ ...group.querySelectorAll( '[lang]' ) ];
 
-	        this.form.view.$
-	            .attr( 'dir', dir )
-	            .find( '[lang]' )
-	            .removeClass( 'active' )
-	            .filter( `[lang="${lang}"], [lang=""]` )
-	            .filter( function() {
-	                const $this = jquery( this );
-	                return !$this.hasClass( 'or-form-short' ) || ( $this.hasClass( 'or-form-short' ) && $this.siblings( '.or-form-long' ).length === 0 );
-	            } )
-	            .addClass( 'active' );
+	        this.form.view.html.setAttribute( 'dir', dir );
+	        translations.forEach( el => el.classList.remove( 'active' ) );
+	        translations
+	            .filter( el => el.matches( `[lang="${lang}"], [lang=""]` ) &&
+	                ( !el.classList.contains( 'or-form-short' ) || ( el.classList.contains( 'or-form-short' ) && getSiblingElements( el, '.or-form-long' ).length === 0 ) ) )
+	            .forEach( el => el.classList.add(
+	                'active'
+	            ) );
 
 	        // For use in locale-sensitive XPath functions.
 	        // Don't even check whether it's a proper subtag or not. It will revert to client locale if it is not recognized.
 	        window.enketoFormLocale = lang;
 
-	        this.form.view.$.find( 'select, datalist' ).each( function() {
-	            that.setSelect( this );
-	        } );
-
-	        this.form.view.$.trigger( 'changelanguage' );
+	        this.form.view.html.querySelectorAll( 'select, datalist' ).forEach( el => this.setSelect( el ) );
+	        this.form.view.html.dispatchEvent( event.ChangeLanguage() );
 	    },
 	    // swap language of <select> and <datalist> <option>s
 	    setSelect( select ) {
@@ -48434,8 +48609,8 @@
 	        if ( !translations ) {
 	            return;
 	        }
-	        Array.prototype.slice.call( select.children )
-	            .filter( el => el.matches( 'option' ) && !el.matches( '[value=""], [data-value=""]' ) )
+
+	        [ ...select.children ].filter( el => el.matches( 'option' ) && !el.matches( '[value=""], [data-value=""]' ) )
 	            .forEach( option => {
 	                const curLabel = type === 'datalist' ? option.value : option.textContent;
 	                const value = type === 'datalist' ? option.dataset.value : option.value;
@@ -48653,19 +48828,16 @@
 	 */
 
 	var calculationModule = {
-	    update( updated, filter ) {
+
+	    update( updated = {}, filter = '' ) {
 	        let $nodes;
 	        const that = this;
-
-	        // Filter is used in custom applications that make a distinction between types of calculations.
-	        filter = filter || '';
 
 	        if ( !this.form ) {
 	            throw new Error( 'Calculation module not correctly instantiated with form property.' );
 	        }
 
-	        updated = updated || {};
-
+	        // Filter is used in custom applications that make a distinction between types of calculations.
 	        if ( updated.relevantPath ) {
 	            // Questions that are descendants of a group:
 	            $nodes = this.form.getRelatedNodes( 'data-calculate', `[name^="${updated.relevantPath}/"]${filter}` )
@@ -48689,7 +48861,8 @@
 	            const dataNodes = dataNodesObj.getElements();
 
 	            if ( dataNodes.length > 1 ) {
-	                if ( updated.repeatPath && name.indexOf( updated.repeatPath ) !== -1 ) {
+
+	                if ( updated.repeatPath && name.indexOf( updated.repeatPath + '/' ) !== -1 ) {
 	                    /*
 	                     * If the update was triggered by a datanode inside a repeat
 	                     * and the dependent node is inside the same repeat, we can prevent the expensive index determination
@@ -49109,11 +49282,11 @@
 	    }
 
 	    // Before initializing form view, passthrough some model events externally
-	    this.model.events.addEventListener( 'dataupdate', event => {
-	        that.view.$.trigger( 'dataupdate.enketo', event.detail );
+	    this.model.events.addEventListener( 'dataupdate', event$$1 => {
+	        that.view.$.trigger( 'dataupdate.enketo', event$$1.detail );
 	    } );
-	    this.model.events.addEventListener( 'removed', event => {
-	        that.view.$.trigger( 'removed.enketo', event.detail );
+	    this.model.events.addEventListener( 'removed', event$$1 => {
+	        that.view.$.trigger( 'removed.enketo', event$$1.detail );
 	    } );
 
 	    this.pages = this.addModule( pageModule );
@@ -49449,7 +49622,9 @@
 	    // #4: at the end of an expression
 	    `${filter}[${attr}$="/${nodeName}"]`,
 	    // #5: followed by ] (used in itemset filters)
-	    `${filter}[${attr}*="/${nodeName}]"]`
+	    `${filter}[${attr}*="/${nodeName}]"]`,
+	    // #6: followed by [ (used when filtering nodes in repeat instances)
+	    `${filter}[${attr}*="/${nodeName}["]`
 	];
 
 	/**
@@ -49583,21 +49758,22 @@
 	        } );
 
 	    // doing this on the focus event may have little effect on performance, because nothing else is happening :)
-	    this.view.$.on( 'focus fakefocus', 'input:not(.ignore), select:not(.ignore), textarea:not(.ignore)', event => {
+	    this.view.$.on( 'focus fakefocus', 'input:not(.ignore), select:not(.ignore), textarea:not(.ignore)', event$$1 => {
 	        // update the form progress status
-	        that.progress.update( event.target );
+	        that.progress.update( event$$1.target );
 	    } );
 
-	    this.model.events.addEventListener( 'dataupdate', event => {
+	    this.model.events.addEventListener( 'dataupdate', event$$1 => {
 	        that.evaluationCascade.forEach( fn => {
-	            fn.call( that, event.detail );
+	            fn.call( that, event$$1.detail );
 	        }, true );
 	        // edit is fired when the model changes after the form has been initialized
 	        that.editStatus = true;
 	    } );
 
-	    this.view.$.on( 'addrepeat', ( event, index ) => {
-	        const $clone = jquery( event.target );
+	    this.view.html.addEventListener( event.AddRepeat().type, event$$1 => {
+	        const index = event$$1.detail ? event$$1.detail[ 0 ] : undefined;
+	        const $clone = jquery( event$$1.target );
 	        const updated = {
 	            repeatPath: $clone.attr( 'name' ),
 	            repeatIndex: index,
@@ -49612,11 +49788,11 @@
 	        that.progress.update();
 	    } );
 
-	    this.view.$.on( 'removerepeat', () => {
+	    this.view.html.addEventListener( event.RemoveRepeat(), () => {
 	        that.progress.update();
 	    } );
 
-	    this.view.$.on( 'changelanguage', () => {
+	    this.view.html.addEventListener( event.ChangeLanguage().type, () => {
 	        that.output.update();
 	    } );
 

@@ -93,7 +93,17 @@ describe( 'XPath expressions', () => {
             it( `should be detected: ${expr}`, () => {
                 expect( xf.hasSelfReference( expr, FULL_PATH_TO_SELF ) ).to.equal( true );
             } );
-        } )
+        } );
+
+
+        // This utterly fails because of the bad bad _extractNodeReferences function
+        [
+            '/unhcr-fail-a4fwaePSGR9RnMuA2vMvoz/B/b1_isregistered =&quot;No,_it_is_the_first_PCP_and-or_CSI_initiated_by_this_community&quot; or  /unhcr-fail-a4fwaePSGR9RnMuA2vMvoz/B/b1_isregistered =&quot;Yes,_this_community_is_already_recorded_but_needs_to_be_updated&quot;'
+        ].forEach( expr => {
+            it( `doesn't throw with: ${expr}`, () => {
+                expect( () => xf.hasSelfReference( expr, FULL_PATH_TO_SELF ) ).not.to.throw();
+            } );
+        } );
 
     } );
 

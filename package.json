@@ -33,7 +33,7 @@
     },
     "devDependencies": {
         "chai": "^4.1.2",
-        "enketo-core": "5.0.x",
+        "enketo-core": "5.1.x",
         "mocha": "^5.0.1",
         "pkg": "^4.3.0",
         "rollup": "^0.68.1",
