@@ -65,15 +65,7 @@ let validate = ( xformStr, options = {} ) => {
                     try {
                         xform.enketoEvaluate( logicExpr, ( calculation ? 'string' : 'boolean' ), path );
 
-                        // After checking that the non-constraint expression is valid, check for self-references.
-                        // Make an exception for a calculate="." as it does no harm.
-                        if ( logicName !== 'constraint' && !( logicName === 'calculate' && logicExpr.trim() === '.' ) ) {
-                            if ( xform.hasSelfReference( logicExpr, path ) ) {
-                                throw new Error( 'refers to itself' );
-                                //errors.push( `${friendlyLogicName} formula for "${nodeName}" refers to itself` );
-                            }
-                        }
-                        // TODO: check for cyclic dependencies between calculations, e.g. triangular calculation dependencies
+                        // TODO: check for cyclic dependencies within single expression and between calculations, e.g. triangular calculation dependencies
                     } catch ( e ) {
                         errors.push( `${friendlyLogicName} formula for "${nodeName}": ${e}` );
                     }

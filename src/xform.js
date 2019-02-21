@@ -121,29 +121,6 @@ class XForm {
         }
     }
 
-    /**
-     * A function that performs a basic check for references to a path or self-as-dot.
-     * Note that this could easily be circumvented e.g. with a triangular dependency cycle 
-     * between nodes with expressions or using paths with predicates.
-     * It is just a start with detecting the most obvious dependency errors.
-     * 
-     * @param {string} expr 
-     * @param {string} selfPath 
-     */
-    hasSelfReference( expr, selfPath ) {
-        if ( !expr || !selfPath ) {
-            throw new Error( 'hasSelfReference function requires 2 parameters', expr, selfPath );
-        }
-        const self = this.enketoEvaluate( selfPath, 'node' );
-
-        return this._extractNodeReferences( expr )
-            .some( path => {
-                // The path could return multiple nodes, and self cannot be one of them.
-                const nodes = this.enketoEvaluate( path, 'nodes', selfPath );
-                return nodes.includes( self );
-            } );
-    }
-
     checkStructure( warnings, errors ) {
         const rootEl = this.doc.documentElement;
         const rootElNodeName = rootEl.nodeName;
@@ -433,33 +410,6 @@ class XForm {
             .replace( /\(line: undefined, character: undefined\)/g, '' );
         // '. ,' => ','
         return parts.join( ', ' ).replace( /\.\s*,/g, ',' );
-    }
-
-    /**
-     * [EXPERIMENTAL] Extracts node references.
-     * It excludes any references with predicates which is a big limitation but
-     * the goal is a better-safe-than-sorry approach to not have any false positives.
-     * 
-     * @param {string} expr 
-     */
-    _extractNodeReferences( expr ) {
-        return expr
-            // functions
-            .replace( /[a-z-:]+\(/g, ' ' )
-            .replace( /\)/g, ' ' )
-            .replace( /,/g, ' ' ) // VERY WRONG: a string could contain a comma!
-            // * character when used for multiplication only
-            .replace( /(?<!\/)\*/g, ' ' )
-            // other operators (- character only when used for deduction)
-            .replace( /(\+| -|\|| and | or | mod | div |!=|=|<=|>=|<|>)/g, ' ' )
-            // remaining brackets that were not part of function calls
-            .replace( /(\(|\))/g, ' ' )
-            .split( /\s+/ )
-            // filter out empty strings, string literals, numbers
-            // Note this also filters out the path-as-string literal argument in jr:choice-name but who cares?
-            .filter( n => n && !( /".*"/.test( n ) ) && !( /'.*'/.test( n ) ) && isNaN( n ) )
-            // filter out anything with predicates as it is too difficult
-            .filter( n => !( /(\[|\])/.test( n ) ) );
     }
 
 }

@@ -139,7 +139,7 @@ describe( 'XForm', () => {
         } );
     } );
 
-    describe( 'with disallowed self-referencing', () => {
+    xdescribe( 'with disallowed self-referencing', () => {
         // Unit tests are in xpath.spec.js
         const xf = loadXForm( 'self-reference.xml' );
         const result = validator.validate( xf );

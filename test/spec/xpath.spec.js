@@ -72,7 +72,7 @@ describe( 'XPath expressions', () => {
     } );
 
 
-    describe( 'with expressions that refer to self when not allowed', () => {
+    xdescribe( 'with expressions that refer to self when not allowed', () => {
         // There is an integration test in xform.spec.js
         const FULL_PATH_TO_SELF = '/data/a';
         [

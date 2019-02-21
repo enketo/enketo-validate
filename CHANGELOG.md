@@ -2,6 +2,11 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+[Unreleased]
+---------------------
+##### Removed
+- Badly broken self-reference check.
+
 [1.5.1] - 2018-12-22
 ---------------------
 ##### Fixed
