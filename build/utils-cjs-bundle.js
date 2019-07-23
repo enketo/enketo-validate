@@ -1,13 +1,17 @@
 'use strict';
 
-/* global ArrayBuffer, Uint8Array */
+/**
+ * Various utilities.
+ *
+ * @module utils
+ */
 
 /**
  * Parses an Expression to extract all function calls and theirs argument arrays.
  *
- * @param  {String} expr The expression to search
- * @param  {String} func The function name to search for
- * @return {<String, <String*>>} The result array, where each result is an array containing the function call and array of arguments.
+ * @param {string} expr - The expression to search
+ * @param {string} func - The function name to search for
+ * @return {Array.Array.<string, any>} The result array, where each result is an array containing the function call and array of arguments.
  */
 function parseFunctionFromExpression( expr, func ) {
     let index;

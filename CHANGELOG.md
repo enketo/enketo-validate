@@ -2,7 +2,12 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
-[1.6.0]
+[1.6.1] - 2019-07-24
+---------------------
+##### Changed
+- Updated form engine and other dependencies.
+
+[1.6.0] - 2019-02-21
 ---------------------
 ##### Removed
 - Badly broken self-reference check.

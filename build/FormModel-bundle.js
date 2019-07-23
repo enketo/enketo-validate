@@ -1,7 +1,7 @@
 (function () {
 	'use strict';
 
-	var commonjsGlobal = typeof window !== 'undefined' ? window : typeof global !== 'undefined' ? global : typeof self !== 'undefined' ? self : {};
+	var commonjsGlobal = typeof globalThis !== 'undefined' ? globalThis : typeof window !== 'undefined' ? window : typeof global !== 'undefined' ? global : typeof self !== 'undefined' ? self : {};
 
 	function createCommonjsModule(fn, module) {
 		return module = { exports: {} }, fn(module, module.exports), module.exports;
@@ -555,15 +555,20 @@
 	}));
 	});
 
-	/* global ArrayBuffer, Uint8Array */
+	/**
+	 * Various utilities.
+	 *
+	 * @module utils
+	 */
+
 	let cookies;
 
 	/**
 	 * Parses an Expression to extract all function calls and theirs argument arrays.
 	 *
-	 * @param  {String} expr The expression to search
-	 * @param  {String} func The function name to search for
-	 * @return {<String, <String*>>} The result array, where each result is an array containing the function call and array of arguments.
+	 * @param {string} expr - The expression to search
+	 * @param {string} func - The function name to search for
+	 * @return {Array.Array.<string, any>} The result array, where each result is an array containing the function call and array of arguments.
 	 */
 	function parseFunctionFromExpression( expr, func ) {
 	    let index;
@@ -615,9 +620,9 @@
 	    return str;
 	}
 
-	// Because iOS gives any camera-provided file the same filename, we need to a 
+	// Because iOS gives any camera-provided file the same filename, we need to a
 	// unique-ified filename.
-	// 
+	//
 	// See https://github.com/kobotoolbox/enketo-express/issues/374
 	function getFilename( file, postfix ) {
 	    let filenameParts;
@@ -635,9 +640,10 @@
 	}
 
 	/**
-	 * Converts NodeLists or DOMtokenLists to an array
-	 * @param  {[type]} list [description]
-	 * @return {[type]}      [description]
+	 * Converts NodeLists or DOMtokenLists to an array.
+	 *
+	 * @param {NodeList|DOMTokenList} list
+	 * @return {Array}
 	 */
 	function toArray( list ) {
 	    const array = [];
@@ -712,7 +718,7 @@
 
 	/**
 	 * Update a HTML anchor to serve as a download or reset it if an empty objectUrl is provided.
-	 * 
+	 *
 	 * @param {HTMLElement} anchor the anchor element
 	 * @param {*} objectUrl the objectUrl to download
 	 * @param {*} fileName  the filename of the file
@@ -723,6 +729,51 @@
 	    }
 	    anchor.setAttribute( 'href', objectUrl || '' );
 	    anchor.setAttribute( 'download', fileName || '' );
+	}
+
+	/**
+	 * @function resizeImage
+	 *
+	 * @param {File} file - image file to be resized
+	 * @param {number} maxPixels - maximum pixels of resized image
+	 *
+	 * @return {Promise<Blob>} promise of resized image blob
+	 */
+	function resizeImage( file, maxPixels ) {
+	    return new Promise( ( resolve, reject ) => {
+	        let image = new Image();
+	        image.src = URL.createObjectURL( file );
+	        image.onload = () => {
+	            let width = image.width;
+	            let height = image.height;
+
+	            if ( width <= maxPixels && height <= maxPixels ) {
+	                resolve( file );
+	            }
+
+	            let newWidth;
+	            let newHeight;
+
+	            if ( width > height ) {
+	                newHeight = height * ( maxPixels / width );
+	                newWidth = maxPixels;
+	            } else {
+	                newWidth = width * ( maxPixels / height );
+	                newHeight = maxPixels;
+	            }
+
+	            let canvas = document.createElement( 'canvas' );
+	            canvas.width = newWidth;
+	            canvas.height = newHeight;
+
+	            let context = canvas.getContext( '2d' );
+
+	            context.drawImage( image, 0, 0, newWidth, newHeight );
+
+	            canvas.toBlob( resolve, file.type );
+	        };
+	        image.onerror = reject;
+	    } );
 	}
 
 	var jquery = createCommonjsModule(function (module) {
@@ -11060,24 +11111,35 @@
 	});
 
 	/**
+	 * @module dom-utils
+	 */
+
+	/**
 	 * Gets siblings that match selector and self _in DOM order_.
-	 * @param {} element 
-	 * @param {*} selector 
+	 *
+	 * @param {Node} element - Target element.
+	 * @param {*} selector - A CSS selector.
+	 * @return {Array} Array of sibling nodes plus target element.
 	 */
 	function getSiblingElementsAndSelf( element, selector ) {
 	    return _getSiblingElements( element, selector, [ element ] );
 	}
 
+	/**
+	 * Gets siblings that match selector _in DOM order_.
+	 *
+	 * @param {Node} element - Target element.
+	 * @param {*} selector - A CSS selector.
+	 * @return {Array} Array of sibling nodes.
+	 */
 	function getSiblingElements( element, selector ) {
 	    return _getSiblingElements( element, selector );
 	}
 
-	function _getSiblingElements( element, selector, startArray = [] ) {
+	function _getSiblingElements( element, selector = '*', startArray = [] ) {
 	    const siblings = startArray;
 	    let prev = element.previousElementSibling;
 	    let next = element.nextElementSibling;
-
-	    selector = typeof selector === 'undefined' ? '*' : selector;
 
 	    while ( prev ) {
 	        if ( prev.matches( selector ) ) {
@@ -11095,13 +11157,48 @@
 	    return siblings;
 	}
 
+	function getAncestors( element, selector = '*' ) {
+	    const ancestors = [];
+	    let parent = element.parentElement;
+
+	    while ( parent ) {
+	        if ( parent.matches( selector ) ) {
+	            // document order
+	            ancestors.unshift( parent );
+	        }
+	        parent = parent.parentElement;
+	    }
+
+	    return ancestors;
+	}
+
+	function closestAncestorUntil( element, filterSelector, endSelector ) {
+	    let parent = element.parentElement;
+	    let found = null;
+
+	    while ( parent && !found ) {
+	        if ( parent.matches( filterSelector ) ) {
+	            found = parent;
+	        }
+	        parent = endSelector && parent.matches( endSelector ) ? null : parent.parentElement;
+	    }
+
+	    return found;
+	}
+
+	/**
+	 * Removes all children elements.
+	 *
+	 * @param {Node} element - Target element.
+	 * @return {undefined}
+	 */
 	function empty( element ) {
 	    [ ...element.children ].forEach( el => el.remove() );
 	}
 
-	/** 
+	/**
 	 * Adapted from https://stackoverflow.com/a/46522991/3071529
-	 * 
+	 *
 	 * A storage solution aimed at replacing jQuerys data function.
 	 * Implementation Note: Elements are stored in a (WeakMap)[https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WeakMap].
 	 * This makes sure the data is garbage collected when the node is removed.
@@ -11131,6 +11228,13 @@
 	    }
 	};
 
+	/**
+	 * A custom error type for form logic
+	 * 
+	 * @class 
+	 * @extends Error
+	 * @param {string} message - Optional message.
+	 */
 	function FormLogicError( message ) {
 	    this.message = message || 'unknown';
 	    this.name = 'FormLogicError';
@@ -11160,8 +11264,13 @@
 	        'webMapId': '',
 	        'hasZ': true,
 	        'basemaps': [ 'streets' ]
-	    }
+	    },
+	    'textMaxChars': 2000
 	};
+
+	/**
+	 * @module format
+	 */
 
 	let _locale = navigator.language;
 	const NUMBER = '0-9\u0660-\u0669';
@@ -11178,29 +11287,53 @@
 	    return timeStr.replace( /[\u200E\u200F]/g, '' );
 	}
 
+	/**
+	 * @namespace time
+	 */
 	const time = {
 	    // For now we just look at a subset of numbers in Arabic and Latin. There are actually over 20 number scripts and :digit: doesn't work in browsers
+	    /**   
+	     * @type {string}
+	     */
 	    get hour12() {
 	        return this.hasMeridian( _getCleanLocalTime() );
 	    },
+	    /**   
+	     * @type {string}
+	     */
 	    get pmNotation() {
 	        return this.meridianNotation( new Date( 2000, 1, 1, 23, 0, 0 ) );
 	    },
+	    /**   
+	     * @type {string}
+	     */
 	    get amNotation() {
 	        return this.meridianNotation( new Date( 2000, 1, 1, 1, 0, 0 ) );
 	    },
+	    /**
+	     * @param dt
+	     */
 	    meridianNotation( dt ) {
 	        let matches = _getCleanLocalTime( dt ).match( HAS_MERIDIAN );
 	        if ( matches && matches.length ) {
 	            matches = matches.filter( item => !!item );
-	            return matches[ matches.length - 1 ];
+	            return matches[ matches.length - 1 ].trim();
 	        }
 	        return null;
 	    },
+	    /**
+	     * Whether time string has meridian parts
+	     *
+	     * @param {string} time - time string
+	     */
 	    hasMeridian( time ) {
 	        return HAS_MERIDIAN.test( _cleanSpecialChars( time ) );
 	    }
 	};
+
+	/** 
+	 * @module types 
+	 **/
 
 	const types = {
 	    'string': {
@@ -11252,7 +11385,7 @@
 	    },
 	    'date': {
 	        validate( x ) {
-	            const pattern = /([0-9]{4})-([0-9]{2})-([0-9]{2})/;
+	            const pattern = /^([0-9]{4})-([0-9]{2})-([0-9]{2})$/;
 	            const segments = pattern.exec( x );
 	            if ( segments && segments.length === 4 ) {
 	                const year = Number( segments[ 1 ] );
@@ -11269,7 +11402,7 @@
 	                // The XPath expression "2012-01-01" + 2 returns a number of days in XPath.
 	                const date = new Date( x * 24 * 60 * 60 * 1000 );
 	                return date.toString() === 'Invalid Date' ?
-	                    '' : `${date.getFullYear().toString().pad( 4 )}-${( date.getMonth() + 1 ).toString().pad( 2 )}-${date.getDate().toString().pad( 2 )}`;
+	                    '' : `${date.getFullYear().toString().pad(4)}-${(date.getMonth() + 1).toString().pad(2)}-${date.getDate().toString().pad(2)}`;
 	            } else {
 	                // For both dates and datetimes
 	                // If it's a datetime, we can quite safely assume it's in the local timezone, and therefore we can simply chop off
@@ -11380,7 +11513,7 @@
 	            if ( tz.length === 0 ) {
 	                offset = new Date().getTimezoneOffsetAsTime();
 	            } else {
-	                offset = `${tz[ 0 ] + tz[ 1 ].pad( 2 )}:${tz[ 2 ] ? tz[ 2 ].pad( 2 ) : '00'}`;
+	                offset = `${tz[0] + tz[1].pad(2)}:${tz[2] ? tz[2].pad(2) : '00'}`;
 	            }
 
 	            x = `${o.hours}:${o.minutes}:${o.seconds}${o.milliseconds ? `.${o.milliseconds}` : ''}${offset}`;
@@ -11452,53 +11585,160 @@
 	    }
 	};
 
+	/**
+	 * @module event
+	 */
 	// TODO: add second "propagate" parameter to constructors to add .enketo namespace to event.
 
+	/**
+	 * Data update event
+	 *
+	 * @param detail
+	 * @return {CustomEvent}
+	 */
 	function DataUpdate( detail ) {
 	    return new CustomEvent( 'dataupdate', { detail } );
 	}
 
+	/**
+	 * Fake focus event.
+	 *
+	 * @return {CustomEvent}
+	 */
 	function FakeFocus() {
-	    return new CustomEvent( 'fakefocus' );
+	    return new CustomEvent( 'fakefocus', { bubbles: true } );
 	}
 
+	/**
+	 * Apply focus event.
+	 *
+	 * @return {CustomEvent}
+	 */
 	function ApplyFocus() {
 	    return new CustomEvent( 'applyfocus' );
 	}
 
+	/**
+	 * Page flip event.
+	 *
+	 * @return {CustomEvent}
+	 */
 	function PageFlip() {
-	    return new CustomEvent( 'pageflip' );
+	    return new CustomEvent( 'pageflip', { bubbles: true } );
 	}
 
+	/**
+	 * Removed event.
+	 *
+	 * @param detail
+	 * @return {CustomEvent}
+	 */
 	function Removed( detail ) {
-	    return new CustomEvent( 'removed', { detail } );
+	    return new CustomEvent( 'removed', { detail, bubbles: true } );
 	}
 
+	/**
+	 * Add repeat event.
+	 *
+	 * @param detail
+	 * @return {CustomEvent}
+	 */
 	function AddRepeat( detail ) {
 	    return new CustomEvent( 'addrepeat', { detail, bubbles: true } );
 	}
 
+	/**
+	 * Remove repeat event.
+	 *
+	 * @return {CustomEvent}
+	 */
 	function RemoveRepeat() {
 	    return new CustomEvent( 'removerepeat', { bubbles: true } );
 	}
 
+	/**
+	 * Change language event.
+	 *
+	 * @return {CustomEvent}
+	 */
 	function ChangeLanguage() {
 	    return new CustomEvent( 'changelanguage', { bubbles: true } );
 	}
 
+	/**
+	 * Change event.
+	 *
+	 * @return {Event}
+	 */
 	function Change() {
 	    return new Event( 'change', { bubbles: true } );
 	}
 
+	/**
+	 * Input event.
+	 *
+	 * @return {Event}
+	 */
 	function Input() {
 	    return new Event( 'input', { bubbles: true } );
 	}
 
+	/**
+	 * Input update event
+	 *
+	 * @return {CustomEvent}
+	 */
 	function InputUpdate() {
 	    return new CustomEvent( 'inputupdate', { bubbles: true } );
 	}
 
-	var event = {
+	/**
+	 * Edited event.
+	 *
+	 * @return {CustomEvent}
+	 */
+	function Edited() {
+	    return new CustomEvent( 'edited', { bubbles: true } );
+	}
+
+	/**
+	 * Validation complete event.
+	 *
+	 * @return {CustomEvent}
+	 */
+	function ValidationComplete() {
+	    return new CustomEvent( 'validationcomplete', { bubbles: true } );
+	}
+
+	/**
+	 * Invalidated event.
+	 *
+	 * @return {CustomEvent}
+	 */
+	function Invalidated() {
+	    return new CustomEvent( 'invalidated', { bubbles: true } );
+	}
+
+	/**
+	 * Progress update event
+	 *
+	 * @param detail
+	 * @return {CustomEvent}
+	 */
+	function ProgressUpdate( detail ) {
+	    return new CustomEvent( 'progressupdate', { detail, bubbles: true } );
+	}
+
+	/**
+	 * Go to hidden event.
+	 *
+	 * @return {CustomEvent}
+	 */
+	function GoToHidden() {
+	    return new CustomEvent( 'gotohidden', { bubbles: true } );
+	}
+
+	var events = {
 	    DataUpdate,
 	    FakeFocus,
 	    ApplyFocus,
@@ -11509,7 +11749,12 @@
 	    ChangeLanguage,
 	    Change,
 	    Input,
-	    InputUpdate
+	    InputUpdate,
+	    Edited,
+	    ValidationComplete,
+	    Invalidated,
+	    ProgressUpdate,
+	    GoToHidden
 	};
 
 	/**
@@ -11560,8 +11805,9 @@
 
 	/**
 	 * Pads a string with prefixed zeros until the requested string length is achieved.
-	 * @param  {number} digits [description]
-	 * @return {String|string}        [description]
+	 *
+	 * @param  {number} digits - The desired string length.
+	 * @return {string} - Padded string.
 	 */
 	String.prototype.pad = function( digits ) {
 	    let x = this;
@@ -14265,7 +14511,7 @@
 	      s0 = peg$currPos;
 	      s1 = peg$parseQName();
 	      if (s1 !== peg$FAILED) {
-	        s2 = peg$c114(s1);
+	        s2 = peg$c114();
 	        if (s2) {
 	          s2 = void 0;
 	        } else {
@@ -16920,9 +17166,10 @@
 			 * 2. We could assume local time.
 			 * Since a date widget would return the format '2012-02-03' and we'd like the constraint ". < today()" to work,
 			 * we have to choose option 2.
+			 * Note: the timezone offset has to be obtained from the actual date in order to account for DST!
 			 */
 			if (/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(value)) {
-				value += 'T00:00:00.000' + (new Date()).getTimezoneOffsetAsTime();
+				value += 'T00:00:00.000' + (new Date(value)).getTimezoneOffsetAsTime();
 			} 
 
 			BaseType.call(this, value, 'date', [
@@ -21009,13 +21256,9 @@
 	/**
 	 * Class dealing with the XML Model of a form
 	 *
-	 * @constructor
-	 * @param {{modelStr: string, ?instanceStr: string, ?external: <{id: string, xml: xmlDocument }>, ?submitted: boolean }} data:
-	 *                            data object containing XML model, 
-	 *                            (partial) XML instance to load, 
-	 *                            external data array
-	 *                            flag to indicate whether data was submitted before
-	 * @param {?{?full:boolean}} options Whether to initialize the full model or only the primary instance
+	 * @class
+	 * @param {{modelStr: string, instanceStr: string=, external: Array.<{id: string, xml: XMLDocument}>=, submitted: boolean= }} data - data object containing XML model, (partial) XML instance to load, external data array, flag to indicate whether data was submitted before
+	 * @param {{full:boolean=}=} options - Whether to initialize the full model or only the primary instance
 	 */
 	FormModel = function( data, options ) {
 
@@ -21104,7 +21347,7 @@
 	        // the default model
 	        this.xml = parser$1.parseFromString( this.data.modelStr, 'text/xml' );
 	        this.throwParserErrors( this.xml, this.data.modelStr );
-	        // add external data to model 
+	        // add external data to model
 	        this.data.external.forEach( instance => {
 	            id = `instance "${instance.id}"` || 'instance unknown';
 	            instanceDoc = that.getSecondaryInstance( instance.id );
@@ -21129,7 +21372,7 @@
 	            }
 	        } );
 
-	        // TODO: in the future, we should search for jr://instance/session and 
+	        // TODO: in the future, we should search for jr://instance/session and
 	        // populate that one. This is just moving in that direction to implement preloads.
 	        this.createSession( '__session', this.data.session );
 	    } catch ( e ) {
@@ -21217,9 +21460,9 @@
 	/**
 	 * For some unknown reason we cannot use doc.getElementById(id) or doc.querySelector('#'+id)
 	 * in IE11. This function is a replacement for this specifically to find a secondary instance.
-	 * 
-	 * @param  {string} id [description]
-	 * @return {Element}    [description]
+	 *
+	 * @param  {string} id - DOM element id.
+	 * @return {Element}
 	 */
 	FormModel.prototype.getSecondaryInstance = function( id ) {
 	    let instanceEl;
@@ -21254,6 +21497,9 @@
 	/**
 	 * Alternative adoptNode on IE11 (http://stackoverflow.com/questions/1811116/ie-support-for-dom-importnode)
 	 * TODO: remove to be replaced by separate IE11-only polyfill file/service
+	 *
+	 * @param node
+	 * @param allChildren
 	 */
 	FormModel.prototype.importNode = function( node, allChildren ) {
 	    let i;
@@ -21315,13 +21561,13 @@
 	        throw new Error( 'Model is corrupt. It does not contain a childnode of instance' );
 	    }
 
-	    /** 
+	    /**
 	     * A Namespace merge problem occurs when ODK decides to invent a new namespace for a submission
 	     * that is different from the XForm model namespace... So we just remove this nonsense.
 	     */
 	    recordStr = recordStr.replace( /\s(xmlns=("|')[^\s>]+("|'))/g, '' );
 	    /**
-	     * Comments aren't merging in document order (which would be impossible also). 
+	     * Comments aren't merging in document order (which would be impossible also).
 	     * This may mess up repeat functionality, so until we actually need
 	     * comments, we simply remove them (multiline comments are probably not removed, but we don't care about them).
 	     */
@@ -21330,12 +21576,12 @@
 
 	    /**
 	     * Normally records will not contain the special "jr:template" attribute. However, we should still be able to deal with
-	     * this if they do, including the old hacked non-namespaced "template" attribute. 
+	     * this if they do, including the old hacked non-namespaced "template" attribute.
 	     * https://github.com/enketo/enketo-core/issues/376
-	     * 
+	     *
 	     * The solution if these are found is to delete the node.
-	     * 
-	     * Since the record is not a FormModel instance we revert to a very aggressive querySelectorAll that selects all 
+	     *
+	     * Since the record is not a FormModel instance we revert to a very aggressive querySelectorAll that selects all
 	     * nodes with a template attribute name IN ANY NAMESPACE.
 	     */
 
@@ -21348,9 +21594,9 @@
 	    /**
 	     * To comply with quirky behaviour of repeats in XForms, we manually create the correct number of repeat instances
 	     * before merging. This resolves these two issues:
-	     *  a) Multiple repeat instances in record are added out of order when merged into a record that contains fewer 
+	     *  a) Multiple repeat instances in record are added out of order when merged into a record that contains fewer
 	     *     repeat instances, see https://github.com/kobotoolbox/enketo-express/issues/223
-	     *  b) If a repeat node is missing from a repeat instance (e.g. the 2nd) in a record, and that repeat instance is not 
+	     *  b) If a repeat node is missing from a repeat instance (e.g. the 2nd) in a record, and that repeat instance is not
 	     *     in the model, that node will be missing in the result.
 	     */
 	    // TODO: ES6 for (var node of record.querySelectorAll('*')){}
@@ -21382,7 +21628,7 @@
 	            }
 	        } );
 
-	    /** 
+	    /**
 	     * Any default values in the model, may have been emptied in the record.
 	     * MergeXML will keep those default values, which would be bad, so we manually clear defaults before merging.
 	     */
@@ -21429,12 +21675,12 @@
 	    }
 
 	    /**
-	     * Beware: merge.Get(0) returns an ActiveXObject in IE11. We turn this 
+	     * Beware: merge.Get(0) returns an ActiveXObject in IE11. We turn this
 	     * into a proper XML document by parsing the XML string instead.
 	     */
 	    mergeResultDoc = parser$1.parseFromString( merger.Get( 1 ), 'text/xml' );
 
-	    /** 
+	    /**
 	     * To properly show 0 repeats, if the form definition contains multiple default instances
 	     * and the record contains none, we have to iterate trough the templates object, and
 	     * 1. check for each template path, whether the record contained more than 0 of these nodes
@@ -21463,10 +21709,11 @@
 
 	/**
 	 * Creates an XPath from a node
-	 * @param { XMLElement} node XML node
-	 * @param  {string=} rootNodeName   if absent the root is #document
-	 * @param  {boolean=} includePosition whether or not to include the positions /path/to/repeat[2]/node
-	 * @return {string}                 XPath
+	 *
+	 * @param { XMLElement} node - XML node
+	 * @param  {string=} rootNodeName - if absent the root is #document
+	 * @param  {boolean=} includePosition - whether or not to include the positions /path/to/repeat[2]/node
+	 * @return {string} XPath
 	 */
 	FormModel.prototype.getXPath = function( node, rootNodeName, includePosition ) {
 	    let index;
@@ -21504,11 +21751,11 @@
 	    return `/${steps.reverse().join( '/' )}`;
 	};
 
-	/** 
+	/**
 	 * Obtains the index of a repeat instance within its own series.
-	 * 
-	 * @param  {[type]} node [description]
-	 * @return {[type]}      [description]
+	 *
+	 * @param {Node} node
+	 * @return {number} index
 	 */
 	FormModel.prototype.getRepeatIndex = node => {
 	    let index = 0;
@@ -21528,7 +21775,7 @@
 
 	/**
 	 * Trims values
-	 * 
+	 *
 	 */
 	FormModel.prototype.trimValues = function() {
 	    this.node( null, null, {
@@ -21540,7 +21787,6 @@
 
 	/**
 	 * [deprecateId description]
-	 * @return {[type]} [description]
 	 */
 	FormModel.prototype.setInstanceIdAndDeprecatedId = function() {
 	    let instanceIdObj;
@@ -21608,9 +21854,9 @@
 	/**
 	 * Adds a <repeat>able instance node in a particular series of a repeat.
 	 *
-	 * @param  {string} repeatPath absolute path of a repeat 
-	 * @param  {number} repeatSeriesIndex    index of the repeat series that gets a new repeat (this is always 0 for non-nested repeats)
-	 * @param  {boolean} merge   whether this operation is part of a merge operation (won't send dataupdate event, clears all values and 
+	 * @param  {string} repeatPath - absolute path of a repeat
+	 * @param  {number} repeatSeriesIndex - index of the repeat series that gets a new repeat (this is always 0 for non-nested repeats)
+	 * @param  {boolean} merge - whether this operation is part of a merge operation (won't send dataupdate event, clears all values and
 	 *                           will not add ordinal attributes as these should be provided in the record)
 	 */
 	FormModel.prototype.addRepeat = function( repeatPath, repeatSeriesIndex, merge ) {
@@ -21635,14 +21881,14 @@
 	    }
 
 	    /**
-	     * If templatenodes and insertAfterNode(s) have been identified 
+	     * If templatenodes and insertAfterNode(s) have been identified
 	     */
 	    if ( template && insertAfterNode ) {
 	        templateClone = template.cloneNode( true );
 	        insertAfterNode.after( templateClone );
 
 	        this.removeOrdinalAttributes( templateClone );
-	        // We should not automatically add ordinal attributes for an existing record as the ordinal values cannot be determined. 
+	        // We should not automatically add ordinal attributes for an existing record as the ordinal values cannot be determined.
 	        // They should be provided in the instanceStr (record).
 	        if ( !merge ) {
 	            this.addOrdinalAttribute( templateClone, repeatSeries[ 0 ] );
@@ -21663,7 +21909,6 @@
 
 	FormModel.prototype.addOrdinalAttribute = function( repeat, firstRepeatInSeries ) {
 	    const enkNs = this.getNamespacePrefix( ENKETO_XFORMS_NS );
-	    firstRepeatInSeries = firstRepeatInSeries || repeat;
 	};
 
 	FormModel.prototype.removeOrdinalAttributes = el => {
@@ -21671,10 +21916,10 @@
 
 	/**
 	 * Obtains a single series of repeat element;
-	 * 
-	 * @param  {string} repeatPath        The absolute path of the repeat.
-	 * @param  {number} repeatSeriesIndex The index of the series of that repeat.
-	 * @return {<Element>}                Array of all repeat elements in a series.
+	 *
+	 * @param {string} repeatPath - The absolute path of the repeat.
+	 * @param {number} repeatSeriesIndex - The index of the series of that repeat.
+	 * @return {Array.Element} Array of all repeat elements in a series.
 	 */
 	FormModel.prototype.getRepeatSeries = function( repeatPath, repeatSeriesIndex ) {
 	    let pathSegments;
@@ -21738,8 +21983,8 @@
 	/**
 	 * Determines the index of a repeated node amongst all nodes with the same XPath selector
 	 *
-	 * @param  {Element} element element
-	 * @return {number}       [description]
+	 * @param  {Element} element
+	 * @return {number} determined index.
 	 */
 	FormModel.prototype.determineIndex = function( element ) {
 	    const that = this;
@@ -21757,8 +22002,7 @@
 	};
 
 	/**
-	 * Extracts all templates from the model and stores them in a Javascript object poperties as Jquery collections
-	 * @return {[type]} [description]
+	 * Extracts all templates from the model and stores them in a Javascript object poperties as Jquery collections.
 	 */
 	FormModel.prototype.extractTemplates = function() {
 	    const that = this;
@@ -21824,7 +22068,7 @@
 	FormModel.prototype.getTemplateNodes = function() {
 	    const jrPrefix = this.getNamespacePrefix( JAVAROSA_XFORMS_NS );
 	    // For now we support both the official namespaced template and the hacked non-namespaced template attributes
-	    // Note: due to an MS Edge bug, we use the slow JS XPath evaluator here. It would be VERY GOOD for performance 
+	    // Note: due to an MS Edge bug, we use the slow JS XPath evaluator here. It would be VERY GOOD for performance
 	    // to switch back once the Edge bug is fixed. The bug results in not finding any templates.
 	    // https://developer.microsoft.com/en-us/microsoft-edge/platform/issues/9544701/
 	    return this.evaluate( `/model/instance[1]/*//*[@template] | /model/instance[1]/*//*[@${jrPrefix}:template]`, 'nodes', null, null, false );
@@ -21862,7 +22106,7 @@
 	};
 
 	/**
-	 * There is a huge historic issue (stemming from JavaRosa) that has resulted in the usage of incorrect formulae 
+	 * There is a huge historic issue (stemming from JavaRosa) that has resulted in the usage of incorrect formulae
 	 * on nodes inside repeat nodes.
 	 * Those formulae use absolute paths when relative paths should have been used. See more here:
 	 * http://opendatakit.github.io/odk-xform-spec/#a-big-deviation-with-xforms
@@ -21877,7 +22121,7 @@
 	 * the second rep_a repeat.
 	 *
 	 * This function should be removed when we can reasonbly expect not many 'old XForms' to be in use any more.
-	 * 
+	 *
 	 * Already it should leave proper XPaths untouched.
 	 *
 	 * @param  {string} expr        the XPath expression
@@ -21920,9 +22164,9 @@
 
 	FormModel.prototype.setNamespaces = function() {
 	    /**
-	     * Passing through all nodes would be very slow with an XForms model that contains lots of nodes such as large secondary instances. 
+	     * Passing through all nodes would be very slow with an XForms model that contains lots of nodes such as large secondary instances.
 	     * (The namespace XPath axis is not support in native browser XPath evaluators unfortunately).
-	     * 
+	     *
 	     * For now it has therefore been restricted to only look at the top-level node in the primary instance and in the secondary instances.
 	     * We can always expand that later.
 	     */
@@ -22005,7 +22249,7 @@
 	    return expr;
 	};
 
-	/** 
+	/**
 	 * Replace instance('id') with an absolute path
 	 * Doing this here instead of adding an instance() function to the XPath evaluator, means we can keep using
 	 * the much faster native evaluator in most cases!
@@ -22029,16 +22273,16 @@
 	    } );
 	};
 
-	/** 
+	/**
 	 * Replaces current() with /absolute/path/to/node to ensure the context is shifted to the primary instance
-	 * 
+	 *
 	 * Doing this here instead of adding a current() function to the XPath evaluator, means we can keep using
 	 * the much faster native evaluator in most cases!
 	 *
 	 * Root will be shifted, and repeat positions injected, **later on**, so it's not included here.
 	 *
 	 * @param  {string} expr            original expression
-	 * @param  {string} contextSelector context selector 
+	 * @param  {string} contextSelector context selector
 	 * @return {string}                 new expression
 	 */
 	FormModel.prototype.replaceCurrentFn = ( expr, contextSelector ) => {
@@ -22056,8 +22300,10 @@
 	 * Replaces indexed-repeat(node, path, position, path, position, etc) substrings by converting them
 	 * to their native XPath equivalents using [position() = x] predicates
 	 *
-	 * @param  {string} expr the XPath expression
-	 * @return {string}      converted XPath expression
+	 * @param  {string} expr - the XPath expression.
+	 * @param  {string} selector
+	 * @param  {string} index
+	 * @return {string} converted XPath expression
 	 */
 	FormModel.prototype.replaceIndexedRepeatFn = function( expr, selector, index ) {
 	    const that = this;
@@ -22074,7 +22320,7 @@
 
 	            for ( i = params.length - 1; i > 1; i -= 2 ) {
 	                // The position will become an XPath predicate. The context for an XPath predicate, is not the same
-	                // as the context for the complete expression, so we have to evaluate the position separately. Otherwise 
+	                // as the context for the complete expression, so we have to evaluate the position separately. Otherwise
 	                // relative paths would break.
 	                position = !isNaN( params[ i ] ) ? params[ i ] : that.evaluate( params[ i ], 'number', selector, index, true );
 	                positionedPath = positionedPath.replace( params[ i - 1 ], `${params[ i - 1 ]}[position() = ${position}]` );
@@ -22110,7 +22356,7 @@
 	    const replacements = this.convertPullDataFn( expr, selector, index );
 
 	    for ( const pullData in replacements ) {
-	        if ( replacements.hasOwnProperty( pullData ) ) {
+	        if ( Object.prototype.hasOwnProperty.call( replacements, pullData ) ) {
 	            // We evaluate this here, so we can use the native evaluator safely. This speeds up pulldata() by about a factor *740*!
 	            pullDataResult = that.evaluate( replacements[ pullData ], 'string', selector, index, true );
 	            expr = expr.replace( pullData, `"${pullDataResult}"` );
@@ -22198,26 +22444,24 @@
 	        console.error( 'no context element found', selector, index );
 	    }
 
-	    // cache key includes the number of repeated context nodes, 
+	    // cache key includes the number of repeated context nodes,
 	    // to force a new cache item if the number of repeated changes to > 0
 	    // TODO: these cache keys can get quite large. Would it be beneficial to get the md5 of the key?
 	    cacheKey = [ expr, selector, index, repeats ].join( '|' );
 
 	    // These functions need to come before makeBugCompliant.
-	    // An expression transformation with indexed-repeat or pulldata cannot be cached because in 
+	    // An expression transformation with indexed-repeat or pulldata cannot be cached because in
 	    // "indexed-repeat(node, repeat nodeset, index)" the index parameter could be an expression.
 	    expr = this.replaceIndexedRepeatFn( expr, selector, index );
 	    expr = this.replacePullDataFn( expr, selector, index );
 	    cacheable = ( original === expr );
 
-	    let intermediate = '';
 	    // if no cached conversion exists
 	    if ( !this.convertedExpressions[ cacheKey ] ) {
 	        expr = expr.trim();
 	        expr = this.replaceInstanceFn( expr );
 	        expr = this.replaceVersionFn( expr );
 	        expr = this.replaceCurrentFn( expr, this.getXPath( context, 'instance', true ) );
-	        intermediate = expr;
 	        // shiftRoot should come after replaceCurrentFn
 	        expr = this.shiftRoot( expr );
 	        // path corrections for repeated nodes: http://opendatakit.github.io/odk-xform-spec/#a-big-deviation-with-xforms
@@ -22225,9 +22469,9 @@
 	            expr = this.makeBugCompliant( expr, selector, index );
 	        }
 	        // decode
-	        // expr = expr.replace( /&lt;/g, '<' );
-	        //expr = expr.replace( /&gt;/g, '>' );
-	        // expr = expr.replace( /&quot;/g, '"' );
+	        expr = expr.replace( /&lt;/g, '<' );
+	        expr = expr.replace( /&gt;/g, '>' );
+	        expr = expr.replace( /&quot;/g, '"' );
 	        if ( cacheable ) {
 	            this.convertedExpressions[ cacheKey ] = expr;
 	        }
@@ -22246,7 +22490,7 @@
 
 	    // translate typeStr to number according to DOM level 3 XPath constants
 	    for ( resTypeNum in resultTypes ) {
-	        if ( resultTypes.hasOwnProperty( resTypeNum ) ) {
+	        if ( Object.prototype.hasOwnProperty.call( resultTypes, resTypeNum ) ) {
 	            resTypeNum = Number( resTypeNum );
 	            if ( resultTypes[ resTypeNum ][ 0 ] === resTypeStr ) {
 	                break;
@@ -22267,7 +22511,7 @@
 	        }
 	    }
 
-	    // if that didn't work, try the slow XPathJS evaluator 
+	    // if that didn't work, try the slow XPathJS evaluator
 	    if ( !result ) {
 	        try {
 	            if ( typeof doc.jsEvaluate === 'undefined' ) {
@@ -22276,8 +22520,7 @@
 	            // console.log( 'trying the slow enketo-xpathjs "openrosa" evaluator for', expr, index );
 	            result = doc.jsEvaluate( expr, context, this.getNsResolver(), resTypeNum, null );
 	        } catch ( e ) {
-	            console.error( e );
-	            throw new FormLogicError( `Could not evaluate: "${expr}", message: "${e.message}", original:"${original}", intermediate:"${intermediate}"` );
+	            throw new FormLogicError( `Could not evaluate: ${expr}, message: ${e.message}` );
 	        }
 	    }
 
@@ -22286,7 +22529,7 @@
 	        // for type = any, see if a valid string, number or boolean is returned
 	        if ( resTypeNum === 0 ) {
 	            for ( resTypeNum in resultTypes ) {
-	                if ( resultTypes.hasOwnProperty( resTypeNum ) ) {
+	                if ( Object.prototype.hasOwnProperty.call( resultTypes, resTypeNum ) ) {
 	                    resTypeNum = Number( resTypeNum );
 	                    if ( resTypeNum === Number( result.resultType ) && resTypeNum > 0 && resTypeNum < 4 ) {
 	                        response = result[ resultTypes[ resTypeNum ][ 2 ] ];
@@ -22311,11 +22554,11 @@
 	/**
 	 * Class dealing with nodes and nodesets of the XML instance
 	 *
-	 * @constructor
-	 * @param {string=} selector simpleXPath or jQuery selectedor
-	 * @param {number=} index    the index of the target node with that selector
-	 * @param {?{onlyLeaf: boolean, noEmpty: boolean}=} filter   filter object for the result nodeset
-	 * @param { FormModel } model instance of FormModel
+	 * @class
+	 * @param {string=} selector - simpleXPath or jQuery selectedor
+	 * @param {number=} index - the index of the target node with that selector
+	 * @param {?{onlyLeaf: boolean, noEmpty: boolean}=} filter - filter object for the result nodeset
+	 * @param { FormModel } model - instance of FormModel
 	 */
 	Nodeset = function( selector, index, filter, model ) {
 	    const defaultSelector = model.hasInstance ? '/model/instance[1]//*' : '//*';
@@ -22368,7 +22611,7 @@
 	/**
 	 * Sets the index of the Nodeset instance
 	 *
-	 * @param {=number?} index The 0-based index
+	 * @param {number=} index - The 0-based index
 	 */
 	Nodeset.prototype.setIndex = function( index ) {
 	    this.index = index;
@@ -22377,8 +22620,8 @@
 	/**
 	 * Sets data node values.
 	 *
-	 * @param {(string|Array.<string>)=} newVals    The new value of the node.
-	 * @param {?string=} xmlDataType XML data type of the node
+	 * @param {(string|Array.<string>)=} newVals - The new value of the node.
+	 * @param {string=} xmlDataType - XML data type of the node
 	 *
 	 * @return {?*} wrapping {?boolean}; null is returned when the node is not found or multiple nodes were selected,
 	 *                            otherwise an object with update information is returned.
@@ -22410,7 +22653,7 @@
 	        customData = this.model.getUpdateEventData( target, xmlDataType );
 	        updated = ( customData ) ? jquery.extend( {}, updated, customData ) : updated;
 
-	        this.model.events.dispatchEvent( event.DataUpdate( updated ) );
+	        this.model.events.dispatchEvent( events.DataUpdate( updated ) );
 
 	        //add type="file" attribute for file references
 	        if ( xmlDataType === 'binary' ) {
@@ -22484,7 +22727,7 @@
 	        this._nodes = null;
 
 	        // For internal use
-	        this.model.events.dispatchEvent( event.DataUpdate( {
+	        this.model.events.dispatchEvent( events.DataUpdate( {
 	            nodes: null,
 	            repeatPath,
 	            repeatIndex
@@ -22495,7 +22738,7 @@
 	        while ( nextNode && nextNode.nodeName == nodeName ) {
 	            nextNode = nextNode.nextElementSibling;
 
-	            this.model.events.dispatchEvent( event.DataUpdate( {
+	            this.model.events.dispatchEvent( events.DataUpdate( {
 	                nodes: null,
 	                repeatPath,
 	                repeatIndex: repeatIndex++
@@ -22503,7 +22746,7 @@
 	        }
 
 	        // For external use, if required with custom data.
-	        this.model.events.dispatchEvent( event.Removed( removalEventData ) );
+	        this.model.events.dispatchEvent( events.Removed( removalEventData ) );
 
 	    } else {
 	        console.error( `could not find node ${this.selector} with index ${this.index} to remove ` );
@@ -22512,9 +22755,10 @@
 
 	/**
 	 * Convert a value to a specified data type( though always stringified )
-	 * @param  {?string=} x           value to convert
-	 * @param  {?string=} xmlDataType XML data type
-	 * @return {string}               string representation of converted value
+	 *
+	 * @param  {?string=} x - value to convert
+	 * @param  {?string=} xmlDataType - XML data type
+	 * @return {string} - string representation of converted value
 	 */
 	Nodeset.prototype.convert = ( x, xmlDataType ) => {
 	    if ( x.toString() === '' ) {
@@ -22546,8 +22790,9 @@
 
 	/**
 	 * Validate a value with an XPath Expression and /or xml data type
-	 * @param  {?string=} expr        XPath expression
-	 * @param  {?string=} xmlDataType XML datatype
+	 *
+	 * @param  {?string=} expr - XPath expression
+	 * @param  {?string=} xmlDataType - XML datatype
 	 * @return {Promise} wrapping a boolean indicating if the value is valid or not; error also indicates invalid field, or problem validating it
 	 */
 	Nodeset.prototype.validateConstraintAndType = function( expr, xmlDataType ) {
@@ -22607,7 +22852,13 @@
 	// Expose types to facilitate extending with custom types
 	FormModel.prototype.types = types;
 
-	// This is NOT a complete list of all enketo-core UI strings. Use a parser to find 
+	/** 
+	 * Placeholder module for translator. It is meant to be overwritten by a translator used in your app.
+	 * 
+	 * @module fake-translator
+	 */
+
+	// This is NOT a complete list of all enketo-core UI strings. Use a parser to find
 	// all strings. E.g. https://github.com/i18next/i18next-parser
 	const SOURCE_STRINGS = {
 	    'constraint': {
@@ -22697,9 +22948,9 @@
 	/**
 	 * Meant to be replaced by a real translator in the app that consumes enketo-core
 	 *
-	 * @param  {String} key translation key
-	 * @param  {*} key translation options
-	 * @return {String} translation output
+	 * @param  {string} key - translation key
+	 * @param  {*} options - translation options
+	 * @return {string} translation output
 	 */
 	function t( key, options ) {
 	    let str = '';
@@ -22721,46 +22972,48 @@
 
 	/**
 	 * Form control (input, select, textarea) helper functions.
+	 * 
+	 * @module input
 	 */
 
-	var input = {
-	    // Multiple nodes are limited to ones of the same input type (better implemented as JQuery plugin actually)
-	    getWrapNodes( $inputs ) {
-	        const type = this.getInputType( $inputs.eq( 0 ) );
-	        return ( type === 'fieldset' ) ? $inputs : $inputs.closest( '.question, .calculation' );
+	var inputHelper = {
+	    getWrapNode( control ) {
+	        return control.closest( '.question, .calculation' );
 	    },
-	    /** very inefficient, should actually not be used **/
-	    getProps( $input ) {
-	        if ( $input.length !== 1 ) {
-	            return console.error( 'getProps(): no input node provided or multiple' );
-	        }
+	    getWrapNodes( controls ) {
+	        const result = [];
+	        controls.forEach( control => {
+	            const question = this.getWrapNode( control );
+	            if ( !result.includes( question ) ) {
+	                result.push( question );
+	            }
+	        } );
+	        return result;
+	    },
+	    getProps( control ) {
 	        return {
-	            path: this.getName( $input ),
-	            ind: this.getIndex( $input ),
-	            inputType: this.getInputType( $input ),
-	            xmlType: this.getXmlType( $input ),
-	            constraint: this.getConstraint( $input ),
-	            calculation: this.getCalculation( $input ),
-	            relevant: this.getRelevant( $input ),
-	            readonly: this.getReadonly( $input ),
-	            val: this.getVal( $input ),
-	            required: this.getRequired( $input ),
-	            enabled: this.isEnabled( $input ),
-	            multiple: this.isMultiple( $input )
+	            path: this.getName( control ),
+	            ind: this.getIndex( control ),
+	            inputType: this.getInputType( control ),
+	            xmlType: this.getXmlType( control ),
+	            constraint: this.getConstraint( control ),
+	            calculation: this.getCalculation( control ),
+	            relevant: this.getRelevant( control ),
+	            readonly: this.getReadonly( control ),
+	            val: this.getVal( control ),
+	            required: this.getRequired( control ),
+	            enabled: this.isEnabled( control ),
+	            multiple: this.isMultiple( control )
 	        };
 	    },
-	    getInputType( $input ) {
-	        let nodeName;
-	        if ( $input.length !== 1 ) {
-	            return ''; //console.error('getInputType(): no input node provided or multiple');
-	        }
-	        nodeName = $input.prop( 'nodeName' ).toLowerCase();
+	    getInputType( control ) {
+	        const nodeName = control.nodeName.toLowerCase();
 	        if ( nodeName === 'input' ) {
-	            if ( $input.data( 'drawing' ) ) {
+	            if ( control.dataset.drawing ) {
 	                return 'drawing';
 	            }
-	            if ( $input.attr( 'type' ).length > 0 ) {
-	                return $input.attr( 'type' ).toLowerCase();
+	            if ( control.type ) {
+	                return control.type.toLowerCase();
 	            }
 	            return console.error( '<input> node has no type' );
 
@@ -22774,102 +23027,104 @@
 	            return console.error( 'unexpected input node type provided' );
 	        }
 	    },
-	    getConstraint( $input ) {
-	        return $input.attr( 'data-constraint' );
+	    getConstraint( control ) {
+	        return control.dataset.constraint;
 	    },
-	    getRequired( $input ) {
+	    getRequired( control ) {
 	        // only return value if input is not a table heading input
-	        if ( $input.parentsUntil( '.or', '.or-appearance-label' ).length === 0 ) {
-	            return $input.attr( 'data-required' );
+	        if ( !closestAncestorUntil( control, '.or-appearance-label', '.or' ) ) {
+	            return control.dataset.required;
 	        }
 	    },
-	    getRelevant( $input ) {
-	        return $input.attr( 'data-relevant' );
+	    getRelevant( control ) {
+	        return control.dataset.relevant;
 	    },
-	    getReadonly( $input ) {
-	        return $input.is( '[readonly]' );
+	    getReadonly( control ) {
+	        return control.matches( '[readonly]' );
 	    },
-	    getCalculation( $input ) {
-	        return $input.attr( 'data-calculate' );
+	    getCalculation( control ) {
+	        return control.dataset.calculate;
 	    },
-	    getXmlType( $input ) {
-	        if ( $input.length !== 1 ) {
-	            return console.error( 'getXMLType(): no input node provided or multiple' );
+	    getXmlType( control ) {
+	        return control.dataset.typeXml;
+	    },
+	    getName( control ) {
+	        const name = control.dataset.name || control.getAttribute( 'name' );
+	        if ( !name ) {
+	            console.error( 'input node has no name' );
 	        }
-	        return $input.attr( 'data-type-xml' );
+	        return name;
 	    },
-	    getName( $input ) {
-	        let name;
-	        if ( $input.length !== 1 ) {
-	            return console.error( 'getName(): no input node provided or multiple' );
-	        }
-	        name = $input.attr( 'data-name' ) || $input.attr( 'name' );
-	        return name || console.error( 'input node has no name' );
+	    getIndex( control ) {
+	        return this.form.repeats.getIndex( control.closest( '.or-repeat' ) );
 	    },
-	    /**
-	     * Used to retrieve the index of a question amidst all questions with the same name.
-	     * The index that can be used to find the corresponding node in the model.
-	     * NOTE: this function should be used sparingly, as it is CPU intensive!
-	     */
-	    getIndex( $input ) {
-	        if ( $input.length !== 1 ) {
-	            return console.error( 'getIndex(): no input node provided or multiple' );
-	        }
-	        return this.form.repeats.getIndex( $input[ 0 ].closest( '.or-repeat' ) );
+	    isMultiple( control ) {
+	        return this.getInputType( control ) === 'checkbox' || control.multiple;
 	    },
-	    isMultiple( $input ) {
-	        return ( this.getInputType( $input ) === 'checkbox' || $input.attr( 'multiple' ) !== undefined ) ? true : false;
+	    isEnabled( control ) {
+	        return !( control.disabled || closestAncestorUntil( control, '.disabled', '.or' ) );
 	    },
-	    isEnabled( $input ) {
-	        return !( $input.prop( 'disabled' ) || $input.parentsUntil( '.or', '.disabled' ).length > 0 );
-	    },
-	    getVal( $input ) {
-	        let inputType;
-	        const values = [];
-	        let name;
+	    getVal( control ) {
+	        let value = '';
+	        const inputType = this.getInputType( control );
+	        const name = this.getName( control );
 
-	        if ( $input.length !== 1 ) {
-	            return console.error( 'getVal(): no inputNode provided or multiple' );
+	        switch ( inputType ) {
+	            case 'radio':
+	                {
+	                    const checked = this.getWrapNode( control ).querySelector( `input[type="radio"][data-name="${name}"]:checked` );
+	                    value = checked ? checked.value : '';
+	                    break;
+	                }
+	            case 'checkbox':
+	                {
+	                    value = [ ...this.getWrapNode( control ).querySelectorAll( `input[type="checkbox"][name="${name}"]:checked` ) ].map( input => input.value );
+	                    break;
+	                }
+	            case 'select':
+	                {
+	                    if ( this.isMultiple( control ) ) {
+	                        value = [ ...control.querySelectorAll( 'option:checked' ) ].map( option => option.value );
+	                    } else {
+	                        const selected = control.querySelector( 'option:checked' );
+	                        value = selected ? selected.value : '';
+	                    }
+	                    break;
+	                }
+	            default:
+	                {
+	                    value = control.value;
+	                }
 	        }
-	        inputType = this.getInputType( $input );
-	        name = this.getName( $input );
 
-	        if ( inputType === 'radio' ) {
-	            return this.getWrapNodes( $input ).find( 'input:checked' ).val() || '';
-	        }
-	        // checkbox values bug in jQuery as (node.val() should work)
-	        if ( inputType === 'checkbox' ) {
-	            this.getWrapNodes( $input ).find( `input[name="${name}"]:checked` ).each( function() {
-	                values.push( this.value );
-	            } );
-	            return values;
-	        }
-	        return $input.val() || '';
+	        return value || '';
 	    },
 	    find( name, index ) {
 	        let attr = 'name';
-	        if ( this.getInputType( this.form.view.$.find( `[data-name="${name}"]:not(.ignore)` ).eq( 0 ) ) === 'radio' ) {
+	        if ( this.form.view.html.querySelector( `input[type="radio"][data-name="${name}"]:not(.ignore)` ) ) {
 	            attr = 'data-name';
 	        }
-	        return this.getWrapNodes( this.form.view.$.find( `[${attr}="${name}"]` ) ).eq( index ).find( `[${attr}="${name}"]:not(.ignore)` ).eq( 0 );
+	        const question = this.getWrapNodes( this.form.view.html.querySelectorAll( `[${attr}="${name}"]` ) )[ index ];
+
+	        return question ? question.querySelector( `[${attr}="${name}"]:not(.ignore)` ) : null;
 	    },
-	    setVal( $input, value, event$1 = event.InputUpdate() ) {
-	        let $inputs;
-	        const type = this.getInputType( $input );
-	        const $question = this.getWrapNodes( $input );
-	        const name = this.getName( $input );
+	    setVal( control, value, event = events.InputUpdate() ) {
+	        let inputs;
+	        const type = this.getInputType( control );
+	        const question = this.getWrapNode( control );
+	        const name = this.getName( control );
 
 	        if ( type === 'radio' ) {
-	            // TODO: should this revert to name if data-name is not present. Is data-name always present on radiobuttons?
-	            $inputs = $question.find( `[data-name="${name}"]:not(.ignore)` );
+	            // data-name is always present on radiobuttons
+	            inputs = question.querySelectorAll( `[data-name="${name}"]:not(.ignore)` );
 	        } else {
 	            // why not use this.getIndex?
-	            $inputs = $question.find( `[name="${name}"]:not(.ignore)` );
+	            inputs = question.querySelectorAll( `[name="${name}"]:not(.ignore)` );
 
 	            if ( type === 'file' ) {
 	                // value of file input can be reset to empty but not to a non-empty value
 	                if ( value ) {
-	                    $input.attr( 'data-loaded-file-name', value );
+	                    control.setAttribute( 'data-loaded-file-name', value );
 	                    // console.error('Cannot set value of file input field (value: '+value+'). If trying to load '+
 	                    //  'this record for editing this file input field will remain unchanged.');
 	                    return false;
@@ -22904,39 +23159,76 @@
 	            }
 	        }
 
-	        if ( this.isMultiple( $input ) === true ) {
+	        if ( this.isMultiple( control ) === true ) {
 	            // TODO: It's weird that setVal does not take an array value but getVal returns an array value for multiple selects!
 	            value = value.split( ' ' );
 	        } else if ( type === 'radio' ) {
 	            value = [ value ];
 	        }
 
-	        // Trigger an 'inputupdate' event which can be used in widgets to update the widget when the value of its 
+	        // Trigger an 'inputupdate' event which can be used in widgets to update the widget when the value of its
 	        // original input element has changed **programmatically**.
-	        if ( $inputs.length ) {
-	            const curVal = this.getVal( $input );
+	        if ( inputs.length ) {
+	            const curVal = this.getVal( control );
 	            if ( curVal === undefined || curVal.toString() !== value.toString() ) {
-	                $inputs.val( value );
+	                switch ( type ) {
+	                    case 'radio':
+	                        {
+	                            const input = this.getWrapNode( control ).querySelector( `input[type="radio"][data-name="${name}"][value="${value}"]` );
+	                            if ( input ) {
+	                                input.checked = true;
+	                            }
+	                            break;
+	                        }
+	                    case 'checkbox':
+	                        {
+	                            this.getWrapNode( control ).querySelectorAll( `input[type="checkbox"][name="${name}"]` )
+	                            .forEach( input => input.checked = value.includes( input.value ) );
+	                            break;
+	                        }
+	                    case 'select':
+	                        {
+	                            if ( this.isMultiple( control ) ) {
+	                                control.querySelectorAll( 'option' ).forEach( option => option.selected = value.includes( option.value ) );
+	                            } else {
+	                                const option = control.querySelector( `option[value="${value}"]` );
+	                                if ( option ) {
+	                                    option.selected = true;
+	                                } else {
+	                                    control.querySelectorAll( 'option' ).forEach( option => option.selected = false );
+	                                }
+	                            }
+	                            break;
+	                        }
+	                    default:
+	                        {
+	                            control.value = value;
+	                        }
+	                }
+
+
 	                // don't trigger on all radiobuttons/checkboxes
-	                if ( event$1 ) {
-	                    $inputs[ 0 ].dispatchEvent( event$1 );
+	                if ( event ) {
+	                    inputs[ 0 ].dispatchEvent( event );
 	                }
 	            }
 	        }
 
-	        return $inputs[ 0 ];
+	        return inputs[ 0 ];
 	    },
-	    validate( $input ) {
-	        return this.form.validateInput( $input );
+	    validate( control ) {
+	        return this.form.validateInput( control );
 	    }
 	};
 
-	/*
-	 * This file is meant to be overidden with one that uses the app's dialogs.
+	/**
+	 * This placeholder module is meant to be overwritten with one that uses the app's own dialogs.
+	 * 
+	 * @module dialog
 	 */
 
 	/**
-	 * @param {String | {message: String, heading: String}} content Dialog content
+	 * @param {string | {message: string, heading: string}} content - Dialog content
 	 */
 	function alert( content ) {
 	    window.alert( content );
@@ -22944,7 +23236,7 @@
 	}
 
 	/**
-	 * @param {String | {message: String, heading: String}} content Dialog content
+	 * @param {string | {message: string, heading: string}} content - Dialog content
 	 */
 	function confirm( content ) {
 	    const msg = content.message ? content.message : content;
@@ -22962,14 +23254,16 @@
 	};
 
 	/**
-	 * Repeats module.
-	 * 
+	 * Repeat module.
+	 *
 	 * Two important concepts are used:
 	 * 1. The first XLST-added repeat view is cloned to serve as a template of that repeat.
 	 * 2. Each repeat series has a sibling .or-repeat-info element that stores info that is relevant to that series.
 	 *
 	 * Note that with nested repeats you may have many more series of repeats than templates, because a nested repeat
 	 * may have multiple series.
+	 * 
+	 * @module repeat
 	 */
 	const disableFirstRepeatRemoval = config.repeatOrdinals === true;
 
@@ -22988,21 +23282,25 @@
 
 	        $repeatInfos = this.form.view.$.find( '.or-repeat-info' );
 	        this.templates = {};
-	        // Add repeat numbering elements, if repeat has form controls (not just calculations)
-	        $repeatInfos.siblings( '.or-repeat' )
+	        // Add repeat numbering elements
+	        $repeatInfos
+	            .siblings( '.or-repeat' )
+	            .prepend( '<span class="repeat-number"></span>' )
+	            // add empty class for calculation-only repeats
+	            .addBack()
 	            .filter( function() {
-	                // remove whitespace so we can use :empty css selector
+	                // remove whitespace
 	                if ( this.firstChild && this.firstChild.nodeType === 3 ) {
 	                    this.firstChild.textContent = '';
 	                }
-	                return !!this.querySelector( '.question' );
+	                return !this.querySelector( '.question' );
 	            } )
-	            .prepend( '<span class="repeat-number"></span>' );
+	            .addClass( 'empty' );
 	        // Add repeat buttons
 	        $repeatInfos.filter( '*:not([data-repeat-fixed]):not([data-repeat-count])' )
 	            .append( '<button type="button" class="btn btn-default add-repeat-btn"><i class="icon icon-plus"> </i></button>' )
 	            .siblings( '.or-repeat' )
-	            .append( `<div class="repeat-buttons"><button type="button" ${' '}class="btn btn-default remove"><i class="icon icon-minus"> </i></button></div>` );
+	            .append( `<div class="repeat-buttons"><button type="button" ${ ' '}class="btn btn-default remove"><i class="icon icon-minus"> </i></button></div>` );
 	        /**
 	         * The model also requires storing repeat templates for repeats that do not have a jr:template.
 	         * Since the model has no knowledge of which node is a repeat, we direct this here.
@@ -23032,7 +23330,7 @@
 	                    that.updateDefaultFirstRepeatInstance( null, this );
 	                }
 	            } )
-	            // If there is no repeat-count attribute, check how many repeat instances 
+	            // If there is no repeat-count attribute, check how many repeat instances
 	            // are in the model, and update view if necessary.
 	            .each( that.updateViewInstancesFromModel.bind( this ) );
 
@@ -23101,13 +23399,13 @@
 	            return null;
 	        }
 	        const name = repeatInfo.dataset.name;
-	        return [ ...repeatInfo.closest( 'form.or' ).querySelectorAll( `.or-repeat-info[data-name="${name}"` ) ].indexOf( repeatInfo );
+	        return [ ...repeatInfo.closest( 'form.or' ).querySelectorAll( `.or-repeat-info[data-name="${name}"]` ) ].indexOf( repeatInfo );
 	    },
 	    /**
 	     * [updateViewInstancesFromModel description]
-	     * @param  {[type]} idx           not used but part of jQuery.each
-	     * @param   {Element} repeatInfo  repeatInfo element
-	     * @return {[type]}            [description]
+	     * @param {number} idx - not used but part of jQuery.each
+	     * @param {Element} repeatInfo - repeatInfo element
+	     * @return {number}
 	     */
 	    updateViewInstancesFromModel( idx, repeatInfo ) {
 	        const that = this;
@@ -23133,9 +23431,8 @@
 	    },
 	    /**
 	     * [updateDefaultFirstRepeatInstance description]
-	     * @param  {[type]} idx             not use but part of jQeury.each
-	     * @param   {Element} repeatInfo    repeatInfo element
-	     * @return {[type]}            [description]
+	     * @param {number} idx - not used but part of jQuery.each
+	     * @param {Element} repeatInfo - repeatInfo element
 	     */
 	    updateDefaultFirstRepeatInstance( idx, repeatInfo ) {
 	        let repeatSeriesIndex;
@@ -23157,9 +23454,9 @@
 	    },
 	    /**
 	     * [updateRepeatInstancesFromCount description]
-	     * @param  {[type]} idx             not use but part of jQeury.each
-	     * @param   {Element} repeatInfo repeatInfo element
-	     * @return {[type]}            [description]
+	     *
+	     * @param {number} idx - not used but part of jQuery.each
+	     * @param {Element} repeatInfo - repeatInfo element
 	     */
 	    updateRepeatInstancesFromCount( idx, repeatInfo ) {
 	        const that = this;
@@ -23193,7 +23490,7 @@
 	        if ( toCreate > 0 ) {
 	            that.add( repeatInfo, toCreate );
 	        } else if ( toCreate < 0 ) {
-	            toCreate = Math.abs( toCreate ) >= numRepsInView ? -numRepsInView + ( 0 ) : toCreate;
+	            toCreate = Math.abs( toCreate ) >= numRepsInView ? -numRepsInView + (  0 ) : toCreate;
 	            for ( ; toCreate < 0; toCreate++ ) {
 	                $last = $repeatInfo.siblings( '.or-repeat' ).last();
 	                this.remove( $last, 0 );
@@ -23209,9 +23506,8 @@
 	    /**
 	     * Checks whether repeat count value has been updated and updates repeat instances
 	     * accordingly.
-	     * 
-	     * @param  {[type]} updated [description]
-	     * @return {[type]}         [description]
+	     *
+	     * @param {Object} updated
 	     */
 	    countUpdate( updated ) {
 	        let $repeatInfos;
@@ -23219,11 +23515,12 @@
 	        $repeatInfos = this.form.getRelatedNodes( 'data-repeat-count', '.or-repeat-info', updated );
 	        $repeatInfos.each( this.updateRepeatInstancesFromCount.bind( this ) );
 	    },
-	    /**s
-	     * clone a repeat group/node
-	     * @param   {Element} repeatInfo repeatInfo element
-	     * @param   {number=} count number of clones to create
-	     * @return  {boolean}       [description]
+	    /**
+	     * Clone a repeat group/node.
+	     *
+	     * @param {Element} repeatInfo - A repeatInfo element.
+	     * @param {number=} count - Number of clones to create.
+	     * @return {boolean} Cloning success/failure outcome.
 	     */
 	    add( repeatInfo, count ) {
 	        let $repeats;
@@ -23287,7 +23584,7 @@
 	            // even if they are in different series.
 	            repeatIndex = repeatIndex || this.getIndex( $clone[ 0 ] );
 	            // This will trigger setting default values, calculations, readonly, relevancy, language updates, and automatic page flips.
-	            $clone[ 0 ].dispatchEvent( event.AddRepeat( [ repeatIndex, byCountUpdate ] ) );
+	            $clone[ 0 ].dispatchEvent( events.AddRepeat( [ repeatIndex, byCountUpdate ] ) );
 	            // Initialize widgets in clone after default values have been set
 	            if ( this.form.widgetsInitialized ) {
 	                this.form.widgets.init( $clone, this.form.options );
@@ -23331,7 +23628,7 @@
 	            that.toggleButtons( repeatInfo );
 	            // Trigger the removerepeat on the next repeat or repeat-info(always present)
 	            // so that removerepeat handlers know where the repeat was removed
-	            $next[ 0 ].dispatchEvent( event.RemoveRepeat() );
+	            $next[ 0 ].dispatchEvent( events.RemoveRepeat() );
 	            // Now remove the data node
 	            that.form.model.node( repeatPath, repeatIndex ).remove();
 	        } );
@@ -23377,11 +23674,13 @@
 	 * Dual licensed under the MIT or GPL Version 2 licenses.
 	 *
 	 */
-	!function(factory){factory(module.exports?jquery:jQuery);}(function($){function init(options){return !options||void 0!==options.allowPageScroll||void 0===options.swipe&&void 0===options.swipeStatus||(options.allowPageScroll=NONE),void 0!==options.click&&void 0===options.tap&&(options.tap=options.click),options||(options={}),options=$.extend({},$.fn.swipe.defaults,options),this.each(function(){var $this=$(this),plugin=$this.data(PLUGIN_NS);plugin||(plugin=new TouchSwipe(this,options),$this.data(PLUGIN_NS,plugin));})}function TouchSwipe(element,options){function touchStart(jqEvent){if(!(getTouchInProgress()||$(jqEvent.target).closest(options.excludedElements,$element).length>0)){var event=jqEvent.originalEvent?jqEvent.originalEvent:jqEvent;if(!event.pointerType||"mouse"!=event.pointerType||0!=options.fallbackToMouseEvents){var ret,touches=event.touches,evt=touches?touches[0]:event;return phase=PHASE_START,touches?fingerCount=touches.length:options.preventDefaultEvents!==!1&&jqEvent.preventDefault(),distance=0,direction=null,currentDirection=null,pinchDirection=null,duration=0,startTouchesDistance=0,endTouchesDistance=0,pinchZoom=1,pinchDistance=0,maximumsMap=createMaximumsData(),cancelMultiFingerRelease(),createFingerData(0,evt),!touches||fingerCount===options.fingers||options.fingers===ALL_FINGERS||hasPinches()?(startTime=getTimeStamp(),2==fingerCount&&(createFingerData(1,touches[1]),startTouchesDistance=endTouchesDistance=calculateTouchesDistance(fingerData[0].start,fingerData[1].start)),(options.swipeStatus||options.pinchStatus)&&(ret=triggerHandler(event,phase))):ret=!1,ret===!1?(phase=PHASE_CANCEL,triggerHandler(event,phase),ret):(options.hold&&(holdTimeout=setTimeout($.proxy(function(){$element.trigger("hold",[event.target]),options.hold&&(ret=options.hold.call($element,event,event.target));},this),options.longTapThreshold)),setTouchInProgress(!0),null)}}}function touchMove(jqEvent){var event=jqEvent.originalEvent?jqEvent.originalEvent:jqEvent;if(phase!==PHASE_END&&phase!==PHASE_CANCEL&&!inMultiFingerRelease()){var ret,touches=event.touches,evt=touches?touches[0]:event,currentFinger=updateFingerData(evt);if(endTime=getTimeStamp(),touches&&(fingerCount=touches.length),options.hold&&clearTimeout(holdTimeout),phase=PHASE_MOVE,2==fingerCount&&(0==startTouchesDistance?(createFingerData(1,touches[1]),startTouchesDistance=endTouchesDistance=calculateTouchesDistance(fingerData[0].start,fingerData[1].start)):(updateFingerData(touches[1]),endTouchesDistance=calculateTouchesDistance(fingerData[0].end,fingerData[1].end),pinchDirection=calculatePinchDirection(fingerData[0].end,fingerData[1].end)),pinchZoom=calculatePinchZoom(startTouchesDistance,endTouchesDistance),pinchDistance=Math.abs(startTouchesDistance-endTouchesDistance)),fingerCount===options.fingers||options.fingers===ALL_FINGERS||!touches||hasPinches()){if(direction=calculateDirection(currentFinger.start,currentFinger.end),currentDirection=calculateDirection(currentFinger.last,currentFinger.end),validateDefaultEvent(jqEvent,currentDirection),distance=calculateDistance(currentFinger.start,currentFinger.end),duration=calculateDuration(),setMaxDistance(direction,distance),ret=triggerHandler(event,phase),!options.triggerOnTouchEnd||options.triggerOnTouchLeave){var inBounds=!0;if(options.triggerOnTouchLeave){var bounds=getbounds(this);inBounds=isInBounds(currentFinger.end,bounds);}!options.triggerOnTouchEnd&&inBounds?phase=getNextPhase(PHASE_MOVE):options.triggerOnTouchLeave&&!inBounds&&(phase=getNextPhase(PHASE_END)),phase!=PHASE_CANCEL&&phase!=PHASE_END||triggerHandler(event,phase);}}else phase=PHASE_CANCEL,triggerHandler(event,phase);ret===!1&&(phase=PHASE_CANCEL,triggerHandler(event,phase));}}function touchEnd(jqEvent){var event=jqEvent.originalEvent?jqEvent.originalEvent:jqEvent,touches=event.touches;if(touches){if(touches.length&&!inMultiFingerRelease())return startMultiFingerRelease(event),!0;if(touches.length&&inMultiFingerRelease())return !0}return inMultiFingerRelease()&&(fingerCount=fingerCountAtRelease),endTime=getTimeStamp(),duration=calculateDuration(),didSwipeBackToCancel()||!validateSwipeDistance()?(phase=PHASE_CANCEL,triggerHandler(event,phase)):options.triggerOnTouchEnd||options.triggerOnTouchEnd===!1&&phase===PHASE_MOVE?(options.preventDefaultEvents!==!1&&jqEvent.cancelable!==!1&&jqEvent.preventDefault(),phase=PHASE_END,triggerHandler(event,phase)):!options.triggerOnTouchEnd&&hasTap()?(phase=PHASE_END,triggerHandlerForGesture(event,phase,TAP)):phase===PHASE_MOVE&&(phase=PHASE_CANCEL,triggerHandler(event,phase)),setTouchInProgress(!1),null}function touchCancel(){fingerCount=0,endTime=0,startTime=0,startTouchesDistance=0,endTouchesDistance=0,pinchZoom=1,cancelMultiFingerRelease(),setTouchInProgress(!1);}function touchLeave(jqEvent){var event=jqEvent.originalEvent?jqEvent.originalEvent:jqEvent;options.triggerOnTouchLeave&&(phase=getNextPhase(PHASE_END),triggerHandler(event,phase));}function removeListeners(){$element.off(START_EV,touchStart),$element.off(CANCEL_EV,touchCancel),$element.off(MOVE_EV,touchMove),$element.off(END_EV,touchEnd),LEAVE_EV&&$element.off(LEAVE_EV,touchLeave),setTouchInProgress(!1);}function getNextPhase(currentPhase){var nextPhase=currentPhase,validTime=validateSwipeTime(),validDistance=validateSwipeDistance(),didCancel=didSwipeBackToCancel();return !validTime||didCancel?nextPhase=PHASE_CANCEL:!validDistance||currentPhase!=PHASE_MOVE||options.triggerOnTouchEnd&&!options.triggerOnTouchLeave?!validDistance&&currentPhase==PHASE_END&&options.triggerOnTouchLeave&&(nextPhase=PHASE_CANCEL):nextPhase=PHASE_END,nextPhase}function triggerHandler(event,phase){var ret,touches=event.touches;return (didSwipe()||hasSwipes())&&(ret=triggerHandlerForGesture(event,phase,SWIPE)),(didPinch()||hasPinches())&&ret!==!1&&(ret=triggerHandlerForGesture(event,phase,PINCH)),didDoubleTap()&&ret!==!1?ret=triggerHandlerForGesture(event,phase,DOUBLE_TAP):didLongTap()&&ret!==!1?ret=triggerHandlerForGesture(event,phase,LONG_TAP):didTap()&&ret!==!1&&(ret=triggerHandlerForGesture(event,phase,TAP)),phase===PHASE_CANCEL&&touchCancel(event),phase===PHASE_END&&(touches?touches.length||touchCancel(event):touchCancel(event)),ret}function triggerHandlerForGesture(event,phase,gesture){var ret;if(gesture==SWIPE){if($element.trigger("swipeStatus",[phase,direction||null,distance||0,duration||0,fingerCount,fingerData,currentDirection]),options.swipeStatus&&(ret=options.swipeStatus.call($element,event,phase,direction||null,distance||0,duration||0,fingerCount,fingerData,currentDirection),ret===!1))return !1;if(phase==PHASE_END&&validateSwipe()){if(clearTimeout(singleTapTimeout),clearTimeout(holdTimeout),$element.trigger("swipe",[direction,distance,duration,fingerCount,fingerData,currentDirection]),options.swipe&&(ret=options.swipe.call($element,event,direction,distance,duration,fingerCount,fingerData,currentDirection),ret===!1))return !1;switch(direction){case LEFT:$element.trigger("swipeLeft",[direction,distance,duration,fingerCount,fingerData,currentDirection]),options.swipeLeft&&(ret=options.swipeLeft.call($element,event,direction,distance,duration,fingerCount,fingerData,currentDirection));break;case RIGHT:$element.trigger("swipeRight",[direction,distance,duration,fingerCount,fingerData,currentDirection]),options.swipeRight&&(ret=options.swipeRight.call($element,event,direction,distance,duration,fingerCount,fingerData,currentDirection));break;case UP:$element.trigger("swipeUp",[direction,distance,duration,fingerCount,fingerData,currentDirection]),options.swipeUp&&(ret=options.swipeUp.call($element,event,direction,distance,duration,fingerCount,fingerData,currentDirection));break;case DOWN:$element.trigger("swipeDown",[direction,distance,duration,fingerCount,fingerData,currentDirection]),options.swipeDown&&(ret=options.swipeDown.call($element,event,direction,distance,duration,fingerCount,fingerData,currentDirection));}}}if(gesture==PINCH){if($element.trigger("pinchStatus",[phase,pinchDirection||null,pinchDistance||0,duration||0,fingerCount,pinchZoom,fingerData]),options.pinchStatus&&(ret=options.pinchStatus.call($element,event,phase,pinchDirection||null,pinchDistance||0,duration||0,fingerCount,pinchZoom,fingerData),ret===!1))return !1;if(phase==PHASE_END&&validatePinch())switch(pinchDirection){case IN:$element.trigger("pinchIn",[pinchDirection||null,pinchDistance||0,duration||0,fingerCount,pinchZoom,fingerData]),options.pinchIn&&(ret=options.pinchIn.call($element,event,pinchDirection||null,pinchDistance||0,duration||0,fingerCount,pinchZoom,fingerData));break;case OUT:$element.trigger("pinchOut",[pinchDirection||null,pinchDistance||0,duration||0,fingerCount,pinchZoom,fingerData]),options.pinchOut&&(ret=options.pinchOut.call($element,event,pinchDirection||null,pinchDistance||0,duration||0,fingerCount,pinchZoom,fingerData));}}return gesture==TAP?phase!==PHASE_CANCEL&&phase!==PHASE_END||(clearTimeout(singleTapTimeout),clearTimeout(holdTimeout),hasDoubleTap()&&!inDoubleTap()?(doubleTapStartTime=getTimeStamp(),singleTapTimeout=setTimeout($.proxy(function(){doubleTapStartTime=null,$element.trigger("tap",[event.target]),options.tap&&(ret=options.tap.call($element,event,event.target));},this),options.doubleTapThreshold)):(doubleTapStartTime=null,$element.trigger("tap",[event.target]),options.tap&&(ret=options.tap.call($element,event,event.target)))):gesture==DOUBLE_TAP?phase!==PHASE_CANCEL&&phase!==PHASE_END||(clearTimeout(singleTapTimeout),clearTimeout(holdTimeout),doubleTapStartTime=null,$element.trigger("doubletap",[event.target]),options.doubleTap&&(ret=options.doubleTap.call($element,event,event.target))):gesture==LONG_TAP&&(phase!==PHASE_CANCEL&&phase!==PHASE_END||(clearTimeout(singleTapTimeout),doubleTapStartTime=null,$element.trigger("longtap",[event.target]),options.longTap&&(ret=options.longTap.call($element,event,event.target)))),ret}function validateSwipeDistance(){var valid=!0;return null!==options.threshold&&(valid=distance>=options.threshold),valid}function didSwipeBackToCancel(){var cancelled=!1;return null!==options.cancelThreshold&&null!==direction&&(cancelled=getMaxDistance(direction)-distance>=options.cancelThreshold),cancelled}function validatePinchDistance(){return null!==options.pinchThreshold?pinchDistance>=options.pinchThreshold:!0}function validateSwipeTime(){var result;return result=options.maxTimeThreshold?!(duration>=options.maxTimeThreshold):!0}function validateDefaultEvent(jqEvent,direction){if(options.preventDefaultEvents!==!1)if(options.allowPageScroll===NONE)jqEvent.preventDefault();else{var auto=options.allowPageScroll===AUTO;switch(direction){case LEFT:(options.swipeLeft&&auto||!auto&&options.allowPageScroll!=HORIZONTAL)&&jqEvent.preventDefault();break;case RIGHT:(options.swipeRight&&auto||!auto&&options.allowPageScroll!=HORIZONTAL)&&jqEvent.preventDefault();break;case UP:(options.swipeUp&&auto||!auto&&options.allowPageScroll!=VERTICAL)&&jqEvent.preventDefault();break;case DOWN:(options.swipeDown&&auto||!auto&&options.allowPageScroll!=VERTICAL)&&jqEvent.preventDefault();break;case NONE:}}}function validatePinch(){var hasCorrectFingerCount=validateFingers(),hasEndPoint=validateEndPoint(),hasCorrectDistance=validatePinchDistance();return hasCorrectFingerCount&&hasEndPoint&&hasCorrectDistance}function hasPinches(){return !!(options.pinchStatus||options.pinchIn||options.pinchOut)}function didPinch(){return !(!validatePinch()||!hasPinches())}function validateSwipe(){var hasValidTime=validateSwipeTime(),hasValidDistance=validateSwipeDistance(),hasCorrectFingerCount=validateFingers(),hasEndPoint=validateEndPoint(),didCancel=didSwipeBackToCancel(),valid=!didCancel&&hasEndPoint&&hasCorrectFingerCount&&hasValidDistance&&hasValidTime;return valid}function hasSwipes(){return !!(options.swipe||options.swipeStatus||options.swipeLeft||options.swipeRight||options.swipeUp||options.swipeDown)}function didSwipe(){return !(!validateSwipe()||!hasSwipes())}function validateFingers(){return fingerCount===options.fingers||options.fingers===ALL_FINGERS||!SUPPORTS_TOUCH}function validateEndPoint(){return 0!==fingerData[0].end.x}function hasTap(){return !!options.tap}function hasDoubleTap(){return !!options.doubleTap}function hasLongTap(){return !!options.longTap}function validateDoubleTap(){if(null==doubleTapStartTime)return !1;var now=getTimeStamp();return hasDoubleTap()&&now-doubleTapStartTime<=options.doubleTapThreshold}function inDoubleTap(){return validateDoubleTap()}function validateTap(){return (1===fingerCount||!SUPPORTS_TOUCH)&&(isNaN(distance)||distance<options.threshold)}function validateLongTap(){return duration>options.longTapThreshold&&DOUBLE_TAP_THRESHOLD>distance}function didTap(){return !(!validateTap()||!hasTap())}function didDoubleTap(){return !(!validateDoubleTap()||!hasDoubleTap())}function didLongTap(){return !(!validateLongTap()||!hasLongTap())}function startMultiFingerRelease(event){previousTouchEndTime=getTimeStamp(),fingerCountAtRelease=event.touches.length+1;}function cancelMultiFingerRelease(){previousTouchEndTime=0,fingerCountAtRelease=0;}function inMultiFingerRelease(){var withinThreshold=!1;if(previousTouchEndTime){var diff=getTimeStamp()-previousTouchEndTime;diff<=options.fingerReleaseThreshold&&(withinThreshold=!0);}return withinThreshold}function getTouchInProgress(){return !($element.data(PLUGIN_NS+"_intouch")!==!0)}function setTouchInProgress(val){$element&&(val===!0?($element.on(MOVE_EV,touchMove),$element.on(END_EV,touchEnd),LEAVE_EV&&$element.on(LEAVE_EV,touchLeave)):($element.off(MOVE_EV,touchMove,!1),$element.off(END_EV,touchEnd,!1),LEAVE_EV&&$element.off(LEAVE_EV,touchLeave,!1)),$element.data(PLUGIN_NS+"_intouch",val===!0));}function createFingerData(id,evt){var f={start:{x:0,y:0},last:{x:0,y:0},end:{x:0,y:0}};return f.start.x=f.last.x=f.end.x=evt.pageX||evt.clientX,f.start.y=f.last.y=f.end.y=evt.pageY||evt.clientY,fingerData[id]=f,f}function updateFingerData(evt){var id=void 0!==evt.identifier?evt.identifier:0,f=getFingerData(id);return null===f&&(f=createFingerData(id,evt)),f.last.x=f.end.x,f.last.y=f.end.y,f.end.x=evt.pageX||evt.clientX,f.end.y=evt.pageY||evt.clientY,f}function getFingerData(id){return fingerData[id]||null}function setMaxDistance(direction,distance){direction!=NONE&&(distance=Math.max(distance,getMaxDistance(direction)),maximumsMap[direction].distance=distance);}function getMaxDistance(direction){return maximumsMap[direction]?maximumsMap[direction].distance:void 0}function createMaximumsData(){var maxData={};return maxData[LEFT]=createMaximumVO(LEFT),maxData[RIGHT]=createMaximumVO(RIGHT),maxData[UP]=createMaximumVO(UP),maxData[DOWN]=createMaximumVO(DOWN),maxData}function createMaximumVO(dir){return {direction:dir,distance:0}}function calculateDuration(){return endTime-startTime}function calculateTouchesDistance(startPoint,endPoint){var diffX=Math.abs(startPoint.x-endPoint.x),diffY=Math.abs(startPoint.y-endPoint.y);return Math.round(Math.sqrt(diffX*diffX+diffY*diffY))}function calculatePinchZoom(startDistance,endDistance){var percent=endDistance/startDistance*1;return percent.toFixed(2)}function calculatePinchDirection(){return 1>pinchZoom?OUT:IN}function calculateDistance(startPoint,endPoint){return Math.round(Math.sqrt(Math.pow(endPoint.x-startPoint.x,2)+Math.pow(endPoint.y-startPoint.y,2)))}function calculateAngle(startPoint,endPoint){var x=startPoint.x-endPoint.x,y=endPoint.y-startPoint.y,r=Math.atan2(y,x),angle=Math.round(180*r/Math.PI);return 0>angle&&(angle=360-Math.abs(angle)),angle}function calculateDirection(startPoint,endPoint){if(comparePoints(startPoint,endPoint))return NONE;var angle=calculateAngle(startPoint,endPoint);return 45>=angle&&angle>=0?LEFT:360>=angle&&angle>=315?LEFT:angle>=135&&225>=angle?RIGHT:angle>45&&135>angle?DOWN:UP}function getTimeStamp(){var now=new Date;return now.getTime()}function getbounds(el){el=$(el);var offset=el.offset(),bounds={left:offset.left,right:offset.left+el.outerWidth(),top:offset.top,bottom:offset.top+el.outerHeight()};return bounds}function isInBounds(point,bounds){return point.x>bounds.left&&point.x<bounds.right&&point.y>bounds.top&&point.y<bounds.bottom}function comparePoints(pointA,pointB){return pointA.x==pointB.x&&pointA.y==pointB.y}var options=$.extend({},options),useTouchEvents=SUPPORTS_TOUCH||SUPPORTS_POINTER||!options.fallbackToMouseEvents,START_EV=useTouchEvents?SUPPORTS_POINTER?SUPPORTS_POINTER_IE10?"MSPointerDown":"pointerdown":"touchstart":"mousedown",MOVE_EV=useTouchEvents?SUPPORTS_POINTER?SUPPORTS_POINTER_IE10?"MSPointerMove":"pointermove":"touchmove":"mousemove",END_EV=useTouchEvents?SUPPORTS_POINTER?SUPPORTS_POINTER_IE10?"MSPointerUp":"pointerup":"touchend":"mouseup",LEAVE_EV=useTouchEvents?SUPPORTS_POINTER?"mouseleave":null:"mouseleave",CANCEL_EV=SUPPORTS_POINTER?SUPPORTS_POINTER_IE10?"MSPointerCancel":"pointercancel":"touchcancel",distance=0,direction=null,currentDirection=null,duration=0,startTouchesDistance=0,endTouchesDistance=0,pinchZoom=1,pinchDistance=0,pinchDirection=0,maximumsMap=null,$element=$(element),phase="start",fingerCount=0,fingerData={},startTime=0,endTime=0,previousTouchEndTime=0,fingerCountAtRelease=0,doubleTapStartTime=0,singleTapTimeout=null,holdTimeout=null;try{$element.on(START_EV,touchStart),$element.on(CANCEL_EV,touchCancel);}catch(e){$.error("events not supported "+START_EV+","+CANCEL_EV+" on jQuery.swipe");}this.enable=function(){return this.disable(),$element.on(START_EV,touchStart),$element.on(CANCEL_EV,touchCancel),$element},this.disable=function(){return removeListeners(),$element},this.destroy=function(){removeListeners(),$element.data(PLUGIN_NS,null),$element=null;},this.option=function(property,value){if("object"==typeof property)options=$.extend(options,property);else if(void 0!==options[property]){if(void 0===value)return options[property];options[property]=value;}else{if(!property)return options;$.error("Option "+property+" does not exist on jQuery.swipe.options");}return null};}var VERSION="1.6.18",LEFT="left",RIGHT="right",UP="up",DOWN="down",IN="in",OUT="out",NONE="none",AUTO="auto",SWIPE="swipe",PINCH="pinch",TAP="tap",DOUBLE_TAP="doubletap",LONG_TAP="longtap",HORIZONTAL="horizontal",VERTICAL="vertical",ALL_FINGERS="all",DOUBLE_TAP_THRESHOLD=10,PHASE_START="start",PHASE_MOVE="move",PHASE_END="end",PHASE_CANCEL="cancel",SUPPORTS_TOUCH="ontouchstart"in window,SUPPORTS_POINTER_IE10=window.navigator.msPointerEnabled&&!window.PointerEvent&&!SUPPORTS_TOUCH,SUPPORTS_POINTER=(window.PointerEvent||window.navigator.msPointerEnabled)&&!SUPPORTS_TOUCH,PLUGIN_NS="TouchSwipe",defaults={fingers:1,threshold:75,cancelThreshold:null,pinchThreshold:20,maxTimeThreshold:null,fingerReleaseThreshold:250,longTapThreshold:500,doubleTapThreshold:200,swipe:null,swipeLeft:null,swipeRight:null,swipeUp:null,swipeDown:null,swipeStatus:null,pinchIn:null,pinchOut:null,pinchStatus:null,click:null,tap:null,doubleTap:null,longTap:null,hold:null,triggerOnTouchEnd:!0,triggerOnTouchLeave:!1,allowPageScroll:"auto",fallbackToMouseEvents:!0,excludedElements:".noSwipe",preventDefaultEvents:!0};$.fn.swipe=function(method){var $this=$(this),plugin=$this.data(PLUGIN_NS);if(plugin&&"string"==typeof method){if(plugin[method])return plugin[method].apply(plugin,Array.prototype.slice.call(arguments,1));$.error("Method "+method+" does not exist on jQuery.swipe");}else if(plugin&&"object"==typeof method)plugin.option.apply(plugin,arguments);else if(!(plugin||"object"!=typeof method&&method))return init.apply(this,arguments);return $this},$.fn.swipe.version=VERSION,$.fn.swipe.defaults=defaults,$.fn.swipe.phases={PHASE_START:PHASE_START,PHASE_MOVE:PHASE_MOVE,PHASE_END:PHASE_END,PHASE_CANCEL:PHASE_CANCEL},$.fn.swipe.directions={LEFT:LEFT,RIGHT:RIGHT,UP:UP,DOWN:DOWN,IN:IN,OUT:OUT},$.fn.swipe.pageScroll={NONE:NONE,HORIZONTAL:HORIZONTAL,VERTICAL:VERTICAL,AUTO:AUTO},$.fn.swipe.fingers={ONE:1,TWO:2,THREE:3,FOUR:4,FIVE:5,ALL:ALL_FINGERS};});
+	!function(factory){factory(module.exports?jquery:jQuery);}(function($){function init(options){return !options||void 0!==options.allowPageScroll||void 0===options.swipe&&void 0===options.swipeStatus||(options.allowPageScroll=NONE),void 0!==options.click&&void 0===options.tap&&(options.tap=options.click),options||(options={}),options=$.extend({},$.fn.swipe.defaults,options),this.each(function(){var $this=$(this),plugin=$this.data(PLUGIN_NS);plugin||(plugin=new TouchSwipe(this,options),$this.data(PLUGIN_NS,plugin));})}function TouchSwipe(element,options){function touchStart(jqEvent){if(!(getTouchInProgress()||$(jqEvent.target).closest(options.excludedElements,$element).length>0)){var event=jqEvent.originalEvent?jqEvent.originalEvent:jqEvent;if(!event.pointerType||"mouse"!=event.pointerType||0!=options.fallbackToMouseEvents){var ret,touches=event.touches,evt=touches?touches[0]:event;return phase=PHASE_START,touches?fingerCount=touches.length:options.preventDefaultEvents!==!1&&jqEvent.preventDefault(),distance=0,direction=null,currentDirection=null,pinchDirection=null,duration=0,startTouchesDistance=0,endTouchesDistance=0,pinchZoom=1,pinchDistance=0,maximumsMap=createMaximumsData(),cancelMultiFingerRelease(),createFingerData(0,evt),!touches||fingerCount===options.fingers||options.fingers===ALL_FINGERS||hasPinches()?(startTime=getTimeStamp(),2==fingerCount&&(createFingerData(1,touches[1]),startTouchesDistance=endTouchesDistance=calculateTouchesDistance(fingerData[0].start,fingerData[1].start)),(options.swipeStatus||options.pinchStatus)&&(ret=triggerHandler(event,phase))):ret=!1,ret===!1?(phase=PHASE_CANCEL,triggerHandler(event,phase),ret):(options.hold&&(holdTimeout=setTimeout($.proxy(function(){$element.trigger("hold",[event.target]),options.hold&&(ret=options.hold.call($element,event,event.target));},this),options.longTapThreshold)),setTouchInProgress(!0),null)}}}function touchMove(jqEvent){var event=jqEvent.originalEvent?jqEvent.originalEvent:jqEvent;if(phase!==PHASE_END&&phase!==PHASE_CANCEL&&!inMultiFingerRelease()){var ret,touches=event.touches,evt=touches?touches[0]:event,currentFinger=updateFingerData(evt);if(endTime=getTimeStamp(),touches&&(fingerCount=touches.length),options.hold&&clearTimeout(holdTimeout),phase=PHASE_MOVE,2==fingerCount&&(0==startTouchesDistance?(createFingerData(1,touches[1]),startTouchesDistance=endTouchesDistance=calculateTouchesDistance(fingerData[0].start,fingerData[1].start)):(updateFingerData(touches[1]),endTouchesDistance=calculateTouchesDistance(fingerData[0].end,fingerData[1].end),pinchDirection=calculatePinchDirection(fingerData[0].end,fingerData[1].end)),pinchZoom=calculatePinchZoom(startTouchesDistance,endTouchesDistance),pinchDistance=Math.abs(startTouchesDistance-endTouchesDistance)),fingerCount===options.fingers||options.fingers===ALL_FINGERS||!touches||hasPinches()){if(direction=calculateDirection(currentFinger.start,currentFinger.end),currentDirection=calculateDirection(currentFinger.last,currentFinger.end),validateDefaultEvent(jqEvent,currentDirection),distance=calculateDistance(currentFinger.start,currentFinger.end),duration=calculateDuration(),setMaxDistance(direction,distance),ret=triggerHandler(event,phase),!options.triggerOnTouchEnd||options.triggerOnTouchLeave){var inBounds=!0;if(options.triggerOnTouchLeave){var bounds=getbounds(this);inBounds=isInBounds(currentFinger.end,bounds);}!options.triggerOnTouchEnd&&inBounds?phase=getNextPhase(PHASE_MOVE):options.triggerOnTouchLeave&&!inBounds&&(phase=getNextPhase(PHASE_END)),phase!=PHASE_CANCEL&&phase!=PHASE_END||triggerHandler(event,phase);}}else phase=PHASE_CANCEL,triggerHandler(event,phase);ret===!1&&(phase=PHASE_CANCEL,triggerHandler(event,phase));}}function touchEnd(jqEvent){var event=jqEvent.originalEvent?jqEvent.originalEvent:jqEvent,touches=event.touches;if(touches){if(touches.length&&!inMultiFingerRelease())return startMultiFingerRelease(event),!0;if(touches.length&&inMultiFingerRelease())return !0}return inMultiFingerRelease()&&(fingerCount=fingerCountAtRelease),endTime=getTimeStamp(),duration=calculateDuration(),didSwipeBackToCancel()||!validateSwipeDistance()?(phase=PHASE_CANCEL,triggerHandler(event,phase)):options.triggerOnTouchEnd||options.triggerOnTouchEnd===!1&&phase===PHASE_MOVE?(options.preventDefaultEvents!==!1&&jqEvent.cancelable!==!1&&jqEvent.preventDefault(),phase=PHASE_END,triggerHandler(event,phase)):!options.triggerOnTouchEnd&&hasTap()?(phase=PHASE_END,triggerHandlerForGesture(event,phase,TAP)):phase===PHASE_MOVE&&(phase=PHASE_CANCEL,triggerHandler(event,phase)),setTouchInProgress(!1),null}function touchCancel(){fingerCount=0,endTime=0,startTime=0,startTouchesDistance=0,endTouchesDistance=0,pinchZoom=1,cancelMultiFingerRelease(),setTouchInProgress(!1);}function touchLeave(jqEvent){var event=jqEvent.originalEvent?jqEvent.originalEvent:jqEvent;options.triggerOnTouchLeave&&(phase=getNextPhase(PHASE_END),triggerHandler(event,phase));}function removeListeners(){$element.off(START_EV,touchStart),$element.off(CANCEL_EV,touchCancel),$element.off(MOVE_EV,touchMove),$element.off(END_EV,touchEnd),LEAVE_EV&&$element.off(LEAVE_EV,touchLeave),setTouchInProgress(!1);}function getNextPhase(currentPhase){var nextPhase=currentPhase,validTime=validateSwipeTime(),validDistance=validateSwipeDistance(),didCancel=didSwipeBackToCancel();return !validTime||didCancel?nextPhase=PHASE_CANCEL:!validDistance||currentPhase!=PHASE_MOVE||options.triggerOnTouchEnd&&!options.triggerOnTouchLeave?!validDistance&&currentPhase==PHASE_END&&options.triggerOnTouchLeave&&(nextPhase=PHASE_CANCEL):nextPhase=PHASE_END,nextPhase}function triggerHandler(event,phase){var ret,touches=event.touches;return (didSwipe()||hasSwipes())&&(ret=triggerHandlerForGesture(event,phase,SWIPE)),(didPinch()||hasPinches())&&ret!==!1&&(ret=triggerHandlerForGesture(event,phase,PINCH)),didDoubleTap()&&ret!==!1?ret=triggerHandlerForGesture(event,phase,DOUBLE_TAP):didLongTap()&&ret!==!1?ret=triggerHandlerForGesture(event,phase,LONG_TAP):didTap()&&ret!==!1&&(ret=triggerHandlerForGesture(event,phase,TAP)),phase===PHASE_CANCEL&&touchCancel(),phase===PHASE_END&&(touches?touches.length||touchCancel():touchCancel()),ret}function triggerHandlerForGesture(event,phase,gesture){var ret;if(gesture==SWIPE){if($element.trigger("swipeStatus",[phase,direction||null,distance||0,duration||0,fingerCount,fingerData,currentDirection]),options.swipeStatus&&(ret=options.swipeStatus.call($element,event,phase,direction||null,distance||0,duration||0,fingerCount,fingerData,currentDirection),ret===!1))return !1;if(phase==PHASE_END&&validateSwipe()){if(clearTimeout(singleTapTimeout),clearTimeout(holdTimeout),$element.trigger("swipe",[direction,distance,duration,fingerCount,fingerData,currentDirection]),options.swipe&&(ret=options.swipe.call($element,event,direction,distance,duration,fingerCount,fingerData,currentDirection),ret===!1))return !1;switch(direction){case LEFT:$element.trigger("swipeLeft",[direction,distance,duration,fingerCount,fingerData,currentDirection]),options.swipeLeft&&(ret=options.swipeLeft.call($element,event,direction,distance,duration,fingerCount,fingerData,currentDirection));break;case RIGHT:$element.trigger("swipeRight",[direction,distance,duration,fingerCount,fingerData,currentDirection]),options.swipeRight&&(ret=options.swipeRight.call($element,event,direction,distance,duration,fingerCount,fingerData,currentDirection));break;case UP:$element.trigger("swipeUp",[direction,distance,duration,fingerCount,fingerData,currentDirection]),options.swipeUp&&(ret=options.swipeUp.call($element,event,direction,distance,duration,fingerCount,fingerData,currentDirection));break;case DOWN:$element.trigger("swipeDown",[direction,distance,duration,fingerCount,fingerData,currentDirection]),options.swipeDown&&(ret=options.swipeDown.call($element,event,direction,distance,duration,fingerCount,fingerData,currentDirection));}}}if(gesture==PINCH){if($element.trigger("pinchStatus",[phase,pinchDirection||null,pinchDistance||0,duration||0,fingerCount,pinchZoom,fingerData]),options.pinchStatus&&(ret=options.pinchStatus.call($element,event,phase,pinchDirection||null,pinchDistance||0,duration||0,fingerCount,pinchZoom,fingerData),ret===!1))return !1;if(phase==PHASE_END&&validatePinch())switch(pinchDirection){case IN:$element.trigger("pinchIn",[pinchDirection||null,pinchDistance||0,duration||0,fingerCount,pinchZoom,fingerData]),options.pinchIn&&(ret=options.pinchIn.call($element,event,pinchDirection||null,pinchDistance||0,duration||0,fingerCount,pinchZoom,fingerData));break;case OUT:$element.trigger("pinchOut",[pinchDirection||null,pinchDistance||0,duration||0,fingerCount,pinchZoom,fingerData]),options.pinchOut&&(ret=options.pinchOut.call($element,event,pinchDirection||null,pinchDistance||0,duration||0,fingerCount,pinchZoom,fingerData));}}return gesture==TAP?phase!==PHASE_CANCEL&&phase!==PHASE_END||(clearTimeout(singleTapTimeout),clearTimeout(holdTimeout),hasDoubleTap()&&!inDoubleTap()?(doubleTapStartTime=getTimeStamp(),singleTapTimeout=setTimeout($.proxy(function(){doubleTapStartTime=null,$element.trigger("tap",[event.target]),options.tap&&(ret=options.tap.call($element,event,event.target));},this),options.doubleTapThreshold)):(doubleTapStartTime=null,$element.trigger("tap",[event.target]),options.tap&&(ret=options.tap.call($element,event,event.target)))):gesture==DOUBLE_TAP?phase!==PHASE_CANCEL&&phase!==PHASE_END||(clearTimeout(singleTapTimeout),clearTimeout(holdTimeout),doubleTapStartTime=null,$element.trigger("doubletap",[event.target]),options.doubleTap&&(ret=options.doubleTap.call($element,event,event.target))):gesture==LONG_TAP&&(phase!==PHASE_CANCEL&&phase!==PHASE_END||(clearTimeout(singleTapTimeout),doubleTapStartTime=null,$element.trigger("longtap",[event.target]),options.longTap&&(ret=options.longTap.call($element,event,event.target)))),ret}function validateSwipeDistance(){var valid=!0;return null!==options.threshold&&(valid=distance>=options.threshold),valid}function didSwipeBackToCancel(){var cancelled=!1;return null!==options.cancelThreshold&&null!==direction&&(cancelled=getMaxDistance(direction)-distance>=options.cancelThreshold),cancelled}function validatePinchDistance(){return null!==options.pinchThreshold?pinchDistance>=options.pinchThreshold:!0}function validateSwipeTime(){var result;return result=options.maxTimeThreshold?!(duration>=options.maxTimeThreshold):!0}function validateDefaultEvent(jqEvent,direction){if(options.preventDefaultEvents!==!1)if(options.allowPageScroll===NONE)jqEvent.preventDefault();else{var auto=options.allowPageScroll===AUTO;switch(direction){case LEFT:(options.swipeLeft&&auto||!auto&&options.allowPageScroll!=HORIZONTAL)&&jqEvent.preventDefault();break;case RIGHT:(options.swipeRight&&auto||!auto&&options.allowPageScroll!=HORIZONTAL)&&jqEvent.preventDefault();break;case UP:(options.swipeUp&&auto||!auto&&options.allowPageScroll!=VERTICAL)&&jqEvent.preventDefault();break;case DOWN:(options.swipeDown&&auto||!auto&&options.allowPageScroll!=VERTICAL)&&jqEvent.preventDefault();break;case NONE:}}}function validatePinch(){var hasCorrectFingerCount=validateFingers(),hasEndPoint=validateEndPoint(),hasCorrectDistance=validatePinchDistance();return hasCorrectFingerCount&&hasEndPoint&&hasCorrectDistance}function hasPinches(){return !!(options.pinchStatus||options.pinchIn||options.pinchOut)}function didPinch(){return !(!validatePinch()||!hasPinches())}function validateSwipe(){var hasValidTime=validateSwipeTime(),hasValidDistance=validateSwipeDistance(),hasCorrectFingerCount=validateFingers(),hasEndPoint=validateEndPoint(),didCancel=didSwipeBackToCancel(),valid=!didCancel&&hasEndPoint&&hasCorrectFingerCount&&hasValidDistance&&hasValidTime;return valid}function hasSwipes(){return !!(options.swipe||options.swipeStatus||options.swipeLeft||options.swipeRight||options.swipeUp||options.swipeDown)}function didSwipe(){return !(!validateSwipe()||!hasSwipes())}function validateFingers(){return fingerCount===options.fingers||options.fingers===ALL_FINGERS||!SUPPORTS_TOUCH}function validateEndPoint(){return 0!==fingerData[0].end.x}function hasTap(){return !!options.tap}function hasDoubleTap(){return !!options.doubleTap}function hasLongTap(){return !!options.longTap}function validateDoubleTap(){if(null==doubleTapStartTime)return !1;var now=getTimeStamp();return hasDoubleTap()&&now-doubleTapStartTime<=options.doubleTapThreshold}function inDoubleTap(){return validateDoubleTap()}function validateTap(){return (1===fingerCount||!SUPPORTS_TOUCH)&&(isNaN(distance)||distance<options.threshold)}function validateLongTap(){return duration>options.longTapThreshold&&DOUBLE_TAP_THRESHOLD>distance}function didTap(){return !(!validateTap()||!hasTap())}function didDoubleTap(){return !(!validateDoubleTap()||!hasDoubleTap())}function didLongTap(){return !(!validateLongTap()||!hasLongTap())}function startMultiFingerRelease(event){previousTouchEndTime=getTimeStamp(),fingerCountAtRelease=event.touches.length+1;}function cancelMultiFingerRelease(){previousTouchEndTime=0,fingerCountAtRelease=0;}function inMultiFingerRelease(){var withinThreshold=!1;if(previousTouchEndTime){var diff=getTimeStamp()-previousTouchEndTime;diff<=options.fingerReleaseThreshold&&(withinThreshold=!0);}return withinThreshold}function getTouchInProgress(){return !($element.data(PLUGIN_NS+"_intouch")!==!0)}function setTouchInProgress(val){$element&&(val===!0?($element.on(MOVE_EV,touchMove),$element.on(END_EV,touchEnd),LEAVE_EV&&$element.on(LEAVE_EV,touchLeave)):($element.off(MOVE_EV,touchMove,!1),$element.off(END_EV,touchEnd,!1),LEAVE_EV&&$element.off(LEAVE_EV,touchLeave,!1)),$element.data(PLUGIN_NS+"_intouch",val===!0));}function createFingerData(id,evt){var f={start:{x:0,y:0},last:{x:0,y:0},end:{x:0,y:0}};return f.start.x=f.last.x=f.end.x=evt.pageX||evt.clientX,f.start.y=f.last.y=f.end.y=evt.pageY||evt.clientY,fingerData[id]=f,f}function updateFingerData(evt){var id=void 0!==evt.identifier?evt.identifier:0,f=getFingerData(id);return null===f&&(f=createFingerData(id,evt)),f.last.x=f.end.x,f.last.y=f.end.y,f.end.x=evt.pageX||evt.clientX,f.end.y=evt.pageY||evt.clientY,f}function getFingerData(id){return fingerData[id]||null}function setMaxDistance(direction,distance){direction!=NONE&&(distance=Math.max(distance,getMaxDistance(direction)),maximumsMap[direction].distance=distance);}function getMaxDistance(direction){return maximumsMap[direction]?maximumsMap[direction].distance:void 0}function createMaximumsData(){var maxData={};return maxData[LEFT]=createMaximumVO(LEFT),maxData[RIGHT]=createMaximumVO(RIGHT),maxData[UP]=createMaximumVO(UP),maxData[DOWN]=createMaximumVO(DOWN),maxData}function createMaximumVO(dir){return {direction:dir,distance:0}}function calculateDuration(){return endTime-startTime}function calculateTouchesDistance(startPoint,endPoint){var diffX=Math.abs(startPoint.x-endPoint.x),diffY=Math.abs(startPoint.y-endPoint.y);return Math.round(Math.sqrt(diffX*diffX+diffY*diffY))}function calculatePinchZoom(startDistance,endDistance){var percent=endDistance/startDistance*1;return percent.toFixed(2)}function calculatePinchDirection(){return 1>pinchZoom?OUT:IN}function calculateDistance(startPoint,endPoint){return Math.round(Math.sqrt(Math.pow(endPoint.x-startPoint.x,2)+Math.pow(endPoint.y-startPoint.y,2)))}function calculateAngle(startPoint,endPoint){var x=startPoint.x-endPoint.x,y=endPoint.y-startPoint.y,r=Math.atan2(y,x),angle=Math.round(180*r/Math.PI);return 0>angle&&(angle=360-Math.abs(angle)),angle}function calculateDirection(startPoint,endPoint){if(comparePoints(startPoint,endPoint))return NONE;var angle=calculateAngle(startPoint,endPoint);return 45>=angle&&angle>=0?LEFT:360>=angle&&angle>=315?LEFT:angle>=135&&225>=angle?RIGHT:angle>45&&135>angle?DOWN:UP}function getTimeStamp(){var now=new Date;return now.getTime()}function getbounds(el){el=$(el);var offset=el.offset(),bounds={left:offset.left,right:offset.left+el.outerWidth(),top:offset.top,bottom:offset.top+el.outerHeight()};return bounds}function isInBounds(point,bounds){return point.x>bounds.left&&point.x<bounds.right&&point.y>bounds.top&&point.y<bounds.bottom}function comparePoints(pointA,pointB){return pointA.x==pointB.x&&pointA.y==pointB.y}var options=$.extend({},options),useTouchEvents=SUPPORTS_TOUCH||SUPPORTS_POINTER||!options.fallbackToMouseEvents,START_EV=useTouchEvents?SUPPORTS_POINTER?SUPPORTS_POINTER_IE10?"MSPointerDown":"pointerdown":"touchstart":"mousedown",MOVE_EV=useTouchEvents?SUPPORTS_POINTER?SUPPORTS_POINTER_IE10?"MSPointerMove":"pointermove":"touchmove":"mousemove",END_EV=useTouchEvents?SUPPORTS_POINTER?SUPPORTS_POINTER_IE10?"MSPointerUp":"pointerup":"touchend":"mouseup",LEAVE_EV=useTouchEvents?SUPPORTS_POINTER?"mouseleave":null:"mouseleave",CANCEL_EV=SUPPORTS_POINTER?SUPPORTS_POINTER_IE10?"MSPointerCancel":"pointercancel":"touchcancel",distance=0,direction=null,currentDirection=null,duration=0,startTouchesDistance=0,endTouchesDistance=0,pinchZoom=1,pinchDistance=0,pinchDirection=0,maximumsMap=null,$element=$(element),phase="start",fingerCount=0,fingerData={},startTime=0,endTime=0,previousTouchEndTime=0,fingerCountAtRelease=0,doubleTapStartTime=0,singleTapTimeout=null,holdTimeout=null;try{$element.on(START_EV,touchStart),$element.on(CANCEL_EV,touchCancel);}catch(e){$.error("events not supported "+START_EV+","+CANCEL_EV+" on jQuery.swipe");}this.enable=function(){return this.disable(),$element.on(START_EV,touchStart),$element.on(CANCEL_EV,touchCancel),$element},this.disable=function(){return removeListeners(),$element},this.destroy=function(){removeListeners(),$element.data(PLUGIN_NS,null),$element=null;},this.option=function(property,value){if("object"==typeof property)options=$.extend(options,property);else if(void 0!==options[property]){if(void 0===value)return options[property];options[property]=value;}else{if(!property)return options;$.error("Option "+property+" does not exist on jQuery.swipe.options");}return null};}var VERSION="1.6.18",LEFT="left",RIGHT="right",UP="up",DOWN="down",IN="in",OUT="out",NONE="none",AUTO="auto",SWIPE="swipe",PINCH="pinch",TAP="tap",DOUBLE_TAP="doubletap",LONG_TAP="longtap",HORIZONTAL="horizontal",VERTICAL="vertical",ALL_FINGERS="all",DOUBLE_TAP_THRESHOLD=10,PHASE_START="start",PHASE_MOVE="move",PHASE_END="end",PHASE_CANCEL="cancel",SUPPORTS_TOUCH="ontouchstart"in window,SUPPORTS_POINTER_IE10=window.navigator.msPointerEnabled&&!window.PointerEvent&&!SUPPORTS_TOUCH,SUPPORTS_POINTER=(window.PointerEvent||window.navigator.msPointerEnabled)&&!SUPPORTS_TOUCH,PLUGIN_NS="TouchSwipe",defaults={fingers:1,threshold:75,cancelThreshold:null,pinchThreshold:20,maxTimeThreshold:null,fingerReleaseThreshold:250,longTapThreshold:500,doubleTapThreshold:200,swipe:null,swipeLeft:null,swipeRight:null,swipeUp:null,swipeDown:null,swipeStatus:null,pinchIn:null,pinchOut:null,pinchStatus:null,click:null,tap:null,doubleTap:null,longTap:null,hold:null,triggerOnTouchEnd:!0,triggerOnTouchLeave:!1,allowPageScroll:"auto",fallbackToMouseEvents:!0,excludedElements:".noSwipe",preventDefaultEvents:!0};$.fn.swipe=function(method){var $this=$(this),plugin=$this.data(PLUGIN_NS);if(plugin&&"string"==typeof method){if(plugin[method])return plugin[method].apply(plugin,Array.prototype.slice.call(arguments,1));$.error("Method "+method+" does not exist on jQuery.swipe");}else if(plugin&&"object"==typeof method)plugin.option.apply(plugin,arguments);else if(!(plugin||"object"!=typeof method&&method))return init.apply(this,arguments);return $this},$.fn.swipe.version=VERSION,$.fn.swipe.defaults=defaults,$.fn.swipe.phases={PHASE_START:PHASE_START,PHASE_MOVE:PHASE_MOVE,PHASE_END:PHASE_END,PHASE_CANCEL:PHASE_CANCEL},$.fn.swipe.directions={LEFT:LEFT,RIGHT:RIGHT,UP:UP,DOWN:DOWN,IN:IN,OUT:OUT},$.fn.swipe.pageScroll={NONE:NONE,HORIZONTAL:HORIZONTAL,VERTICAL:VERTICAL,AUTO:AUTO},$.fn.swipe.fingers={ONE:1,TWO:2,THREE:3,FOUR:4,FIVE:5,ALL:ALL_FINGERS};});
 	});
 
 	/**
 	 * Pages module.
+	 * 
+	 * @module pages
 	 */
 
 	var pageModule = {
@@ -23518,7 +23817,7 @@
 	    },
 	    _setRepeatHandlers() {
 	        // TODO: can be optimized by smartly updating the active pages
-	        this.form.view.html.addEventListener( event.AddRepeat().type, event => {
+	        this.form.view.html.addEventListener( events.AddRepeat().type, event => {
 	            const byCountUpdate = event.detail ? event.detail[ 1 ] : undefined;
 	            this._updateAllActive();
 	            // Don't flip if the user didn't create the repeat with the + button.
@@ -23528,7 +23827,7 @@
 	                this.flipToPageContaining( jquery( event.target ) );
 	            }
 	        } );
-	        this.form.view.html.addEventListener( event.RemoveRepeat().type, event => {
+	        this.form.view.html.addEventListener( events.RemoveRepeat().type, event => {
 	            // if the current page is removed
 	            // note that that.$current will have length 1 even if it was removed from DOM!
 	            if ( this.$current.closest( 'html' ).length === 0 ) {
@@ -23558,7 +23857,7 @@
 	    },
 	    _setLangChangeHandlers() {
 	        this.form.view.html
-	            .addEventListener( event.ChangeLanguage().type, () => {
+	            .addEventListener( events.ChangeLanguage().type, () => {
 	                this._updateToc();
 	            } );
 	    },
@@ -23600,7 +23899,7 @@
 	        let validate;
 
 	        currentIndex = this._getCurrentIndex();
-	        validate = this.form.validateContent( this.$current );
+	        validate =  this.form.validateContent( this.$current );
 
 	        return validate
 	            .then( valid => {
@@ -23644,13 +23943,13 @@
 	                this._setToCurrent( pageEl );
 	                this._focusOnFirstQuestion( pageEl );
 	                this._toggleButtons( newIndex );
-	                pageEl.dispatchEvent( event.PageFlip() );
+	                pageEl.dispatchEvent( events.PageFlip() );
 	            }
 	        } else {
 	            this._setToCurrent( pageEl );
 	            this._focusOnFirstQuestion( pageEl );
 	            this._toggleButtons( newIndex );
-	            pageEl.dispatchEvent( event.PageFlip() );
+	            pageEl.dispatchEvent( events.PageFlip() );
 	        }
 	    },
 	    _flipToFirst() {
@@ -23721,7 +24020,9 @@
 	};
 
 	/**
-	 * Updates branches
+	 * @module relevant
+	 *
+	 * @description Updates branches
 	 *
 	 * @param  {{nodes:Array<string>=, repeatPath: string=, repeatIndex: number=}=} updated The object containing info on updated data nodes
 	 */
@@ -23753,6 +24054,7 @@
 
 	        $nodes.each( function() {
 	            const $node = jquery( this );
+	            const node = this;
 	            let context;
 	            let $parentGroups;
 	            let pathParts;
@@ -23769,8 +24071,8 @@
 	            p = {};
 	            cacheIndex = null;
 
-	            p.relevant = that.form.input.getRelevant( $node );
-	            p.path = that.form.input.getName( $node );
+	            p.relevant = that.form.input.getRelevant( node );
+	            p.path = that.form.input.getName( node );
 
 	            if ( $branchNode.length !== 1 ) {
 	                if ( $node.parentsUntil( '.or', '#or-calculated-items' ).length === 0 ) {
@@ -23808,7 +24110,7 @@
 	            insideRepeat = clonedRepeatsPresent && $branchNode.parentsUntil( '.or', '.or-repeat' ).length > 0;
 	            insideRepeatClone = clonedRepeatsPresent && $branchNode.parentsUntil( '.or', '.or-repeat.clone' ).length > 0;
 
-	            /* 
+	            /*
 	             * If the relevant is placed on a group and that group contains repeats with the same name,
 	             * but currently has 0 repeats, the context will not be available. This same logic is applied in output.js.
 	             */
@@ -23821,7 +24123,7 @@
 	             * Determining the index is expensive, so we only do this when the branch is inside a cloned repeat.
 	             * It can be safely set to 0 for other branches.
 	             */
-	            p.ind = ( context && insideRepeatClone ) ? that.form.input.getIndex( $node ) : 0;
+	            p.ind = ( context && insideRepeatClone ) ? that.form.input.getIndex( node ) : 0;
 	            /*
 	             * Caching is only possible for expressions that do not contain relative paths to nodes.
 	             * So, first do a *very* aggresive check to see if the expression contains a relative path.
@@ -23861,10 +24163,10 @@
 	    /**
 	     * Evaluates a relevant expression (for future fancy stuff this is placed in a separate function)
 	     *
-	     * @param  {string} expr        [description]
-	     * @param  {string} contextPath [description]
-	     * @param  {number} index       [description]
-	     * @return {boolean}             [description]
+	     * @param {string} expr
+	     * @param {string} contextPath
+	     * @param {number} index
+	     * @return {boolean}
 	     */
 	    evaluate( expr, contextPath, index ) {
 	        const result = this.form.model.evaluate( expr, 'boolean', contextPath, index );
@@ -23873,10 +24175,10 @@
 	    /**
 	     * Processes the evaluation result for a branch
 	     *
-	     * @param { jQuery } $branchNode [description]
-	     * @param { string } path Path of branch node
-	     * @param { boolean } result      result of relevant evaluation
-	     * @param { =boolean } forceClearIrrelevant Whether to force clearing of irrelevant nodes and descendants
+	     * @param {jQuery} $branchNode
+	     * @param {string} path - Path of branch node
+	     * @param {boolean} result - result of relevant evaluation
+	     * @param {boolean} forceClearIrrelevant - Whether to force clearing of irrelevant nodes and descendants
 	     */
 	    process( $branchNode, path, result, forceClearIrrelevant ) {
 	        if ( result === true ) {
@@ -23889,8 +24191,8 @@
 	    /**
 	     * Checks whether branch currently has 'relevant' state
 	     *
-	     * @param  {jQuery} $branchNode [description]
-	     * @return {boolean}             [description]
+	     * @param {jQuery} $branchNode
+	     * @return {boolean}
 	     */
 	    selfRelevant( $branchNode ) {
 	        return !$branchNode.hasClass( 'disabled' ) && !$branchNode.hasClass( 'pre-init' );
@@ -23899,7 +24201,7 @@
 	    /**
 	     * Enables and reveals a branch node/group
 	     *
-	     * @param  {jQuery} $branchNode The jQuery object to reveal and enable
+	     * @param {jQuery} $branchNode - The jQuery object to reveal and enable
 	     */
 	    enable( $branchNode, path ) {
 	        let change = false;
@@ -23948,16 +24250,16 @@
 	        return change;
 	    },
 	    /**
-	     * Clears values from branchnode. 
+	     * Clears values from branchnode.
 	     * This function is separated so it can be overridden in custom apps.
-	     * 
-	     * @param  {[type]} $branchNode [description]
-	     * @return {boolean}             [description]
+	     *
+	     * @param  {jQuery} $branchNode
+	     * @param  {string} path
 	     */
 	    clear( $branchNode, path ) {
 	        // A change event ensures the model is updated
 	        // An inputupdate event is required to update widgets
-	        $branchNode.clearInputs( 'change', event.InputUpdate().type );
+	        $branchNode.clearInputs( 'change', events.InputUpdate().type );
 	        // Update calculated items if branch is a group
 	        // We exclude question branches here because those will have been cleared already in the previous line.
 	        if ( $branchNode.is( '.or-group, .or-group-data' ) ) {
@@ -23981,9 +24283,8 @@
 	    /**
 	     * Activates form controls.
 	     * This function is separated so it can be overridden in custom apps.
-	     * 
-	     * @param  {[type]} $branchNode [description]
-	     * @return {[type]}            [description]
+	     *
+	     * @param {jQuery} $branchNode
 	     */
 	    activate( $branchNode ) {
 	        this.setDisabledProperty( $branchNode, false );
@@ -23991,9 +24292,8 @@
 	    /**
 	     * Deactivates form controls.
 	     * This function is separated so it can be overridden in custom apps.
-	     * 
-	     * @param  {[type]} $branchNode [description]
-	     * @return {[type]}             [description]
+	     *
+	     * @param {jQuery} $branchNode
 	     */
 	    deactivate( $branchNode ) {
 	        $branchNode.addClass( 'disabled' );
@@ -24003,12 +24303,15 @@
 	};
 
 	/**
-	 * Updates itemsets
-	 *
-	 * @param  {{nodes:Array<string>=, repeatPath: string=, repeatIndex: number=}=} updated The object containing info on updated data nodes
+	 * Updates itemsets.
+	 * 
+	 * @module itemset
 	 */
 
 	var itemsetModule = {
+	    /**
+	     * @param  {{nodes:Array<string>=, repeatPath: string=, repeatIndex: number=}=} updated The object containing info on updated data nodes
+	     */
 	    update( updated = {} ) {
 	        const that = this;
 	        const itemsCache = {};
@@ -24084,7 +24387,7 @@
 	             * I am not sure what is correct, but for now for XLSForm-style secondary instances with only one level underneath the <item>s that
 	             * the nodeset retrieves, Enketo's aproach works well.
 	             */
-	            const context = that.form.input.getName( $input );
+	            const context = that.form.input.getName( $input[ 0 ] );
 
 	            /*
 	             * Determining the index is expensive, so we only do this when the itemset is inside a cloned repeat.
@@ -24092,7 +24395,7 @@
 	             */
 	            const insideRepeat = ( clonedRepeatsPresent && $input.parentsUntil( '.or', '.or-repeat' ).length > 0 ) ? true : false;
 	            const insideRepeatClone = ( clonedRepeatsPresent && $input.parentsUntil( '.or', '.or-repeat.clone' ).length > 0 ) ? true : false;
-	            const index = ( insideRepeatClone ) ? that.form.input.getIndex( $input ) : 0;
+	            const index = ( insideRepeatClone ) ? that.form.input.getIndex( $input[ 0 ] ) : 0;
 
 	            if ( typeof itemsCache[ itemsXpath ] !== 'undefined' ) {
 	                $instanceItems = itemsCache[ itemsXpath ];
@@ -24201,7 +24504,7 @@
 	                if ( $input.hasClass( 'rank' ) ) {
 	                    currentValue = '';
 	                }
-	                that.form.input.setVal( $input, currentValue );
+	                that.form.input.setVal( $input[ 0 ], currentValue );
 	                $input.trigger( 'change' );
 	            }
 
@@ -24281,38 +24584,48 @@
 
 	/**
 	 * Progress module.
+	 * 
+	 * @module progress
 	 */
 
 	/**
 	 * Maintains progress state of user traversing through form, using
-	 * currently focused input || last changed input as current location.
+	 * currently focused input or the last changed input as the indicator for the current location.
 	 */
 	var progressModule = {
 	    status: 0,
 	    lastChanged: null,
-	    $all: null,
+	    all: null,
 	    updateTotal() {
-	        this.$all = this.form.view.$.find( '.question' ).not( '.disabled, .or-appearance-comment, .or-appearance-dn' ).filter( function() {
-	            return jquery( this ).parentsUntil( '.or', '.disabled' ).length === 0;
-	        } );
+	        this.all = [ ...this.form.view.html.querySelectorAll( '.question:not(.disabled):not(.or-appearance-comment):not(.or-appearance-dn):not(.readonly)' ) ]
+	            .filter( question => !question.closest( '.disabled' ) );
 	    },
-	    // updates rounded % value of progress and triggers event if changed
+	    /**
+	     * Updates rounded % value of progress and triggers event if changed.
+	     *
+	     * @param {Element} el
+	     */
 	    update( el ) {
 	        let status;
 
-	        if ( !this.$all || !el ) {
+	        if ( !this.all || !el ) {
 	            this.updateTotal();
 	        }
 
 	        this.lastChanged = el || this.lastChanged;
-	        status = Math.round( ( ( this.$all.index( jquery( this.lastChanged ).closest( '.question' ) ) + 1 ) * 100 ) / this.$all.length );
+	        if ( this.lastChanged ) {
+	            status = Math.round( ( ( this.all.indexOf( this.lastChanged.closest( '.question' ) ) + 1 ) * 100 ) / this.all.length );
+	        }
 
 	        // if the current el was removed (inside removed repeat), the status will be 0 - leave unchanged
 	        if ( status > 0 && status !== this.status ) {
 	            this.status = status;
-	            this.form.view.$.trigger( 'progressupdate.enketo', status );
+	            this.form.view.html.dispatchEvent( events.ProgressUpdate( status ) );
 	        }
 	    },
+	    /**
+	     * @returns string
+	     */
 	    get() {
 	        return this.status;
 	    }
@@ -24351,8 +24664,9 @@
 
 	    // Not meant to be overridden, but could be. Recommend to extend `get props()` instead.
 	    _getProps() {
+	        const that = this;
 	        return {
-	            readonly: this.element.nodeName.toLowerCase === 'select' ? !!this.element.getAttribute( 'readonly' ) : !!this.element.readOnly,
+	            get readonly() { return that.element.nodeName.toLowerCase() === 'select' ? !!that.element.getAttribute( 'readonly' ) : !!that.element.readOnly; },
 	            appearances: [ ...this.element.closest( '.question, form.or' ).classList ]
 	                .filter( cls => cls.indexOf( 'or-appearance-' ) === 0 )
 	                .map( cls => cls.substring( 14 ) ),
@@ -24377,7 +24691,7 @@
 	    }
 
 	    /**
-	     * Updates languages, <option>s (cascading selects, and (calculated) values.
+	     * Updates form-defined language strings, <option>s (cascading selects, and (calculated) values.
 	     * Most of the times, this function needs to be overridden in the widget.
 	     */
 	    update() {}
@@ -24450,7 +24764,7 @@
 	     * @memberof Widget
 	     */
 	    get originalInputValue() {
-	        return input.getVal( jquery( this.element ) );
+	        return inputHelper.getVal( this.element );
 	    }
 
 	    /**
@@ -24460,8 +24774,11 @@
 	     * @memberof Widget
 	     */
 	    set originalInputValue( value ) {
-	        input.setVal( jquery( this.element ), value, null );
-	        this.element.dispatchEvent( event.Change() );
+	        // Avoid unnecessary change events as they could have significant negative consequences!
+	        // However, to add a check for this.originalInputValue !== value here would affect performance too much,
+	        // so we rely on widget code to only this setter when the value changes.
+	        inputHelper.setVal( this.element, value, null );
+	        this.element.dispatchEvent( events.Change() );
 	    }
 
 	    /** 
@@ -24495,15 +24812,28 @@
 	    }
 	}
 
+	/** 
+	 * @module sniffer 
+	 **/
+
 	const ua = navigator.userAgent;
 
 	// We usually don't need to know which OS is running, but want to know
 	// whether a specific OS is runnning.
 
+	/** 
+	 * @namespace os
+	 **/
 	const os = {
+	    /** 
+	     * @type string
+	     **/
 	    get ios() {
 	        return /iPad|iPhone|iPod/i.test( ua );
 	    },
+	    /** 
+	     * @type string
+	     **/
 	    get android() {
 	        return /android/i.test( ua );
 	    }
@@ -24511,6 +24841,8 @@
 
 	/**
 	 * Detects features.
+	 * 
+	 * @module support
 	 */
 
 	const inputTypes = {};
@@ -24530,9 +24862,15 @@
 	}
 
 	var support = {
+	    /** 
+	     * @type Array<string>
+	     **/
 	    get inputTypes() {
 	        return inputTypes;
 	    },
+	    /** 
+	     * @type boolean
+	     **/
 	    get touch() {
 	        return mobile;
 	    },
@@ -24714,12 +25052,12 @@
 	/**
 	 * Bootstrap Select picker that supports single and multiple selects
 	 * A port of https://github.com/silviomoreto/bootstrap-select
-	 *
+	 * @extends Widget
 	 */
 	class DesktopSelectpicker extends Widget {
 
 	    static get selector() {
-	        return 'select:not(#form-languages)';
+	        return '.question select';
 	    }
 
 	    static get list() {
@@ -24735,6 +25073,9 @@
 	        $select.css( 'display', 'none' );
 	        const $template = this._createLi( this._getTemplate() );
 	        this.$picker = $template.insertAfter( $select );
+	        if ( this.props.readonly ) {
+	            this.disable();
+	        }
 	        this._clickListener();
 	        this._focusListener();
 	    }
@@ -24752,9 +25093,6 @@
 	        const li = [];
 	        let liHtml = '';
 	        const inputAttr = this.props.multiple ? 'type="checkbox"' : `type="radio" name="${Math.random() * 100000}"`;
-	        const readonlyAttr = this.props.readonly ? ' readonly="readonly"' : '';
-	        const disabledAttr = this.props.readonly ? ' disabled="disabled"' : '';
-	        const disabledClass = this.props.readonly ? ' class="disabled"' : '';
 
 	        jquery( this.element ).find( 'option' ).each( function() {
 	            li.push( {
@@ -24781,10 +25119,10 @@
 	                     *    </li>
 	                     */
 	                    liHtml += `
-                    <li ${disabledClass}${checkedLiAttr}>
+                    <li ${checkedLiAttr}>
                         <a class="option-wrapper" tabindex="-1" href="#">
                             <label>
-                                <input class="ignore" ${inputAttr}${checkedInputAttr}${readonlyAttr}${disabledAttr} value="${li[ i ].value}" />
+                                <input class="ignore" ${inputAttr}${checkedInputAttr} value="${li[ i ].value}" />
                                 <span class="option-label">${li[ i ].label}</span>
                             </label>
                         </a>
@@ -24855,7 +25193,7 @@
 	                // we had to use event.preventDefault() on <a> tag click events.
 	                // This broke view updates when clicking on the radiobuttons and checkboxes directly
 	                // although the underlying values did change correctly.
-	                // 
+	                //
 	                // It has to do with event propagation. I could not figure out how to fix it.
 	                // Therefore I used a workaround by slightly delaying the status changes.
 	                setTimeout( () => {
@@ -24870,7 +25208,7 @@
 	                    }
 
 	                    _this.$picker.find( '.selected' ).html( _this._createSelectedStr() );
-	                    select.dispatchEvent( new event.Change() );
+	                    select.dispatchEvent( new events.Change() );
 	                }, 10 );
 
 	            } )
@@ -24904,25 +25242,30 @@
 	        const _this = this;
 
 	        // Focus on original element (form.goTo functionality)
-	        jquery( this.element ).on( 'applyfocus', () => {
+	        this.element.addEventListener( events.ApplyFocus().type, () => {
 	            _this.$picker.find( '.dropdown-toggle' ).focus();
 	        } );
 
-	        // focus on widget
-	        this.$picker.on( 'shown.bs.dropdown', () => {
-	            jquery( _this.element ).trigger( 'fakefocus' );
-	            return true;
-	        } );
 	    }
 
 	    disable() {
-	        this.$picker.find( 'li' ).addClass( 'disabled' );
+	        this.$picker[ 0 ].querySelectorAll( 'li' ).forEach( el => {
+	            el.classList.add( 'disabled' );
+	            const input = el.querySelector( 'input' );
+	            // are both below necessary?
+	            input.disabled = true;
+	            input.readOnly = true;
+	        } );
 	    }
 
 	    enable() {
-	        if ( !this.props.readonly ) {
-	            this.$picker.find( 'li' ).removeClass( 'disabled' );
-	        }
+	        this.$picker[ 0 ].querySelectorAll( 'li' ).forEach( el => {
+	            el.classList.remove( 'disabled' );
+	            const input = el.querySelector( 'input' );
+	            input.disabled = false;
+	            input.readOnly = false;
+	        } );
+
 	    }
 
 	    update() {
@@ -24934,11 +25277,12 @@
 	/**
 	 * An enhancement for the native multi-selectpicker found on most mobile devices,
 	 * that shows the selected values next to the select box
+	 * @extends Widget
 	 */
 	class MobileSelectPicker extends Widget {
 
 	    static get selector() {
-	        return 'select[multiple]';
+	        return '.question select[multiple]';
 	    }
 
 	    static condition() {
@@ -25200,11 +25544,12 @@
 
 	/**
 	 * Autocomplete select1 picker for modern browsers.
+	 * @extends Widget
 	 */
 	class AutocompleteSelectpicker extends Widget {
 
 	    static get selector() {
-	        return 'input[list]';
+	        return '.question input[list]';
 	    }
 
 	    static get list() {
@@ -25216,15 +25561,15 @@
 
 	        this.options = [ ...this.question.querySelectorAll( `datalist#${listId} > option` ) ];
 
-	        // This value -> data-value change is not slow, so no need to move to enketo-xslt as that would 
+	        // This value -> data-value change is not slow, so no need to move to enketo-xslt as that would
 	        // increase itemset complexity even further.
 	        this.options.forEach( item => {
 	            const value = item.getAttribute( 'value' );
 	            /**
 	             * We're changing the original datalist here, so have to make sure we don't do anything
 	             * if dataset.value is already populated.
-	             * 
-	             * However, for some reason !item.dataset.value is failing in Safari, which as a result sets all dataset.value attributes to "null" 
+	             *
+	             * However, for some reason !item.dataset.value is failing in Safari, which as a result sets all dataset.value attributes to "null"
 	             * To workaround this, we check for the value attribute instead.
 	             */
 	            if ( !item.classList.contains( 'itemset-template' ) && item.textContent && value !== undefined && value !== null ) {
@@ -25269,7 +25614,7 @@
 	        // If a corresponding label cannot be found the value is invalid,
 	        // and should be cleared. For this we trigger an 'input' event.
 	        if ( inputValue && !label ) {
-	            this.fakeInput.dispatchEvent( event.Input() );
+	            this.fakeInput.dispatchEvent( events.Input() );
 	        }
 	    }
 
@@ -25319,13 +25664,8 @@
 	    }
 
 	    _setFocusListener() {
-	        // Handle widget focus
-	        this.fakeInput.addEventListener( 'focus', () => {
-	            this.element.dispatchEvent( event.FakeFocus() );
-	        } );
-
 	        // Handle original input focus
-	        this.element.addEventListener( 'applyfocus', () => {
+	        this.element.addEventListener( events.ApplyFocus().type, () => {
 	            this.fakeInput.focus();
 	        } );
 	    }
@@ -25345,7 +25685,7 @@
 	         * 1. The options change (dynamic itemset)
 	         * 2. The language changed. (just this._showCurrentLabel() would be more efficient)
 	         * 3. The value of the underlying original input changed due a calculation. (same as #2?)
-	         * 
+	         *
 	         * For now we just dumbly reinstantiate it (including the polyfill).
 	         */
 	        this.element.parentElement.querySelector( '.widget' ).remove();
@@ -25355,14 +25695,14 @@
 
 	var leafletSrc = createCommonjsModule(function (module, exports) {
 	/* @preserve
-	 * Leaflet 1.4.0, a JS library for interactive maps. http://leafletjs.com
+	 * Leaflet 1.5.1+build.2e3e0ff, a JS library for interactive maps. http://leafletjs.com
 	 * (c) 2010-2018 Vladimir Agafonkin, (c) 2010-2011 CloudMade
 	 */
 
 	(function (global, factory) {
-		factory(exports);
+		 factory(exports) ;
 	}(commonjsGlobal, (function (exports) {
-	var version = "1.4.0";
+	var version = "1.5.1+build.2e3e0ffb";
 
 	/*
 	 * @namespace Util
@@ -25480,8 +25820,8 @@
 	// @function formatNum(num: Number, digits?: Number): Number
 	// Returns the number `num` rounded to `digits` decimals, or to 6 decimals by default.
 	function formatNum(num, digits) {
-		var pow = Math.pow(10, (digits === undefined ? 6 : digits));
-		return Math.round(num * pow) / pow;
+		digits = (digits === undefined ? 6 : digits);
+		return +(Math.round(num + ('e+' + digits)) + ('e-' + digits));
 	}
 
 	// @function trim(str: String): String
@@ -25821,7 +26161,7 @@
 		 *
 		 * @alternative
 		 * @method off: this
-		 * Removes all listeners to all events on the object.
+		 * Removes all listeners to all events on the object. This includes implicitly attached events.
 		 */
 		off: function (types, fn, context) {
 
@@ -27001,9 +27341,11 @@
 	 * a sphere. Used by the `EPSG:3857` CRS.
 	 */
 
+	var earthRadius = 6378137;
+
 	var SphericalMercator = {
 
-		R: 6378137,
+		R: earthRadius,
 		MAX_LATITUDE: 85.0511287798,
 
 		project: function (latlng) {
@@ -27026,7 +27368,7 @@
 		},
 
 		bounds: (function () {
-			var d = 6378137 * Math.PI;
+			var d = earthRadius * Math.PI;
 			return new Bounds([-d, -d], [d, d]);
 		})()
 	};
@@ -27524,6 +27866,7 @@
 					touch$$1 = newTouch;
 				}
 				touch$$1.type = 'dblclick';
+				touch$$1.button = 0;
 				handler(touch$$1);
 				last = null;
 			}
@@ -29661,9 +30004,15 @@
 			// this event. Also fired on mobile when the user holds a single touch
 			// for a second (also called long press).
 			// @event keypress: KeyboardEvent
-			// Fired when the user presses a key from the keyboard while the map is focused.
+			// Fired when the user presses a key from the keyboard that produces a character value while the map is focused.
+			// @event keydown: KeyboardEvent
+			// Fired when the user presses a key from the keyboard while the map is focused. Unlike the `keypress` event,
+			// the `keydown` event is fired for keys that produce a character value and for keys
+			// that do not produce a character value.
+			// @event keyup: KeyboardEvent
+			// Fired when the user releases a key from the keyboard while the map is focused.
 			onOff(this._container, 'click dblclick mousedown mouseup ' +
-				'mouseover mouseout mousemove contextmenu keypress', this._handleDOMEvent, this);
+				'mouseover mouseout mousemove contextmenu keypress keydown keyup', this._handleDOMEvent, this);
 
 			if (this.options.trackResize) {
 				onOff(window, 'resize', this._onResize, this);
@@ -29727,7 +30076,7 @@
 
 			var type = e.type;
 
-			if (type === 'mousedown' || type === 'keypress') {
+			if (type === 'mousedown' || type === 'keypress' || type === 'keyup' || type === 'keydown') {
 				// prevents outline when clicking on keyboard-focusable element
 				preventOutline(e.target || e.srcElement);
 			}
@@ -29766,7 +30115,7 @@
 				originalEvent: e
 			};
 
-			if (e.type !== 'keypress') {
+			if (e.type !== 'keypress' && e.type !== 'keydown' && e.type !== 'keyup') {
 				var isMarker = target.getLatLng && (!target._radius || target._radius <= 10);
 				data.containerPoint = isMarker ?
 					this.latLngToContainerPoint(target.getLatLng()) : this.mouseEventToContainerPoint(e);
@@ -30019,7 +30368,7 @@
 			}
 
 			// @event zoomanim: ZoomAnimEvent
-			// Fired at least once per zoom animation. For continous zoom, like pinch zooming, fired once per frame during zoom.
+			// Fired at least once per zoom animation. For continuous zoom, like pinch zooming, fired once per frame during zoom.
 			this.fire('zoomanim', {
 				center: center,
 				zoom: zoom,
@@ -30137,6 +30486,8 @@
 				corner.appendChild(container);
 			}
 
+			this._map.on('unload', this.remove, this);
+
 			return this;
 		},
 
@@ -30153,6 +30504,7 @@
 				this.onRemove(this._map);
 			}
 
+			this._map.off('unload', this.remove, this);
 			this._map = null;
 
 			return this;
@@ -30550,7 +30902,7 @@
 				input.className = 'leaflet-control-layers-selector';
 				input.defaultChecked = checked;
 			} else {
-				input = this._createRadioElement('leaflet-base-layers', checked);
+				input = this._createRadioElement('leaflet-base-layers_' + stamp(this), checked);
 			}
 
 			this._layerControlInputs.push(input);
@@ -30935,7 +31287,7 @@
 
 			// @option prefix: String = 'Leaflet'
 			// The HTML text shown before the attributions. Pass `false` to disable.
-			prefix: '<a href="http://leafletjs.com" title="A JS library for interactive maps">Leaflet</a>'
+			prefix: '<a href="https://leafletjs.com" title="A JS library for interactive maps">Leaflet</a>'
 		},
 
 		initialize: function (options) {
@@ -31680,7 +32032,7 @@
 	 * @namespace Projection
 	 * @projection L.Projection.Mercator
 	 *
-	 * Elliptical Mercator projection — more complex than Spherical Mercator. Takes into account that Earth is a geoid, not a perfect sphere. Used by the EPSG:3395 CRS.
+	 * Elliptical Mercator projection — more complex than Spherical Mercator. Assumes that Earth is an ellipsoid. Used by the EPSG:3395 CRS.
 	 */
 
 	var Mercator = {
@@ -31840,7 +32192,7 @@
 	 * @example
 	 *
 	 * ```js
-	 * var layer = L.Marker(latlng).addTo(map);
+	 * var layer = L.marker(latlng).addTo(map);
 	 * layer.addTo(map);
 	 * layer.remove();
 	 * ```
@@ -32771,6 +33123,10 @@
 			// `Map pane` where the markers icon will be added.
 			pane: 'markerPane',
 
+			// @option pane: String = 'shadowPane'
+			// `Map pane` where the markers shadow will be added.
+			shadowPane: 'shadowPane',
+
 			// @option bubblingMouseEvents: Boolean = false
 			// When `true`, a mouse event on this marker will trigger the same event on the map
 			// (unless [`L.DomEvent.stopPropagation`](#domevent-stoppropagation) is used).
@@ -32861,6 +33217,12 @@
 		setZIndexOffset: function (offset) {
 			this.options.zIndexOffset = offset;
 			return this.update();
+		},
+
+		// @method getIcon: Icon
+		// Returns the current icon used by the marker
+		getIcon: function () {
+			return this.options.icon;
 		},
 
 		// @method setIcon(icon: Icon): this
@@ -32958,7 +33320,7 @@
 			}
 			this._initInteraction();
 			if (newShadow && addShadow) {
-				this.getPane('shadowPane').appendChild(this._shadow);
+				this.getPane(options.shadowPane).appendChild(this._shadow);
 			}
 		},
 
@@ -33042,7 +33404,9 @@
 		_updateOpacity: function () {
 			var opacity = this.options.opacity;
 
-			setOpacity(this._icon, opacity);
+			if (this._icon) {
+				setOpacity(this._icon, opacity);
+			}
 
 			if (this._shadow) {
 				setOpacity(this._shadow, opacity);
@@ -33179,6 +33543,9 @@
 			setOptions(this, style);
 			if (this._renderer) {
 				this._renderer._updateStyle(this);
+				if (this.options.stroke && style.hasOwnProperty('weight')) {
+					this._updateBounds();
+				}
 			}
 			return this;
 		},
@@ -33620,14 +33987,19 @@
 			this._rings = [];
 			this._projectLatlngs(this._latlngs, this._rings, pxBounds);
 
+			if (this._bounds.isValid() && pxBounds.isValid()) {
+				this._rawPxBounds = pxBounds;
+				this._updateBounds();
+			}
+		},
+
+		_updateBounds: function () {
 			var w = this._clickTolerance(),
 			    p = new Point(w, w);
-
-			if (this._bounds.isValid() && pxBounds.isValid()) {
-				pxBounds.min._subtract(p);
-				pxBounds.max._add(p);
-				this._pxBounds = pxBounds;
-			}
+			this._pxBounds = new Bounds([
+				this._rawPxBounds.min.subtract(p),
+				this._rawPxBounds.max.add(p)
+			]);
 		},
 
 		// recursively turns latlngs into a set of rings with projected coordinates
@@ -34057,10 +34429,10 @@
 		},
 
 		_setLayerStyle: function (layer, style) {
-			if (typeof style === 'function') {
-				style = style(layer.feature);
-			}
 			if (layer.setStyle) {
+				if (typeof style === 'function') {
+					style = style(layer.feature);
+				}
 				layer.setStyle(style);
 			}
 		}
@@ -34210,19 +34582,25 @@
 	};
 
 	// @namespace Marker
-	// @method toGeoJSON(): Object
+	// @method toGeoJSON(precision?: Number): Object
+	// `precision` is the number of decimal places for coordinates.
+	// The default value is 6 places.
 	// Returns a [`GeoJSON`](http://en.wikipedia.org/wiki/GeoJSON) representation of the marker (as a GeoJSON `Point` Feature).
 	Marker.include(PointToGeoJSON);
 
 	// @namespace CircleMarker
-	// @method toGeoJSON(): Object
+	// @method toGeoJSON(precision?: Number): Object
+	// `precision` is the number of decimal places for coordinates.
+	// The default value is 6 places.
 	// Returns a [`GeoJSON`](http://en.wikipedia.org/wiki/GeoJSON) representation of the circle marker (as a GeoJSON `Point` Feature).
 	Circle.include(PointToGeoJSON);
 	CircleMarker.include(PointToGeoJSON);
 
 
 	// @namespace Polyline
-	// @method toGeoJSON(): Object
+	// @method toGeoJSON(precision?: Number): Object
+	// `precision` is the number of decimal places for coordinates.
+	// The default value is 6 places.
 	// Returns a [`GeoJSON`](http://en.wikipedia.org/wiki/GeoJSON) representation of the polyline (as a GeoJSON `LineString` or `MultiLineString` Feature).
 	Polyline.include({
 		toGeoJSON: function (precision) {
@@ -34238,7 +34616,9 @@
 	});
 
 	// @namespace Polygon
-	// @method toGeoJSON(): Object
+	// @method toGeoJSON(precision?: Number): Object
+	// `precision` is the number of decimal places for coordinates.
+	// The default value is 6 places.
 	// Returns a [`GeoJSON`](http://en.wikipedia.org/wiki/GeoJSON) representation of the polygon (as a GeoJSON `Polygon` or `MultiPolygon` Feature).
 	Polygon.include({
 		toGeoJSON: function (precision) {
@@ -34274,7 +34654,9 @@
 			});
 		},
 
-		// @method toGeoJSON(): Object
+		// @method toGeoJSON(precision?: Number): Object
+		// `precision` is the number of decimal places for coordinates.
+		// The default value is 6 places.
 		// Returns a [`GeoJSON`](http://en.wikipedia.org/wiki/GeoJSON) representation of the layer group (as a GeoJSON `FeatureCollection`, `GeometryCollection`, or `MultiPoint`).
 		toGeoJSON: function (precision) {
 
@@ -34619,7 +35001,12 @@
 
 			// @option loop: Boolean = true
 			// Whether the video will loop back to the beginning when played.
-			loop: true
+			loop: true,
+
+			// @option keepAspectRatio: Boolean = true
+			// Whether the video will save aspect ratio after the projection.
+			// Relevant for supported browsers. Browser compatibility- https://developer.mozilla.org/en-US/docs/Web/CSS/object-fit
+			keepAspectRatio: true
 		},
 
 		_initImage: function () {
@@ -34649,6 +35036,7 @@
 
 			if (!isArray(this._url)) { this._url = [this._url]; }
 
+			if (!this.options.keepAspectRatio && vid.style.hasOwnProperty('objectFit')) { vid.style['objectFit'] = 'fill'; }
 			vid.autoplay = !!this.options.autoplay;
 			vid.loop = !!this.options.loop;
 			for (var i = 0; i < this._url.length; i++) {
@@ -34670,6 +35058,49 @@
 
 	function videoOverlay(video, bounds, options) {
 		return new VideoOverlay(video, bounds, options);
+	}
+
+	/*
+	 * @class SVGOverlay
+	 * @aka L.SVGOverlay
+	 * @inherits ImageOverlay
+	 *
+	 * Used to load, display and provide DOM access to an SVG file over specific bounds of the map. Extends `ImageOverlay`.
+	 *
+	 * An SVG overlay uses the [`<svg>`](https://developer.mozilla.org/docs/Web/SVG/Element/svg) element.
+	 *
+	 * @example
+	 *
+	 * ```js
+	 * var element = '<svg width="200" height="200" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"><image xlink:href="https://mdn.mozillademos.org/files/6457/mdn_logo_only_color.png" height="200" width="200"/></svg>',
+	 * 		 elementBounds = [ [ 32, -130 ], [ 13, -100 ] ];
+	 * L.svgOverlay(element, elementBounds).addTo(map);
+	 * ```
+	 */
+
+	var SVGOverlay = ImageOverlay.extend({
+		_initImage: function () {
+			var el = this._image = this._url;
+
+			addClass(el, 'leaflet-image-layer');
+			if (this._zoomAnimated) { addClass(el, 'leaflet-zoom-animated'); }
+
+			el.onselectstart = falseFn;
+			el.onmousemove = falseFn;
+		}
+
+		// @method getElement(): SVGElement
+		// Returns the instance of [`SVGElement`](https://developer.mozilla.org/docs/Web/API/SVGElement)
+		// used by this overlay.
+	});
+
+
+	// @factory L.svgOverlay(svg: String|SVGElement, bounds: LatLngBounds, options?: SVGOverlay options)
+	// Instantiates an image overlay object given an SVG element and the geographical bounds it is tied to.
+	// A viewBox attribute is required on the SVG element to zoom in and out properly.
+
+	function svgOverlay(el, bounds, options) {
+		return new SVGOverlay(el, bounds, options);
 	}
 
 	/*
@@ -34824,6 +35255,38 @@
 				toBack(this._container);
 			}
 			return this;
+		},
+
+		_prepareOpen: function (parent, layer, latlng) {
+			if (!(layer instanceof Layer)) {
+				latlng = layer;
+				layer = parent;
+			}
+
+			if (layer instanceof FeatureGroup) {
+				for (var id in parent._layers) {
+					layer = parent._layers[id];
+					break;
+				}
+			}
+
+			if (!latlng) {
+				if (layer.getCenter) {
+					latlng = layer.getCenter();
+				} else if (layer.getLatLng) {
+					latlng = layer.getLatLng();
+				} else {
+					throw new Error('Unable to get source layer LatLng.');
+				}
+			}
+
+			// set overlay source to this layer
+			this._source = layer;
+
+			// update the overlay (content, layout, ect...)
+			this.update();
+
+			return latlng;
 		},
 
 		_updateContent: function () {
@@ -35280,28 +35743,8 @@
 		// @method openPopup(latlng?: LatLng): this
 		// Opens the bound popup at the specified `latlng` or at the default popup anchor if no `latlng` is passed.
 		openPopup: function (layer, latlng) {
-			if (!(layer instanceof Layer)) {
-				latlng = layer;
-				layer = this;
-			}
-
-			if (layer instanceof FeatureGroup) {
-				for (var id in this._layers) {
-					layer = this._layers[id];
-					break;
-				}
-			}
-
-			if (!latlng) {
-				latlng = layer.getCenter ? layer.getCenter() : layer.getLatLng();
-			}
-
 			if (this._popup && this._map) {
-				// set popup source to this layer
-				this._popup._source = layer;
-
-				// update the popup (content, layout, ect...)
-				this._popup.update();
+				latlng = this._popup._prepareOpen(this, layer, latlng);
 
 				// open the popup on the map
 				this._map.openPopup(this._popup, latlng);
@@ -35698,29 +36141,8 @@
 		// @method openTooltip(latlng?: LatLng): this
 		// Opens the bound tooltip at the specified `latlng` or at the default tooltip anchor if no `latlng` is passed.
 		openTooltip: function (layer, latlng) {
-			if (!(layer instanceof Layer)) {
-				latlng = layer;
-				layer = this;
-			}
-
-			if (layer instanceof FeatureGroup) {
-				for (var id in this._layers) {
-					layer = this._layers[id];
-					break;
-				}
-			}
-
-			if (!latlng) {
-				latlng = layer.getCenter ? layer.getCenter() : layer.getLatLng();
-			}
-
 			if (this._tooltip && this._map) {
-
-				// set tooltip source to this layer
-				this._tooltip._source = layer;
-
-				// update the tooltip (content, layout, ect...)
-				this._tooltip.update();
+				latlng = this._tooltip._prepareOpen(this, layer, latlng);
 
 				// open the tooltip on the map
 				this._map.openTooltip(this._tooltip, latlng);
@@ -35831,8 +36253,9 @@
 			// iconAnchor: (Point),
 			// popupAnchor: (Point),
 
-			// @option html: String = ''
-			// Custom HTML code to put inside the div element, empty by default.
+			// @option html: String|HTMLElement = ''
+			// Custom HTML code to put inside the div element, empty by default. Alternatively,
+			// an instance of `HTMLElement`.
 			html: false,
 
 			// @option bgPos: Point = [0, 0]
@@ -35846,7 +36269,12 @@
 			var div = (oldIcon && oldIcon.tagName === 'DIV') ? oldIcon : document.createElement('div'),
 			    options = this.options;
 
-			div.innerHTML = options.html !== false ? options.html : '';
+			if (options.html instanceof Element) {
+				empty(div);
+				div.appendChild(options.html);
+			} else {
+				div.innerHTML = options.html !== false ? options.html : '';
+			}
 
 			if (options.bgPos) {
 				var bgPos = toPoint(options.bgPos);
@@ -39236,6 +39664,8 @@
 	exports.imageOverlay = imageOverlay;
 	exports.VideoOverlay = VideoOverlay;
 	exports.videoOverlay = videoOverlay;
+	exports.SVGOverlay = SVGOverlay;
+	exports.svgOverlay = svgOverlay;
 	exports.DivOverlay = DivOverlay;
 	exports.Popup = Popup;
 	exports.popup = popup;
@@ -39802,10 +40232,13 @@
 	    className: 'enketo-geopoint-circle-marker-active'
 	} );
 
+	/**
+	 * @extends Widget
+	 */
 	class Geopicker extends Widget {
 
 	    static get selector() {
-	        return 'input[data-type-xml="geopoint"], input[data-type-xml="geotrace"], input[data-type-xml="geoshape"]';
+	        return '.question input[data-type-xml="geopoint"], .question input[data-type-xml="geotrace"], .question input[data-type-xml="geoshape"]';
 	    }
 
 	    static condition( element ) {
@@ -39846,7 +40279,7 @@
 	            event.stopImmediatePropagation();
 
 	            // if the points array contains empty points, skip the intersection check, it will be done before closing the polygon
-	            if ( event.namespace !== 'bymap' && event.namespace !== 'bysearch' && that.polyline && !that.containsEmptyPoints( that.points, that.currentIndex ) && that.updatedPolylineWouldIntersect( latLng, that.currentIndex ) ) {
+	            if ( event.namespace !== 'bymap' && event.namespace !== 'bysearch' && that.polyline && that.props.type === 'geoshape' && !that.containsEmptyPoints( that.points, that.currentIndex ) && that.updatedPolylineWouldIntersect( latLng, that.currentIndex ) ) {
 	                that._showIntersectError();
 	                that._updateInputs( that.points[ that.currentIndex ], 'nochange' );
 	            } else {
@@ -39865,7 +40298,7 @@
 	            const value = event.target.value;
 	            const coords = that._convertKmlCoordinatesToLeafletCoordinates( value );
 
-	            // reset textarea 
+	            // reset textarea
 	            event.target.value = '';
 
 	            setTimeout( () => {
@@ -39981,11 +40414,6 @@
 	            return false;
 	        } );
 
-	        // pass focus events on widget elements back to original input
-	        this.$widget.on( 'focus', 'input', () => {
-	            jquery( that.element ).trigger( 'fakefocus' );
-	        } );
-
 	        // enable search
 	        if ( this.props.search ) {
 	            this._enableSearch();
@@ -39997,7 +40425,7 @@
 	        }
 
 	        if ( this.props.readonly ) {
-	            this.disable( this.element );
+	            this.disable();
 	        }
 
 	        // create "point buttons"
@@ -40047,21 +40475,51 @@
 	    _addDomElements() {
 	        const map = `<div class="map-canvas-wrapper"><div class=map-canvas id="map${this.mapId}"></div></div>`;
 	        const points = '<div class="points"><button type="button" class="addpoint">+</button></div>';
-	        const kmlPstTxt = t( 'geopicker.kmlpaste' );
-	        const kmlCrdsTxt = t( 'geopicker.kmlcoords' );
-	        const pntsTxt = t( 'geopicker.points' );
-	        const kml = `<a href="#" class="toggle-input-type-btn"><span class="kml-input">KML</span><span class="points-input">${pntsTxt}</span></a><label class="geo kml">${kmlCrdsTxt}<progress class="paste-progress hide"></progress><textarea class="ignore" name="kml" placeholder="${kmlPstTxt}"></textarea><span class="disabled-msg">remove all points to enable</span></label>`;
-	        const closePlgnTxt = t( 'geopicker.closepolygon' );
-	        const close = `<button type="button" class="close-chain-btn btn btn-default btn-xs">${closePlgnTxt}</button>`;
+	        const kml = `
+            <a href="#" class="toggle-input-type-btn">
+                <span class="kml-input">KML</span>
+                <span class="points-input" data-i18n="geopicker.points">${t( 'geopicker.points' )}</span>
+            </a>
+            <label class="geo kml">
+                <span data-i18n="geopicker.kmlcoords">${t( 'geopicker.kmlcoords' )}</span>
+                <progress class="paste-progress hide"></progress>
+                <textarea class="ignore" name="kml" placeholder="${ t( 'geopicker.kmlpaste' )}" data-i18n="geopicker.kmlpaste"></textarea>
+                <span class="disabled-msg">remove all points to enable</span>
+            </label>`;
+
+	        const close = `<button type="button" class="close-chain-btn btn btn-default btn-xs" data-i18n="geopicker.closepolygon">${t( 'geopicker.closepolygon' )}</button>`;
 	        const mapBtn = '<button type="button" class="show-map-btn btn btn-default">Map</button>';
-	        const latTxt = t( 'geopicker.latitude' );
-	        const lngTxt = t( 'geopicker.longitude' );
-	        const altTxt = t( 'geopicker.altitude' );
-	        const accTxt = t( 'geopicker.accuracy' );
-	        const srchTxt = t( 'geopicker.searchPlaceholder' );
 
 	        this.$widget = jquery(
-	            `<div class="geopicker widget"><div class="search-bar hide-search no-map no-detect"><button type="button" class="hide-map-btn btn btn-default"><span class="icon icon-arrow-left"> </span></button><button name="geodetect" type="button" class="btn btn-default" title="detect current location" data-placement="top"><span class="icon icon-crosshairs"> </span></button><div class="input-group"><input class="geo ignore" name="search" type="text" placeholder="${srchTxt}" disabled="disabled"/><button type="button" class="btn btn-default search-btn"><i class="icon icon-search"> </i></button></div></div><div class="geo-inputs"><label class="geo lat">${latTxt}<input class="ignore" name="lat" type="number" step="0.000001" min="-90" max="90"/></label><label class="geo long">${lngTxt}<input class="ignore" name="long" type="number" step="0.000001" min="-180" max="180"/></label><label class="geo alt">${altTxt}<input class="ignore" name="alt" type="number" step="0.1" /></label><label class="geo acc">${accTxt}<input class="ignore" name="acc" type="number" step="0.1" /></label><button type="button" class="btn-icon-only btn-remove" aria-label="remove"><span class="icon icon-trash"> </span></button></div></div>`
+	            `<div class="geopicker widget">
+                <div class="search-bar hide-search no-map no-detect">
+                    <button type="button" class="hide-map-btn btn btn-default"><span class="icon icon-arrow-left"> </span></button>
+                    <button name="geodetect" type="button" class="btn btn-default" title="detect current location" data-placement="top"><span class="icon icon-crosshairs"> </span></button>
+                    <div class="input-group">
+                        <input class="geo ignore" name="search" type="text" placeholder="${t( 'geopicker.searchPlaceholder' )}" data-i18n="geopicker.searchPlaceholder" disabled="disabled"/>
+                        <button type="button" class="btn btn-default search-btn"><i class="icon icon-search"> </i></button>
+                    </div>
+                </div>
+                <div class="geo-inputs">
+                    <label class="geo lat">
+                        <span data-i18n="geopicker.latitude">${t( 'geopicker.latitude' )}</span>
+                        <input class="ignore" name="lat" type="number" step="0.000001" min="-90" max="90"/>
+                    </label>
+                    <label class="geo long">
+                        <span data-i18n="geopicker.longitude">${t( 'geopicker.longitude' )}</span>
+                        <input class="ignore" name="long" type="number" step="0.000001" min="-180" max="180"/>
+                    </label>
+                    <label class="geo alt">
+                        <span data-i18n="geopicker.altitude">${t( 'geopicker.altitude' )}</span>
+                        <input class="ignore" name="alt" type="number" step="0.1" />
+                    </label>
+                    <label class="geo acc">
+                        <span data-i18n="geopicker.accuracy">${t( 'geopicker.accuracy' )}</span>
+                        <input class="ignore" name="acc" type="number" step="0.1" />
+                    </label>
+                    <button type="button" class="btn-icon-only btn-remove" aria-label="remove"><span class="icon icon-trash"> </span></button>
+                </div>
+            </div>`
 	        );
 
 	        // add the detection button
@@ -40088,7 +40546,7 @@
 	            this.$map.append( mapBtn );
 	        }
 
-	        // unhide search bar 
+	        // unhide search bar
 	        // TODO: can be done in CSS?
 	        if ( !this.props.touch ) {
 	            this.$widget.find( '.search-bar' ).removeClass( 'hide-search' );
@@ -40124,7 +40582,7 @@
 	    /**
 	     * Updates the value in the original input element.
 	     *
-	     * @return {Boolean} Whether the value was changed.
+	     * @return {boolean} Whether the value was changed.
 	     */
 	    _updateValue() {
 	        this._markAsValid();
@@ -40147,16 +40605,17 @@
 	     * invalid geopoints in a list of geopoints (the form controller only validates the total list).
 	     *
 	     * @param  {string}  geopoint [description]
-	     * @return {Boolean}          [description]
+	     * @return {boolean}          [description]
 	     */
 	    _isValidGeopoint( geopoint ) {
 	        return geopoint ? types.geopoint.validate( geopoint ) : false;
 	    }
 
 	    /**
-	     * Validates a list of latLng Arrays or Objects
-	     * @param  {Array.((Array.<number|string>|{lat: number, long:number}))}  latLngs Array of latLng objects or arrays
-	     * @return {Boolean}         Whether list is valid or not
+	     * Validates a list of latLng Arrays or Objects.
+	     *
+	     * @param {Array.Array.<number|string>|{lat: number, long:number}} latLngs - Array of latLng objects or arrays.
+	     * @return {boolean} Whether list is valid or not.
 	     */
 	    _isValidLatLngList( latLngs ) {
 	        const that = this;
@@ -40174,7 +40633,7 @@
 	    /**
 	     * Validates an individual latlng Array or Object
 	     * @param  {(Array.<number|string>|{lat: number, long:number})}  latLng latLng object or array
-	     * @return {Boolean}        Whether latLng is valid or not
+	     * @return {boolean}        Whether latLng is valid or not
 	     */
 	    _isValidLatLng( latLng ) {
 	        const lat = ( typeof latLng[ 0 ] === 'number' ) ? latLng[ 0 ] : ( typeof latLng.lat === 'number' ) ? latLng.lat : null;
@@ -40230,7 +40689,7 @@
 	                    lng: Math.round( position.coords.longitude * 1000000 ) / 1000000
 	                };
 
-	                if ( that.polyline && that.updatedPolylineWouldIntersect( latLng, that.currentIndex ) ) {
+	                if ( that.polyline && that.props.type === 'geoshape' && that.updatedPolylineWouldIntersect( latLng, that.currentIndex ) ) {
 	                    that._showIntersectError();
 	                } else {
 	                    //that.points[that.currentIndex] = [ position.coords.latitude, position.coords.longitude ];
@@ -40374,7 +40833,7 @@
 	                        latLng.lng = Math.round( latLng.lng * 1000000 ) / 1000000;
 
 	                        // Skip intersection check if points contain empties. It will be done later, before the polygon is closed.
-	                        if ( that.props.type !== 'geopoint' && !that.containsEmptyPoints( that.points, indexToPlacePoint ) && that.updatedPolylineWouldIntersect( latLng, indexToPlacePoint ) ) {
+	                        if ( that.props.type === 'geoshape' && !that.containsEmptyPoints( that.points, indexToPlacePoint ) && that.updatedPolylineWouldIntersect( latLng, indexToPlacePoint ) ) {
 	                            that._showIntersectError();
 	                        } else {
 	                            if ( !that.$lat.val() || !that.$lng.val() || that.props.type === 'geopoint' ) {
@@ -40398,8 +40857,8 @@
 	                that.$widget.find( '.leaflet-control-layers-toggle' ).append( '<span class="icon icon-globe"></span>' );
 
 	                // Add ignore and option-label class to Leaflet-added input elements and their labels
-	                // something weird seems to happen. It seems the layercontrol is added twice (second replacing first) 
-	                // which means the classes are not present in the final control. 
+	                // something weird seems to happen. It seems the layercontrol is added twice (second replacing first)
+	                // which means the classes are not present in the final control.
 	                // Using the baselayerchange event handler is a trick that seems to work.
 	                that.map.on( 'baselayerchange', () => {
 	                    that.$widget.find( '.leaflet-control-container input' ).addClass( 'ignore no-unselect' ).next( 'span' ).addClass( 'option-label' );
@@ -40488,8 +40947,8 @@
 	    /**
 	     * Creates the tile layer options object from the maps configuration and defaults.
 	     *
-	     * @param  {{}}     map   map layer as defined in the apps configuration
-	     * @param  {[type]} index the index of the layer
+	     * @param {Object} map - Map layer as defined in the apps configuration.
+	     * @param {number} index - The index of the layer.
 	     * @return {{id: string, maxZoom: number, minZoom: number, name: string, attribution: string}}   Tilelayer options object
 	     */
 	    _getTileOptions( map, index ) {
@@ -40526,7 +40985,7 @@
 	                    resolve();
 	                };
 	                // make the request for the Google Maps script asynchronously
-	                apiKeyQueryParam = '';
+	                apiKeyQueryParam =  '';
 	                loadUrl = `https://maps.google.com/maps/api/js?v=3.exp${apiKeyQueryParam}&libraries=places&callback=gmapsLoaded`;
 	                jquery.getScript( loadUrl );
 	            } );
@@ -40600,7 +41059,7 @@
 	                    latLng.lat = Math.round( latLng.lat * 1000000 ) / 1000000;
 	                    latLng.lng = Math.round( latLng.lng * 1000000 ) / 1000000;
 
-	                    if ( that.polyline && that.updatedPolylineWouldIntersect( latLng, index ) ) {
+	                    if ( that.polyline && that.props.type === 'geoshape' && that.updatedPolylineWouldIntersect( latLng, index ) ) {
 	                        that._showIntersectError();
 	                        that._updateMarkers();
 	                    } else {
@@ -40713,7 +41172,8 @@
 
 	    /**
 	     * Updates the area in m2 shown inside a polygon.
-	     * @type {[type]}
+	     *
+	     * @param {Array.<{lat: number, lng: number}>} points - A polygon.
 	     */
 	    _updateArea( points ) {
 	        let area;
@@ -40737,7 +41197,6 @@
 	        } else {
 	            this.map.closePopup();
 	        }
-
 	    }
 
 	    _addPoint() {
@@ -40748,9 +41207,10 @@
 	    }
 
 	    /**
-	     * Edits a point in the list of points
-	     * @param  {Array.<number>|{lat: number, lng: number, alt: number, acc: number}} latLng LatLng object or array
-	     * @return {Boolean]}        Whether point changed.
+	     * Edits a point in the list of points.
+	     *
+	     * @param {Array.<number>|{lat: number, lng: number, alt: number, acc: number}} latLng - LatLng object or array.
+	     * @return {boolean} Whether point changed.
 	     */
 	    _editPoint( latLng ) {
 	        let changed;
@@ -40767,7 +41227,7 @@
 	    }
 
 	    /**
-	     * Removes the current point
+	     * Removes the current point.
 	     */
 	    _removePoint() {
 	        let newIndex = this.currentIndex;
@@ -40811,10 +41271,10 @@
 	    }
 
 	    /**
-	     * Updates the (fake) input element for latitude, longitude, altitude and accuracy
+	     * Updates the (fake) input element for latitude, longitude, altitude and accuracy.
 	     *
-	     * @param  @param  {Array.<number>|{lat: number, lng: number, alt: number, acc: number}} coords latitude, longitude, altitude and accuracy
-	     * @param  {string=} ev  [description]
+	     * @param {Array.<number>|{lat: number, lng: number, alt: number, acc: number}} coords - Latitude, longitude, altitude and accuracy.
+	     * @param {string=} ev
 	     */
 	    _updateInputs( coords, ev ) {
 	        const lat = coords[ 0 ] || coords.lat || '';
@@ -40830,7 +41290,7 @@
 	        this.$acc.val( acc || '' ).trigger( ev );
 	    }
 
-	    /** 
+	    /**
 	     * Converts the contents of a single KML <coordinates> element (may inlude the coordinates tags as well) to an array
 	     * of geopoint coordinates used in the ODK XForm format. Note that the KML format does not allow spaces within a tuple of coordinates
 	     * only between. Separator between KML tuples can be newline, space or a combination.
@@ -40868,9 +41328,10 @@
 	    /**
 	     * Check if a polyline created from the current collection of points
 	     * where one point is added or edited would have intersections.
-	     * @param  {[type]} latLng [description]
-	     * @param  {[type]} index  [description]
-	     * @return {[type]} [description]
+	     *
+	     * @param {Array|{lat: number, lng: number}} latLng - An object or array notation of point.
+	     * @param {number} index
+	     * @return {boolean} Whether polyline would have intersections.
 	     */
 	    updatedPolylineWouldIntersect( latLng, index ) {
 	        const pointsToTest = [];
@@ -40922,8 +41383,9 @@
 	    /**
 	     * Checks whether the array of points contains empty ones.
 	     *
-	     * @allowedIndex {number=} The index in which an empty value is allowed
-	     * @return {[type]} [description]
+	     * @param {} points
+	     * @param {number=} allowedIndex - The index in which an empty value is allowed.
+	     * @return {boolean}
 	     */
 	    containsEmptyPoints( points, allowedIndex ) {
 	        return points.some( ( point, index ) => index !== allowedIndex && ( !point[ 0 ] || !point[ 1 ] ) );
@@ -41038,6 +41500,7 @@
 
 	/**
 	 * Auto-resizes textarea elements.
+	 * @extends Widget
 	 */
 	class TextareaWidget extends Widget {
 
@@ -41052,8 +41515,10 @@
 	            const el = event.target;
 	            if ( el.nodeName.toLowerCase() === 'textarea' ) {
 	                if ( el.scrollHeight > el.clientHeight && el.scrollHeight > defaultHeight ) {
-	                    // setting min-height instead of height, as height doesn't work in Grid Theme.
-	                    el.style[ 'min-height' ] = `${el.scrollHeight}px`;
+	                    // using height instead of min-height to allow user to resize smaller manually
+	                    el.style[ 'height' ] = `${el.scrollHeight}px`;
+	                    // for the Grid theme:
+	                    el.style[ 'flex' ] = 'auto';
 	                }
 	            }
 	        } );
@@ -41065,6 +41530,7 @@
 
 	/**
 	 * Enhances radio buttons
+	 * @extends Widget
 	 */
 	class Radiopicker extends Widget {
 
@@ -41074,23 +41540,22 @@
 
 	    _init() {
 	        const $form = jquery( this.element );
+	        const that = this;
 
 	        $form
-	            // Applies a data-checked attribute to the parent label of a checked checkbox and radio button.
+	            // Applies a data-checked attribute to the parent label of a checked radiobutton.
 	            .on( 'click', 'input[type="radio"]:not([readonly]):checked', function() {
 	                jquery( this ).parent( 'label' ).siblings().removeAttr( 'data-checked' ).end().attr( 'data-checked', 'true' );
 	            } )
 	            // Same for checkbox.
 	            .on( 'click', 'input[type="checkbox"]:not([readonly])', function() {
-	                if ( this.checked ) {
-	                    this.parentNode.dataset.checked = 'true';
-	                } else {
-	                    delete this.parentNode.dataset.checked;
-	                }
+	                that._updateDataChecked( this );
 	            } )
-	            // Detect programmatic clearing to remove data-checked attribute.
-	            .on( 'change', '[data-checked] > input:not(:checked)', function() {
-	                delete this.parentNode.dataset.checked;
+	            // Detect programmatic changes to update data-checked attribute.
+	            .on( events.InputUpdate().type, 'input[type="radio"], input[type="checkbox"]', function() {
+	                this.closest( '.option-wrapper' )
+	                    .querySelectorAll( 'input[type="radio"],input[type="checkbox"]' )
+	                    .forEach( input => that._updateDataChecked( input ) );
 	            } )
 	            // Readonly buttons/checkboxes will not respond to clicks.
 	            .on( 'click', 'input[type="checkbox"][readonly],input[type="radio"][readonly]', event => {
@@ -41101,20 +41566,20 @@
 	             * In Safari a click on a readonly checkbox/radio button sets `checked` to true, **before** the click event fires.
 	             * This causes the model to update. The above clickhandler will set the checked back to false, but there is
 	             * no way to propagate that reversion back to the model.
-	             * 
+	             *
 	             * Disabling change handling on readonly checkboxes/radiobuttons is not an option, because of the scenario
 	             * described in Form.js in the comment above the change handler.
-	             * 
-	             * The solution is to detect here whether the change event was triggered by a human, by checking if the 
+	             *
+	             * The solution is to detect here whether the change event was triggered by a human, by checking if the
 	             * originalEvent property is defined.
-	             * 
+	             *
 	             * See more at https://github.com/enketo/enketo-core/issues/516
 	             */
-	            .on( 'change', 'input[type="checkbox"][readonly],input[type="radio"][readonly]', function( event ) {
+	            .on( events.Change().type, 'input[type="checkbox"][readonly],input[type="radio"][readonly]', function( event ) {
 	                const byProgram = typeof event.originalEvent === 'undefined';
 	                if ( !byProgram ) {
 	                    event.stopImmediatePropagation();
-	                    /*               
+	                    /*
 	                     * For radiobuttons, this is ugly and relies on the data-checked attribute.
 	                     * Without this, is it still possible to check a readonly radio button (although it won't propagate to the model).
 	                     * I think this is the only remnant of the usage of data-checked in Enketo. However, it is
@@ -41132,16 +41597,24 @@
 	            } );
 
 	        // Defaults
-	        $form
-	            .find( 'input[type="radio"]:checked, input[type="checkbox"]:checked' )
-	            .parent( 'label' ).attr( 'data-checked', 'true' );
+	        this.element
+	            .querySelectorAll( 'input[type="radio"]:checked, input[type="checkbox"]:checked' )
+	            .forEach( input => this._updateDataChecked( input ) );
 
+	    }
+
+	    _updateDataChecked( el ) {
+	        if ( el.checked ) {
+	            el.parentNode.dataset.checked = true;
+	        } else {
+	            delete el.parentNode.dataset.checked;
+	        }
 	    }
 	}
 
 	var bootstrapDatepicker = createCommonjsModule(function (module, exports) {
 	/*!
-	 * Datepicker for Bootstrap v1.8.0 (https://github.com/uxsolutions/bootstrap-datepicker)
+	 * Datepicker for Bootstrap v1.9.0 (https://github.com/uxsolutions/bootstrap-datepicker)
 	 *
 	 * Licensed under the Apache License v2.0 (http://www.apache.org/licenses/LICENSE-2.0)
 	 */
@@ -41227,6 +41700,10 @@
 
 		var Datepicker = function(element, options){
 			$.data(element, 'datepicker', this);
+
+			this._events = [];
+			this._secondaryEvents = [];
+
 			this._process_options(options);
 
 			this.dates = new DateArray();
@@ -41236,7 +41713,7 @@
 			this.element = $(element);
 			this.isInput = this.element.is('input');
 			this.inputField = this.isInput ? this.element : this.element.find('input');
-			this.component = this.element.hasClass('date') ? this.element.find('.add-on, .input-group-addon, .btn') : false;
+			this.component = this.element.hasClass('date') ? this.element.find('.add-on, .input-group-addon, .input-group-append, .input-group-prepend, .btn') : false;
 			if (this.component && this.component.length === 0)
 				this.component = false;
 			this.isInline = !this.component && this.element.is('div');
@@ -41446,8 +41923,6 @@
 					o.defaultViewDate = UTCToday();
 				}
 			},
-			_events: [],
-			_secondaryEvents: [],
 			_applyEvents: function(evs){
 				for (var i=0, el, ch, ev; i < evs.length; i++){
 					el = evs[i][0];
@@ -41603,7 +42078,7 @@
 			},
 
 			show: function(){
-				if (this.inputField.prop('disabled') || (this.inputField.prop('readonly') && this.o.enableOnReadonly === false))
+				if (this.inputField.is(':disabled') || (this.inputField.prop('readonly') && this.o.enableOnReadonly === false))
 					return;
 				if (!this.isInline)
 					this.picker.appendTo(this.o.container);
@@ -42100,7 +42575,9 @@
 					endMonth = this.o.endDate !== Infinity ? this.o.endDate.getUTCMonth() : Infinity,
 					todaytxt = dates[this.o.language].today || dates['en'].today || '',
 					cleartxt = dates[this.o.language].clear || dates['en'].clear || '',
-					titleFormat = dates[this.o.language].titleFormat || dates['en'].titleFormat,
+	        titleFormat = dates[this.o.language].titleFormat || dates['en'].titleFormat,
+	        todayDate = UTCToday(),
+	        titleBtnVisible = (this.o.todayBtn === true || this.o.todayBtn === 'linked') && todayDate >= this.o.startDate && todayDate <= this.o.endDate && !this.weekOfDateIsDisabled(todayDate),
 					tooltip,
 					before;
 				if (isNaN(year) || isNaN(month))
@@ -42109,7 +42586,7 @@
 							.text(DPGlobal.formatDate(d, titleFormat, this.o.language));
 				this.picker.find('tfoot .today')
 							.text(todaytxt)
-							.css('display', this.o.todayBtn === true || this.o.todayBtn === 'linked' ? 'table-cell' : 'none');
+	            .css('display', titleBtnVisible ? 'table-cell' : 'none');
 				this.picker.find('tfoot .clear')
 							.text(cleartxt)
 							.css('display', this.o.clearBtn === true ? 'table-cell' : 'none');
@@ -42289,12 +42766,12 @@
 						factor *= 10;
 						/* falls through */
 					case 1:
-						prevIsDisabled = Math.floor(year / factor) * factor < startYear;
+						prevIsDisabled = Math.floor(year / factor) * factor <= startYear;
 						nextIsDisabled = Math.floor(year / factor) * factor + factor > endYear;
 						break;
 					case 0:
-						prevIsDisabled = year <= startYear && month < startMonth;
-						nextIsDisabled = year >= endYear && month > endMonth;
+						prevIsDisabled = year <= startYear && month <= startMonth;
+						nextIsDisabled = year >= endYear && month >= endMonth;
 						break;
 				}
 
@@ -43141,7 +43618,7 @@
 
 		/* DATEPICKER VERSION
 		 * =================== */
-		$.fn.datepicker.version = '1.8.0';
+		$.fn.datepicker.version = '1.9.0';
 
 		$.fn.datepicker.deprecated = function(msg){
 			var console = window.console;
@@ -43176,11 +43653,12 @@
 	/**
 	 * Extends eternicode's bootstrap-datepicker without changing the original.
 	 * https://github.com/eternicode/bootstrap-datepicker
+	 * @extends Widget
 	 */
 	class DatepickerExtended extends Widget {
 
 	    static get selector() {
-	        return 'input[type="date"]:not([readonly])';
+	        return '.question input[type="date"]:not([readonly])';
 	    }
 
 	    static condition() {
@@ -43262,7 +43740,7 @@
 	            let value = e.type === 'paste' ? getPasteData( e ) : this.value;
 
 	            if ( value.length > 0 ) {
-	                // Note: types.date.convert considers numbers to be a number of days since the epoch 
+	                // Note: types.date.convert considers numbers to be a number of days since the epoch
 	                // as this is what the XPath evaluator may return.
 	                // For user-entered input, we want to consider a Number value to be incorrect, expect for year input.
 	                if ( isNumber( value ) && settings.format !== 'yyyy' ) {
@@ -43273,7 +43751,7 @@
 	                }
 	            }
 
-	            // Here we have to do something unusual to prevent native inputs from automatically 
+	            // Here we have to do something unusual to prevent native inputs from automatically
 	            // changing 2012-12-32 into 2013-01-01
 	            // convertedValue is '' for invalid 2012-12-32
 	            if ( convertedValue === '' || this.originalInputValue !== convertedValue ) {
@@ -43310,21 +43788,19 @@
 	     * @param { jQuery } $fakeDateI Fake date input element
 	     */
 	    _setFocusHandler( $fakeDateI ) {
-	        // Handle focus on widget
-	        $fakeDateI.on( 'focus', () => {
-	            this.element.dispatchEvent( event.FakeFocus() );
-	        } );
 	        // Handle focus on original input (goTo functionality)
 	        jquery( this.element ).on( 'applyfocus', () => {
 	            $fakeDateI[ 0 ].focus();
 	        } );
 	    }
 
-	    _toActualDate( date ) {
+	    _toActualDate( date = '' ) {
+	        date = date.trim();
 	        return date && this.settings.format === 'yyyy' && date.length < 5 ? `${date}-01-01` : ( date && this.settings.format === 'yyyy-mm' && date.length < 8 ? `${date}-01` : date );
 	    }
 
-	    _toDisplayDate( date ) {
+	    _toDisplayDate( date = '' ) {
+	        date = date.trim();
 	        return date && this.settings.format === 'yyyy' ? date.substring( 0, 4 ) : ( this.settings.format === 'yyyy-mm' ? date.substring( 0, 7 ) : date );
 	    }
 
@@ -43350,15 +43826,15 @@
 	 * The whole purpose of this widget is to hide the placeholder text on native date inputs
 	 * and show a consistent date format between readonly and non-readonly questions. This widget
 	 * is only activated for READONLY questions on NON-MOBILE devices.
-	 * 
-	 * The placeholder is considered particularly unhelpful for month-year and year appearances. 
+	 *
+	 * The placeholder is considered particularly unhelpful for month-year and year appearances.
 	 * For consistency it's also removed from regular date inputs.
-	 * 
+	 *
+	 * @extends Widget
 	 */
-
 	class DatepickerNative extends Widget {
 	    static get selector() {
-	        return 'input[type="date"]';
+	        return '.question input[type="date"]';
 	    }
 	    static condition( element ) {
 	        // Do not instantiate if DatepickerExtended was instantiated on element or if mobile device is used.
@@ -43371,8 +43847,9 @@
 	}
 
 	/**
-	 * For now, the whole purpose of this widget is to show a native month picker on 
+	 * For now, the whole purpose of this widget is to show a native month picker on
 	 * MOBILE devices with browsers that support it.
+	 * @extends Widget
 	 */
 	class DatepickerMobile extends Widget {
 
@@ -44393,7 +44870,7 @@
 	            this.$element.val( this.getTime() );
 	            // this.$element.change() method does not fire an event that can be 
 	            // caught with el.addEventListener('change', () => {})
-	            this.$element[ 0 ].dispatchEvent( event.Change() );
+	            this.$element[ 0 ].dispatchEvent( events.Change() );
 	        },
 
 	        updateFromElementVal() {
@@ -44590,10 +45067,13 @@
 	    );
 	} ) )( jquery, window, document );
 
+	/**
+	 * @extends Widget
+	 */
 	class TimepickerExtended extends Widget {
 
 	    static get selector() {
-	        return 'input[type="time"]:not([readonly])';
+	        return '.question input[type="time"]:not([readonly])';
 	    }
 
 	    static condition() {
@@ -44633,20 +45113,15 @@
 	        // reset button
 	        resetBtn.addEventListener( 'click', this._reset.bind( this ) );
 
-	        // pass widget focus event
-	        this.fakeTimeI.addEventListener( 'focus', () => {
-	            this.element.dispatchEvent( event.FakeFocus() );
-	        } );
-
 	        // handle original input focus
-	        this.element.addEventListener( 'applyfocus', () => {
+	        this.element.addEventListener( events.ApplyFocus().type, () => {
 	            this.fakeTimeI.focus();
 	        } );
 
 	    }
 
 	    _reset() {
-	        const ev = this.originalInputValue ? event.Change() : null;
+	        const ev = this.originalInputValue ? events.Change() : null;
 	        if ( ev || this.value ) {
 	            this.value = '';
 	            //this.originalInputValue = '';
@@ -44655,10 +45130,12 @@
 	    }
 
 	    update() {
-	        jquery( this.element )
-	            .next( '.widget' )
-	            .find( 'input' )
-	            .timepicker( 'setTime', this.element.value );
+	        if ( this.element.value !== this.value ) {
+	            jquery( this.element )
+	                .next( '.widget' )
+	                .find( 'input' )
+	                .timepicker( 'setTime', this.element.value );
+	        }
 	    }
 
 	    get value() {
@@ -44670,10 +45147,13 @@
 	    }
 	}
 
+	/**
+	 * @extends Widget
+	 */
 	class DatetimepickerExtended extends Widget {
 
 	    static get selector() {
-	        return 'input[type="datetime"]:not([readonly])';
+	        return '.question input[type="datetime"]:not([readonly])';
 	    }
 
 	    static condition() {
@@ -44770,13 +45250,8 @@
 	    }
 
 	    _setFocusHandler( $els ) {
-	        const that = this;
-	        // Handle focus on widget.
-	        $els.on( 'focus', () => {
-	            jquery( that.element ).trigger( 'fakefocus' );
-	        } );
 	        // Handle focus on original input (goTo functionality)
-	        jquery( this.element ).on( 'applyfocus', () => {
+	        this.element.addEventListener( events.ApplyFocus().type, () => {
 	            $els.eq( 0 ).focus();
 	        } );
 	    }
@@ -44784,12 +45259,15 @@
 	    update() {
 	        const $dateTimeI = jquery( this.element );
 	        const val = ( $dateTimeI.val().length > 0 ) ? new Date( $dateTimeI.val() ).toISOLocalString() : '';
-	        const vals = val.split( 'T' );
-	        const dateVal = vals[ 0 ];
-	        const timeVal = ( vals[ 1 ] && vals[ 1 ].length > 4 ) ? vals[ 1 ].substring( 0, 5 ) : '';
 
-	        this.$fakeDateI.datepicker( 'setDate', dateVal );
-	        this.$fakeTimeI.timepicker( 'setTime', timeVal );
+	        if ( val !== this.value ) {
+	            const vals = val.split( 'T' );
+	            const dateVal = vals[ 0 ];
+	            const timeVal = ( vals[ 1 ] && vals[ 1 ].length > 4 ) ? vals[ 1 ].substring( 0, 5 ) : '';
+
+	            this.$fakeDateI.datepicker( 'setDate', dateVal );
+	            this.$fakeTimeI.timepicker( 'setTime', timeVal );
+	        }
 	    }
 
 	    get value() {
@@ -44805,9 +45283,9 @@
 
 	    set value( value ) {
 	        /*
-	          Loaded or default datetime values remain untouched until they are edited. This is done to preserve 
+	          Loaded or default datetime values remain untouched until they are edited. This is done to preserve
 	          the timezone information (especially for instances-to-edit) if the values are not edited (the
-	          original entry may have been done in a different time zone than the edit). However, 
+	          original entry may have been done in a different time zone than the edit). However,
 	          values shown in the widget should reflect the local time representation of that value.
 	         */
 	        const val = value ? new Date( value ).toISOLocalString() : '';
@@ -44820,12 +45298,13 @@
 	}
 
 	/**
-	 * Compact Picker. Hides text labels if a media label is present.
+	 * Media Picker. Hides text labels if a media label is present.
+	 * @extends Widget
 	 */
-	class CompactPicker extends Widget {
+	class MediaPicker extends Widget {
 
 	    static get selector() {
-	        return '.or-appearance-compact, .or-appearance-quickcompact, [class*="or-appearance-compact-"]';
+	        return '.or-appearance-no-buttons';
 	    }
 
 	    _init() {
@@ -44839,7 +45318,9 @@
 	}
 
 	/**
-	 * Simple file manager with cross-browser support. That uses the FileReader
+	 * @module fileManager
+	 *
+	 * @description Simple file manager with cross-browser support. That uses the FileReader
 	 * to create previews. Can be replaced with a more advanced version that
 	 * obtains files from storage.
 	 *
@@ -44849,53 +45330,65 @@
 	const fileManager = {};
 
 	/**
-	 * Initialize the file manager .
-	 * @return {[type]} promise boolean or rejection with Error
+	 * @function init
+	 *
+	 * @description Initialize the file manager.
+	 *
+	 * @return {Promise|boolean|Error} promise boolean or rejection with Error
 	 */
-	fileManager.init = () => Promise.resolve( true );
+	fileManager.init = () => { return Promise.resolve( true ); };
 
 	/**
-	 * Whether the filemanager is waiting for user permissions
-	 * @return {Boolean} [description]
+	 * @function isWaitingForPermissions
+	 *
+	 * @description Whether the filemanager is waiting for user permissions
+	 *
+	 * @return {boolean} [description]
 	 */
-	fileManager.isWaitingForPermissions = () => false;
+	fileManager.isWaitingForPermissions = () => { return false; };
 
 	/**
-	 * Obtains a URL that can be used to show a preview of the file when used
+	 * @function getFileUrl
+	 *
+	 * @description Obtains a URL that can be used to show a preview of the file when used
 	 * as a src attribute.
-	 * 
+	 *
 	 * It is meant for media previews and media downloads.
 	 *
-	 * @param  {?string|Object} subject File or filename in local storage
-	 * @return {[type]}         promise url string or rejection with Error
+	 * @param  {?string|Object} subject - File or filename in local storage
+	 * @return {Promise|string|Error} promise url string or rejection with Error
 	 */
-	fileManager.getFileUrl = subject => new Promise( ( resolve, reject ) => {
-	    let error;
+	fileManager.getFileUrl = subject => {
+	    return new Promise( ( resolve, reject ) => {
+	        let error;
 
-	    if ( !subject ) {
-	        resolve( null );
-	    } else if ( typeof subject === 'string' ) {
-	        // TODO obtain from storage as http URL or objectURL
-	        reject( 'no!' );
-	    } else if ( typeof subject === 'object' ) {
-	        if ( fileManager.isTooLarge( subject ) ) {
-	            error = new Error( t( 'filepicker.toolargeerror', { maxSize: fileManager.getMaxSizeReadable() } ) );
-	            reject( error );
+	        if ( !subject ) {
+	            resolve( null );
+	        } else if ( typeof subject === 'string' ) {
+	            // TODO obtain from storage as http URL or objectURL
+	            reject( 'no!' );
+	        } else if ( typeof subject === 'object' ) {
+	            if ( fileManager.isTooLarge( subject ) ) {
+	                error = new Error( t( 'filepicker.toolargeerror', { maxSize: fileManager.getMaxSizeReadable() } ) );
+	                reject( error );
+	            } else {
+	                resolve( URL.createObjectURL( subject ) );
+	            }
 	        } else {
-	            resolve( URL.createObjectURL( subject ) );
+	            reject( new Error( 'Unknown error occurred' ) );
 	        }
-	    } else {
-	        reject( new Error( 'Unknown error occurred' ) );
-	    }
-	} );
+	    } );
+	};
 
 	/**
-	 * Similar to getFileURL, except that this one is guaranteed to return an objectURL
-	 * 
+	 * @function getObjectUrl
+	 *
+	 * @description Similar to getFileURL, except that this one is guaranteed to return an objectURL
+	 *
 	 * It is meant for loading images into a canvas.
-	 * 
-	 * @param  {?string|Object} subject File or filename in local storage
-	 * @return {[type]}         promise url string or rejection with Error
+	 *
+	 * @param  {?string|Object} subject - File or filename in local storage
+	 * @return {Promise|string|Error} promise url string or rejection with Error
 	 */
 	fileManager.getObjectUrl = subject => fileManager.getFileUrl( subject )
 	    .then( url => {
@@ -44905,6 +45398,12 @@
 	        return url;
 	    } );
 
+	/**
+	 * @function urlToBlob
+	 *
+	 * @param {string} url - url to get
+	 * @return {Promise} promise of XMLHttpRequesting given url
+	 */
 	fileManager.urlToBlob = url => {
 	    const xhr = new XMLHttpRequest();
 
@@ -44919,8 +45418,11 @@
 	};
 
 	/**
-	 * Obtain files currently stored in file input elements of open record
-	 * @return {[File]} array of files
+	 * @function getCurrentFiles
+	 *
+	 * @description Obtain files currently stored in file input elements of open record
+	 *
+	 * @return {Array.File} array of files
 	 */
 	fileManager.getCurrentFiles = () => {
 	    const files = [];
@@ -44946,11 +45448,24 @@
 	            // TODO: in the future, when browser support increase we can invoke
 	            // the File constructor to do this.
 	            newFilename = getFilename( file, this.dataset.filenamePostfix );
-	            file = new Blob( [ file ], {
-	                type: file.type
-	            } );
-	            file.name = newFilename;
-	            files.push( file );
+
+	            // If file is resized, get Blob representation of file URL
+	            if ( this.dataset.resized && this.dataset.resizedFileUrl ) {
+	                fileManager.urlToBlob( this.dataset.resizedFileUrl )
+	                    .then( resizedFileBlob => {
+	                        file = new Blob( [ resizedFileBlob ], {
+	                            type: file.type
+	                        } );
+	                        file.name = newFilename;
+	                        files.push( file );
+	                    } );
+	            } else {
+	                file = new Blob( [ file ], {
+	                    type: file.type
+	                } );
+	                file.name = newFilename;
+	                files.push( file );
+	            }
 	        }
 	    } );
 
@@ -44958,19 +45473,32 @@
 	};
 
 	/**
-	 * Placeholder function to check if file size is acceptable. 
-	 * 
-	 * @param  {Blob}  file [description]
-	 * @return {Boolean}      [description]
+	 * @function isTooLarge
+	 *
+	 * @description Placeholder function to check if file size is acceptable.
+	 *
+	 * @return {boolean} whether file is too large
 	 */
-	fileManager.isTooLarge = () => false;
+	fileManager.isTooLarge = () => { return false; };
 
 	/**
-	 * Replace with function that determines max size published in OpenRosa server response header.
+	 * @function getMaxSizeReadable
+	 *
+	 * @description Replace with function that determines max size published in OpenRosa server response header.
+	 *
+	 * @return {string} human radable maximiym size
 	 */
-	fileManager.getMaxSizeReadable = () => `${5}MB`;
+	fileManager.getMaxSizeReadable = () => { return `${5}MB`; };
 
-	// Error to be translated
+	/**
+	 * Error to be translated
+	 * 
+	 * @class
+	 * @extends Error
+	 * @param {string} message
+	 * @param {string} translationKey
+	 * @param {*} translationOptions
+	 */
 	function TranslatedError( message, translationKey, translationOptions ) {
 	    this.message = message;
 	    this.translationKey = translationKey;
@@ -44985,6 +45513,7 @@
 	/**
 	 * FilePicker that works both offline and online. It abstracts the file storage/cache away
 	 * with the injected fileManager.
+	 * @extends Widget
 	 */
 	class Filepicker extends Widget {
 
@@ -45031,7 +45560,7 @@
 	            this._showFeedback( t( 'filepicker.waitingForPermissions' ), 'warning' );
 	        }
 
-	        // Monitor maxSize changes to update placeholder text. This facilitates asynchronous 
+	        // Monitor maxSize changes to update placeholder text. This facilitates asynchronous
 	        // obtaining of max size from server without slowing down form loading.
 	        this._updatePlaceholder();
 	        jquery( this.element.closest( 'form.or' ) ).on( 'updateMaxSize', this._updatePlaceholder.bind( this ) );
@@ -45116,32 +45645,47 @@
 	                fileName = getFilename( file, postfix );
 
 	                // Process the file
-	                fileManager.getFileUrl( file, fileName )
-	                    .then( url => {
-	                        // Update UI
-	                        that._showPreview( url, that.props.mediaType );
-	                        that._showFeedback();
-	                        that._showFileName( fileName );
-	                        if ( loadedFileName && loadedFileName !== fileName ) {
-	                            that.element.removeAttribute( 'data-loaded-file-name' );
-	                        }
-	                        that._updateDownloadLink( url, fileName );
-	                        // Update record
-	                        jquery( that.element ).trigger( 'change.propagate' );
+	                // Resize the file. Currently will resize an image.
+	                this._resizeFile( file, that.props.mediaType )
+	                    .then( resizedFile => {
+	                        // Put information in file element that file is resized
+	                        event.target.dataset.resized = true;
+	                        file = resizedFile;
 	                    } )
-	                    .catch( error => {
-	                        // Update record to clear any existing valid value
-	                        jquery( that.element ).val( '' ).trigger( 'change.propagate' );
-	                        // Update UI
-	                        that._showFileName( '' );
-	                        that._showPreview( null );
-	                        that._showFeedback( error, 'error' );
-	                        that._updateDownloadLink( '', '' );
+	                    .catch( () => {} )
+	                    .finally( () => {
+	                        fileManager.getFileUrl( file, fileName )
+	                            .then( url => {
+	                                // If file is resized, put information of resized file URL in file element
+	                                // Will be used by fileManager.getCurrentFiles
+	                                if ( event.target.dataset.resized ) {
+	                                    event.target.dataset.resizedFileUrl = url;
+	                                }
+	                                // Update UI
+	                                that._showPreview( url, that.props.mediaType );
+	                                that._showFeedback();
+	                                that._showFileName( fileName );
+	                                if ( loadedFileName && loadedFileName !== fileName ) {
+	                                    that.element.removeAttribute( 'data-loaded-file-name' );
+	                                }
+	                                that._updateDownloadLink( url, fileName );
+	                                // Update record
+	                                jquery( that.element ).trigger( 'change.propagate' );
+	                            } )
+	                            .catch( error => {
+	                                // Update record to clear any existing valid value
+	                                jquery( that.element ).val( '' ).trigger( 'change.propagate' );
+	                                // Update UI
+	                                that._showFileName( '' );
+	                                that._showPreview( null );
+	                                that._showFeedback( error, 'error' );
+	                                that._updateDownloadLink( '', '' );
+	                            } );
 	                    } );
 	            } );
 
 	        this.fakeInput.addEventListener( 'click', event => {
-	            /* 
+	            /*
 	                The purpose of this handler is to selectively propagate clicks on the fake
 	                input to the underlying file input (to show the file picker window).
 	                It blocks propagation if the filepicker has a value to avoid accidentally
@@ -45165,13 +45709,9 @@
 	    }
 
 	    _setFocusListener() {
-	        // Handle focus on widget input
-	        this.fakeInput.addEventListener( 'focus', () => {
-	            this.element.dispatchEvent( event.FakeFocus() );
-	        } );
 
 	        // Handle focus on original input (goTo functionality)
-	        this.element.addEventListener( 'applyfocus', () => {
+	        this.element.addEventListener( events.ApplyFocus().type, () => {
 	            this.fakeInput.focus();
 	        } );
 	    }
@@ -45215,6 +45755,27 @@
 	        }
 	    }
 
+	    _resizeFile( file, mediaType ) {
+	        return new Promise( ( resolve, reject ) => {
+	            if ( mediaType !== 'image/*' ) {
+	                reject( file );
+	            }
+
+	            // file is image, resize it
+	            if ( this.props && this.props.maxPixels ) {
+	                resizeImage( file, this.props.maxPixels )
+	                    .then( blob => {
+	                        resolve( blob );
+	                    } )
+	                    .catch( () => {
+	                        reject( file );
+	                    } );
+	            } else {
+	                reject( file );
+	            }
+	        } );
+	    }
+
 	    _updateDownloadLink( objectUrl, fileName ) {
 	        updateDownloadLink( this.downloadLink, objectUrl, fileName );
 	    }
@@ -45231,6 +45792,10 @@
 	    get props() {
 	        const props = this._props;
 	        props.mediaType = this.element.getAttribute( 'accept' );
+
+	        if ( this.element.dataset.maxPixels && isNumber( this.element.dataset.maxPixels ) ) {
+	            props.maxPixels = parseInt( this.element.dataset.maxPixels, 10 );
+	        }
 
 	        return props;
 	    }
@@ -45847,13 +46412,13 @@
 	const DELAY = 1500;
 
 	/**
-	 * SignaturePad.prototype.fromDataURL is asynchronous and does not return a 
-	 * Promise. This is a rewrite returning a promise and the objectUrl.
+	 * SignaturePad.prototype.fromDataURL is asynchronous and does not return
+	 * a Promise. This is a rewrite returning a promise and the objectUrl.
 	 * In addition it also fixes a bug where a loaded image is stretched to fit
 	 * the canvas.
-	 * 
-	 * @param {*} objectUrl 
-	 * @param {*} options 
+	 *
+	 * @param {*} objectUrl
+	 * @param {*} options
 	 */
 	SignaturePad.prototype.fromObjectURL = function( objectUrl, options ) {
 	    const image = new Image();
@@ -45894,8 +46459,8 @@
 	/**
 	 * Similar to SignaturePad.prototype.fromData except that it doesn't clear the canvas.
 	 * This is to facilitate undoing a drawing stroke over a background (bitmap) image.
-	 * 
-	 * @param {*} pointGroups 
+	 *
+	 * @param {*} pointGroups
 	 */
 	SignaturePad.prototype.updateData = function( pointGroups ) {
 	    const that = this;
@@ -45910,6 +46475,7 @@
 
 	/**
 	 * Widget to obtain user-provided drawings or signature.
+	 * @extends Widget
 	 */
 	class DrawWidget extends Widget {
 	    static get selector() {
@@ -45982,7 +46548,7 @@
 	                        const data = that.pad.toData();
 	                        that.pad.clear();
 	                        const fileInput = that.$widget[ 0 ].querySelector( 'input[type=file]' );
-	                        // that.element.dataset.loadedFileName will have been removed only after resetting 
+	                        // that.element.dataset.loadedFileName will have been removed only after resetting
 	                        const fileToLoad = fileInput && fileInput.files[ 0 ] ? fileInput.files[ 0 ] : that.element.dataset.loadedFileName;
 	                        that._loadFileIntoPad( fileToLoad )
 	                            .then( () => {
@@ -46000,15 +46566,16 @@
 	                    .end().find( '.hide-canvas-btn' ).on( 'click', () => {
 	                        that.$widget.removeClass( 'full-screen' );
 	                        that.pad.off();
-	                        that._resizeCanvas( canvas );
 	                        that._forceUpdate();
+	                        that._resizeCanvas( canvas );
 	                        return false;
 	                    } ).click();
 
 	                jquery( canvas )
-	                    .on( `canvasreload.${that.namespace}`, () => {
+	                    .on( 'canvasreload', () => {
 	                        if ( that.cache ) {
-	                            that.pad.fromObjectURL( that.cache );
+	                            that.pad.fromObjectURL( that.cache )
+	                                .then( that._updateValue.bind( that ) );
 	                        }
 	                    } );
 	                that.enable();
@@ -46022,7 +46589,7 @@
 	                canvas.focus();
 	            } )
 	            .closest( '[role="page"]' ).on( 'pageflip', () => {
-	                // When an existing value is loaded into the canvas and is not 
+	                // When an existing value is loaded into the canvas and is not
 	                // the first page, it won't become visible until the canvas is clicked
 	                // or the window is resized:
 	                // https://github.com/kobotoolbox/enketo-express/issues/895
@@ -46033,13 +46600,15 @@
 	    }
 
 	    _forceUpdate() {
-	        clearTimeout( this._updateWithDelay );
-	        this._updateValue();
+	        if ( this._updateWithDelay ) {
+	            clearTimeout( this._updateWithDelay );
+	            this._updateValue();
+	        }
 	    }
 
 	    // All this is copied from the file-picker widget
 	    _handleFiles( loadedFileName ) {
-	        // Monitor maxSize changes to update placeholder text in annotate widget. This facilitates asynchronous 
+	        // Monitor maxSize changes to update placeholder text in annotate widget. This facilitates asynchronous
 	        // obtaining of max size from server without slowing down form loading.
 	        this._updatePlaceholder();
 	        this.$widget.closest( 'form.or' ).on( 'updateMaxSize', this._updatePlaceholder.bind( this ) );
@@ -46053,7 +46622,7 @@
 	        this._showFileName( loadedFileName );
 
 	        $input
-	            .on( `click.${this.namespace}`, event => {
+	            .on( 'click', event => {
 	                // The purpose of this handler is to block the filepicker window
 	                // when the label is clicked outside of the input.
 	                if ( that.props.readonly || event.namespace !== 'propagate' ) {
@@ -46062,7 +46631,7 @@
 	                    return false;
 	                }
 	            } )
-	            .on( `change.${this.namespace}`, function() {
+	            .on( 'change', function() {
 	                // Get the file
 	                const file = this.files[ 0 ];
 
@@ -46086,8 +46655,8 @@
 	            } );
 
 	        $fakeInput
-	            .on( `click.${this.namespace}`, function( event ) {
-	                /* 
+	            .on( 'click', function( event ) {
+	                /*
 	                    The purpose of this handler is to selectively propagate clicks on the fake
 	                    input to the underlying file input (to show the file picker window).
 	                    It blocks propagation if the filepicker has a value to avoid accidentally
@@ -46102,7 +46671,7 @@
 	                event.preventDefault();
 	                $input.trigger( 'click.propagate' );
 	            } )
-	            .on( `change.${this.namespace}`, () => // For robustness, avoid any editing of filenames by user.
+	            .on( 'change', () => // For robustness, avoid any editing of filenames by user.
 	                false );
 	    }
 
@@ -46188,7 +46757,7 @@
 	    }
 
 	    /**
-	     * 
+	     *
 	     * @param {*} file Either a filename or a file.
 	     */
 	    _loadFileIntoPad( file ) {
@@ -46225,6 +46794,7 @@
 	    _handleResize( canvas ) {
 	        const that = this;
 	        jquery( window ).on( 'resize', () => {
+	            that._forceUpdate();
 	            that._resizeCanvas( canvas );
 	        } );
 	    }
@@ -46233,14 +46803,18 @@
 	    // to make it look crisp on mobile devices.
 	    // This also causes canvas to be cleared.
 	    _resizeCanvas( canvas ) {
-	        // When zoomed out to less than 100%, for some very strange reason,
-	        // some browsers report devicePixelRatio as less than 1
-	        // and only part of the canvas is cleared then.
-	        const ratio = Math.max( window.devicePixelRatio || 1, 1 );
-	        canvas.width = canvas.offsetWidth * ratio;
-	        canvas.height = canvas.offsetHeight * ratio;
-	        canvas.getContext( '2d' ).scale( ratio, ratio );
-	        jquery( canvas ).trigger( `canvasreload.${this.namespace}` );
+	        // Use a little trick to avoid resizing currently-hidden canvases
+	        // https://github.com/enketo/enketo-core/issues/605
+	        if ( canvas.offsetWidth > 0 ) {
+	            // When zoomed out to less than 100%, for some very strange reason,
+	            // some browsers report devicePixelRatio as less than 1
+	            // and only part of the canvas is cleared then.
+	            const ratio = Math.max( window.devicePixelRatio || 1, 1 );
+	            canvas.width = canvas.offsetWidth * ratio;
+	            canvas.height = canvas.offsetHeight * ratio;
+	            canvas.getContext( '2d' ).scale( ratio, ratio );
+	            jquery( canvas ).trigger( 'canvasreload' );
+	        }
 	    }
 
 	    disable() {
@@ -46273,8 +46847,8 @@
 	                        .prop( 'disabled', false );
 	                }
 	                // https://github.com/enketo/enketo-core/issues/450
-	                // When loading a question with a relevant, it is invisible 
-	                // until branch.js removes the "pre-init" class. The rendering of the 
+	                // When loading a question with a relevant, it is invisible
+	                // until branch.js removes the "pre-init" class. The rendering of the
 	                // canvas may therefore still be ongoing when this widget is instantiated.
 	                // For that reason we call _resizeCanvas when enable is called to make
 	                // sure the canvas is rendered properly.
@@ -46282,13 +46856,10 @@
 	            } );
 	    }
 
-	    /** 
+	    /**
 	     * Updates value when it is programmatically cleared.
 	     * There is no way to programmatically update a file input other than clearing it, so that's all
 	     * we need to do.
-	     * 
-	     * @param  {[type]} element [description]
-	     * @return {[type]}         [description]
 	     */
 	    update() {
 	        if ( this.originalInputValue === '' ) {
@@ -46324,13 +46895,15 @@
 	class LikertItem {}
 
 	/**
-	 * Horizontal Choices Widgets. Adds a filler if the last row contains two elements.
+	 * Column (select) Widgets. Adds a filler if the last row contains two elements.
 	 * The filler avoids the last radiobutton or checkbox to not be lined up correctly below the second column.
+	 *
+	 * @extends Widget
 	 */
-	class HorizontalChoices extends Widget {
+	class Columns extends Widget {
 
 	    static get selector() {
-	        return '.question.or-appearance-horizontal';
+	        return '.question.or-appearance-columns';
 	    }
 
 	    _init() {
@@ -46344,11 +46917,14 @@
 	                fillers--;
 	            }
 	            // if added to correct question type, add initialized class
-	            this.question.classList.add( 'or-horizontal-initialized' );
+	            this.question.classList.add( 'or-columns-initialized' );
 	        } );
 	    }
 	}
 
+	/**
+	 * @extends Widget
+	 */
 	class RangeWidget extends Widget {
 
 	    static get selector() {
@@ -46378,19 +46954,24 @@
 	        }
 
 	        this.range.addEventListener( 'change', () => {
-	            this.current.textContent = this.value;
-	            this.originalInputValue = this.value;
-	            this._updateMercury( ( this.value - this.props.min ) / ( that.props.max - that.props.min ) );
-	        } );
-	        this.range.addEventListener( 'focus', () => {
-	            this.element.dispatchEvent( event.FakeFocus() );
+	            // Avoid unnecessary change events on original input as these can have big negative consequences
+	            // https://github.com/OpenClinica/enketo-express-oc/issues/209
+	            if ( this.originalInputValue !== this.value ) {
+	                this.current.textContent = this.value;
+	                this.originalInputValue = this.value;
+	                this._updateMercury( ( this.value - this.props.min ) / ( that.props.max - that.props.min ) );
+	            }
 	        } );
 
-	        // Do not use change handler for this because this doesn't if the user clicks on the internal DEFAULT
+	        // Do not use change handler for this because this doesn't fire if the user clicks on the internal DEFAULT
 	        // value of the range input.
 	        this.widget.querySelector( 'input.empty' ).addEventListener( 'click', () => {
 	            this.range.classList.remove( 'empty' );
-	            this.range.dispatchEvent( event.Change() );
+	            this.range.dispatchEvent( events.Change() );
+	        } );
+	        this.widget.querySelector( 'input.empty' ).addEventListener( 'touchstart', () => {
+	            this.range.classList.remove( 'empty' );
+	            this.range.dispatchEvent( events.Change() );
 	        } );
 
 	        this.widget.querySelector( '.btn-reset' ).addEventListener( 'click', this._reset.bind( this ) );
@@ -46406,7 +46987,7 @@
 	        }
 	        ticks = ticks / divisor;
 
-	        // Various attemps to use more elegant CSS background on the _ticks div, have failed due to little 
+	        // Various attemps to use more elegant CSS background on the _ticks div, have failed due to little
 	        // issues seemingly related to rounding or browser sloppiness. This far is less elegant but nice and robust:
 	        this.widget.querySelector( '.range-widget__ticks' )
 	            .append( document.createRange().createContextualFragment( new Array( ticks ).fill( '<span></span>' ).join( '' ) ) );
@@ -46458,10 +47039,12 @@
 	    }
 
 	    _reset() {
+	        // Update UI stuff before the actual value to avoid issues in custom clients that may want to programmatically undo a reset ("strict required" in OpenClinica)
+	        // as that is subtly different from updating a value with a calculation since this.originalInputValue=  sets the evaluation cascade in motion.
+	        this.current.textContent = '';
+	        this._updateMercury( 0 );
 	        this.value = '';
 	        this.originalInputValue = '';
-	        this.current.textContent = '-';
-	        this._updateMercury( -1 );
 	    }
 
 	    disable() {
@@ -46469,9 +47052,7 @@
 	    }
 
 	    enable() {
-	        if ( this.props && !this.props.readonly ) {
-	            this.widget.querySelectorAll( 'input, button' ).forEach( el => el.disabled = false );
-	        }
+	        this.widget.querySelectorAll( 'input, button' ).forEach( el => el.disabled = false );
 	    }
 
 	    update() {
@@ -46479,7 +47060,7 @@
 
 	        if ( isNumber( value ) ) {
 	            this.value = value;
-	            this.range.dispatchEvent( event.Change() );
+	            this.range.dispatchEvent( events.Change() );
 	        } else {
 	            this._reset();
 	        }
@@ -46516,6 +47097,9 @@
 
 	}
 
+	/**
+	 * @extends RangeWidget
+	 */
 	class AnalogScaleWidget extends RangeWidget {
 
 	    static get selector() {
@@ -46543,7 +47127,7 @@
 
 	    _updateMercury() {}
 
-	    /** 
+	    /**
 	     * (re-)Renders the widget labels based on the current content of .question-label.active
 	     */
 	    _renderLabels() {
@@ -46604,7 +47188,7 @@
 
 	    /*
 	     * Stretch the question to full page height.
-	     * Doing this with pure css flexbox using "flex-direction: column" interferes with the Grid theme 
+	     * Doing this with pure css flexbox using "flex-direction: column" interferes with the Grid theme
 	     * because that theme relies on flexbox with "flex-direction: row".
 	     */
 	    _setResizeListener() {
@@ -46617,9 +47201,6 @@
 
 	    _stretchHeight() {
 	        this.question.style[ 'min-height' ] = 'auto';
-	        const height = this.question.offsetHeight;
-	        const form = this.question.closest( '.or' );
-	        const diff = form.offsetTop + form.offsetHeight - this.question.offsetTop + height - 10;
 	    }
 
 	    update() {
@@ -46628,7 +47209,6 @@
 	    }
 
 	    get props() {
-	        // TODO: use super.props() and override step, max, vertical?
 	        const props = this._props;
 	        props.touch = support.touch;
 	        props.min = isNumber( this.element.getAttribute( 'min' ) ) ? this.element.getAttribute( 'min' ) : 0;
@@ -46651,6 +47231,7 @@
 
 	/**
 	 * Viewer for image labels that have set a big-image version.
+	 * @extends Widget
 	 */
 	class ImageViewer extends Widget {
 
@@ -46676,6 +47257,7 @@
 
 	/**
 	 * Visually transforms a question into a comment modal that can be shown on its linked question.
+	 * @extends Widget
 	 */
 	class Comment extends Widget {
 
@@ -46711,16 +47293,16 @@
 	    }
 
 	    _getLinkedQuestion( input ) {
-	        const contextPath = this.options.helpers.input.getName( jquery( input ) );
+	        const contextPath = this.options.helpers.input.getName( input );
 	        const targetPath = this.element.dataset.for.trim();
 	        const absoluteTargetPath = this.options.helpers.pathToAbsolute( targetPath, contextPath );
 	        // The root is nearest repeat or otherwise nearest form. This avoids having to calculate indices, without
-	        // diminishing the flexibility in any meaningful way, 
+	        // diminishing the flexibility in any meaningful way,
 	        // as it e.g. wouldn't make sense to place a comment node for a top-level question, inside a repeat.
 	        const root = input.closest( 'form.or, .or-repeat' );
 
 	        return this.options.helpers.input
-	            .getWrapNodes( jquery( root.querySelector( `[name="${absoluteTargetPath}"], [data-name="${absoluteTargetPath}"]` ) ) )[ 0 ];
+	            .getWrapNode( root.querySelector( `[name="${absoluteTargetPath}"], [data-name="${absoluteTargetPath}"]` ) );
 	    }
 
 	    _commentHasError() {
@@ -46746,7 +47328,7 @@
 	    }
 
 	    _setValidationHandler() {
-	        jquery( 'form.or' ).on( 'validationcomplete.enketo', () => {
+	        this.element.closest( 'form.or' ).addEventListener( events.ValidationComplete().type, () => {
 	            const error = this._commentHasError();
 	            const value = this.originalInputValue;
 	            this._setCommentButtonState( value, error );
@@ -46805,7 +47387,7 @@
 	        updateButton.addEventListener( 'click', ev => {
 	            const value = input.value;
 	            this.originalInputValue = value;
-	            this.element.dispatchEvent( event.Change() );
+	            this.element.dispatchEvent( events.Change() );
 	            const error = this._commentHasError();
 	            this._setCommentButtonState( value, error );
 	            this._hideCommentModal( this.linkedQuestion );
@@ -46813,8 +47395,8 @@
 	             * Any current error state shown in the linked question will not automatically update.
 	             * It only updates when its **own** value changes.
 	             * See https://github.com/kobotoolbox/enketo-express/issues/608
-	             * Since a linked question and a comment belong so closely together, and likely have 
-	             * a `required` or `constraint` dependency, it makes sense to 
+	             * Since a linked question and a comment belong so closely together, and likely have
+	             * a `required` or `constraint` dependency, it makes sense to
 	             * separately call a validate method on the linked question to update the error state if necessary.
 	             *
 	             * Note that with setting "validateContinously" set to "true" this means it will be validated twice.
@@ -46847,8 +47429,9 @@
 	}
 
 	/**
-	 * Image Map widget that turns an SVG image into a clickable map 
+	 * Image Map widget that turns an SVG image into a clickable map
 	 * by matching radiobutton/checkbox values with id attribute values in the SVG
+	 * @extends Widget
 	 */
 	class ImageMap extends Widget {
 
@@ -46954,7 +47537,7 @@
 	        console.error( err );
 	        const fragment = document.createRange().createContextualFragment(
 	            `<div class="widget image-map">
-                <div class="image-map__error">${t( 'imagemap.svgNotFound' )}</div>
+                <div class="image-map__error" data-i18n="imagemap.svgNotFound">${t( 'imagemap.svgNotFound' )}</div>
             </div>`
 	        );
 	        this.question.querySelector( '.option-wrapper' ).before( fragment );
@@ -46962,7 +47545,7 @@
 
 	    /**
 	     * Removes id attributes from unmatched path elements in order to prevent hover effect (and click listener).
-	     * 
+	     *
 	     * @return {jQuery} [description]
 	     */
 	    _removeUnmatchedIds( svg ) {
@@ -46986,7 +47569,8 @@
 	                const input = this._getInput( id );
 	                if ( input ) {
 	                    input.checked = !input.checked;
-	                    input.dispatchEvent( event.Change() );
+	                    input.dispatchEvent( events.Change() );
+	                    input.dispatchEvent( events.FakeFocus() );
 	                }
 	            }
 	        } );
@@ -47041,9 +47625,7 @@
 	    }
 
 	    enable() {
-	        if ( !this.props.readonly ) {
-	            this.svg.removeAttribute( 'or-readonly' );
-	        }
+	        this.svg.removeAttribute( 'or-readonly' );
 	    }
 
 	    update() {
@@ -47097,7 +47679,14 @@
 	    }
 	}
 
-	function _filter (nodes, selector) {
+	/* eslint-env browser */
+	/**
+	 * Filter only wanted nodes
+	 * @param {NodeList|HTMLCollection|Array} nodes
+	 * @param {String} selector
+	 * @returns {Array}
+	 */
+	var _filter = (function (nodes, selector) {
 	    if (!(nodes instanceof NodeList || nodes instanceof HTMLCollection || nodes instanceof Array)) {
 	        throw new Error('You must provide a nodeList/HTMLCollection/Array of elements to be filtered.');
 	    }
@@ -47105,7 +47694,7 @@
 	        return Array.from(nodes);
 	    }
 	    return Array.from(nodes).filter(function (item) { return item.nodeType === 1 && item.matches(selector); });
-	}
+	});
 
 	/* eslint-env browser */
 	var stores = new Map();
@@ -47113,7 +47702,7 @@
 	 * Stores data & configurations per Sortable
 	 * @param {Object} config
 	 */
-	var Store = (function () {
+	var Store = /** @class */ (function () {
 	    function Store() {
 	        this._config = new Map(); // eslint-disable-line no-undef
 	        this._placeholder = undefined; // eslint-disable-line no-undef
@@ -47240,7 +47829,11 @@
 	    };
 	    return Store;
 	}());
-	function store (sortableElement) {
+	/**
+	 * @param {HTMLElement} sortableElement
+	 * @returns {Class: Store}
+	 */
+	var store = (function (sortableElement) {
 	    // if sortableElement is wrong type
 	    if (!(sortableElement instanceof HTMLElement)) {
 	        throw new Error('Please provide a sortable to the store function.');
@@ -47251,7 +47844,7 @@
 	    }
 	    // return instance
 	    return stores.get(sortableElement);
-	}
+	});
 
 	/**
 	 * @param {Array|HTMLElement} element
@@ -47311,7 +47904,11 @@
 	    element.removeAttribute(attribute);
 	}
 
-	function offset (element) {
+	/**
+	 * @param {HTMLElement} element
+	 * @returns {Object}
+	 */
+	var _offset = (function (element) {
 	    if (!element.parentElement || element.getClientRects().length === 0) {
 	        throw new Error('target element must be part of the dom');
 	    }
@@ -47322,36 +47919,54 @@
 	        top: rect.top + window.pageYOffset,
 	        bottom: rect.bottom + window.pageYOffset
 	    };
-	}
+	});
 
-	function _debounce (func, wait) {
+	/**
+	 * Creates and returns a new debounced version of the passed function which will postpone its execution until after wait milliseconds have elapsed
+	 * @param {Function} func to debounce
+	 * @param {number} time to wait before calling function with latest arguments, 0 - no debounce
+	 * @returns {function} - debounced function
+	 */
+	var _debounce = (function (func, wait) {
 	    if (wait === void 0) { wait = 0; }
 	    var timeout;
 	    return function () {
 	        var args = [];
 	        for (var _i = 0; _i < arguments.length; _i++) {
-	            args[_i - 0] = arguments[_i];
+	            args[_i] = arguments[_i];
 	        }
 	        clearTimeout(timeout);
 	        timeout = setTimeout(function () {
 	            func.apply(void 0, args);
 	        }, wait);
 	    };
-	}
+	});
 
-	function index (element, elementList) {
+	/* eslint-env browser */
+	/**
+	 * Get position of the element relatively to its sibling elements
+	 * @param {HTMLElement} element
+	 * @returns {number}
+	 */
+	var _index = (function (element, elementList) {
 	    if (!(element instanceof HTMLElement) || !(elementList instanceof NodeList || elementList instanceof HTMLCollection || elementList instanceof Array)) {
 	        throw new Error('You must provide an element and a list of elements.');
 	    }
 	    return Array.from(elementList).indexOf(element);
-	}
+	});
 
-	function isInDom (element) {
+	/* eslint-env browser */
+	/**
+	 * Test whether element is in DOM
+	 * @param {HTMLElement} element
+	 * @returns {boolean}
+	 */
+	var isInDom = (function (element) {
 	    if (!(element instanceof HTMLElement)) {
 	        throw new Error('Element is not a node element.');
 	    }
 	    return element.parentNode !== null;
-	}
+	});
 
 	/* eslint-env browser */
 	/**
@@ -47379,7 +47994,14 @@
 	 */
 	var insertAfter = function (target, element) { return insertNode(target, element, 'after'); };
 
-	function _serialize (sortableContainer, customItemSerializer, customContainerSerializer) {
+	/* eslint-env browser */
+	/**
+	 * Filter only wanted nodes
+	 * @param {HTMLElement} sortableContainer
+	 * @param {Function} customSerializer
+	 * @returns {Array}
+	 */
+	var _serialize = (function (sortableContainer, customItemSerializer, customContainerSerializer) {
 	    if (customItemSerializer === void 0) { customItemSerializer = function (serializedItem, sortableContainer) { return serializedItem; }; }
 	    if (customContainerSerializer === void 0) { customContainerSerializer = function (serializedContainer) { return serializedContainer; }; }
 	    // check for valid sortableContainer
@@ -47400,7 +48022,7 @@
 	            parent: sortableContainer,
 	            node: item,
 	            html: item.outerHTML,
-	            index: index(item, items)
+	            index: _index(item, items)
 	        };
 	    });
 	    // serialize container
@@ -47412,9 +48034,17 @@
 	        container: customContainerSerializer(container),
 	        items: serializedItems.map(function (item) { return customItemSerializer(item, sortableContainer); })
 	    };
-	}
+	});
 
-	function _makePlaceholder (sortableElement, placeholder, placeholderClass) {
+	/* eslint-env browser */
+	/**
+	 * create a placeholder element
+	 * @param {HTMLElement} sortableElement a single sortable
+	 * @param {string|undefined} placeholder a string representing an html element
+	 * @param {string} placeholderClasses a string representing the classes that should be added to the placeholder
+	 */
+	var _makePlaceholder = (function (sortableElement, placeholder, placeholderClass) {
+	    var _a;
 	    if (placeholderClass === void 0) { placeholderClass = 'sortable-placeholder'; }
 	    if (!(sortableElement instanceof HTMLElement)) {
 	        throw new Error('You must provide a valid element as a sortable.');
@@ -47442,10 +48072,14 @@
 	        (_a = placeholder.classList).add.apply(_a, placeholderClass.split(' '));
 	    }
 	    return placeholder;
-	    var _a;
-	}
+	});
 
-	function _getElementHeight (element) {
+	/* eslint-env browser */
+	/**
+	 * Get height of an element including padding
+	 * @param {HTMLElement} element an dom element
+	 */
+	var _getElementHeight = (function (element) {
 	    if (!(element instanceof HTMLElement)) {
 	        throw new Error('You must provide a valid dom element');
 	    }
@@ -47458,9 +48092,15 @@
 	        return isNaN(int) ? 0 : int;
 	    })
 	        .reduce(function (sum, value) { return sum + value; });
-	}
+	});
 
-	function _getHandles (items, selector) {
+	/* eslint-env browser */
+	/**
+	 * get handle or return item
+	 * @param {Array<HTMLElement>} items
+	 * @param {string} selector
+	 */
+	var _getHandles = (function (items, selector) {
 	    if (!(items instanceof Array)) {
 	        throw new Error('You must provide a Array of HTMLElements to be filtered.');
 	    }
@@ -47468,14 +48108,26 @@
 	        return items;
 	    }
 	    return items
+	        // remove items without handle from array
 	        .filter(function (item) {
-	        return item.querySelector(selector) instanceof HTMLElement;
+	        return item.querySelector(selector) instanceof HTMLElement ||
+	            (item.shadowRoot && item.shadowRoot.querySelector(selector) instanceof HTMLElement);
 	    })
+	        // replace item with handle in array
 	        .map(function (item) {
-	        return item.querySelector(selector);
+	        return item.querySelector(selector) || (item.shadowRoot && item.shadowRoot.querySelector(selector));
 	    });
-	}
+	});
 
+	/**
+	 * @param {Event} event
+	 * @returns {HTMLElement}
+	 */
+	var getEventTarget = (function (event) {
+	    return (event.composedPath && event.composedPath()[0]) || event.target;
+	});
+
+	/* eslint-env browser */
 	/**
 	 * defaultDragImage returns the current item as dragged image
 	 * @param {HTMLElement} draggedElement - the item that the user drags
@@ -47490,7 +48142,14 @@
 	        posY: event.pageY - elementOffset.top
 	    };
 	};
-	function setDragImage (event, draggedElement, customDragImage) {
+	/**
+	 * attaches an element as the drag image to an event
+	 * @param {Event} event - the original drag event object
+	 * @param {HTMLElement} draggedElement - the item that the user drags
+	 * @param {Function} customDragImage - function to create a custom dragImage
+	 * @return void
+	 */
+	var setDragImage = (function (event, draggedElement, customDragImage) {
 	    // check if event is provided
 	    if (!(event instanceof Event)) {
 	        throw new Error('setDragImage requires a DragEvent as the first argument.');
@@ -47506,7 +48165,7 @@
 	    // check if setDragImage method is available
 	    if (event.dataTransfer && event.dataTransfer.setDragImage) {
 	        // get the elements offset
-	        var elementOffset = offset(draggedElement);
+	        var elementOffset = _offset(draggedElement);
 	        // get the dragImage
 	        var dragImage = customDragImage(draggedElement, elementOffset, event);
 	        // check if custom function returns correct values
@@ -47516,13 +48175,18 @@
 	        // needs to be set for HTML5 drag & drop to work
 	        event.dataTransfer.effectAllowed = 'copyMove';
 	        // Firefox requires it to use the event target's id for the data
-	        event.dataTransfer.setData('text/plain', event.target.id);
+	        event.dataTransfer.setData('text/plain', getEventTarget(event).id);
 	        // set the drag image on the event
 	        event.dataTransfer.setDragImage(dragImage.element, dragImage.posX, dragImage.posY);
 	    }
-	}
+	});
 
-	function _listsConnected (destination, origin) {
+	/**
+	 * Check if curList accepts items from destList
+	 * @param {sortable} destination the container an item is move to
+	 * @param {sortable} origin the container an item comes from
+	 */
+	var _listsConnected = (function (destination, origin) {
 	    // check if valid sortable
 	    if (destination.isSortable === true) {
 	        var acceptFrom = store(destination).getConfig('acceptFrom');
@@ -47545,8 +48209,11 @@
 	        }
 	    }
 	    return false;
-	}
+	});
 
+	/**
+	 * default configurations
+	 */
 	var defaultConfiguration = {
 	    items: null,
 	    // deprecated
@@ -47588,7 +48255,7 @@
 	    return function () {
 	        var args = [];
 	        for (var _i = 0; _i < arguments.length; _i++) {
-	            args[_i - 0] = arguments[_i];
+	            args[_i] = arguments[_i];
 	        }
 	        var now = Date.now();
 	        if (lastEventTimestamp === null || now - lastEventTimestamp >= threshold) {
@@ -47598,7 +48265,14 @@
 	    };
 	}
 
-	function enableHoverClass (sortableContainer, enable) {
+	/* eslint-env browser */
+	/**
+	 * enable or disable hoverClass on mouseenter/leave if container Items
+	 * @param {sortable} sortableContainer a valid sortableContainer
+	 * @param {boolean} enable enable or disable event
+	 */
+	// export default (sortableContainer: sortable, enable: boolean) => {
+	var enableHoverClass = (function (sortableContainer, enable) {
 	    if (typeof store(sortableContainer).getConfig('hoverClass') === 'string') {
 	        var hoverClasses_1 = store(sortableContainer).getConfig('hoverClass').split(' ');
 	        // add class on hover
@@ -47607,30 +48281,31 @@
 	                // check of no mouse button was pressed when mousemove started == no drag
 	                if (event.buttons === 0) {
 	                    _filter(sortableContainer.children, store(sortableContainer).getConfig('items')).forEach(function (item) {
+	                        var _a, _b;
 	                        if (item !== event.target) {
 	                            (_a = item.classList).remove.apply(_a, hoverClasses_1);
 	                        }
 	                        else {
 	                            (_b = item.classList).add.apply(_b, hoverClasses_1);
 	                        }
-	                        var _a, _b;
 	                    });
 	                }
 	            }, store(sortableContainer).getConfig('throttleTime')));
 	            // remove class on leave
 	            addEventListener(sortableContainer, 'mouseleave', function () {
 	                _filter(sortableContainer.children, store(sortableContainer).getConfig('items')).forEach(function (item) {
-	                    (_a = item.classList).remove.apply(_a, hoverClasses_1);
 	                    var _a;
+	                    (_a = item.classList).remove.apply(_a, hoverClasses_1);
 	                });
 	            });
+	            // remove events
 	        }
 	        else {
 	            removeEventListener(sortableContainer, 'mousemove');
 	            removeEventListener(sortableContainer, 'mouseleave');
 	        }
 	    }
-	}
+	});
 
 	/* eslint-env browser */
 	/*
@@ -47647,6 +48322,9 @@
 	var originIndex;
 	var originElementIndex;
 	var originItemsBeforeUpdate;
+	// Previous Sortable Container - we dispatch as sortenter event when a
+	// dragged item enters a sortableContainer for the first time
+	var previousContainer;
 	// Destination List - data from before any item was changed
 	var destinationItemsBeforeUpdate;
 	/**
@@ -47701,8 +48379,13 @@
 	/**
 	 * find sortable from element. travels up parent element until found or null.
 	 * @param {HTMLElement} element a single sortable
+	 * @param {Event} event - the current event. We need to pass it to be able to
+	 * find Sortable whith shadowRoot (document fragment has no parent)
 	 */
-	function findSortable(element) {
+	function findSortable(element, event) {
+	    if (event.composedPath) {
+	        return event.composedPath().find(function (el) { return el.isSortable; });
+	    }
 	    while (element.isSortable !== true) {
 	        element = element.parentElement;
 	    }
@@ -47718,7 +48401,7 @@
 	    var options = addData(sortableElement, 'opts');
 	    var items = _filter(sortableElement.children, options.items);
 	    var itemlist = items.filter(function (ele) {
-	        return ele.contains(element);
+	        return ele.contains(element) || (ele.shadowRoot && ele.shadowRoot.contains(element));
 	    });
 	    return itemlist.length > 0 ? itemlist[0] : element;
 	}
@@ -47855,7 +48538,12 @@
 	        var customPlaceholder;
 	        if (options.placeholder !== null && options.placeholder !== undefined) {
 	            var tempContainer = document.createElement(sortableElement.tagName);
-	            tempContainer.innerHTML = options.placeholder;
+	            if (options.placeholder instanceof HTMLElement) {
+	                tempContainer.appendChild(options.placeholder);
+	            }
+	            else {
+	                tempContainer.innerHTML = options.placeholder;
+	            }
 	            customPlaceholder = tempContainer.children[0];
 	        }
 	        // add placeholder
@@ -47879,19 +48567,20 @@
 	         */
 	        addEventListener(sortableElement, 'dragstart', function (e) {
 	            // ignore dragstart events
-	            if (e.target.isSortable === true) {
+	            var target = getEventTarget(e);
+	            if (target.isSortable === true) {
 	                return;
 	            }
 	            e.stopImmediatePropagation();
-	            if ((options.handle && !e.target.matches(options.handle)) || e.target.getAttribute('draggable') === 'false') {
+	            if ((options.handle && !target.matches(options.handle)) || target.getAttribute('draggable') === 'false') {
 	                return;
 	            }
-	            var sortableContainer = findSortable(e.target);
-	            var dragItem = findDragElement(sortableContainer, e.target);
+	            var sortableContainer = findSortable(target, e);
+	            var dragItem = findDragElement(sortableContainer, target);
 	            // grab values
 	            originItemsBeforeUpdate = _filter(sortableContainer.children, options.items);
 	            originIndex = originItemsBeforeUpdate.indexOf(dragItem);
-	            originElementIndex = index(dragItem, sortableContainer.children);
+	            originElementIndex = _index(dragItem, sortableContainer.children);
 	            originContainer = sortableContainer;
 	            // add transparent clone or other ghost to cursor
 	            setDragImage(e, dragItem, options.customDragImage);
@@ -47908,7 +48597,8 @@
 	                        index: originIndex,
 	                        container: originContainer
 	                    },
-	                    item: dragging
+	                    item: dragging,
+	                    originalTarget: target
 	                }
 	            }));
 	        });
@@ -47916,12 +48606,28 @@
 	         We are capturing targetSortable before modifications with 'dragenter' event
 	        */
 	        addEventListener(sortableElement, 'dragenter', function (e) {
-	            if (e.target.isSortable === true) {
-	                return;
+	            var target = getEventTarget(e);
+	            var sortableContainer = findSortable(target, e);
+	            if (sortableContainer && sortableContainer !== previousContainer) {
+	                destinationItemsBeforeUpdate = _filter(sortableContainer.children, addData(sortableContainer, 'items'))
+	                    .filter(function (item) { return item !== store(sortableElement).placeholder; });
+	                sortableContainer.dispatchEvent(new CustomEvent('sortenter', {
+	                    detail: {
+	                        origin: {
+	                            elementIndex: originElementIndex,
+	                            index: originIndex,
+	                            container: originContainer
+	                        },
+	                        destination: {
+	                            container: sortableContainer,
+	                            itemsBeforeUpdate: destinationItemsBeforeUpdate
+	                        },
+	                        item: dragging,
+	                        originalTarget: target
+	                    }
+	                }));
 	            }
-	            var sortableContainer = findSortable(e.target);
-	            destinationItemsBeforeUpdate = _filter(sortableContainer.children, addData(sortableContainer, 'items'))
-	                .filter(function (item) { return item !== store(sortableElement).placeholder; });
+	            previousContainer = sortableContainer;
 	        });
 	        /*
 	         * Dragend Event - https://developer.mozilla.org/en-US/docs/Web/Events/dragend
@@ -47956,6 +48662,7 @@
 	                    item: dragging
 	                }
 	            }));
+	            previousContainer = null;
 	            dragging = null;
 	            draggingHeight = null;
 	        });
@@ -47974,7 +48681,9 @@
 	            var visiblePlaceholder = Array.from(stores.values()).map(function (data) {
 	                return data.placeholder;
 	            })
+	                // filter only HTMLElements
 	                .filter(function (placeholder) { return placeholder instanceof HTMLElement; })
+	                // filter only elements in DOM
 	                .filter(isInDom)[0];
 	            // attach element after placeholder
 	            insertAfter(visiblePlaceholder, dragging);
@@ -47999,9 +48708,9 @@
 	            var destinationContainer = this.isSortable === true ? this : this.parentElement;
 	            var destinationItems = _filter(destinationContainer.children, addData(destinationContainer, 'items'))
 	                .filter(function (item) { return item !== placeholder; });
-	            var destinationElementIndex = index(dragging, Array.from(dragging.parentElement.children)
+	            var destinationElementIndex = _index(dragging, Array.from(dragging.parentElement.children)
 	                .filter(function (item) { return item !== placeholder; }));
-	            var destinationIndex = index(dragging, destinationItems);
+	            var destinationIndex = _index(dragging, destinationItems);
 	            /*
 	             * When a list item changed container lists or index within a list
 	             * Fires Custom Event - 'sortupdate'
@@ -48040,13 +48749,13 @@
 	            // (not only items, but also disabled, etc.)
 	            if (Array.from(sortableElement.children).indexOf(element) > -1) {
 	                var thisHeight = _getElementHeight(element);
-	                var placeholderIndex = index(store(sortableElement).placeholder, element.parentElement.children);
-	                var thisIndex = index(element, element.parentElement.children);
+	                var placeholderIndex = _index(store(sortableElement).placeholder, element.parentElement.children);
+	                var thisIndex = _index(element, element.parentElement.children);
 	                // Check if `element` is bigger than the draggable. If it is, we have to define a dead zone to prevent flickering
 	                if (thisHeight > draggingHeight) {
 	                    // Dead zone?
 	                    var deadZone = thisHeight - draggingHeight;
-	                    var offsetTop = offset(element).top;
+	                    var offsetTop = _offset(element).top;
 	                    if (placeholderIndex < thisIndex && pageY < offsetTop) {
 	                        return;
 	                    }
@@ -48066,7 +48775,7 @@
 	                // vertical center.
 	                var placeAfter = false;
 	                try {
-	                    var elementMiddle = offset(element).top + element.offsetHeight / 2;
+	                    var elementMiddle = _offset(element).top + element.offsetHeight / 2;
 	                    placeAfter = pageY >= elementMiddle;
 	                }
 	                catch (e) {
@@ -48080,7 +48789,9 @@
 	                }
 	                // get placeholders from all stores & remove all but current one
 	                Array.from(stores.values())
+	                    // remove empty values
 	                    .filter(function (data) { return data.placeholder !== undefined; })
+	                    // foreach placeholder in array if outside of current sorableContainer -> remove from DOM
 	                    .forEach(function (data) {
 	                    if (data.placeholder !== store(sortableElement).placeholder) {
 	                        data.placeholder.remove();
@@ -48104,7 +48815,7 @@
 	        // Handle dragover and dragenter events on draggable items
 	        var onDragOverEnter = function (e) {
 	            var element = e.target;
-	            var sortableElement = element.isSortable === true ? element : findSortable(element);
+	            var sortableElement = element.isSortable === true ? element : findSortable(element, e);
 	            element = findDragElement(sortableElement, element);
 	            if (!dragging || !_listsConnected(sortableElement, dragging.parentElement) || addData(sortableElement, '_disabled') === 'true') {
 	                return;
@@ -48132,13 +48843,24 @@
 	sortable.disable = function (sortableElement) {
 	    _disableSortable(sortableElement);
 	};
+	/* START.TESTS_ONLY */
+	sortable.__testing = {
+	    // add internal methods here for testing purposes
+	    _data: addData,
+	    _removeItemEvents: _removeItemEvents,
+	    _removeItemData: _removeItemData,
+	    _removeSortableData: _removeSortableData
+	};
 
 	var html5sortable_cjs = sortable;
 
+	/**
+	 * @extends Widget
+	 */
 	class RankWidget extends Widget {
 
 	    static get selector() {
-	        return 'input.rank';
+	        return '.question input.rank';
 	    }
 
 	    static get list() {
@@ -48156,11 +48878,12 @@
 	        jquery( this.list )
 	            .toggleClass( 'rank-widget--empty', !loadedValue )
 	            .append( this.resetButtonHtml )
-	            .append( `<div class="rank-widget__overlay"><span class="rank-widget__overlay__content">${startText}</span></div>` )
+	            .append( `<div class="rank-widget__overlay"><span class="rank-widget__overlay__content" data-i18n="rankwidget.clickstart">${startText}</span></div>` )
 	            .on( 'click', function() {
 	                if ( !that.element.disabled ) {
 	                    this.classList.remove( 'rank-widget--empty' );
 	                    that.originalInputValue = that.value;
+	                    that.element.dispatchEvent( events.FakeFocus() );
 	                }
 	            } );
 
@@ -48183,7 +48906,8 @@
 	                };
 	            }
 	        } )[ 0 ].addEventListener( 'sortupdate', () => {
-	            that.originalInputValue = that.value;
+	            this.originalInputValue = this.value;
+	            this.element.dispatchEvent( events.FakeFocus() );
 	        } );
 
 	        if ( this.props.readonly ) {
@@ -48239,15 +48963,13 @@
 	    }
 
 	    enable() {
-	        if ( this.props && !this.props.readonly ) {
-	            jquery( this.element )
-	                .prop( 'disabled', false )
-	                .next( '.widget' )
-	                .find( 'input, button' )
-	                .prop( 'disabled', false );
+	        jquery( this.element )
+	            .prop( 'disabled', false )
+	            .next( '.widget' )
+	            .find( 'input, button' )
+	            .prop( 'disabled', false );
 
-	            html5sortable_cjs( this.list, 'enable' );
-	        }
+	        html5sortable_cjs( this.list, 'enable' );
 	    }
 
 	    update() {
@@ -48279,6 +49001,9 @@
 
 	}
 
+	/**
+	 * @extends Widget
+	 */
 	class UrlWidget extends Widget {
 
 	    static get selector() {
@@ -48286,7 +49011,7 @@
 	    }
 
 	    _init() {
-	        const fragment = document.createRange().createContextualFragment( '<a class="widget url-widget" target="_blank"/>' );
+	        const fragment = document.createRange().createContextualFragment( '<a class="widget url-widget" target="_blank" rel="noopener"/>' );
 
 	        this.element.classList.add( 'hide' );
 	        this.element.after( fragment );
@@ -48311,10 +49036,70 @@
 	    }
 	}
 
+	/**
+	 * Hardcodes a maximum character length to text input fields.
+	 * This is an unusual way to implement a feature, because it is not an actual widget,
+	 * but this is the easiest way to do it.
+	 */
+	class TextMaxWidget extends Widget {
+
+	    static get selector() {
+	        return '[data-type-xml="string"]';
+	    }
+
+	    _init() {
+	        const max = Number( config.textMaxChars );
+	        if ( !isNaN( max ) && max > 0 ) {
+	            this.element.setAttribute( 'maxlength', config.textMaxChars );
+	        }
+	    }
+	}
+
+	/**
+	 * The whole purpose of this widget is to workaround iOS browser bugs. See bug descriptions inline below.
+	 *
+	 * @extends Widget
+	 */
+	class DatepickerNativeIos extends Widget {
+	    static get selector() {
+	        return '.question input[type="date"]';
+	    }
+	    static condition( element ) {
+	        // Do not instantiate if DatepickerExtended was instantiated on element or if non-iOS browser is used.
+	        return !elementDataStore.has( element, 'DatepickerExtended' ) && os.ios;
+	    }
+	    _init() {
+
+	        /*
+	         * Bug 1.
+	         *
+	         * This bug deals with readonly date inputs on iOS browsers (e.g. Safari and Chrome). 
+	         * See https://github.com/OpenClinica/enketo-express-oc/issues/219.
+	         * Once this bug is fixed in iOS, this code can be removed.
+	         * 
+	         * Unfortunately, I don't think we can detect the presence of the bug itself to avoid 
+	         * using the workaround automatically (after Apple fixes it).
+	         * 
+	         * This is a very ugly solution, but the bug is fairly obscure, and the workaround is hopefully
+	         * just temporary.
+	         */
+	        console.log( 'Adding iOS readonly datepicker workaround.' );
+	        this.element.addEventListener( 'focus', () => {
+	            // prepare for future where readonly state is dynamic
+	            if ( this.element.readOnly ) {
+	                this.element.blur();
+	            }
+	        } );
+	    }
+	}
+
 	//import zz from '../widget/example/my-widget';
 
-	var _widgets = [ NoteWidget, DesktopSelectpicker, MobileSelectPicker, AutocompleteSelectpicker, Geopicker, TextareaWidget, TableWidget, Radiopicker, DatepickerExtended, DatepickerNative, DatepickerMobile, TimepickerExtended, DatetimepickerExtended, CompactPicker, Filepicker, DrawWidget, LikertItem, HorizontalChoices, AnalogScaleWidget, ImageViewer, Comment, ImageMap, RangeWidget, RankWidget, UrlWidget ];
+	var _widgets = [ NoteWidget, DesktopSelectpicker, MobileSelectPicker, AutocompleteSelectpicker, Geopicker, TextareaWidget, TableWidget, Radiopicker, DatepickerExtended, DatepickerNative, DatepickerMobile, TimepickerExtended, DatetimepickerExtended, MediaPicker, Filepicker, DrawWidget, LikertItem, Columns, AnalogScaleWidget, ImageViewer, Comment, ImageMap, RangeWidget, RankWidget, UrlWidget, TextMaxWidget, DatepickerNativeIos ];
 
+	/** 
+	 * @module widgets-controller
+	 */
 	const widgets = _widgets.filter( widget => widget.selector );
 	let options;
 	let formHtml;
@@ -48343,7 +49128,7 @@
 	}
 
 	/**
-	 * Enables widgets if they weren't enabled already when the branch was enabled by the controller.
+	 * Enables widgets if they weren't enabled already if they are not readonly.
 	 * In most widgets, this function will do nothing because the disabled attribute was automatically removed from all
 	 * fieldsets, inputs, textareas and selects inside the branch element provided as parameter.
 	 * Note that this function can be called before the widgets have been initialized and will in that case do nothing. This is
@@ -48354,7 +49139,8 @@
 	 */
 	function enable( group ) {
 	    widgets.forEach( Widget => {
-	        const els = _getElements( group, Widget.selector );
+	        const els = _getElements( group, Widget.selector )
+	            .filter( el => el.nodeName.toLowerCase() === 'select' ? !el.getAttribute( 'readonly' ) : !el.readOnly );
 	        new Collection( els ).enable( Widget );
 	    } );
 	}
@@ -48376,9 +49162,9 @@
 	/**
 	 * Returns the elements on which to apply the widget
 	 *
-	 * @param  {Element} group   a jQuery-wrapped element
-	 * @param  {string} selector if the selector is null, the form element will be returned
-	 * @return {jQuery}          a jQuery collection
+	 * @param {Element} group - a jQuery-wrapped element
+	 * @param {string} selector - if the selector is null, the form element will be returned
+	 * @return {jQuery} a jQuery collection
 	 */
 	function _getElements( group, selector ) {
 	    if ( selector ) {
@@ -48399,8 +49185,8 @@
 	/**
 	 * Instantiate a widget on a group (whole form or newly cloned repeat)
 	 *
-	 * @param  widget The widget to instantiate
-	 * @param  {Element} group The element inside which widgets need to be created.
+	 * @param {Object} Widget - The widget to instantiate
+	 * @param {Element} group - The element inside which widgets need to be created.
 	 */
 	function _instantiate( Widget, group ) {
 	    let opts = {};
@@ -48435,13 +49221,13 @@
 	 * and whenever a new repeat is created. In the latter case, since the widget('update') is called upon
 	 * the elements of the repeat, there should be no duplicate eventhandlers.
 	 *
-	 * @param {{name: string}} widget The widget configuration object
-	 * @param {<Element>}         els    Array of elements that the widget has been instantiated on.
+	 * @param {{name: string}} Widget - The widget configuration object
+	 * @param {Element} els - Array of elements that the widget has been instantiated on.
 	 */
 	function _setLangChangeListener( Widget, els ) {
-	    // call update for all widgets when language changes 
+	    // call update for all widgets when language changes
 	    if ( els.length > 0 ) {
-	        formHtml.addEventListener( event.ChangeLanguage().type, () => {
+	        formHtml.addEventListener( events.ChangeLanguage().type, () => {
 	            new Collection( els ).update( Widget );
 	        } );
 	    }
@@ -48452,8 +49238,8 @@
 	 * and whenever a new repeat is created. In the latter case, since the widget('update') is called upon
 	 * the elements of the repeat, there should be no duplicate eventhandlers.
 	 *
-	 * @param {{name: string}} widget   The widget configuration object
-	 * @param {<Element>}      els      The array of elements that the widget has been instantiated on.
+	 * @param {{name: string}} Widget - The widget configuration object
+	 * @param {Element} els - The array of elements that the widget has been instantiated on.
 	 */
 	function _setOptionChangeListener( Widget, els ) {
 	    if ( els.length > 0 && Widget.list ) {
@@ -48467,14 +49253,14 @@
 	/**
 	 * Calls widget('update') if the form input/select/textarea value changes due to an action outside
 	 * of the widget (e.g. a calculation).
-	 * 
-	 * @param {{name: string}} widget   The widget configuration object
-	 * @param {<Element>}      els      The array of elements that the widget has been instantiated on.
+	 *
+	 * @param {{name: string}} Widget - The widget configuration object.
+	 * @param {Element} els - The array of elements that the widget has been instantiated on.
 	 */
 	function _setValChangeListener( Widget, els ) {
 	    // avoid adding eventhandlers on widgets that apply to the <form> or <label> element
 	    if ( els.length > 0 && els[ 0 ].matches( 'input, select, textarea' ) ) {
-	        els.forEach( el => el.addEventListener( event.InputUpdate.type, event => {
+	        els.forEach( el => el.addEventListener( events.InputUpdate().type, event => {
 	            new Collection( event.target ).update( Widget );
 	        } ) );
 	    }
@@ -48494,7 +49280,12 @@
 	        if ( elementDataStore.has( element, Widget ) ) {
 	            return;
 	        }
-	        elementDataStore.put( element, Widget.name, new Widget( element, options ) );
+	        const w = new Widget( element, options );
+	        if ( w instanceof Promise ) {
+	            w.then( wr => elementDataStore.put( element, Widget.name, wr ) );
+	        } else {
+	            elementDataStore.put( element, Widget.name, w );
+	        }
 	    }
 	    _methodCall( Widget, method ) {
 	        this.elements.forEach( element => {
@@ -48526,10 +49317,12 @@
 
 	/**
 	 * Form languages module.
+	 * 
+	 * @module language
 	 */
 
 	var languageModule = {
-	    init() {
+	    init( overrideLang ) {
 	        if ( !this.form ) {
 	            throw new Error( 'Language module not correctly instantiated with form property.' );
 	        }
@@ -48553,7 +49346,14 @@
 	            }
 	        }
 	        this.formLanguages = root.querySelector( '#form-languages' );
-	        this._currentLang = this.formLanguages.dataset.defaultLang || languages[ 0 ] || '';
+
+	        if ( overrideLang && languages.includes( overrideLang ) ) {
+	            this._currentLang = overrideLang;
+	            this.setUi( this._currentLang );
+	        } else {
+	            this._currentLang = this.formLanguages.dataset.defaultLang || languages[ 0 ] || '';
+	        }
+
 	        const langOption = this.formLanguages.querySelector( `[value="${this._currentLang}"]` );
 	        const currentDirectionality = langOption && langOption.dataset.dir || 'ltr';
 
@@ -48565,13 +49365,13 @@
 	            return;
 	        }
 
-	        this.formLanguages.addEventListener( event.Change().type, event => {
+	        this.formLanguages.addEventListener( events.Change().type, event => {
 	            event.preventDefault();
 	            this._currentLang = event.target.value;
 	            this.setUi( this._currentLang );
 	        } );
 
-	        this.form.view.html.addEventListener( event.AddRepeat().type, event => this.setUi( this._currentLang, event.target ) );
+	        this.form.view.html.addEventListener( events.AddRepeat().type, event => this.setUi( this._currentLang, event.target ) );
 	    },
 	    get currentLang() {
 	        return this._currentLang;
@@ -48598,7 +49398,7 @@
 	        window.enketoFormLocale = lang;
 
 	        this.form.view.html.querySelectorAll( 'select, datalist' ).forEach( el => this.setSelect( el ) );
-	        this.form.view.html.dispatchEvent( event.ChangeLanguage() );
+	        this.form.view.html.dispatchEvent( events.ChangeLanguage() );
 	    },
 	    // swap language of <select> and <datalist> <option>s
 	    setSelect( select ) {
@@ -48625,23 +49425,13 @@
 	    }
 	};
 
-	/*
-	 * Preloader module.
+	/** 
+	 * Preloader module (soon to be deprecated).
 	 * 
-	 * Note that preloaders may be deprecated in the future. This code is already prepared for a change 
-	 * by using a (secret) "session" instance.
-	 *
-	 * Functions are designed to fail silently if unknown preloaders are called.
+	 * @module preloader
 	 */
 	var preloadModule = {
 	    init() {
-	        let item;
-	        let param;
-	        let curVal;
-	        let newVal;
-	        let dataNode;
-	        let props;
-	        let $preload;
 	        const that = this;
 
 	        if ( !this.form ) {
@@ -48650,18 +49440,19 @@
 
 	        //these initialize actual preload items
 	        this.form.view.$.find( 'input[data-preload], select[data-preload], textarea[data-preload]' ).each( function() {
-	            $preload = jquery( this );
-	            props = that.form.input.getProps( $preload );
-	            item = $preload.attr( 'data-preload' ).toLowerCase();
-	            param = $preload.attr( 'data-preload-params' ).toLowerCase();
+	            const $preload = jquery( this );
+	            const preload = this;
+	            const props = that.form.input.getProps( preload );
+	            const item = $preload.attr( 'data-preload' ).toLowerCase();
+	            const param = $preload.attr( 'data-preload-params' ).toLowerCase();
 
 	            if ( typeof that[ item ] !== 'undefined' ) {
-	                dataNode = that.form.model.node( props.path, props.index );
+	                const dataNode = that.form.model.node( props.path, props.index );
 	                // If a preload item is placed inside a repeat with repeat-count 0, the node
 	                // doesn't exist and will never get a value (which is correct behavior)
 	                if ( dataNode.getElements().length ) {
-	                    curVal = dataNode.getVal();
-	                    newVal = that[ item ]( {
+	                    const curVal = dataNode.getVal();
+	                    const newVal = that[ item ]( {
 	                        param,
 	                        curVal,
 	                        dataNode
@@ -48749,13 +49540,16 @@
 	    }
 	};
 
-	/**
-	 * Updates output values, optionally filtered by those values that contain a changed node name
-	 *
-	 * @param  {{nodes:Array<string>=, repeatPath: string=, repeatIndex: number=}=} updated The object containing info on updated data nodes
+	/** 
+	 * @module output
 	 */
 
 	var outputModule = {
+	    /**
+	     * Updates output values, optionally filtered by those values that contain a changed node name
+	     *
+	     * @param  {{nodes:Array<string>=, repeatPath: string=, repeatIndex: number=}=} updated The object containing info on updated data nodes
+	     */
 	    update( updated ) {
 	        const outputCache = {};
 	        let val = '';
@@ -48771,13 +49565,14 @@
 
 	        $nodes.each( function() {
 	            const $output = jquery( this );
+	            const output = this;
 
 	            // nodes are in document order, so we discard any nodes in questions/groups that have a disabled parent
 	            if ( $output.closest( '.or-branch' ).parent().closest( '.disabled' ).length ) {
 	                return;
 	            }
 
-	            const expr = $output.attr( 'data-value' );
+	            const expr = output.dataset.value;
 	            /*
 	             * Note that in XForms input is the parent of label and in HTML the other way around so an output inside a label
 	             * should look at the HTML input to determine the context.
@@ -48785,31 +49580,32 @@
 	             * or the parent with a name attribute
 	             * or the whole document
 	             */
-	            let $context = $output.closest( '.question, .or-group' );
+	            let context = output.closest( '.question, .or-group' );
 
-	            if ( !$context.is( '.or-group' ) ) {
-	                $context = $context.find( '[name]' ).eq( 0 );
+
+	            if ( !context.matches( '.or-group' ) ) {
+	                context = context.querySelector( '[name]' );
 	            }
 
-	            let context = that.form.input.getName( $context );
+	            let contextPath = that.form.input.getName( context );
 
 	            /* 
 	             * If the output is part of a group label and that group contains repeats with the same name,
 	             * but currently has 0 repeats, the context will not be available. See issue 502. 
 	             * This same logic is applied in branch.js.
 	             */
-	            if ( $context.children( `.or-repeat-info[data-name="${context}"]` ).length && !$context.children( `.or-repeat[name="${context}"]` ).length ) {
-	                context = null;
+	            if ( jquery( context ).children( `.or-repeat-info[data-name="${contextPath}"]` ).length && !jquery( context ).children( `.or-repeat[name="${contextPath}"]` ).length ) {
+	                contextPath = null;
 	            }
 
 	            const insideRepeat = ( clonedRepeatsPresent && $output.parentsUntil( '.or', '.or-repeat' ).length > 0 );
 	            const insideRepeatClone = ( insideRepeat && $output.parentsUntil( '.or', '.or-repeat.clone' ).length > 0 );
-	            const index = ( insideRepeatClone && context ) ? that.form.input.getIndex( $context ) : 0;
+	            const index = ( insideRepeatClone && contextPath ) ? that.form.input.getIndex( context ) : 0;
 
 	            if ( typeof outputCache[ expr ] !== 'undefined' ) {
 	                val = outputCache[ expr ];
 	            } else {
-	                val = that.form.model.evaluate( expr, 'string', context, index, true );
+	                val = that.form.model.evaluate( expr, 'string', contextPath, index, true );
 	                if ( !insideRepeat ) {
 	                    outputCache[ expr ] = val;
 	                }
@@ -48822,13 +49618,16 @@
 	};
 
 	/**
-	 * Updates calculated items
-	 *
-	 * @param  {{nodes:Array<string>=, repeatPath: string=, repeatIndex: number=}=} updated The object containing info on updated data nodes
+	 * @module calculate
 	 */
 
 	var calculationModule = {
-
+	    /**
+	     * Updates calculated items.
+	     *
+	     * @param {{nodes:Array<string>=, repeatPath: string=, repeatIndex: number=}=} updated - The object containing info on updated data nodes.
+	     * @param {string=} filter - CSS selector filter.
+	     */
 	    update( updated = {}, filter = '' ) {
 	        let $nodes;
 	        const that = this;
@@ -48852,11 +49651,12 @@
 	        $nodes.each( function() {
 	            let index;
 	            const $control = jquery( this );
-	            const name = that.form.input.getName( $control );
+	            const control = this;
+	            const name = that.form.input.getName( control );
 	            const dataNodeName = ( name.lastIndexOf( '/' ) !== -1 ) ? name.substring( name.lastIndexOf( '/' ) + 1 ) : name;
-	            const expr = that.form.input.getCalculation( $control );
-	            const dataType = that.form.input.getXmlType( $control );
-	            const relevantExpr = that.form.input.getRelevant( $control );
+	            const expr = that.form.input.getCalculation( control );
+	            const dataType = that.form.input.getXmlType( control );
+	            const relevantExpr = that.form.input.getRelevant( control );
 	            const dataNodesObj = that.form.model.node( name );
 	            const dataNodes = dataNodesObj.getElements();
 
@@ -48880,8 +49680,8 @@
 	                        updateCalc( index );
 	                    } );
 	                } else {
-	                    /* 
-	                     * This occurs when the updated object contains a relevantPath that refers to a repeat and multiple repeats are 
+	                    /*
+	                     * This occurs when the updated object contains a relevantPath that refers to a repeat and multiple repeats are
 	                     * present, without calculated items that HAVE a visible form control.
 	                     */
 	                    const $repeatSiblings = $control.closest( '.or-repeat' ).siblings( '.or-repeat' ).addBack();
@@ -48903,57 +49703,70 @@
 	                 * (also for nodes in #calculated-items).
 	                 *
 	                 * Then get all the group parents of that node.
-	                 * 
+	                 *
 	                 * TODO: determine index at every level to properly support repeats and nested repeats
-	                 * 
+	                 *
 	                 * Note: getting the parents of $control wouldn't work for nodes inside #calculated-items!
 	                 */
 	                const parentPath = pathParts.splice( 0, pathParts.length - 1 ).join( '/' );
-	                const $parentGroups = that.form.view.$.find( `.or-group[name="${parentPath}"],.or-group-data[name="${parentPath}"]` ).eq( index )
-	                    .parents( '.or-group, .or-group-data' ).addBack();
+	                let startElement;
 
-	                if ( $parentGroups.length ) {
-	                    // Start at the highest level, and traverse down to the DOM to the immediate parent group.
-	                    var relevant = $parentGroups.filter( '[data-relevant]' ).reverse().get().map( group => {
+	                if ( index === 0 ) {
+	                    startElement = that.form.view.html.querySelector( `.or-group[name="${parentPath}"],.or-group-data[name="${parentPath}"]` );
+	                } else {
+	                    startElement = that.form.view.html.querySelectorAll( `.or-repeat[name="${parentPath}"]` )[ index ] ||
+	                        that.form.view.html.querySelectorAll( `.or-group[name="${parentPath}"],.or-group-data[name="${parentPath}"]` )[ index ];
+	                }
+	                const ancestorGroups = startElement ? [ startElement ].concat( getAncestors( startElement, '.or-group, .or-group-data' ) ) : [];
+
+	                if ( ancestorGroups.length ) {
+	                    // Start at the highest level, and traverse down to the immediate parent group.
+	                    var relevant = ancestorGroups.filter( el => el.matches( '[data-relevant]' ) ).map( group => {
 	                        const $group = jquery( group );
-	                        const nm = that.form.input.getName( $group );
+	                        const nm = that.form.input.getName( group );
 
 	                        return {
 	                            context: nm,
 	                            // thankfully relevants on repeats are not possible with XLSForm-produced forms
 	                            index: that.form.view.$.find( `.or-group[name="${nm}"], .or-group-data[name="${nm}"]` ).index( $group ), // performance....
-	                            expr: that.form.input.getRelevant( $group )
+	                            expr: that.form.input.getRelevant( group )
 	                        };
 	                    } ).concat( [ {
 	                        context: name,
 	                        index,
 	                        expr: relevantExpr
-	                    } ] ).every( item => ( item.expr ) ? that.form.model.evaluate( item.expr, 'boolean', item.context, item.index ) : true );
+	                    } ] ).every( item => item.expr ? that.form.model.evaluate( item.expr, 'boolean', item.context, item.index ) : true );
 	                } else {
-	                    relevant = ( relevantExpr ) ? that.form.model.evaluate( relevantExpr, 'boolean', name, index ) : true;
+	                    relevant = relevantExpr ? that.form.model.evaluate( relevantExpr, 'boolean', name, index ) : true;
 	                }
 
-	                // not sure if using 'string' is always correct
+	                // Not sure if using 'string' is always correct
 	                const newExpr = that.form.replaceChoiceNameFn( expr, 'string', name, index );
 
-	                // it is possible that the fixed expr is '' which causes an error in XPath
-	                const xpathType = that.form.input.getInputType( $control ) === 'number' ? 'number' : 'string';
-	                const result = ( relevant && newExpr ) ? that.form.model.evaluate( newExpr, xpathType, name, index ) : '';
+	                // It is possible that the fixed expr is '' which causes an error in XPath
+	                const xpathType = that.form.input.getInputType( control ) === 'number' ? 'number' : 'string';
+	                const result = relevant && newExpr ? that.form.model.evaluate( newExpr, xpathType, name, index ) : '';
 
-	                // filter the result set to only include the target node
+	                // Filter the result set to only include the target node
 	                dataNodesObj.setIndex( index );
 
-	                // set the value
+	                // Set the value
 	                dataNodesObj.setVal( result, dataType );
 
 	                // Not the most efficient to use input.setVal here as it will do another lookup
 	                // of the node, that we already have...
 	                // We should not use value "result" here because node.setVal() may have done a data type conversion
-	                that.form.input.setVal( $control, dataNodesObj.getVal() );
+	                that.form.input.setVal( control, dataNodesObj.getVal() );
 	            }
 	        } );
 	    }
 	};
+
+	/**  
+	 * Deals with form logic around required questions.
+	 * 
+	 * @module required
+	 */
 
 	var requiredModule = {
 	    /**
@@ -48975,10 +49788,11 @@
 
 	        $nodes.each( function() {
 	            const $input = jquery( this );
-	            const requiredExpr = that.form.input.getRequired( $input );
-	            const path = that.form.input.getName( $input );
+	            const input = this;
+	            const requiredExpr = that.form.input.getRequired( input );
+	            const path = that.form.input.getName( input );
 	            // Minimize index determination because it is expensive.
-	            const index = repeatClonesPresent ? that.form.input.getIndex( $input ) : 0;
+	            const index = repeatClonesPresent ? that.form.input.getIndex( input ) : 0;
 	            // The path is stripped of the last nodeName to record the context.
 	            // This might be dangerous, but until we find a bug, it improves performance a lot in those forms where one group contains
 	            // many sibling questions that each have the same required expression.
@@ -48993,6 +49807,9 @@
 	    }
 	};
 
+	/**
+	 * @module mask
+	 */
 	const KEYBOARD_CUT_PASTE = 'xvc';
 
 	function init$1() {
@@ -49062,6 +49879,10 @@
 	var maskModule = {
 	    init: init$1
 	};
+
+	/**
+	 * @module readonly
+	 */
 
 	var readonlyModule = {
 	    /**
@@ -49162,13 +49983,12 @@
 	 *
 	 * Most methods are prototype method to facilitate customizations outside of enketo-core.
 	 *
-	 * @param {string} formSelector  jquery selector for the form
-	 * @param {{modelStr: string, ?instanceStr: string, ?submitted: boolean, ?external: <{id: string, xmlStr: string }> }} data data object containing XML model, (partial) XML instance-to-load, external data and flag about whether instance-to-load has already been submitted before.
-	 * @param { {?webMapId: string}} options form options
-	 * 
-	 * @constructor
+	 * @param {string} formSelector - jQuery selector for the form
+	 * @param {{modelStr: string, instanceStr: string|undefined, submitted: boolean|undefined, external: {id: string, xmlStr: string }|undefined }} data - Data object containing XML model, (partial) XML instance-to-load, external data and flag about whether instance-to-load has already been submitted before.
+	 * @param {{webMapId: string|undefined}} options - form options
+	 *
+	 * @class
 	 */
-
 	function Form( formSelector, data, options ) {
 	    const $form = jquery( formSelector );
 
@@ -49215,14 +50035,14 @@
 	        this.view.$.attr( 'name', name );
 	    },
 	    get editStatus() {
-	        return !!this.view.$.data( 'edited' );
+	        return this.view.html.dataset.edited === 'true';
 	    },
 	    set editStatus( status ) {
 	        // only trigger edit event once
-	        if ( status && status !== this.view.$.data( 'edited' ) ) {
-	            this.view.$.trigger( 'edited.enketo' );
+	        if ( status && status !== this.editStatus ) {
+	            this.view.html.dispatchEvent( events.Edited() );
 	        }
-	        this.view.$.data( 'edited', status );
+	        this.view.html.dataset.edited = status;
 	    },
 	    get surveyName() {
 	        return this.view.$.find( '#form-title' ).text();
@@ -49255,6 +50075,8 @@
 
 	/**
 	 * Returns a module and adds the form property to it.
+	 *
+	 * @param module
 	 */
 	Form.prototype.addModule = function( module ) {
 	    return Object.create( module, {
@@ -49283,10 +50105,10 @@
 
 	    // Before initializing form view, passthrough some model events externally
 	    this.model.events.addEventListener( 'dataupdate', event => {
-	        that.view.$.trigger( 'dataupdate.enketo', event.detail );
+	        that.view.html.dispatchEvent( events.DataUpdate( event.detail ) );
 	    } );
 	    this.model.events.addEventListener( 'removed', event => {
-	        that.view.$.trigger( 'removed.enketo', event.detail );
+	        that.view.html.dispatchEvent( events.Removed( event.detail ) );
 	    } );
 
 	    this.pages = this.addModule( pageModule );
@@ -49296,7 +50118,7 @@
 	    this.preloads = this.addModule( preloadModule );
 	    this.relevant = this.addModule( relevantModule );
 	    this.repeats = this.addModule( repeatModule );
-	    this.input = this.addModule( input );
+	    this.input = this.addModule( inputHelper );
 	    this.output = this.addModule( outputModule );
 	    this.itemset = this.addModule( itemsetModule );
 	    this.calc = this.addModule( calculationModule );
@@ -49319,13 +50141,16 @@
 	        this.calc.update();
 
 	        // before itemset.update
-	        this.langs.init();
+	        this.langs.init( this.options.language );
 
 	        // before repeats.init so that template contains role="page" when applicable
 	        this.pages.init();
 
 	        // after radio button data-name setting (now done in XLST)
 	        this.repeats.init();
+
+	        // after repeats.init, but before itemset.update
+	        this.output.update();
 
 	        // after repeats.init
 	        this.itemset.update();
@@ -49346,9 +50171,6 @@
 
 	        // after widgets.init(), and after repeats.init(), and after pages.init()
 	        this.relevant.update();
-
-	        // after repeats.init()
-	        this.output.update();
 
 	        // after widgets init to make sure widget handlers are called before
 	        // after loading existing instance to not trigger an 'edit' event
@@ -49397,7 +50219,7 @@
 
 	/**
 	 * Obtains a string of primary instance.
-	 * 
+	 *
 	 * @param  {!{include: boolean}=} include optional object items to exclude if false
 	 * @return {string}        XML string of primary instance
 	 */
@@ -49426,13 +50248,13 @@
 	 * Implements jr:choice-name
 	 * TODO: this needs to work for all expressions (relevants, constraints), now it only works for calculated items
 	 * Ideally this belongs in the form Model, but unfortunately it needs access to the view
-	 * 
-	 * @param  {[type]} expr       [description]
-	 * @param  {[type]} resTypeStr [description]
-	 * @param  {[type]} selector   [description]
-	 * @param  {[type]} index      [description]
-	 * @param  {[type]} tryNative  [description]
-	 * @return {[type]}            [description]
+	 *
+	 * @param  {string} expr
+	 * @param  {string} resTypeStr
+	 * @param  {string} selector
+	 * @param  {number} index
+	 * @param  {boolean} tryNative
+	 * @return {string} updated expression
 	 */
 	Form.prototype.replaceChoiceNameFn = function( expr, resTypeStr, selector, index, tryNative ) {
 	    const that = this;
@@ -49470,9 +50292,12 @@
 	};
 
 	/**
-	 *  Uses current state of model to set all the values in the form.
-	 *  Since not all data nodes with a value have a corresponding input element, 
-	 *  we cycle through the HTML form elements and check for each form element whether data is available.
+	 * Uses current state of model to set all the values in the form.
+	 * Since not all data nodes with a value have a corresponding input element,
+	 * we cycle through the HTML form elements and check for each form element whether data is available.
+	 *
+	 * @param $group
+	 * @param groupIndex
 	 */
 	Form.prototype.setAllVals = function( $group, groupIndex ) {
 	    const that = this;
@@ -49490,9 +50315,9 @@
 	                var value = element.textContent;
 	                var name = that.model.getXPath( element, 'instance' );
 	                const index = that.model.node( name ).getElements().indexOf( element );
-	                const $control = that.input.find( name, index );
-	                if ( $control.length ) {
-	                    that.input.setVal( $control, value );
+	                const control = that.input.find( name, index );
+	                if ( control ) {
+	                    that.input.setVal( control, value );
 	                }
 	            } catch ( e ) {
 	                console.error( e );
@@ -49505,18 +50330,19 @@
 	};
 
 	Form.prototype.getModelValue = function( $control ) {
-	    const path = this.input.getName( $control );
-	    const index = this.input.getIndex( $control );
+	    const control = $control[ 0 ];
+	    const path = this.input.getName( control );
+	    const index = this.input.getIndex( control );
 	    return this.model.node( path, index ).getVal();
 	};
 
 	/**
 	 * Finds nodes that have attributes with XPath expressions that refer to particular XML elements.
 	 *
-	 * @param  {string} attribute The attribute name to search for
-	 * @param  {?string} filter   The optional filter to append to each selector
-	 * @param  {{nodes:Array<string>=, repeatPath: string=, repeatIndex: number=}=} updated The object containing info on updated data nodes
-	 * @return {jQuery}           A jQuery collection of elements
+	 * @param  {string} attr - The attribute name to search for
+	 * @param  {?string} filter - The optional filter to append to each selector
+	 * @param  {{nodes:Array<string>=, repeatPath: string=, repeatIndex: number=}=} updated - The object containing info on updated data nodes
+	 * @return {jQuery} - A jQuery collection of elements
 	 */
 	Form.prototype.getRelatedNodes = function( attr, filter, updated ) {
 	    let $collection;
@@ -49605,7 +50431,7 @@
 
 	/**
 	 * Crafts an optimized jQuery selector for element attributes that contain an expression with a target node name.
-	 * 
+	 *
 	 * @param  {string} filter   The filter to use
 	 * @param  {string} attr     The attribute to target
 	 * @param  {string} nodeName The XML nodeName to find
@@ -49634,7 +50460,7 @@
 	 * Though this function may be slow it is slow when it doesn't matter much (upon saving). The
 	 * alternative is to add some logic to relevant.update to mark irrelevant nodes in the model
 	 * but that would slow down form loading and form traversal when it does matter.
-	 * 
+	 *
 	 * @return {string} [description]
 	 */
 	Form.prototype.getDataStrWithoutIrrelevantNodes = function() {
@@ -49642,18 +50468,19 @@
 	    const modelClone = new FormModel( this.model.getStr() );
 	    modelClone.init();
 
-	    // Since we are removing nodes, we need to go in reverse order to make sure 
+	    // Since we are removing nodes, we need to go in reverse order to make sure
 	    // the indices are still correct!
 	    this.getRelatedNodes( 'data-relevant' ).reverse().each( function() {
 	        const $node = jquery( this );
-	        const relevant = that.input.getRelevant( $node );
-	        const index = that.input.getIndex( $node );
-	        const path = that.input.getName( $node );
+	        const node = this;
+	        const relevant = that.input.getRelevant( node );
+	        const index = that.input.getIndex( node );
+	        const path = that.input.getName( node );
 	        let context;
 
-	        /* 
+	        /*
 	         * Copied from relevant.js:
-	         * 
+	         *
 	         * If the relevant is placed on a group and that group contains repeats with the same name,
 	         * but currently has 0 repeats, the context will not be available.
 	         */
@@ -49698,10 +50525,12 @@
 	    }
 	};
 
-	/**   
+	/**
 	 * This re-validates questions that have a dependency on a question that has just been updated.
-	 * 
+	 *
 	 * Note: it does not take care of re-validating a question itself after its value has changed due to a calculation update!
+	 *
+	 * @param {Object} updated
 	 */
 	Form.prototype.validationUpdate = function( updated ) {
 	};
@@ -49714,8 +50543,8 @@
 
 	    /*
 	     * The listener below catches both change and change.file events.
-	     * The .file namespace is used in the filepicker to avoid an infinite loop. 
-	     * 
+	     * The .file namespace is used in the filepicker to avoid an infinite loop.
+	     *
 	     * Fields with the "ignore" class are dynamically added to the DOM in a widget and are supposed to be handled
 	     * by the widget itself, e.g. the search field in a geopoint widget. They should be ignored by the main engine.
 	     *
@@ -49728,39 +50557,44 @@
 	        'input:not(.ignore), select:not(.ignore), textarea:not(.ignore)',
 	        function() {
 	            const $input = jquery( this );
+	            const input = this;
 	            const n = {
-	                path: that.input.getName( $input ),
-	                inputType: that.input.getInputType( $input ),
-	                xmlType: that.input.getXmlType( $input ),
-	                val: that.input.getVal( $input ),
-	                index: that.input.getIndex( $input )
+	                path: that.input.getName( input ),
+	                inputType: that.input.getInputType( input ),
+	                xmlType: that.input.getXmlType( input ),
+	                val: that.input.getVal( input ),
+	                index: that.input.getIndex( input )
 	            };
 
 	            // set file input values to the uniqified actual name of file (without c://fakepath or anything like that)
-	            if ( n.val.length > 0 && n.inputType === 'file' && $input[ 0 ].files[ 0 ] && $input[ 0 ].files[ 0 ].size > 0 ) {
-	                n.val = getFilename( $input[ 0 ].files[ 0 ], $input[ 0 ].dataset.filenamePostfix );
+	            if ( n.val.length > 0 && n.inputType === 'file' && input.files[ 0 ] && input.files[ 0 ].size > 0 ) {
+	                n.val = getFilename( input.files[ 0 ], input.dataset.filenamePostfix );
 	            }
 	            if ( n.val.length > 0 && n.inputType === 'drawing' ) {
 	                n.val = getFilename( {
 	                    name: n.val
-	                }, $input[ 0 ].dataset.filenamePostfix );
+	                }, input.dataset.filenamePostfix );
 	            }
 
 	            const updated = that.model.node( n.path, n.index ).setVal( n.val, n.xmlType );
 
 	            if ( updated ) {
-	                that.validateInput( $input )
+	                that.validateInput( input )
 	                    .then( valid => {
 	                        // propagate event externally after internal processing is completed
-	                        $input.trigger( 'valuechange.enketo', valid );
+	                        $input.trigger( 'valuechange', valid );
 	                    } );
 	            }
 	        } );
 
 	    // doing this on the focus event may have little effect on performance, because nothing else is happening :)
-	    this.view.$.on( 'focus fakefocus', 'input:not(.ignore), select:not(.ignore), textarea:not(.ignore)', event => {
+	    this.view.html.addEventListener( 'focusin', event => {
 	        // update the form progress status
-	        that.progress.update( event.target );
+	        this.progress.update( event.target );
+	    } );
+	    this.view.html.addEventListener( events.FakeFocus().type, event => {
+	        // update the form progress status
+	        this.progress.update( event.target );
 	    } );
 
 	    this.model.events.addEventListener( 'dataupdate', event => {
@@ -49771,7 +50605,7 @@
 	        that.editStatus = true;
 	    } );
 
-	    this.view.html.addEventListener( event.AddRepeat().type, event => {
+	    this.view.html.addEventListener( events.AddRepeat().type, event => {
 	        const index = event.detail ? event.detail[ 0 ] : undefined;
 	        const $clone = jquery( event.target );
 	        const updated = {
@@ -49781,18 +50615,18 @@
 	        };
 	        // Set defaults of added repeats in Form, setAllVals does not trigger change event
 	        that.setAllVals( $clone, index );
-	        // Initialize calculations, relevant, itemset, required, output inside that repeat. 
+	        // Initialize calculations, relevant, itemset, required, output inside that repeat.
 	        that.evaluationCascade.forEach( fn => {
 	            fn.call( that, updated );
 	        } );
 	        that.progress.update();
 	    } );
 
-	    this.view.html.addEventListener( event.RemoveRepeat(), () => {
+	    this.view.html.addEventListener( events.RemoveRepeat().type, () => {
 	        that.progress.update();
 	    } );
 
-	    this.view.html.addEventListener( event.ChangeLanguage().type, () => {
+	    this.view.html.addEventListener( events.ChangeLanguage().type, () => {
 	        that.output.update();
 	    } );
 
@@ -49802,22 +50636,20 @@
 	    } );
 	};
 
-	Form.prototype.setValid = function( $node, type ) {
-	    const classes = ( type ) ? `invalid-${type}` : 'invalid-constraint invalid-required invalid-relevant';
-	    this.input.getWrapNodes( $node ).removeClass( classes );
+	Form.prototype.setValid = function( node, type ) {
+	    const classes = ( type ) ? [ `invalid-${type}` ] : [ 'invalid-constraint', 'invalid-required', 'invalid-relevant' ];
+	    this.input.getWrapNode( node ).classList.remove( ...classes );
 	};
 
-	Form.prototype.setInvalid = function( $node, type ) {
+	Form.prototype.setInvalid = function( node, type ) {
 	    type = type || 'constraint';
 
-	    this.input.getWrapNodes( $node ).addClass( `invalid-${type}` );
+	    this.input.getWrapNode( node ).classList.add( `invalid-${type}` );
 	};
 
 	/**
 	 * Blocks page navigation for a short period.
 	 * This can be used to ensure that the user sees a new error message before moving to another page.
-	 * 
-	 * @return {[type]} [description]
 	 */
 	Form.prototype.blockPageNavigation = function() {
 	    const that = this;
@@ -49830,16 +50662,17 @@
 
 	/**
 	 * Checks whether the question is not currently marked as invalid. If no argument is provided, it checks the whole form.
-	 * 
+	 *
+	 * @param $node
 	 * @return {!boolean} whether the question/form is not marked as invalid.
 	 */
-	Form.prototype.isValid = function( $node ) {
-	    let $question;
-	    if ( $node ) {
-	        $question = this.input.getWrapNodes( $node );
-	        return !$question.hasClass( 'invalid-required' ) && !$question.hasClass( 'invalid-constraint' ) && !$question.hasClass( 'invalid-relevant' );
+	Form.prototype.isValid = function( node ) {
+	    if ( node ) {
+	        const question = this.input.getWrapNode( node );
+	        const cls = question.classList;
+	        return !cls.contains( 'invalid-required' ) && !cls.contains( 'invalid-constraint' ) && !cls.contains( 'invalid-relevant' );
 	    }
-	    return this.view.$.find( '.invalid-required, .invalid-constraint, .invalid-relevant' ).length === 0;
+	    return this.view.html.querySelector( '.invalid-required, .invalid-constraint, .invalid-relevant' ) === null;
 	};
 
 	Form.prototype.clearIrrelevant = function() {
@@ -49847,9 +50680,9 @@
 	};
 
 	/**
-	 * Clears all irrelevant question values if necessary and then 
+	 * Clears all irrelevant question values if necessary and then
 	 * validates all enabled input fields after first resetting everything as valid.
-	 * 
+	 *
 	 * @return {Promise} wrapping {boolean} whether the form contains any errors
 	 */
 	Form.prototype.validateAll = function() {
@@ -49861,7 +50694,7 @@
 
 	    return this.validateContent( this.view.$ )
 	        .then( valid => {
-	            that.view.$.trigger( 'validationcomplete.enketo' );
+	            that.view.html.dispatchEvent( events.ValidationComplete() );
 	            return valid;
 	        } );
 	};
@@ -49873,6 +50706,8 @@
 
 	/**
 	 * Validates all enabled input fields in the supplied container, after first resetting everything as valid.
+	 *
+	 * @param $container
 	 * @return {Promise} wrapping {boolean} whether the container contains any errors
 	 */
 	Form.prototype.validateContent = function( $container ) {
@@ -49882,17 +50717,17 @@
 	    //can't fire custom events on disabled elements therefore we set them all as valid
 	    $container.find( 'fieldset:disabled input, fieldset:disabled select, fieldset:disabled textarea, ' +
 	        'input:disabled, select:disabled, textarea:disabled' ).each( function() {
-	        that.setValid( jquery( this ) );
+	        that.setValid( this );
 	    } );
 
 	    const validations = $container.find( '.question' ).addBack( '.question' ).map( function() {
 	        // only trigger validate on first input and use a **pure CSS** selector (huge performance impact)
-	        const $elem = jquery( this )
-	            .find( 'input:not(.ignore):not(:disabled), select:not(.ignore):not(:disabled), textarea:not(.ignore):not(:disabled)' );
-	        if ( $elem.length === 0 ) {
+	        const elem = this
+	            .querySelector( 'input:not(.ignore):not(:disabled), select:not(.ignore):not(:disabled), textarea:not(.ignore):not(:disabled)' );
+	        if ( !elem ) {
 	            return Promise.resolve();
 	        }
-	        return that.validateInput( $elem.eq( 0 ) );
+	        return that.validateInput( elem );
 	    } ).toArray();
 
 	    return Promise.all( validations )
@@ -49926,30 +50761,36 @@
 	};
 
 	/**
-	 * Validates question values.
-	 * 
-	 * @param  {jQuery} $input    [description]
-	 * @return {Promise}           [description]
+	 * @typedef ValidateInputResolution
+	 * @property {bool} requiredValid
+	 * @property {bool} constraintValid
 	 */
-	Form.prototype.validateInput = function( $input ) {
+
+	/**
+	 * Validates question values.
+	 *
+	 * @param  {Element} control    [description]
+	 * @return {Promise<undefined|ValidateInputResolution>} resolves with validation result
+	 */
+	Form.prototype.validateInput = function( control ) {
 	    if ( !this.initialized ) {
 	        return Promise.resolve();
 	    }
 	    const that = this;
 	    let getValidationResult;
 	    // All relevant properties, except for the **very expensive** index property
-	    // There is some scope for performance improvement by determining other properties when they 
+	    // There is some scope for performance improvement by determining other properties when they
 	    // are needed, but that may not be so significant.
 	    const n = {
-	        path: this.input.getName( $input ),
-	        inputType: this.input.getInputType( $input ),
-	        xmlType: this.input.getXmlType( $input ),
-	        enabled: this.input.isEnabled( $input ),
-	        constraint: this.input.getConstraint( $input ),
-	        calculation: this.input.getCalculation( $input ),
-	        required: this.input.getRequired( $input ),
-	        readonly: this.input.getReadonly( $input ),
-	        val: this.input.getVal( $input )
+	        path: this.input.getName( control ),
+	        inputType: this.input.getInputType( control ),
+	        xmlType: this.input.getXmlType( control ),
+	        enabled: this.input.isEnabled( control ),
+	        constraint: this.input.getConstraint( control ),
+	        calculation: this.input.getCalculation( control ),
+	        required: this.input.getRequired( control ),
+	        readonly: this.input.getReadonly( control ),
+	        val: this.input.getVal( control )
 	    };
 	    // No need to validate, **nor send validation events**. Meant for simple empty "notes" only.
 	    if ( n.readonly && !n.val && !n.required && !n.constraint && !n.calculation ) {
@@ -49960,7 +50801,7 @@
 	    // If an element is disabled mark it as valid (to undo a previously shown branch with fields marked as invalid).
 	    if ( n.enabled && n.inputType !== 'hidden' ) {
 	        // Only now, will we determine the index.
-	        n.ind = this.input.getIndex( $input );
+	        n.ind = this.input.getIndex( control );
 	        getValidationResult = this.model.node( n.path, n.ind ).validate( n.constraint, n.required, n.xmlType );
 	    } else {
 	        getValidationResult = Promise.resolve( {
@@ -49975,31 +50816,32 @@
 	            const passed = result.requiredValid !== false && result.constraintValid !== false;
 
 	            if ( n.inputType !== 'hidden' ) {
+
 	                // Check current UI state
-	                n.$q = that.input.getWrapNodes( $input );
-	                previouslyInvalid = n.$q.hasClass( 'invalid-required' ) || n.$q.hasClass( 'invalid-constraint' );
+	                n.q = that.input.getWrapNode( control );
+	                previouslyInvalid = n.q.classList.contains( 'invalid-required' ) || n.q.classList.contains( 'invalid-constraint' );
 
 	                // Update UI
 	                if ( result.requiredValid === false ) {
-	                    that.setValid( $input, 'constraint' );
-	                    that.setInvalid( $input, 'required' );
+	                    that.setValid( control, 'constraint' );
+	                    that.setInvalid( control, 'required' );
 	                } else if ( result.constraintValid === false ) {
-	                    that.setValid( $input, 'required' );
-	                    that.setInvalid( $input, 'constraint' );
+	                    that.setValid( control, 'required' );
+	                    that.setInvalid( control, 'constraint' );
 	                } else {
-	                    that.setValid( $input, 'constraint' );
-	                    that.setValid( $input, 'required' );
+	                    that.setValid( control, 'constraint' );
+	                    that.setValid( control, 'required' );
 	                }
 	            }
 	            // Send invalidated event
 	            if ( !passed && !previouslyInvalid ) {
-	                $input.trigger( 'invalidated.enketo' );
+	                control.dispatchEvent( events.Invalidated() );
 	            }
 	            return passed;
 	        } )
 	        .catch( e => {
 	            console.error( 'validation error', e );
-	            that.setInvalid( $input, 'constraint' );
+	            that.setInvalid( control, 'constraint' );
 	            throw e;
 	        } );
 	};
@@ -50044,13 +50886,13 @@
 	        }
 	    }
 
-	    return target ? this.input.getWrapNodes( jquery( target ) ).get( 0 ) : target;
+	    return target ? this.input.getWrapNode( target ) : target;
 	};
 
 	/**
 	 * Scrolls to a HTML Element, flips to the page it is on and focuses on the nearest form control.
-	 * 
-	 * @param  {HTMLElement} target A HTML element to scroll to
+	 *
+	 * @param {HTMLElement} target - A HTML element to scroll to
 	 */
 	Form.prototype.goToTarget = function( target ) {
 	    if ( target ) {
@@ -50059,25 +50901,26 @@
 	            this.pages.flipToPageContaining( jquery( target ) );
 	        }
 	        // check if the nearest question or group is irrelevant after page flip
-	        if ( jquery( target ).closest( '.or-branch.disabled' ).length ) {
+	        if ( target.closest( '.or-branch.disabled' ) ) {
 	            // It is up to the apps to decide what to do with this event.
-	            jquery( target ).trigger( 'gotohidden.enketo' );
+	            target.dispatchEvent( events.GoToHidden() );
 	        }
 	        // Scroll to element
 	        target.scrollIntoView();
 	        // Focus on the first non .ignore form control
-	        // If the element is hidden (e.g. because it's been replaced by a widget), 
+	        // If the element is hidden (e.g. because it's been replaced by a widget),
 	        // the focus event will not fire, so we also trigger an applyfocus event that widgets can listen for.
-	        jquery( target.querySelector( 'input:not(.ignore), textarea:not(.ignore), select:not(.ignore)' ) )
-	            .trigger( 'focus' ).trigger( 'applyfocus' );
+	        const input = target.querySelector( 'input:not(.ignore), textarea:not(.ignore), select:not(.ignore)' );
+	        input.focus();
+	        input.dispatchEvent( events.ApplyFocus() );
 	    }
 	    return !!target;
 	};
 
-	/** 
+	/**
 	 * Static method to obtain required enketo-transform version direct from class.
 	 */
-	Form.requiredTransformerVersion = '1.30.1';
+	Form.requiredTransformerVersion = '1.32.0';
 
 	window.FormModel = FormModel;
 
