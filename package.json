@@ -27,7 +27,7 @@
     "dependencies": {
         "commander": "^2.20.0",
         "enketo-xpath-extensions-oc": "git+https://github.com/OpenClinica/enketo-xpath-extensions-oc.git#22c6b94",
-        "enketo-xslt": "^1.21.2",
+        "enketo-xslt": "^1.23.0",
         "jsdom": "13.2.x",
         "libxslt": "0.7.x"
     },
