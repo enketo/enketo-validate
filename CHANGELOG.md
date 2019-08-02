@@ -2,10 +2,13 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
-[Unreleased]
+[1.7.0]
 ---------------------
 ##### Added
 - Check for missing label elements.
+
+##### Changed
+- Updated appearances rules with new columns, columns-pack, no-buttons etc.
 
 [1.6.1] - 2019-07-24
 ---------------------

@@ -120,9 +120,12 @@ describe( 'XForm', () => {
             expect( arrContains( result.warnings, /"compact" for question "e"/i ) ).to.equal( true );
             expect( arrContains( result.warnings, /"compact-19" for question "f"/i ) ).to.equal( true );
             expect( arrContains( result.warnings, /"numbers" for question "g"/i ) ).to.equal( true );
-            expect( arrContains( result.warnings, /"horizontal-compact" for question "k" .+ deprecated.+"compact"/i ) ).to.equal( true );
-            expect( arrContains( result.warnings, /"field-list" for question "two"/i ) ).to.equal( true );
             expect( arrContains( result.warnings, /"no-ticks" for question "g"/i ) ).to.equal( true );
+            expect( arrContains( result.warnings, /"maps" for question "h"/i ) ).to.equal( true );
+            expect( arrContains( result.warnings, /"signature" for question "h"/i ) ).to.equal( true );
+            expect( arrContains( result.warnings, /"pulldown" for question "i"/i ) ).to.equal( true );
+            expect( arrContains( result.warnings, /"horizontal-compact" for question "k" .+ deprecated.+"columns-pack"/i ) ).to.equal( true );
+            expect( arrContains( result.warnings, /"field-list" for question "two"/i ) ).to.equal( true );
         } );
 
         it( 'outputs no errors', () => {

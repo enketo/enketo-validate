@@ -22,29 +22,80 @@
         "controls": [ "select1", "select" ]
     },
     "horizontal": {
-        "controls": [ "select", "select1", "range", "input" ]
+        "controls": [ "range", "input" ]
     },
     "vertical": "horizontal",
+    "no-buttons": {
+        "controls": [ "select", "select1" ],
+        "appearances": [ "columns", "columns-pack", "columns-1", "columns-2", "columns-3", "columns-4", "columns-5", "columns-6", "columns-7", "columns-8", "columns-9", "columns-10" ]
+    },
     "compact": {
-        "controls": [ "select", "select1", "group" ]
+        "controls": [ "select", "select1" ],
+        "preferred": "columns-pack no-buttons"
+    },
+    "columns": {
+        "controls": [ "select", "select1" ]
+    },
+    "columns-pack": {
+        "controls": [ "select", "select1" ]
     },
     "no-collapse": {
         "controls": [ "group" ]
     },
     "horizontal-compact": {
         "controls": [ "select", "select1" ],
-        "preferred": "compact"
+        "preferred": "columns-pack"
     },
-    "compact-1": "compact",
-    "compact-2": "compact",
-    "compact-3": "compact",
-    "compact-4": "compact",
-    "compact-5": "compact",
-    "compact-6": "compact",
-    "compact-7": "compact",
-    "compact-8": "compact",
-    "compact-9": "compact",
-    "compact-10": "compact",
+    "compact-1": {
+        "controls": [ "select", "select1" ],
+        "preferred": "columns-1 no-buttons"
+    },
+    "compact-2": {
+        "controls": [ "select", "select1" ],
+        "preferred": "columns-2 no-buttons"
+    },
+    "compact-3": {
+        "controls": [ "select", "select1" ],
+        "preferred": "columns-3 no-buttons"
+    },
+    "compact-4": {
+        "controls": [ "select", "select1" ],
+        "preferred": "columns-4 no-buttons"
+    },
+    "compact-5": {
+        "controls": [ "select", "select1" ],
+        "preferred": "columns-5 no-buttons"
+    },
+    "compact-6": {
+        "controls": [ "select", "select1" ],
+        "preferred": "columns-6 no-buttons"
+    },
+    "compact-7": {
+        "controls": [ "select", "select1" ],
+        "preferred": "columns-7 no-buttons"
+    },
+    "compact-8": {
+        "controls": [ "select", "select1" ],
+        "preferred": "columns-8 no-buttons"
+    },
+    "compact-9": {
+        "controls": [ "select", "select1" ],
+        "preferred": "columns-9 no-buttons"
+    },
+    "compact-10": {
+        "controls": [ "select", "select1" ],
+        "preferred": "columns-10 no-buttons"
+    },
+    "columns-1": "columns",
+    "columns-2": "columns",
+    "columns-3": "columns",
+    "columns-4": "columns",
+    "columns-5": "columns",
+    "columns-6": "columns",
+    "columns-7": "columns",
+    "columns-8": "columns",
+    "columns-9": "columns",
+    "columns-10": "columns",
     "quick": {
         "controls": [ "select", "select1" ]
     },
