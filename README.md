@@ -58,7 +58,7 @@ const validator = require('enketo-validate');
 
 // Options:
 // debug: [boolean] outputs unadulterated errors instead of cleaned ones
-// oc: [boolean] runs the validator in a special OpenClinica mode
+// openclinica: [boolean] runs the validator in a special OpenClinica mode
 const options = {}; 
 
 // Read the xform as string
