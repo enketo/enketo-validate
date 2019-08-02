@@ -40,8 +40,38 @@ class XForm {
         // * https://github.com/jsdom/jsdom/issues/2028
         // doc.evaluate does not support namespaces at all (nsResolver is not used) in JSDom, hence this clever not() trick
         // to use querySelectorAll instead.
-        this._formControls = this._formControls || [ ...this.doc.querySelectorAll( 'h\\:body *:not(item):not(label):not(hint):not(value):not(itemset):not(output)' ) ];
+        this._formControls = this._formControls || [ ...this.doc.querySelectorAll( 'h\\:body *:not(item):not(label):not(hint):not(value):not(itemset):not(output):not(repeat):not(group)' ) ];
         return this._formControls;
+    }
+
+    get groups() {
+        // TODO: wrong to use h: namespace prefix without resolver here!
+        // fix in JSDom might be forthcoming: 
+        // * https://github.com/jsdom/jsdom/issues/2159, 
+        // * https://github.com/jsdom/jsdom/issues/2028
+        // doc.evaluate does not support namespaces at all (nsResolver is not used) in JSDom
+        this._groups = this._groups || [ ...this.doc.querySelectorAll( 'h\\:body group' ) ];
+        return this._groups;
+    }
+
+    get repeats() {
+        // TODO: wrong to use h: namespace prefix without resolver here!
+        // fix in JSDom might be forthcoming: 
+        // * https://github.com/jsdom/jsdom/issues/2159, 
+        // * https://github.com/jsdom/jsdom/issues/2028
+        // doc.evaluate does not support namespaces at all (nsResolver is not used) in JSDom
+        this._repeats = this._repeats || [ ...this.doc.querySelectorAll( 'h\\:body repeat' ) ];
+        return this._repeats;
+    }
+
+    get items() {
+        // TODO: wrong to use h: namespace prefix without resolver here!
+        // fix in JSDom might be forthcoming: 
+        // * https://github.com/jsdom/jsdom/issues/2159, 
+        // * https://github.com/jsdom/jsdom/issues/2028
+        // doc.evaluate does not support namespaces at all (nsResolver is not used) in JSDom
+        this._items = this._items || [ ...this.doc.querySelectorAll( 'h\\:body item, h\\:body itemset' ) ];
+        return this._items;
     }
 
     get NAMESPACES() {
@@ -153,6 +183,18 @@ class XForm {
             errors.push( 'Body element has incorrect namespace.' );
         }
 
+        // These are the elements we expect to have a label though we're going slightly beyond spec requirement here.
+        this.formControls.concat( this.items )
+            .forEach( control => {
+                // the selector ":scope > label" fails with namespace elements such as odk:rank
+                if ( ![ ...control.childNodes ].some( el => el.nodeName === 'label' ) ) {
+                    const type = control.nodeName === 'item' || control.nodeName === 'itemset' ? 'Select option for question' : 'Question';
+                    const ref = control.getAttribute( 'ref' ) || control.parentElement.getAttribute( 'ref' ) || '?';
+                    const nodeName = ref.substring( ref.lastIndexOf( '/' ) + 1 ); // in XML model!
+                    errors.push( `${type} "${nodeName}" has no label.` );
+                }
+            } );
+
         let modelEl;
         if ( headEl ) {
             for ( let el of headEl.children ) {
@@ -224,7 +266,7 @@ class XForm {
     }
 
     checkAppearances( warnings, errors ) {
-        this.formControls
+        this.formControls.concat( this.groups ).concat( this.repeats )
             .forEach( control => {
                 const appearanceVal = control.getAttribute( 'appearance' );
                 if ( !appearanceVal || appearanceVal.indexOf( 'ex:' ) === 0 ) {

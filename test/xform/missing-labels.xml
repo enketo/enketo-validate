@@ -1,0 +1,104 @@
+<?xml version="1.0"?>
+<h:html xmlns="http://www.w3.org/2002/xforms" 
+    xmlns:ev="http://www.w3.org/2001/xml-events" 
+    xmlns:h="http://www.w3.org/1999/xhtml" 
+    xmlns:jr="http://openrosa.org/javarosa" 
+    xmlns:oc="http://openclinica.org/xforms" 
+    xmlns:odkkkkkk="http://www.opendatakit.org/xforms" 
+    xmlns:orxxxx="http://openrosa.org/xforms" 
+    xmlns:xsdddd="http://www.w3.org/2001/XMLSchema">
+    <h:head>
+        <h:title>missing labels</h:title>
+        <model>
+            <instance>
+                <data id="data">
+                    <one>
+                        <a/>
+                        <b/>
+                        <c/>
+                        <d/>
+                        <e/>
+                        <f/>
+                        <g/>
+                        <h/>
+                        <i/>
+                        <j/>
+                        <k/>
+                    </one>
+                    <two/>
+                    <meta>
+                        <instanceID/>
+                    </meta>
+                </data>
+            </instance>
+            <bind nodeset="/data/one/a" type="string"/>
+            <bind nodeset="/data/one/b" type="string"/>
+            <bind nodeset="/data/one/c" type="string"/>
+            <bind nodeset="/data/one/d" type="string"/>
+            <bind nodeset="/data/one/e" type="string"/>
+            <bind nodeset="/data/one/f" type="string"/>
+            <bind nodeset="/data/one/g" type="int"/>
+            <bind nodeset="/data/one/h" type="xsdddd:string"/>
+            <bind nodeset="/data/one/i" type="string"/>
+            <bind nodeset="/data/one/j" type="int" />
+            <bind nodeset="/data/meta/instanceID" type="string"/>
+        </model>
+    </h:head>
+    <h:body>
+        <group ref="/data/one">
+            <!-- here no label required -->
+            <input ref="/data/one/a">
+                <!-- label required! -->
+            </input>
+            <input ref="/data/one/b">
+                <label>label</label>
+            </input>
+            <input ref="/data/one/c">
+                <label>label</label>
+            </input>
+            <select1 ref="/data/one/d">
+                <label></label>                <!-- ok? -->
+                <item>
+                    <label>Alaska</label>
+                    <value>AK</value>
+                </item>
+            </select1>
+            <range ref="/data/one/e" start="0" end="10" step="1">
+                <!-- label required! -->
+            </range>
+            <select1 ref="/data/one/f">
+                <!-- label required! -->
+                <item>
+                    <!-- label required! -->
+                    <value>AK</value>
+                </item>
+            </select1>
+
+            <input ref="/data/one/g">
+                <label>label</label>
+            </input>
+            <input ref="/data/one/h">
+                <label>label</label>
+            </input>
+
+            <odkkkkkk:rank ref="/data/one/i">
+                <!-- label required! -->
+                <item>
+                    <!-- label required! -->
+                    <value>AK</value>
+                </item>
+            </odkkkkkk:rank>
+            <input ref="/data/one/j">
+                <label>label</label>
+            </input>
+            <select1 ref="/data/one/k">
+                <label>label</label>
+                <item>
+                    <label>Alaska</label>
+                    <value>AK</value>
+                </item>
+            </select1>
+        </group>
+        <repeat nodeset="/data/two"/>
+    </h:body>
+</h:html>

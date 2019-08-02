@@ -139,6 +139,21 @@ describe( 'XForm', () => {
         } );
     } );
 
+    describe( 'with missing <label> elements', () => {
+        const xf = loadXForm( 'missing-labels.xml' );
+        const result = validator.validate( xf );
+        const ISSUES = 6;
+        it( 'outputs errors', () => {
+            expect( result.errors.length ).to.equal( ISSUES );
+            expect( arrContains( result.errors, /"a" has no label/i ) ).to.equal( true );
+            expect( arrContains( result.errors, /"e" has no label/i ) ).to.equal( true );
+            expect( arrContains( result.errors, /"f" has no label/i ) ).to.equal( true );
+            expect( arrContains( result.errors, /"i" has no label/i ) ).to.equal( true );
+            expect( arrContains( result.errors, /option for question "f" has no label/i ) ).to.equal( true );
+            expect( arrContains( result.errors, /option for question "i" has no label/i ) ).to.equal( true );
+        } )
+    } );
+
     xdescribe( 'with disallowed self-referencing', () => {
         // Unit tests are in xpath.spec.js
         const xf = loadXForm( 'self-reference.xml' );
