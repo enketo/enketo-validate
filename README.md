@@ -1,4 +1,6 @@
-Enketo Validate [![npm version](https://badge.fury.io/js/enketo-validate.svg)](http://badge.fury.io/js/enketo-validate) [![Build Status](https://travis-ci.org/enketo/enketo-validate.svg?branch=master)](https://travis-ci.org/enketo/enketo-validate) [![Dependency Status](https://david-dm.org/enketo/enketo-validate/status.svg)](https://david-dm.org/enketo/enketo-validate) [![devDependency Status](https://david-dm.org/enketo/enketo-validate/dev-status.svg)](https://david-dm.org/enketo/enketo-validate?type=dev)
+[![npm version](https://badge.fury.io/js/enketo-validate.svg)](http://badge.fury.io/js/enketo-validate) [![Build Status](https://travis-ci.org/enketo/enketo-validate.svg?branch=master)](https://travis-ci.org/enketo/enketo-validate) [![Dependency Status](https://david-dm.org/enketo/enketo-validate/status.svg)](https://david-dm.org/enketo/enketo-validate) [![devDependency Status](https://david-dm.org/enketo/enketo-validate/dev-status.svg)](https://david-dm.org/enketo/enketo-validate?type=dev)
+
+Enketo Validate
 ==============
 
 _Validate [ODK XForms](https://opendatakit.github.io/xforms-spec/) using Enketo's form engine_
@@ -45,7 +47,7 @@ $ enketo-validate --help
 
 ## As NodeJS module
 
-#### Module installation 
+#### Module installation
 
 ```bash
 npm install enketo-validate --save
@@ -59,7 +61,7 @@ const validator = require('enketo-validate');
 // Options:
 // debug: [boolean] outputs unadulterated errors instead of cleaned ones
 // openclinica: [boolean] runs the validator in a special OpenClinica mode
-const options = {}; 
+const options = {};
 
 // Read the xform as string
 const result = validator.validate( xformStr, options );
@@ -87,12 +89,12 @@ In it's current iteration, the validator does the following:
 
 ## Funding
 
-The development of this application was funded by [OpenClinica](https://openclinica.com). 
+The development of this application was funded by [OpenClinica](https://openclinica.com).
 
 ## License
 
-See [the license document](LICENSE) for this application's license.
+See [the license document](https://github.com/enketo/enketo-validate/blob/master/LICENSE) for this application's license.
 
 ## Change log
 
-See [change log](./CHANGELOG.md)
+See [change log](https://github.com/enketo/enketo-validate/blob/master/CHANGELOG.md)

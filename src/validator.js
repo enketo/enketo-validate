@@ -1,8 +1,24 @@
+/**
+ * @module validator
+ */
+
 'use strict';
 
 const { XForm } = require( './xform' );
 const { version } = require( '../package' );
 
+/**
+ * @typedef ValidateResult
+ * @property {Array} warnings - List of warnings.
+ * @property {Array} errors - List of errors.
+ * @property {string} version - Package version.
+ */
+
+/**
+ * @param {string} xformStr
+ * @param {object} [options]
+ * @return {ValidateResult}
+ */
 let validate = ( xformStr, options = {} ) => {
     let warnings = [];
     let errors = [];
@@ -60,7 +76,7 @@ let validate = ( xformStr, options = {} ) => {
                 const calculation = logicName === 'calculate';
 
                 if ( logicExpr ) {
-                    const friendlyLogicName = calculation ? 'Calculation' : logicName[ 0 ].toUpperCase() + logicName.substring( 1 );;
+                    const friendlyLogicName = calculation ? 'Calculation' : logicName[ 0 ].toUpperCase() + logicName.substring( 1 );
 
                     try {
                         xform.enketoEvaluate( logicExpr, ( calculation ? 'string' : 'boolean' ), path );
