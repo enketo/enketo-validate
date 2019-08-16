@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    
+    <meta charset="utf-8">
+    <title>Home - Enketo Validate</title>
+    
+    <meta name="description" content="An XForm validator around Enketo's form engine" />
+    
+    
+    
+    <script src="scripts/prettify/prettify.js"></script>
+    <script src="scripts/prettify/lang-css.js"></script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc.css">
+    <script src="scripts/nav.js" defer></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body>
+
+<input type="checkbox" id="nav-trigger" class="nav-trigger" />
+<label for="nav-trigger" class="navicon-button x">
+  <div class="navicon"></div>
+</label>
+
+<label for="nav-trigger" class="overlay"></label>
+
+<nav class="wrap">
+    
+    <input type="text" id="nav-search" placeholder="Search" />
+    
+    <h2><a href="index.html">Home</a></h2><h2><a href="https://github.com/enketo/enketo-validate" target="_blank" class="menu-item" id="repository" >Github repo</a></h2><h2><a href="https://github.com/enketo/enketo-validate/blob/master/CHANGELOG.md" target="_blank" class="menu-item" id="change-log" >Change log</a></h2>
+</nav>
+
+<div id="main">
+    
+
+    
+
+
+
+    
+
+
+    <section class="package">
+        <h3> </h3>		
+    </section>
+
+
+
+
+
+
+
+
+
+    
+
+
+
+    <section class="readme">
+        <article><p><a href="http://badge.fury.io/js/enketo-validate"><img src="https://badge.fury.io/js/enketo-validate.svg" alt="npm version"></a> <a href="https://travis-ci.org/enketo/enketo-validate"><img src="https://travis-ci.org/enketo/enketo-validate.svg?branch=master" alt="Build Status"></a> <a href="https://david-dm.org/enketo/enketo-validate"><img src="https://david-dm.org/enketo/enketo-validate/status.svg" alt="Dependency Status"></a> <a href="https://david-dm.org/enketo/enketo-validate?type=dev"><img src="https://david-dm.org/enketo/enketo-validate/dev-status.svg" alt="devDependency Status"></a></p>
+<h1 id="enketo-validate">Enketo Validate</h1>
+<p><em>Validate <a href="https://opendatakit.github.io/xforms-spec/">ODK XForms</a> using Enketo's form engine</em></p>
+<p>This app can be used:</p>
+<ol>
+<li>via the command-line, e.g. in a non-javascript form builder such as <a href="https://github.com/XLSForm/pyxform">pyxform</a>.</li>
+<li>as a nodeJS module to be used in your own javascript application</li>
+</ol>
+<p>Live demo web application (meant for testing purposes only) that uses Enketo Validate (and ODK Validate) as a module: <a href="https://validate.enketo.org">validate.enketo.org</a> (<a href="https://github.com/enketo/enketo-validate-webapp">source code</a>)</p>
+<h2 id="prerequisites">Prerequisites</h2>
+<ol>
+<li>install nodeJS 8+</li>
+<li>install build tools for native modules with <code>apt-get install build-essential</code></li>
+</ol>
+<h2 id="via-command-line">Via Command-line</h2>
+<h4 id="command-line-install">Command-line Install</h4>
+<p>To make the <code>enketo-validate</code> command available from any folder on your machine.</p>
+<pre class="prettyprint source lang-bash"><code>$ npm install -g --production enketo-validate`
+</code></pre>
+<p>Alternatively, you can clone the repo and run <code>npm install --production</code>. This will make the <code>./validate</code> command available from within the clone folder. Running <code>npm link</code> makes the <code>enketo-validate</code> command available from any folder on your machine.</p>
+<h4 id="command-line-use">Command-line Use</h4>
+<pre class="prettyprint source lang-bash"><code>$ enketo-validate path/to/form.xml
+</code></pre>
+<p>Errors are returned to <code>stderr</code> and warnings to <code>stdout</code>. If there is no <code>stderr</code> output the form is valid.</p>
+<h4 id="command-line-help">Command-line Help</h4>
+<pre class="prettyprint source lang-bash"><code>$ enketo-validate --help
+</code></pre>
+<h4 id="command-line-update">Command-line update</h4>
+<ol>
+<li><code>npm install -g --production enketo-validate</code></li>
+</ol>
+<h2 id="as-nodejs-module">As NodeJS module</h2>
+<h4 id="module-installation">Module installation</h4>
+<pre class="prettyprint source lang-bash"><code>npm install enketo-validate --save
+</code></pre>
+<h4 id="module-use">Module Use</h4>
+<pre class="prettyprint source lang-js"><code>const validator = require('enketo-validate');
+
+// Options:
+// debug: [boolean] outputs unadulterated errors instead of cleaned ones
+// openclinica: [boolean] runs the validator in a special OpenClinica mode
+const options = {};
+
+// Read the xform as string
+const result = validator.validate( xformStr, options );
+
+// The result has the following format:
+// {
+//      warnings: [ 'a warning', 'another warning'],
+//      errors: ['an error', 'another error'],
+//      version: &quot;0.0.0&quot;
+// }
+// if errors.length is 0, the form passed validation
+</code></pre>
+<h2 id="how-it-works">How it works</h2>
+<p>In it's current iteration, the validator does the following:</p>
+<ul>
+<li>It checks whether the XForm is a valid XML document.</li>
+<li>It performs some basic ODK XForm structure checks.</li>
+<li>It checks if each bind <code>nodeset</code> exists in the primary instance.</li>
+<li>It checks if appearance values are supported for that type of question.</li>
+<li>It checks for each <code>&lt;bind&gt;</code> whether the <code>relevant</code>, <code>constraint</code>, <code>calculate</code>, and <code>required</code> expressions are supported and valid* XPath.</li>
+</ul>
+<p>* Note, that <code>/path/to/nonexisting/node</code> is perfectly valid XPath.</p>
+<h2 id="funding">Funding</h2>
+<p>The development of this application was funded by <a href="https://openclinica.com">OpenClinica</a>.</p>
+<h2 id="license">License</h2>
+<p>See <a href="https://github.com/enketo/enketo-validate/blob/master/LICENSE">the license document</a> for this application's license.</p>
+<h2 id="change-log">Change log</h2>
+<p>See <a href="https://github.com/enketo/enketo-validate/blob/master/CHANGELOG.md">change log</a></p></article>
+    </section>
+
+
+
+
+
+
+    
+    
+</div>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.6.3</a> using the <a href="https://github.com/clenemt/docdash">docdash</a> theme.
+</footer>
+
+<script>prettyPrint();</script>
+<script src="scripts/polyfill.js"></script>
+<script src="scripts/linenumber.js"></script>
+
+<script src="scripts/search.js" defer></script>
+
+
+
+</body>
+</html>

@@ -60,7 +60,7 @@ let validate = ( xformStr, options = {} ) => {
                 const calculation = logicName === 'calculate';
 
                 if ( logicExpr ) {
-                    const friendlyLogicName = calculation ? 'Calculation' : logicName[ 0 ].toUpperCase() + logicName.substring( 1 );;
+                    const friendlyLogicName = calculation ? 'Calculation' : logicName[ 0 ].toUpperCase() + logicName.substring( 1 );
 
                     try {
                         xform.enketoEvaluate( logicExpr, ( calculation ? 'string' : 'boolean' ), path );
