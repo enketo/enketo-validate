@@ -11,6 +11,9 @@ const sheets = require( 'enketo-xslt' );
 const xslModelSheet = libxslt.parse( sheets.xslModel );
 const appearanceRules = require( './appearances' );
 
+/**
+ * @class XForm
+ */
 class XForm {
 
     constructor( xformStr, options = {} ) {
@@ -104,8 +107,10 @@ class XForm {
         return prefix;
     }
 
-    // The reason this is not included in the constructor is to separate different types of errors,
-    // and keep the constructor just for XML parse errors.
+    /**
+     * The reason this is not included in the constructor is to separate different types of errors,
+     * and keep the constructor just for XML parse errors.
+     */
     parseModel() {
         // Be careful here, the pkg module to create binaries is surprisingly sophisticated, but the paths cannot be dynamic.
         const scriptContent = fs.readFileSync( path.join( __dirname, '../build/FormModel-bundle.js' ), { encoding: 'utf-8' } );
@@ -136,6 +141,13 @@ class XForm {
         }
     }
 
+    /**
+     * enketoEvaluate
+     *
+     * @param {*} expr
+     * @param {string} [type]
+     * @param {string} [contextPath]
+     */
     enketoEvaluate( expr, type = 'string', contextPath = null ) {
         try {
             if ( !this.model ) {
@@ -151,6 +163,10 @@ class XForm {
         }
     }
 
+    /**
+     * @param {Array} warnings
+     * @param {Array} errors
+     */
     checkStructure( warnings, errors ) {
         const rootEl = this.doc.documentElement;
         const rootElNodeName = rootEl.nodeName;
@@ -251,6 +267,10 @@ class XForm {
         }
     }
 
+    /**
+     * @param {Array} warnings
+     * @param {Array} errors
+     */
     checkBinds( warnings, errors ) {
         // Check for use of form controls with calculations that are not readonly
         this.bindsWithCalc
@@ -265,6 +285,10 @@ class XForm {
             .forEach( nodeName => errors.push( `Question "${nodeName}" has a calculation that is not set to readonly.` ) );
     }
 
+    /**
+     * @param {Array} warnings
+     * @param {Array} errors
+     */
     checkAppearances( warnings, errors ) {
         this.formControls.concat( this.groups ).concat( this.repeats )
             .forEach( control => {
@@ -322,6 +346,10 @@ class XForm {
             } );
     }
 
+    /**
+     * @param {Array} warnings
+     * @param {Array} errors
+     */
     checkOpenClinicaRules( warnings, errors ) {
         const CLINICALDATA_REF = /instance\(\s*(["'])((?:(?!\1)clinicaldata))\1\s*\)/;
 
@@ -348,8 +376,10 @@ class XForm {
                 'have a calculation referring to instance(\'clinicaldata\').' ) );
     }
 
-    /*
+    /**
      * Obtain an isolated "browser" window context and optionally, run a script in this context.
+     *
+     * @param {string} [scriptContent]
      */
     _getWindow( scriptContent = '' ) {
         // Let any logging by Enketo Core fall into the abyss.
@@ -376,9 +406,12 @@ class XForm {
         return external;
     }
 
-    /*
+    /**
      * Since this is such a weird function that queries the body of the XForm,
      * and cannot be evaluated in XPath, and I hate it, we just strip it out.
+     *
+     * @param {*} expr
+     * @return {*} expr
      */
     _stripJrChoiceName( expr ) {
         utils.parseFunctionFromExpression( expr, 'jr:choice-name' ).forEach( choiceFn => {
@@ -388,9 +421,11 @@ class XForm {
         return expr;
     }
 
-    /*
+    /**
      * This discombulated heavy-handed method ensures that the namespaces are included in their expected locations,
      * at least where Enketo Core knows how to handle them.
+     *
+     * @return {*}
      */
     _extractModelStr() {
         let doc = libxmljs.parseXml( this.xformStr );
@@ -409,8 +444,6 @@ class XForm {
 
     /**
      * Determines whether bind element has corresponding input form control.
-     *
-     * @memberof XForm
      *
      * @param {Element} bind - The XForm <bind> element.
      * @return {boolean}

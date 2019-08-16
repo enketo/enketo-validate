@@ -32,7 +32,7 @@
     
     <input type="text" id="nav-search" placeholder="Search" />
     
-    <h2><a href="index.html">Home</a></h2><h2><a href="https://github.com/enketo/enketo-validate" target="_blank" class="menu-item" id="repository" >Github repo</a></h2><h2><a href="https://github.com/enketo/enketo-validate/blob/master/CHANGELOG.md" target="_blank" class="menu-item" id="change-log" >Change log</a></h2>
+    <h2><a href="index.html">Home</a></h2><h2><a href="https://github.com/enketo/enketo-validate" target="_blank" class="menu-item" id="repository" >Github repo</a></h2><h2><a href="https://github.com/enketo/enketo-validate/blob/master/CHANGELOG.md" target="_blank" class="menu-item" id="change-log" >Change log</a></h2><h3>Classes</h3><ul><li><a href="XForm.html">XForm</a><ul class='methods'><li data-type='method'><a href="XForm.html#_extractModelStr">_extractModelStr</a></li><li data-type='method'><a href="XForm.html#_getWindow">_getWindow</a></li><li data-type='method'><a href="XForm.html#_stripJrChoiceName">_stripJrChoiceName</a></li><li data-type='method'><a href="XForm.html#_withFormControl">_withFormControl</a></li><li data-type='method'><a href="XForm.html#checkAppearances">checkAppearances</a></li><li data-type='method'><a href="XForm.html#checkBinds">checkBinds</a></li><li data-type='method'><a href="XForm.html#checkOpenClinicaRules">checkOpenClinicaRules</a></li><li data-type='method'><a href="XForm.html#checkStructure">checkStructure</a></li><li data-type='method'><a href="XForm.html#enketoEvaluate">enketoEvaluate</a></li><li data-type='method'><a href="XForm.html#parseModel">parseModel</a></li></ul></li></ul><h3>Modules</h3><ul><li><a href="module-validator.html">validator</a><ul class='methods'><li data-type='method'><a href="module-validator.html#~validate">validate</a></li></ul></li></ul>
 </nav>
 
 <div id="main">
@@ -60,6 +60,9 @@ const sheets = require( 'enketo-xslt' );
 const xslModelSheet = libxslt.parse( sheets.xslModel );
 const appearanceRules = require( './appearances' );
 
+/**
+ * @class XForm
+ */
 class XForm {
 
     constructor( xformStr, options = {} ) {
@@ -84,8 +87,8 @@ class XForm {
 
     get formControls() {
         // TODO: wrong to use h: namespace prefix without resolver here!
-        // fix in JSDom might be forthcoming: 
-        // * https://github.com/jsdom/jsdom/issues/2159, 
+        // fix in JSDom might be forthcoming:
+        // * https://github.com/jsdom/jsdom/issues/2159,
         // * https://github.com/jsdom/jsdom/issues/2028
         // doc.evaluate does not support namespaces at all (nsResolver is not used) in JSDom, hence this clever not() trick
         // to use querySelectorAll instead.
@@ -95,8 +98,8 @@ class XForm {
 
     get groups() {
         // TODO: wrong to use h: namespace prefix without resolver here!
-        // fix in JSDom might be forthcoming: 
-        // * https://github.com/jsdom/jsdom/issues/2159, 
+        // fix in JSDom might be forthcoming:
+        // * https://github.com/jsdom/jsdom/issues/2159,
         // * https://github.com/jsdom/jsdom/issues/2028
         // doc.evaluate does not support namespaces at all (nsResolver is not used) in JSDom
         this._groups = this._groups || [ ...this.doc.querySelectorAll( 'h\\:body group' ) ];
@@ -105,8 +108,8 @@ class XForm {
 
     get repeats() {
         // TODO: wrong to use h: namespace prefix without resolver here!
-        // fix in JSDom might be forthcoming: 
-        // * https://github.com/jsdom/jsdom/issues/2159, 
+        // fix in JSDom might be forthcoming:
+        // * https://github.com/jsdom/jsdom/issues/2159,
         // * https://github.com/jsdom/jsdom/issues/2028
         // doc.evaluate does not support namespaces at all (nsResolver is not used) in JSDom
         this._repeats = this._repeats || [ ...this.doc.querySelectorAll( 'h\\:body repeat' ) ];
@@ -115,8 +118,8 @@ class XForm {
 
     get items() {
         // TODO: wrong to use h: namespace prefix without resolver here!
-        // fix in JSDom might be forthcoming: 
-        // * https://github.com/jsdom/jsdom/issues/2159, 
+        // fix in JSDom might be forthcoming:
+        // * https://github.com/jsdom/jsdom/issues/2159,
         // * https://github.com/jsdom/jsdom/issues/2028
         // doc.evaluate does not support namespaces at all (nsResolver is not used) in JSDom
         this._items = this._items || [ ...this.doc.querySelectorAll( 'h\\:body item, h\\:body itemset' ) ];
@@ -153,8 +156,10 @@ class XForm {
         return prefix;
     }
 
-    // The reason this is not included in the constructor is to separate different types of errors,
-    // and keep the constructor just for XML parse errors.
+    /**
+     * The reason this is not included in the constructor is to separate different types of errors,
+     * and keep the constructor just for XML parse errors.
+     */
     parseModel() {
         // Be careful here, the pkg module to create binaries is surprisingly sophisticated, but the paths cannot be dynamic.
         const scriptContent = fs.readFileSync( path.join( __dirname, '../build/FormModel-bundle.js' ), { encoding: 'utf-8' } );
@@ -185,6 +190,13 @@ class XForm {
         }
     }
 
+    /**
+     * enketoEvaluate
+     *
+     * @param {*} expr
+     * @param {string} [type]
+     * @param {string} [contextPath]
+     */
     enketoEvaluate( expr, type = 'string', contextPath = null ) {
         try {
             if ( !this.model ) {
@@ -200,6 +212,10 @@ class XForm {
         }
     }
 
+    /**
+     * @param {Array} warnings
+     * @param {Array} errors
+     */
     checkStructure( warnings, errors ) {
         const rootEl = this.doc.documentElement;
         const rootElNodeName = rootEl.nodeName;
@@ -300,6 +316,10 @@ class XForm {
         }
     }
 
+    /**
+     * @param {Array} warnings
+     * @param {Array} errors
+     */
     checkBinds( warnings, errors ) {
         // Check for use of form controls with calculations that are not readonly
         this.bindsWithCalc
@@ -314,6 +334,10 @@ class XForm {
             .forEach( nodeName => errors.push( `Question "${nodeName}" has a calculation that is not set to readonly.` ) );
     }
 
+    /**
+     * @param {Array} warnings
+     * @param {Array} errors
+     */
     checkAppearances( warnings, errors ) {
         this.formControls.concat( this.groups ).concat( this.repeats )
             .forEach( control => {
@@ -371,6 +395,10 @@ class XForm {
             } );
     }
 
+    /**
+     * @param {Array} warnings
+     * @param {Array} errors
+     */
     checkOpenClinicaRules( warnings, errors ) {
         const CLINICALDATA_REF = /instance\(\s*(["'])((?:(?!\1)clinicaldata))\1\s*\)/;
 
@@ -397,8 +425,10 @@ class XForm {
                 'have a calculation referring to instance(\'clinicaldata\').' ) );
     }
 
-    /*
+    /**
      * Obtain an isolated "browser" window context and optionally, run a script in this context.
+     *
+     * @param {string} [scriptContent]
      */
     _getWindow( scriptContent = '' ) {
         // Let any logging by Enketo Core fall into the abyss.
@@ -425,9 +455,12 @@ class XForm {
         return external;
     }
 
-    /*
+    /**
      * Since this is such a weird function that queries the body of the XForm,
      * and cannot be evaluated in XPath, and I hate it, we just strip it out.
+     *
+     * @param {*} expr
+     * @return {*} expr
      */
     _stripJrChoiceName( expr ) {
         utils.parseFunctionFromExpression( expr, 'jr:choice-name' ).forEach( choiceFn => {
@@ -437,9 +470,11 @@ class XForm {
         return expr;
     }
 
-    /*
+    /**
      * This discombulated heavy-handed method ensures that the namespaces are included in their expected locations,
      * at least where Enketo Core knows how to handle them.
+     *
+     * @return {*}
      */
     _extractModelStr() {
         let doc = libxmljs.parseXml( this.xformStr );
@@ -458,10 +493,9 @@ class XForm {
 
     /**
      * Determines whether bind element has corresponding input form control.
-     * 
-     * @param {Element} bind The XForm &lt;bind> element
-     * @returns {boolean}
-     * @memberof XForm
+     *
+     * @param {Element} bind - The XForm &lt;bind> element.
+     * @return {boolean}
      */
     _withFormControl( bind ) {
         const nodeset = bind.getAttribute( 'nodeset' );
@@ -507,7 +541,8 @@ class XForm {
 
 module.exports = {
     XForm: XForm
-};</code></pre>
+};
+</code></pre>
         </article>
     </section>
 

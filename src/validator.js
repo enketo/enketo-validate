@@ -1,8 +1,24 @@
+/**
+ * @module validator
+ */
+
 'use strict';
 
 const { XForm } = require( './xform' );
 const { version } = require( '../package' );
 
+/**
+ * @typedef ValidateResult
+ * @property {Array} warnings - List of warnings.
+ * @property {Array} errors - List of errors.
+ * @property {string} version - Package version.
+ */
+
+/**
+ * @param {string} xformStr
+ * @param {object} [options]
+ * @return {ValidateResult}
+ */
 let validate = ( xformStr, options = {} ) => {
     let warnings = [];
     let errors = [];
