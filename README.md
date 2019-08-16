@@ -12,6 +12,10 @@ This app can be used:
 
 Live demo web application (meant for testing purposes only) that uses Enketo Validate (and ODK Validate) as a module: [validate.enketo.org](https://validate.enketo.org) \([source code](https://github.com/enketo/enketo-validate-webapp)\)
 
+
+**[Technical Documentation](https://enketo.github.io/enketo-validate)**
+
+
 ## Prerequisites
 
 1. install nodeJS 8+
