@@ -5,7 +5,7 @@
     "main": "src/validator.js",
     "bin": "./validate",
     "scripts": {
-        "test": "mocha test/spec/*.spec.js",
+        "test": "nyc --reporter=html --reporter=text mocha test/spec/*.spec.js",
         "build-docs": "rimraf docs && ./node_modules/.bin/jsdoc -c jsdoc.config.js",
         "prepublish": "rollup --config && rollup --config rollup.utils.config.js"
     },
