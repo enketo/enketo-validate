@@ -1,4 +1,53 @@
-'use strict';
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    
+    <meta charset="utf-8">
+    <title>xform.js - Enketo Validate</title>
+    
+    <meta name="description" content="An XForm validator around Enketo's form engine" />
+    
+    
+    
+    <script src="scripts/prettify/prettify.js"></script>
+    <script src="scripts/prettify/lang-css.js"></script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc.css">
+    <script src="scripts/nav.js" defer></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body>
+
+<input type="checkbox" id="nav-trigger" class="nav-trigger" />
+<label for="nav-trigger" class="navicon-button x">
+  <div class="navicon"></div>
+</label>
+
+<label for="nav-trigger" class="overlay"></label>
+
+<nav class="wrap">
+    
+    <input type="text" id="nav-search" placeholder="Search" />
+    
+    <h2><a href="index.html">Home</a></h2><h2><a href="https://github.com/enketo/enketo-validate" target="_blank" class="menu-item" id="repository" >Github repo</a></h2><h2><a href="https://github.com/enketo/enketo-validate/blob/master/CHANGELOG.md" target="_blank" class="menu-item" id="change-log" >Change log</a></h2><h3>Classes</h3><ul><li><a href="XForm.html">XForm</a><ul class='methods'><li data-type='method'><a href="XForm.html#_extractModelStr">_extractModelStr</a></li><li data-type='method'><a href="XForm.html#_getWindow">_getWindow</a></li><li data-type='method'><a href="XForm.html#_stripJrChoiceName">_stripJrChoiceName</a></li><li data-type='method'><a href="XForm.html#_withFormControl">_withFormControl</a></li><li data-type='method'><a href="XForm.html#checkAppearances">checkAppearances</a></li><li data-type='method'><a href="XForm.html#checkBinds">checkBinds</a></li><li data-type='method'><a href="XForm.html#checkOpenClinicaRules">checkOpenClinicaRules</a></li><li data-type='method'><a href="XForm.html#checkStructure">checkStructure</a></li><li data-type='method'><a href="XForm.html#enketoEvaluate">enketoEvaluate</a></li><li data-type='method'><a href="XForm.html#parseModel">parseModel</a></li></ul></li></ul><h3>Modules</h3><ul><li><a href="module-validator.html">validator</a><ul class='methods'><li data-type='method'><a href="module-validator.html#~validate">validate</a></li></ul></li></ul>
+</nav>
+
+<div id="main">
+    
+    <h1 class="page-title">xform.js</h1>
+    
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>'use strict';
 
 const jsdom = require( 'jsdom' );
 const { JSDOM } = jsdom;
@@ -171,7 +220,7 @@ class XForm {
         const rootEl = this.doc.documentElement;
         const rootElNodeName = rootEl.nodeName;
         if ( !( /^[A-z]+:html$/.test( rootElNodeName ) ) ) {
-            errors.push( 'Root element should be <html>.' );
+            errors.push( 'Root element should be &lt;html>.' );
         }
         if ( rootEl.namespaceURI !== this.NAMESPACES.h ) {
             errors.push( 'Root element has incorrect namespace.' );
@@ -187,15 +236,15 @@ class XForm {
             }
         }
         if ( !headEl ) {
-            errors.push( 'No head element found as child of <html>.' );
+            errors.push( 'No head element found as child of &lt;html>.' );
         }
-        if ( headEl && headEl.namespaceURI !== this.NAMESPACES.h ) {
+        if ( headEl &amp;&amp; headEl.namespaceURI !== this.NAMESPACES.h ) {
             errors.push( 'Head element has incorrect namespace.' );
         }
         if ( !bodyEl ) {
-            errors.push( 'No body element found as child of <html>.' );
+            errors.push( 'No body element found as child of &lt;html>.' );
         }
-        if ( bodyEl && bodyEl.namespaceURI !== this.NAMESPACES.h ) {
+        if ( bodyEl &amp;&amp; bodyEl.namespaceURI !== this.NAMESPACES.h ) {
             errors.push( 'Body element has incorrect namespace.' );
         }
 
@@ -220,9 +269,9 @@ class XForm {
                 }
             }
             if ( !modelEl ) {
-                errors.push( 'No model element found as child of <head>.' );
+                errors.push( 'No model element found as child of &lt;head>.' );
             }
-            if ( modelEl && modelEl.namespaceURI !== this.NAMESPACES[ '' ] ) {
+            if ( modelEl &amp;&amp; modelEl.namespaceURI !== this.NAMESPACES[ '' ] ) {
                 errors.push( 'Model element has incorrect namespace.' );
             }
         }
@@ -236,9 +285,9 @@ class XForm {
                 }
             }
             if ( !primInstanceEl ) {
-                errors.push( 'No primary instance element found as first instance child of <model>.' );
+                errors.push( 'No primary instance element found as first instance child of &lt;model>.' );
             }
-            if ( primInstanceEl && primInstanceEl.namespaceURI !== this.NAMESPACES[ '' ] ) {
+            if ( primInstanceEl &amp;&amp; primInstanceEl.namespaceURI !== this.NAMESPACES[ '' ] ) {
                 errors.push( 'Primary instance element has incorrect namespace.' );
             }
         }
@@ -250,19 +299,19 @@ class XForm {
             } else if ( children.length > 1 ) {
                 errors.push( 'Primary instance element has more than 1 child.' );
             }
-            if ( children && !children[ 0 ].id ) {
-                errors.push( `Data root node <${children[0].nodeName}> has no id attribute.` );
+            if ( children &amp;&amp; !children[ 0 ].id ) {
+                errors.push( `Data root node &lt;${children[0].nodeName}> has no id attribute.` );
             }
         }
 
         // ODK Build bug
         if ( this.doc.querySelector( 'group:not([ref])' ) ) {
-            warnings.push( 'Found <group> without ref attribute. This might be fine as long as the group has no relevant logic.' );
+            warnings.push( 'Found &lt;group> without ref attribute. This might be fine as long as the group has no relevant logic.' );
         }
 
         // ODK Build output
         if ( this.doc.querySelector( 'group:not([ref]) > repeat' ) ) {
-            warnings.push( 'Found <repeat> that has a parent <group> without a ref attribute. ' +
+            warnings.push( 'Found &lt;repeat> that has a parent &lt;group> without a ref attribute. ' +
                 'If the repeat has relevant logic, this will make the form very slow.' );
         }
     }
@@ -303,7 +352,7 @@ class XForm {
                         rules = appearanceRules[ rules ];
                     }
                     const controlNsPrefix = this.nsPrefixResolver( control.namespaceURI );
-                    const controlName = controlNsPrefix && /:/.test( control.nodeName ) ? controlNsPrefix + ':' + control.nodeName.split( ':' )[ 1 ] : control.nodeName;
+                    const controlName = controlNsPrefix &amp;&amp; /:/.test( control.nodeName ) ? controlNsPrefix + ':' + control.nodeName.split( ':' )[ 1 ] : control.nodeName;
                     const pathAttr = controlName === 'repeat' ? 'nodeset' : 'ref';
                     const ref = control.getAttribute( pathAttr );
                     if ( !ref ) {
@@ -320,22 +369,22 @@ class XForm {
                         warnings.push( `Appearance "${appearance}" for question "${nodeName}" is not supported.` );
                         return;
                     }
-                    if ( rules.controls && !rules.controls.includes( controlName ) ) {
+                    if ( rules.controls &amp;&amp; !rules.controls.includes( controlName ) ) {
                         warnings.push( `Appearance "${appearance}" for question "${nodeName}" is not valid for this question type (${control.nodeName}).` );
                         return;
                     }
-                    if ( rules.types && !rules.types.includes( dataType ) ) {
+                    if ( rules.types &amp;&amp; !rules.types.includes( dataType ) ) {
                         // Only check types if controls check passed.
                         // TODO check namespaced types when it becomes applicable (for XML Schema types).
                         warnings.push( `Appearance "${appearance}" for question "${nodeName}" is not valid for this data type (${dataType}).` );
                         return;
                     }
-                    if ( rules.appearances && !rules.appearances.some( appearanceMatch => appearances.includes( appearanceMatch ) ) ) {
+                    if ( rules.appearances &amp;&amp; !rules.appearances.some( appearanceMatch => appearances.includes( appearanceMatch ) ) ) {
                         warnings.push( `Appearance "${appearance}" for question "${nodeName}" requires any of these appearances: ${rules.appearances}.` );
                         return;
                     }
                     // switched off when warnings are output as errors (for OC) - may need different approach
-                    if ( rules.preferred && warnings !== errors ) {
+                    if ( rules.preferred &amp;&amp; warnings !== errors ) {
                         warnings.push( `Appearance "${appearance}" for question "${nodeName}" is deprecated, use "${rules.preferred}" instead.` );
                     }
                     // Possibilities for future additions:
@@ -358,7 +407,7 @@ class XForm {
             .filter( this._withoutFormControl.bind( this ) )
             .filter( bind => {
                 // If both are true we have found an error (in an efficient manner)
-                return CLINICALDATA_REF.test( bind.getAttribute( 'calculate' ) ) &&
+                return CLINICALDATA_REF.test( bind.getAttribute( 'calculate' ) ) &amp;&amp;
                     bind.getAttributeNS( this.NAMESPACES.oc, 'external' ) !== 'clinicaldata';
             } )
             .map( this._nodeNames.bind( this ) )
@@ -400,7 +449,7 @@ class XForm {
     _getExternalDummyContent() {
         let external = [];
         this.doc.querySelectorAll( 'instance[id][src]' ).forEach( instance => {
-            const { document } = ( new JSDOM( '<something/>', { contentType: 'text/xml' } ) ).window;
+            const { document } = ( new JSDOM( '&lt;something/>', { contentType: 'text/xml' } ) ).window;
             external.push( { id: instance.id, xml: document } );
         } );
         return external;
@@ -445,12 +494,12 @@ class XForm {
     /**
      * Determines whether bind element has corresponding input form control.
      *
-     * @param {Element} bind - The XForm <bind> element.
+     * @param {Element} bind - The XForm &lt;bind> element.
      * @return {boolean}
      */
     _withFormControl( bind ) {
         const nodeset = bind.getAttribute( 'nodeset' );
-        // We are not checking for <group> and <repeat>,
+        // We are not checking for &lt;group> and &lt;repeat>,
         // as the purpose of this function is to identify calculations without form control
         return !!this.doc.querySelector( `input[ref="${nodeset}"], select[ref="${nodeset}"], ` +
             `select1[ref="${nodeset}"], trigger[ref="${nodeset}"]` );
@@ -493,3 +542,30 @@ class XForm {
 module.exports = {
     XForm: XForm
 };
+</code></pre>
+        </article>
+    </section>
+
+
+
+
+    
+    
+</div>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.6.3</a> using the <a href="https://github.com/clenemt/docdash">docdash</a> theme.
+</footer>
+
+<script>prettyPrint();</script>
+<script src="scripts/polyfill.js"></script>
+<script src="scripts/linenumber.js"></script>
+
+<script src="scripts/search.js" defer></script>
+
+
+
+</body>
+</html>
