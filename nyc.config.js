@@ -3,7 +3,8 @@
 module.exports = {
     reporter: [
         'html',
-        'text-summary'
+        'text-summary',
+        'json'
     ],
     'report-dir': './test-coverage'
 };

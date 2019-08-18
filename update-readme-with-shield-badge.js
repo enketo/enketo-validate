@@ -14,7 +14,7 @@ istanbul.Report.register( shieldBadgeReporter );
 var report = Report.create( 'shield-badge', {
     readmeFilename: 'README.md',
     readmeDir: path.resolve( __dirname, '.' ),
-    subject: 'Local Coverage'
+    subject: 'coverage'
 } );
 
 try {
