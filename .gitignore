@@ -5,4 +5,5 @@ test/tmp
 .DS_Store
 Thumbs.db
 .nyc_output
-coverage
+test-coverage
+coverage.shield.badge.md
