@@ -89,6 +89,7 @@ In it's current iteration, the validator does the following:
 * It checks if each bind `nodeset` exists in the primary instance.
 * It checks if appearance values are supported for that type of question.
 * It checks for each `<bind>` whether the `relevant`, `constraint`, `calculate`, and `required` expressions are supported and valid\* XPath.
+* It checks whether required `<label>` elements exist.
 
 \* Note, that `/path/to/nonexisting/node` is perfectly valid XPath.
 

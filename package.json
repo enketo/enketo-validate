@@ -26,10 +26,10 @@
     },
     "homepage": "https://github.com/enketo/enketo-validate#readme",
     "dependencies": {
-        "commander": "^2.20.0",
+        "commander": "3.0.x",
         "enketo-xpath-extensions-oc": "git+https://github.com/OpenClinica/enketo-xpath-extensions-oc.git#22c6b94",
         "enketo-xslt": "^1.23.0",
-        "jsdom": "13.2.x",
+        "jsdom": "15.1.x",
         "libxslt": "0.7.x"
     },
     "devDependencies": {
@@ -45,7 +45,7 @@
         "pkg": "^4.4.0",
         "rimraf": "^3.0.0",
         "rollup": "^1.17.0",
-        "rollup-plugin-commonjs": "^9.3.4",
-        "rollup-plugin-node-resolve": "^4.2.4"
+        "rollup-plugin-commonjs": "10.0.x",
+        "rollup-plugin-node-resolve": "5.2.x"
     }
 }
