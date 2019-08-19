@@ -4,3 +4,6 @@ test/tmp
 /index.html
 .DS_Store
 Thumbs.db
+.nyc_output
+test-coverage
+coverage.shield.badge.md

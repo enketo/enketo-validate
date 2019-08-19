@@ -5,7 +5,7 @@
     "main": "src/validator.js",
     "bin": "./validate",
     "scripts": {
-        "test": "mocha test/spec/*.spec.js",
+        "test": "nyc mocha test/spec/*.spec.js && node update-readme-with-shield-badge.js",
         "build-docs": "rimraf docs && ./node_modules/.bin/jsdoc -c jsdoc.config.js",
         "prepublish": "rollup --config && rollup --config rollup.utils.config.js"
     },
@@ -38,8 +38,10 @@
         "enketo-core": "^5.5.1",
         "eslint": "^6.1.0",
         "eslint-plugin-jsdoc": "^15.8.1",
+        "istanbul-reporter-shield-badge": "^1.2.0",
         "jsdoc": "^3.6.3",
         "mocha": "^6.2.0",
+        "nyc": "^14.1.1",
         "pkg": "^4.4.0",
         "rimraf": "^3.0.0",
         "rollup": "^1.17.0",
