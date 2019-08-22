@@ -13,9 +13,17 @@ const appearanceRules = require( './appearances' );
 
 /**
  * @class XForm
+ *
+ * @param
  */
 class XForm {
 
+    /**
+     * @constructs
+     *
+     * @param {string} xformStr - form content.
+     * @param {object} [options] - Enables debug mode and OpenClinica features.
+     */
     constructor( xformStr, options = {} ) {
         this.options = options;
         if ( !xformStr || !xformStr.trim() ) {
@@ -26,16 +34,25 @@ class XForm {
         this.doc = this.dom.window.document;
     }
 
+    /**
+     * @type {Array<Node>}
+     */
     get binds() {
         this._binds = this._binds || [ ...this.doc.querySelectorAll( 'bind' ) ];
         return this._binds;
     }
 
+    /**
+     * @type {Array<Node>}
+     */
     get bindsWithCalc() {
         this._bindsWithCalc = this._bindsWithCalc || [ ...this.doc.querySelectorAll( 'bind[calculate]' ) ];
         return this._bindsWithCalc;
     }
 
+    /**
+     * @type {Array<Node>}
+     */
     get formControls() {
         // TODO: wrong to use h: namespace prefix without resolver here!
         // fix in JSDom might be forthcoming:
@@ -47,6 +64,9 @@ class XForm {
         return this._formControls;
     }
 
+    /**
+     * @type {Array<Node>}
+     */
     get groups() {
         // TODO: wrong to use h: namespace prefix without resolver here!
         // fix in JSDom might be forthcoming:
@@ -57,6 +77,9 @@ class XForm {
         return this._groups;
     }
 
+    /**
+     * @type {Array<Node>}
+     */
     get repeats() {
         // TODO: wrong to use h: namespace prefix without resolver here!
         // fix in JSDom might be forthcoming:
@@ -67,6 +90,9 @@ class XForm {
         return this._repeats;
     }
 
+    /**
+     * @type {Array<Node>}
+     */
     get items() {
         // TODO: wrong to use h: namespace prefix without resolver here!
         // fix in JSDom might be forthcoming:
@@ -77,6 +103,11 @@ class XForm {
         return this._items;
     }
 
+    /**
+     * List of hardcoded namespaces.
+     *
+     * @type {Array<string>}
+     */
     get NAMESPACES() {
         return {
             '': 'http://www.w3.org/2002/xforms',
@@ -89,10 +120,22 @@ class XForm {
         };
     }
 
+    /**
+     * Returns given `nodeset` Node.
+     *
+     * @param {string} nodeset
+     * @return {Node}
+     */
     bind( nodeset ) {
         return this.doc.querySelector( `bind[nodeset="${nodeset}"]` );
     }
 
+    /**
+     * Returns namespace prefix for given namespace.
+     *
+     * @param {string} ns - One of predefined {@link XForm#NAMESPACES|NAMESPACES}.
+     * @return {string} namespace prefix.
+     */
     nsPrefixResolver( ns ) {
         let prefix = null;
         if ( !ns ) {
@@ -142,11 +185,12 @@ class XForm {
     }
 
     /**
-     * enketoEvaluate
+     * Evaluates an expression over the model.
      *
-     * @param {*} expr
-     * @param {string} [type]
-     * @param {string} [contextPath]
+     * @param {string} expr - The expression to evaluate.
+     * @param {string} [type] - One of boolean, string, number, node, nodes.
+     * @param {string} [contextPath] - Query selector.
+     * @return {Array<Element>} an array of elements.
      */
     enketoEvaluate( expr, type = 'string', contextPath = null ) {
         try {
@@ -164,8 +208,10 @@ class XForm {
     }
 
     /**
-     * @param {Array} warnings
-     * @param {Array} errors
+     * Checks if the structure is valid. Modifies provided `warnings` and `errors` arrays.
+     *
+     * @param {Array} warnings - Array of existing warnings.
+     * @param {Array} errors - Array of existing errors.
      */
     checkStructure( warnings, errors ) {
         const rootEl = this.doc.documentElement;
@@ -268,8 +314,10 @@ class XForm {
     }
 
     /**
-     * @param {Array} warnings
-     * @param {Array} errors
+     * Checks if binds are valid. Modifies provided `warnings` and `errors` arrays.
+     *
+     * @param {Array} warnings - Array of existing warnings.
+     * @param {Array} errors - Array of existing errors.
      */
     checkBinds( warnings, errors ) {
         // Check for use of form controls with calculations that are not readonly
@@ -286,8 +334,10 @@ class XForm {
     }
 
     /**
-     * @param {Array} warnings
-     * @param {Array} errors
+     * Checks if appearances are valid. Modifies provided `warnings` and `errors` arrays.
+     *
+     * @param {Array} warnings - Array of existing warnings.
+     * @param {Array} errors - Array of existing errors.
      */
     checkAppearances( warnings, errors ) {
         this.formControls.concat( this.groups ).concat( this.repeats )
@@ -347,8 +397,10 @@ class XForm {
     }
 
     /**
-     * @param {Array} warnings
-     * @param {Array} errors
+     * Checks special OpenClinica rules. Modifies provided `warnings` and `errors` arrays.
+     *
+     * @param {Array} warnings - Array of existing warnings.
+     * @param {Array} errors - Array of existing errors.
      */
     checkOpenClinicaRules( warnings, errors ) {
         const CLINICALDATA_REF = /instance\(\s*(["'])((?:(?!\1)clinicaldata))\1\s*\)/;
@@ -379,7 +431,7 @@ class XForm {
     /**
      * Obtain an isolated "browser" window context and optionally, run a script in this context.
      *
-     * @param {string} [scriptContent]
+     * @param {string} [scriptContent] - Script to be run in the context of window.
      */
     _getWindow( scriptContent = '' ) {
         // Let any logging by Enketo Core fall into the abyss.
@@ -397,6 +449,9 @@ class XForm {
         return window;
     }
 
+    /**
+     * @return {Array<{id: string, xml: Document}>}
+     */
     _getExternalDummyContent() {
         let external = [];
         this.doc.querySelectorAll( 'instance[id][src]' ).forEach( instance => {
@@ -410,8 +465,8 @@ class XForm {
      * Since this is such a weird function that queries the body of the XForm,
      * and cannot be evaluated in XPath, and I hate it, we just strip it out.
      *
-     * @param {*} expr
-     * @return {*} expr
+     * @param {string} expr - The initial expression.
+     * @return {string} expression after stripping.
      */
     _stripJrChoiceName( expr ) {
         utils.parseFunctionFromExpression( expr, 'jr:choice-name' ).forEach( choiceFn => {
@@ -425,13 +480,16 @@ class XForm {
      * This discombulated heavy-handed method ensures that the namespaces are included in their expected locations,
      * at least where Enketo Core knows how to handle them.
      *
-     * @return {*}
+     * @return {string|Document} The XML content to apply the stylesheet to given as a string or a libxmljs document.
      */
     _extractModelStr() {
         let doc = libxmljs.parseXml( this.xformStr );
         return xslModelSheet.apply( doc );
     }
 
+    /**
+     * @return {JSDOM}
+     */
     _getDom() {
         try {
             return new JSDOM( this.xformStr, {
@@ -456,15 +514,31 @@ class XForm {
             `select1[ref="${nodeset}"], trigger[ref="${nodeset}"]` );
     }
 
+    /**
+     * A reverse method of {@link XForm#_withFormControl|_withFormControl}
+     *
+     * @param {Element} bind - The XForm <bind> element.
+     * @return {boolean}
+     */
     _withoutFormControl( bind ) {
         return !this._withFormControl( bind );
     }
 
+    /**
+     * @param {Element} bind - The XForm <bind> element.
+     * @return {string} the node name.
+     */
     _nodeNames( bind ) {
         const path = bind.getAttribute( 'nodeset' );
         return path.substring( path.lastIndexOf( '/' ) + 1 );
     }
 
+    /**
+     * Returns clean XmlDomParser error string unless in debug mode.
+     *
+     * @param {Error} error
+     * @return {Error|string}
+     */
     _cleanXmlDomParserError( error ) {
         if ( this.options.debug ) {
             return error;
@@ -473,6 +547,12 @@ class XForm {
         return parts[ 0 ] + ' ' + parts.splice( 1, 4 ).join( ', ' );
     }
 
+    /**
+     * Returns clean XPath Exception error string unless in debug mode.
+     *
+     * @param {Error} error
+     * @return {Error|string}
+     */
     _cleanXPathException( error ) {
         if ( this.options.debug ) {
             return error;

@@ -3,7 +3,7 @@
 <head>
     
     <meta charset="utf-8">
-    <title>validator.js - Enketo Validate</title>
+    <title>utils.js - Enketo Validate</title>
     
     <meta name="description" content="An XForm validator around Enketo's form engine" />
     
@@ -37,7 +37,7 @@
 
 <div id="main">
     
-    <h1 class="page-title">validator.js</h1>
+    <h1 class="page-title">utils.js</h1>
     
 
     
@@ -48,106 +48,18 @@
     <section>
         <article>
             <pre class="prettyprint source linenums"><code>/**
- * @module validator
- */
-
-'use strict';
-
-const { XForm } = require( './xform' );
-const { version } = require( '../package' );
-
-/**
- * @typedef ValidateResult
- * @property {Array} warnings - List of warnings.
- * @property {Array} errors - List of errors.
- * @property {string} version - Package version.
- */
-
-/**
- * The validate function. Relies heavily on the {@link XForm} class.
+ * @module utils
  *
- * @param {string} xformStr - form content.
- * @param {object} [options] - Will be passed to XForm class. Also enables OpenClinica features.
- * @return {ValidateResult} validation results.
+ * @description Gathers utility functions from third parties.
+ *
+ * @see {@link https://enketo.github.io/enketo-core/module-utils.html#~parseFunctionFromExpression|parseFunctionFromExpression}
+ * @see {@link https://github.com/OpenClinica/enketo-xpath-extensions-oc|addXPathExtensionsOc}
  */
-let validate = ( xformStr, options = {} ) => {
-    let warnings = [];
-    let errors = [];
-    let xform;
 
-    try {
-        xform = new XForm( xformStr, options );
-    } catch ( e ) {
-        errors.push( e );
-    }
+import { parseFunctionFromExpression } from 'enketo-core/src/js/utils';
+import addXPathExtensionsOc from 'enketo-xpath-extensions-oc';
 
-    if ( xform ) {
-        xform.checkStructure( warnings, errors );
-        xform.checkBinds( warnings, errors );
-
-        if ( options.openclinica ) {
-            xform.checkOpenClinicaRules( warnings, errors );
-            // OpenClinica would like all appearance warnings to be output as errors, for now
-            xform.checkAppearances( errors, errors );
-        } else {
-            xform.checkAppearances( warnings, errors );
-        }
-    }
-
-    try {
-        if ( xform ) {
-            xform.parseModel();
-        }
-    } catch ( e ) {
-        let ers = Array.isArray( e ) ? e : [ e ];
-        errors = errors.concat( ers );
-    }
-
-    if ( xform &amp;&amp; errors.length === 0 ) {
-
-        // Find binds
-        xform.binds.forEach( ( bind, index ) => {
-            const path = bind.getAttribute( 'nodeset' );
-
-            if ( !path ) {
-                warnings.push( `Found bind (index: ${index}) without nodeset attribute.` );
-                return;
-            }
-
-            const nodeName = path.substring( path.lastIndexOf( '/' ) + 1 );
-            const context = xform.enketoEvaluate( path, 'node' );
-
-            if ( !context ) {
-                warnings.push( `Found bind for "${nodeName}" that does not exist in the model.` );
-                return;
-            }
-
-            [ 'calculate', 'constraint', 'relevant', 'required' ].forEach( logicName => {
-                const logicExpr = bind.getAttribute( logicName );
-                const calculation = logicName === 'calculate';
-
-                if ( logicExpr ) {
-                    const friendlyLogicName = calculation ? 'Calculation' : logicName[ 0 ].toUpperCase() + logicName.substring( 1 );
-
-                    try {
-                        xform.enketoEvaluate( logicExpr, ( calculation ? 'string' : 'boolean' ), path );
-
-                        // TODO: check for cyclic dependencies within single expression and between calculations, e.g. triangular calculation dependencies
-                    } catch ( e ) {
-                        errors.push( `${friendlyLogicName} formula for "${nodeName}": ${e}` );
-                    }
-
-                }
-            } );
-
-        } );
-
-    }
-
-    return { warnings, errors, version };
-};
-
-module.exports = { validate, version };
+module.exports = { parseFunctionFromExpression, addXPathExtensionsOc };
 </code></pre>
         </article>
     </section>
