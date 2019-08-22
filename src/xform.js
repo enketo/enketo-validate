@@ -21,8 +21,8 @@ class XForm {
     /**
      * @constructs
      *
-     * @param {string} xformStr - form content.
-     * @param {object} [options] - Enables debug mode and OpenClinica features.
+     * @param {string} xformStr - XForm content.
+     * @param {ValidationOptions} [options] - Validation options.
      */
     constructor( xformStr, options = {} ) {
         this.options = options;
@@ -104,9 +104,9 @@ class XForm {
     }
 
     /**
-     * List of hardcoded namespaces.
+     * Object of known namespaces uses in ODK XForms, with prefixes as used in this validator.
      *
-     * @type {Array<string>}
+     * @type {object}
      */
     get NAMESPACES() {
         return {
@@ -121,12 +121,12 @@ class XForm {
     }
 
     /**
-     * Returns given `nodeset` Node.
+     * Returns a `<bind>` element with the provided nodeset attribute value.
      *
-     * @param {string} nodeset
+     * @param {string} nodeset nodeset attribute value
      * @return {Node}
      */
-    bind( nodeset ) {
+    getBind( nodeset ) {
         return this.doc.querySelector( `bind[nodeset="${nodeset}"]` );
     }
 
@@ -151,6 +151,8 @@ class XForm {
     }
 
     /**
+     * Parses the Model
+     * 
      * The reason this is not included in the constructor is to separate different types of errors,
      * and keep the constructor just for XML parse errors.
      */
@@ -185,7 +187,7 @@ class XForm {
     }
 
     /**
-     * Evaluates an expression over the model.
+     * Evaluates an XPath expression on the XForm's primary instance.
      *
      * @param {string} expr - The expression to evaluate.
      * @param {string} [type] - One of boolean, string, number, node, nodes.
@@ -329,7 +331,7 @@ class XForm {
                 // using XPath boolean conversion rules.
                 return !readonly || readonly.trim() !== 'true()';
             } )
-            .map( this._nodeNames.bind( this ) )
+            .map( this._nodeName.bind( this ) )
             .forEach( nodeName => errors.push( `Question "${nodeName}" has a calculation that is not set to readonly.` ) );
     }
 
@@ -361,7 +363,7 @@ class XForm {
                         return;
                     }
                     const nodeName = ref.substring( ref.lastIndexOf( '/' ) + 1 ); // in model!
-                    const bindEl = this.bind( ref );
+                    const bindEl = this.getBind( ref );
                     let dataType = bindEl ? bindEl.getAttribute( 'type' ) : 'string';
                     // Convert ns prefix to properly evaluate XML Schema datatypes regardless of namespace prefix used in XForm.
                     const typeValNs = /:/.test( dataType ) ? bindEl.lookupNamespaceURI( dataType.split( ':' )[ 0 ] ) : null;
@@ -413,7 +415,7 @@ class XForm {
                 return CLINICALDATA_REF.test( bind.getAttribute( 'calculate' ) ) &&
                     bind.getAttributeNS( this.NAMESPACES.oc, 'external' ) !== 'clinicaldata';
             } )
-            .map( this._nodeNames.bind( this ) )
+            .map( this._nodeName.bind( this ) )
             .forEach( nodeName => errors.push( `Found calculation for "${nodeName}" that refers to ` +
                 'external clinicaldata without the required "external" attribute in the correct namespace.' ) );
 
@@ -423,13 +425,13 @@ class XForm {
                 const calculation = bind.getAttribute( 'calculate' );
                 return !calculation || !CLINICALDATA_REF.test( calculation );
             } )
-            .map( this._nodeNames.bind( this ) )
+            .map( this._nodeName.bind( this ) )
             .forEach( nodeName => errors.push( `Found bind with clinicaldata attribute for "${nodeName}" that does not ` +
                 'have a calculation referring to instance(\'clinicaldata\').' ) );
     }
 
     /**
-     * Obtain an isolated "browser" window context and optionally, run a script in this context.
+     * Obtains an isolated "browser" window context and optionally, runs a script in this context.
      *
      * @param {string} [scriptContent] - Script to be run in the context of window.
      */
@@ -450,6 +452,8 @@ class XForm {
     }
 
     /**
+     * Returns some dummy external data that can be used to instantiate a Form instance that requires external data.
+     * 
      * @return {Array<{id: string, xml: Document}>}
      */
     _getExternalDummyContent() {
@@ -462,8 +466,10 @@ class XForm {
     }
 
     /**
+     * Strips jr:choice-name function.
+     * 
      * Since this is such a weird function that queries the body of the XForm,
-     * and cannot be evaluated in XPath, and I hate it, we just strip it out.
+     * and cannot be evaluated in XPath, we just strip it out.
      *
      * @param {string} expr - The initial expression.
      * @return {string} expression after stripping.
@@ -477,8 +483,8 @@ class XForm {
     }
 
     /**
-     * This discombulated heavy-handed method ensures that the namespaces are included in their expected locations,
-     * at least where Enketo Core knows how to handle them.
+     * Inefficient method that ensures that the namespaces are included in their expected locations,
+     * so Enketo Core knows how to handle them.
      *
      * @return {string|Document} The XML content to apply the stylesheet to given as a string or a libxmljs document.
      */
@@ -488,6 +494,8 @@ class XForm {
     }
 
     /**
+     * Returns a JSDOM instance of the XForm.
+     * 
      * @return {JSDOM}
      */
     _getDom() {
@@ -501,7 +509,7 @@ class XForm {
     }
 
     /**
-     * Determines whether bind element has corresponding input form control.
+     * Determines whether  a `<bind>` element has corresponding input form control.
      *
      * @param {Element} bind - The XForm <bind> element.
      * @return {boolean}
@@ -525,16 +533,18 @@ class XForm {
     }
 
     /**
+     * Returns the model node name that a provided `<bind>` element binds with.
+     * 
      * @param {Element} bind - The XForm <bind> element.
      * @return {string} the node name.
      */
-    _nodeNames( bind ) {
+    _nodeName( bind ) {
         const path = bind.getAttribute( 'nodeset' );
         return path.substring( path.lastIndexOf( '/' ) + 1 );
     }
 
     /**
-     * Returns clean XmlDomParser error string unless in debug mode.
+     * Returns a cleaned-up XmlDomParser error string unless in debug mode.
      *
      * @param {Error} error
      * @return {Error|string}
@@ -548,7 +558,7 @@ class XForm {
     }
 
     /**
-     * Returns clean XPath Exception error string unless in debug mode.
+     * Returns cleaned-up XPath Exception error string unless in debug mode.
      *
      * @param {Error} error
      * @return {Error|string}

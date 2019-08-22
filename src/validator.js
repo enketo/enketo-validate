@@ -15,10 +15,16 @@ const { version } = require( '../package' );
  */
 
 /**
+ * @typedef ValidationOptions
+ * @property {boolean} debug - Run validator in debug mode.
+ * @property {boolean} openclinica - Run validator in OpenClinica mode.
+ */
+
+/**
  * The validate function. Relies heavily on the {@link XForm} class.
  *
- * @param {string} xformStr - form content.
- * @param {object} [options] - Will be passed to XForm class. Also enables OpenClinica features.
+ * @param {string} xformStr - XForm content.
+ * @param {ValidationOptions} [options] - Validation options.
  * @return {ValidateResult} validation results.
  */
 let validate = ( xformStr, options = {} ) => {
