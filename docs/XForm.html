@@ -32,7 +32,7 @@
     
     <input type="text" id="nav-search" placeholder="Search" />
     
-    <h2><a href="index.html">Home</a></h2><h2><a href="https://github.com/enketo/enketo-validate" target="_blank" class="menu-item" id="repository" >Github repo</a></h2><h2><a href="https://github.com/enketo/enketo-validate/blob/master/CHANGELOG.md" target="_blank" class="menu-item" id="change-log" >Change log</a></h2><h3>Classes</h3><ul><li><a href="XForm.html">XForm</a><ul class='methods'><li data-type='method'><a href="XForm.html#_extractModelStr">_extractModelStr</a></li><li data-type='method'><a href="XForm.html#_getWindow">_getWindow</a></li><li data-type='method'><a href="XForm.html#_stripJrChoiceName">_stripJrChoiceName</a></li><li data-type='method'><a href="XForm.html#_withFormControl">_withFormControl</a></li><li data-type='method'><a href="XForm.html#checkAppearances">checkAppearances</a></li><li data-type='method'><a href="XForm.html#checkBinds">checkBinds</a></li><li data-type='method'><a href="XForm.html#checkOpenClinicaRules">checkOpenClinicaRules</a></li><li data-type='method'><a href="XForm.html#checkStructure">checkStructure</a></li><li data-type='method'><a href="XForm.html#enketoEvaluate">enketoEvaluate</a></li><li data-type='method'><a href="XForm.html#parseModel">parseModel</a></li></ul></li></ul><h3>Modules</h3><ul><li><a href="module-validator.html">validator</a><ul class='methods'><li data-type='method'><a href="module-validator.html#~validate">validate</a></li></ul></li></ul>
+    <h2><a href="index.html">Home</a></h2><h2><a href="https://github.com/enketo/enketo-validate" target="_blank" class="menu-item" id="repository" >Github repo</a></h2><h2><a href="https://github.com/enketo/enketo-validate/blob/master/CHANGELOG.md" target="_blank" class="menu-item" id="change-log" >Change log</a></h2><h3>Classes</h3><ul><li><a href="FormModel.html">FormModel</a></li><li><a href="XForm.html">XForm</a><ul class='methods'><li data-type='method'><a href="XForm.html#_cleanXmlDomParserError">_cleanXmlDomParserError</a></li><li data-type='method'><a href="XForm.html#_cleanXPathException">_cleanXPathException</a></li><li data-type='method'><a href="XForm.html#_extractModelStr">_extractModelStr</a></li><li data-type='method'><a href="XForm.html#_getDom">_getDom</a></li><li data-type='method'><a href="XForm.html#_getExternalDummyContent">_getExternalDummyContent</a></li><li data-type='method'><a href="XForm.html#_getWindow">_getWindow</a></li><li data-type='method'><a href="XForm.html#_nodeNames">_nodeNames</a></li><li data-type='method'><a href="XForm.html#_stripJrChoiceName">_stripJrChoiceName</a></li><li data-type='method'><a href="XForm.html#_withFormControl">_withFormControl</a></li><li data-type='method'><a href="XForm.html#_withoutFormControl">_withoutFormControl</a></li><li data-type='method'><a href="XForm.html#bind">bind</a></li><li data-type='method'><a href="XForm.html#checkAppearances">checkAppearances</a></li><li data-type='method'><a href="XForm.html#checkBinds">checkBinds</a></li><li data-type='method'><a href="XForm.html#checkOpenClinicaRules">checkOpenClinicaRules</a></li><li data-type='method'><a href="XForm.html#checkStructure">checkStructure</a></li><li data-type='method'><a href="XForm.html#enketoEvaluate">enketoEvaluate</a></li><li data-type='method'><a href="XForm.html#nsPrefixResolver">nsPrefixResolver</a></li><li data-type='method'><a href="XForm.html#parseModel">parseModel</a></li></ul></li><li></li></ul><h3>Modules</h3><ul><li><a href="module-utils.html">utils</a></li><li><a href="module-validator.html">validator</a><ul class='methods'><li data-type='method'><a href="module-validator.html#~validate">validate</a></li></ul></li></ul>
 </nav>
 
 <div id="main">
@@ -64,7 +64,7 @@
 
     
 
-    <h4 class="name" id="XForm"><span class="type-signature"></span>new XForm<span class="signature">()</span><span class="type-signature"></span></h4>
+    <h4 class="name" id="XForm"><span class="type-signature"></span>new XForm<span class="signature">(xformStr, options<span class="signature-attributes">opt</span>)</span><span class="type-signature"></span></h4>
 
     
 
@@ -76,7 +76,7 @@
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="xform.js.html">xform.js</a>, <a href="xform.js.html#line14">line 14</a>
+        <a href="xform.js.html">xform.js</a>, <a href="xform.js.html#line27">line 27</a>
     </li></ul></dd>
     
 
@@ -125,6 +125,98 @@
 
 
 
+    <h5>Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+        <th>Attributes</th>
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>xformStr</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">string</span>
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+
+                
+
+                
+                </td>
+            
+
+            
+
+            <td class="description last"><p>form content.</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>options</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">object</span>
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+
+            <td class="description last"><p>Enables debug mode and OpenClinica features.</p></td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
 
 
 
@@ -159,6 +251,497 @@
     
 
     
+        <h3 class="subsection-title">Members</h3>
+
+        
+            
+<h4 class="name" id="binds"><span class="type-signature"></span>binds<span class="type-signature"> :Array.&lt;Node></span></h4>
+
+
+
+
+
+<dl class="details">
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="xform.js.html">xform.js</a>, <a href="xform.js.html#line40">line 40</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+    <h5>Type:</h5>
+    <ul>
+        <li>
+            
+<span class="param-type">Array.&lt;Node></span>
+
+
+        </li>
+    </ul>
+
+
+
+
+
+
+        
+            
+<h4 class="name" id="bindsWithCalc"><span class="type-signature"></span>bindsWithCalc<span class="type-signature"> :Array.&lt;Node></span></h4>
+
+
+
+
+
+<dl class="details">
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="xform.js.html">xform.js</a>, <a href="xform.js.html#line48">line 48</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+    <h5>Type:</h5>
+    <ul>
+        <li>
+            
+<span class="param-type">Array.&lt;Node></span>
+
+
+        </li>
+    </ul>
+
+
+
+
+
+
+        
+            
+<h4 class="name" id="formControls"><span class="type-signature"></span>formControls<span class="type-signature"> :Array.&lt;Node></span></h4>
+
+
+
+
+
+<dl class="details">
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="xform.js.html">xform.js</a>, <a href="xform.js.html#line56">line 56</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+    <h5>Type:</h5>
+    <ul>
+        <li>
+            
+<span class="param-type">Array.&lt;Node></span>
+
+
+        </li>
+    </ul>
+
+
+
+
+
+
+        
+            
+<h4 class="name" id="groups"><span class="type-signature"></span>groups<span class="type-signature"> :Array.&lt;Node></span></h4>
+
+
+
+
+
+<dl class="details">
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="xform.js.html">xform.js</a>, <a href="xform.js.html#line70">line 70</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+    <h5>Type:</h5>
+    <ul>
+        <li>
+            
+<span class="param-type">Array.&lt;Node></span>
+
+
+        </li>
+    </ul>
+
+
+
+
+
+
+        
+            
+<h4 class="name" id="items"><span class="type-signature"></span>items<span class="type-signature"> :Array.&lt;Node></span></h4>
+
+
+
+
+
+<dl class="details">
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="xform.js.html">xform.js</a>, <a href="xform.js.html#line96">line 96</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+    <h5>Type:</h5>
+    <ul>
+        <li>
+            
+<span class="param-type">Array.&lt;Node></span>
+
+
+        </li>
+    </ul>
+
+
+
+
+
+
+        
+            
+<h4 class="name" id="NAMESPACES"><span class="type-signature"></span>NAMESPACES<span class="type-signature"> :Array.&lt;string></span></h4>
+
+
+
+
+
+<dl class="details">
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="xform.js.html">xform.js</a>, <a href="xform.js.html#line111">line 111</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+<div class="description">
+    <p>List of hardcoded namespaces.</p>
+</div>
+
+
+
+    <h5>Type:</h5>
+    <ul>
+        <li>
+            
+<span class="param-type">Array.&lt;string></span>
+
+
+        </li>
+    </ul>
+
+
+
+
+
+
+        
+            
+<h4 class="name" id="repeats"><span class="type-signature"></span>repeats<span class="type-signature"> :Array.&lt;Node></span></h4>
+
+
+
+
+
+<dl class="details">
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="xform.js.html">xform.js</a>, <a href="xform.js.html#line83">line 83</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+    <h5>Type:</h5>
+    <ul>
+        <li>
+            
+<span class="param-type">Array.&lt;Node></span>
+
+
+        </li>
+    </ul>
+
+
+
+
+
+
+        
+    
 
     
         <h3 class="subsection-title">Methods</h3>
@@ -168,7 +751,7 @@
 
     
 
-    <h4 class="name" id="_extractModelStr"><span class="type-signature"></span>_extractModelStr<span class="signature">()</span><span class="type-signature"> &rarr; {*}</span></h4>
+    <h4 class="name" id="_cleanXmlDomParserError"><span class="type-signature"></span>_cleanXmlDomParserError<span class="signature">(error)</span><span class="type-signature"> &rarr; {Error|string}</span></h4>
 
     
 
@@ -180,7 +763,321 @@
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="xform.js.html">xform.js</a>, <a href="xform.js.html#line430">line 430</a>
+        <a href="xform.js.html">xform.js</a>, <a href="xform.js.html#line542">line 542</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+<div class="description">
+    <p>Returns clean XmlDomParser error string unless in debug mode.</p>
+</div>
+
+
+
+
+
+
+
+
+
+
+
+    <h5>Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>error</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Error</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"></td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h5>Returns:</h5>
+
+        
+
+
+<dl class="param-type">
+    <dt>
+        Type
+    </dt>
+    <dd>
+        
+<span class="param-type">Error</span>
+|
+
+<span class="param-type">string</span>
+
+
+    </dd>
+</dl>
+
+    
+
+
+
+        
+            
+
+    
+
+    <h4 class="name" id="_cleanXPathException"><span class="type-signature"></span>_cleanXPathException<span class="signature">(error)</span><span class="type-signature"> &rarr; {Error|string}</span></h4>
+
+    
+
+
+
+
+<dl class="details">
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="xform.js.html">xform.js</a>, <a href="xform.js.html#line556">line 556</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+<div class="description">
+    <p>Returns clean XPath Exception error string unless in debug mode.</p>
+</div>
+
+
+
+
+
+
+
+
+
+
+
+    <h5>Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>error</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Error</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"></td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h5>Returns:</h5>
+
+        
+
+
+<dl class="param-type">
+    <dt>
+        Type
+    </dt>
+    <dd>
+        
+<span class="param-type">Error</span>
+|
+
+<span class="param-type">string</span>
+
+
+    </dd>
+</dl>
+
+    
+
+
+
+        
+            
+
+    
+
+    <h4 class="name" id="_extractModelStr"><span class="type-signature"></span>_extractModelStr<span class="signature">()</span><span class="type-signature"> &rarr; {string|Document}</span></h4>
+
+    
+
+
+
+
+<dl class="details">
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="xform.js.html">xform.js</a>, <a href="xform.js.html#line485">line 485</a>
     </li></ul></dd>
     
 
@@ -251,6 +1148,10 @@ at least where Enketo Core knows how to handle them.</p>
 <h5>Returns:</h5>
 
         
+<div class="param-desc">
+    <p>The XML content to apply the stylesheet to given as a string or a libxmljs document.</p>
+</div>
+
 
 
 <dl class="param-type">
@@ -259,7 +1160,212 @@ at least where Enketo Core knows how to handle them.</p>
     </dt>
     <dd>
         
-<span class="param-type">*</span>
+<span class="param-type">string</span>
+|
+
+<span class="param-type">Document</span>
+
+
+    </dd>
+</dl>
+
+    
+
+
+
+        
+            
+
+    
+
+    <h4 class="name" id="_getDom"><span class="type-signature"></span>_getDom<span class="signature">()</span><span class="type-signature"> &rarr; {JSDOM}</span></h4>
+
+    
+
+
+
+
+<dl class="details">
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="xform.js.html">xform.js</a>, <a href="xform.js.html#line493">line 493</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h5>Returns:</h5>
+
+        
+
+
+<dl class="param-type">
+    <dt>
+        Type
+    </dt>
+    <dd>
+        
+<span class="param-type">JSDOM</span>
+
+
+    </dd>
+</dl>
+
+    
+
+
+
+        
+            
+
+    
+
+    <h4 class="name" id="_getExternalDummyContent"><span class="type-signature"></span>_getExternalDummyContent<span class="signature">()</span><span class="type-signature"> &rarr; {Array.&lt;{id: string, xml: Document}>}</span></h4>
+
+    
+
+
+
+
+<dl class="details">
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="xform.js.html">xform.js</a>, <a href="xform.js.html#line455">line 455</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h5>Returns:</h5>
+
+        
+
+
+<dl class="param-type">
+    <dt>
+        Type
+    </dt>
+    <dd>
+        
+<span class="param-type">Array.&lt;{id: string, xml: Document}></span>
 
 
     </dd>
@@ -286,7 +1392,7 @@ at least where Enketo Core knows how to handle them.</p>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="xform.js.html">xform.js</a>, <a href="xform.js.html#line384">line 384</a>
+        <a href="xform.js.html">xform.js</a>, <a href="xform.js.html#line436">line 436</a>
     </li></ul></dd>
     
 
@@ -392,7 +1498,7 @@ at least where Enketo Core knows how to handle them.</p>
 
             
 
-            <td class="description last"></td>
+            <td class="description last"><p>Script to be run in the context of window.</p></td>
         </tr>
 
     
@@ -422,7 +1528,7 @@ at least where Enketo Core knows how to handle them.</p>
 
     
 
-    <h4 class="name" id="_stripJrChoiceName"><span class="type-signature"></span>_stripJrChoiceName<span class="signature">(expr)</span><span class="type-signature"> &rarr; {*}</span></h4>
+    <h4 class="name" id="_nodeNames"><span class="type-signature"></span>_nodeNames<span class="signature">(bind)</span><span class="type-signature"> &rarr; {string}</span></h4>
 
     
 
@@ -434,7 +1540,161 @@ at least where Enketo Core knows how to handle them.</p>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="xform.js.html">xform.js</a>, <a href="xform.js.html#line416">line 416</a>
+        <a href="xform.js.html">xform.js</a>, <a href="xform.js.html#line531">line 531</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    <h5>Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>bind</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Element</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>The XForm <bind> element.</p></td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h5>Returns:</h5>
+
+        
+<div class="param-desc">
+    <p>the node name.</p>
+</div>
+
+
+
+<dl class="param-type">
+    <dt>
+        Type
+    </dt>
+    <dd>
+        
+<span class="param-type">string</span>
+
+
+    </dd>
+</dl>
+
+    
+
+
+
+        
+            
+
+    
+
+    <h4 class="name" id="_stripJrChoiceName"><span class="type-signature"></span>_stripJrChoiceName<span class="signature">(expr)</span><span class="type-signature"> &rarr; {string}</span></h4>
+
+    
+
+
+
+
+<dl class="details">
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="xform.js.html">xform.js</a>, <a href="xform.js.html#line471">line 471</a>
     </li></ul></dd>
     
 
@@ -519,7 +1779,7 @@ and cannot be evaluated in XPath, and I hate it, we just strip it out.</p>
             <td class="type">
             
                 
-<span class="param-type">*</span>
+<span class="param-type">string</span>
 
 
             
@@ -529,7 +1789,7 @@ and cannot be evaluated in XPath, and I hate it, we just strip it out.</p>
 
             
 
-            <td class="description last"></td>
+            <td class="description last"><p>The initial expression.</p></td>
         </tr>
 
     
@@ -555,7 +1815,7 @@ and cannot be evaluated in XPath, and I hate it, we just strip it out.</p>
 
         
 <div class="param-desc">
-    <p>expr</p>
+    <p>expression after stripping.</p>
 </div>
 
 
@@ -566,7 +1826,7 @@ and cannot be evaluated in XPath, and I hate it, we just strip it out.</p>
     </dt>
     <dd>
         
-<span class="param-type">*</span>
+<span class="param-type">string</span>
 
 
     </dd>
@@ -593,7 +1853,7 @@ and cannot be evaluated in XPath, and I hate it, we just strip it out.</p>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="xform.js.html">xform.js</a>, <a href="xform.js.html#line451">line 451</a>
+        <a href="xform.js.html">xform.js</a>, <a href="xform.js.html#line509">line 509</a>
     </li></ul></dd>
     
 
@@ -735,7 +1995,7 @@ and cannot be evaluated in XPath, and I hate it, we just strip it out.</p>
 
     
 
-    <h4 class="name" id="checkAppearances"><span class="type-signature"></span>checkAppearances<span class="signature">(warnings, errors)</span><span class="type-signature"></span></h4>
+    <h4 class="name" id="_withoutFormControl"><span class="type-signature"></span>_withoutFormControl<span class="signature">(bind)</span><span class="type-signature"> &rarr; {boolean}</span></h4>
 
     
 
@@ -747,7 +2007,7 @@ and cannot be evaluated in XPath, and I hate it, we just strip it out.</p>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="xform.js.html">xform.js</a>, <a href="xform.js.html#line292">line 292</a>
+        <a href="xform.js.html">xform.js</a>, <a href="xform.js.html#line523">line 523</a>
     </li></ul></dd>
     
 
@@ -785,6 +2045,318 @@ and cannot be evaluated in XPath, and I hate it, we just strip it out.</p>
 
 
 
+
+<div class="description">
+    <p>A reverse method of <a href="XForm.html#_withFormControl"><code>_withFormControl</code></a></p>
+</div>
+
+
+
+
+
+
+
+
+
+
+
+    <h5>Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>bind</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Element</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>The XForm <bind> element.</p></td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h5>Returns:</h5>
+
+        
+
+
+<dl class="param-type">
+    <dt>
+        Type
+    </dt>
+    <dd>
+        
+<span class="param-type">boolean</span>
+
+
+    </dd>
+</dl>
+
+    
+
+
+
+        
+            
+
+    
+
+    <h4 class="name" id="bind"><span class="type-signature"></span>bind<span class="signature">(nodeset)</span><span class="type-signature"> &rarr; {Node}</span></h4>
+
+    
+
+
+
+
+<dl class="details">
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="xform.js.html">xform.js</a>, <a href="xform.js.html#line129">line 129</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+<div class="description">
+    <p>Returns given <code>nodeset</code> Node.</p>
+</div>
+
+
+
+
+
+
+
+
+
+
+
+    <h5>Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>nodeset</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">string</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"></td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h5>Returns:</h5>
+
+        
+
+
+<dl class="param-type">
+    <dt>
+        Type
+    </dt>
+    <dd>
+        
+<span class="param-type">Node</span>
+
+
+    </dd>
+</dl>
+
+    
+
+
+
+        
+            
+
+    
+
+    <h4 class="name" id="checkAppearances"><span class="type-signature"></span>checkAppearances<span class="signature">(warnings, errors)</span><span class="type-signature"></span></h4>
+
+    
+
+
+
+
+<dl class="details">
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="xform.js.html">xform.js</a>, <a href="xform.js.html#line342">line 342</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+<div class="description">
+    <p>Checks if appearances are valid. Modifies provided <code>warnings</code> and <code>errors</code> arrays.</p>
+</div>
 
 
 
@@ -837,7 +2409,7 @@ and cannot be evaluated in XPath, and I hate it, we just strip it out.</p>
 
             
 
-            <td class="description last"></td>
+            <td class="description last"><p>Array of existing warnings.</p></td>
         </tr>
 
     
@@ -860,7 +2432,7 @@ and cannot be evaluated in XPath, and I hate it, we just strip it out.</p>
 
             
 
-            <td class="description last"></td>
+            <td class="description last"><p>Array of existing errors.</p></td>
         </tr>
 
     
@@ -902,7 +2474,7 @@ and cannot be evaluated in XPath, and I hate it, we just strip it out.</p>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="xform.js.html">xform.js</a>, <a href="xform.js.html#line274">line 274</a>
+        <a href="xform.js.html">xform.js</a>, <a href="xform.js.html#line322">line 322</a>
     </li></ul></dd>
     
 
@@ -940,6 +2512,10 @@ and cannot be evaluated in XPath, and I hate it, we just strip it out.</p>
 
 
 
+
+<div class="description">
+    <p>Checks if binds are valid. Modifies provided <code>warnings</code> and <code>errors</code> arrays.</p>
+</div>
 
 
 
@@ -992,7 +2568,7 @@ and cannot be evaluated in XPath, and I hate it, we just strip it out.</p>
 
             
 
-            <td class="description last"></td>
+            <td class="description last"><p>Array of existing warnings.</p></td>
         </tr>
 
     
@@ -1015,7 +2591,7 @@ and cannot be evaluated in XPath, and I hate it, we just strip it out.</p>
 
             
 
-            <td class="description last"></td>
+            <td class="description last"><p>Array of existing errors.</p></td>
         </tr>
 
     
@@ -1057,7 +2633,7 @@ and cannot be evaluated in XPath, and I hate it, we just strip it out.</p>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="xform.js.html">xform.js</a>, <a href="xform.js.html#line353">line 353</a>
+        <a href="xform.js.html">xform.js</a>, <a href="xform.js.html#line405">line 405</a>
     </li></ul></dd>
     
 
@@ -1095,6 +2671,10 @@ and cannot be evaluated in XPath, and I hate it, we just strip it out.</p>
 
 
 
+
+<div class="description">
+    <p>Checks special OpenClinica rules. Modifies provided <code>warnings</code> and <code>errors</code> arrays.</p>
+</div>
 
 
 
@@ -1147,7 +2727,7 @@ and cannot be evaluated in XPath, and I hate it, we just strip it out.</p>
 
             
 
-            <td class="description last"></td>
+            <td class="description last"><p>Array of existing warnings.</p></td>
         </tr>
 
     
@@ -1170,7 +2750,7 @@ and cannot be evaluated in XPath, and I hate it, we just strip it out.</p>
 
             
 
-            <td class="description last"></td>
+            <td class="description last"><p>Array of existing errors.</p></td>
         </tr>
 
     
@@ -1212,7 +2792,7 @@ and cannot be evaluated in XPath, and I hate it, we just strip it out.</p>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="xform.js.html">xform.js</a>, <a href="xform.js.html#line170">line 170</a>
+        <a href="xform.js.html">xform.js</a>, <a href="xform.js.html#line216">line 216</a>
     </li></ul></dd>
     
 
@@ -1250,6 +2830,10 @@ and cannot be evaluated in XPath, and I hate it, we just strip it out.</p>
 
 
 
+
+<div class="description">
+    <p>Checks if the structure is valid. Modifies provided <code>warnings</code> and <code>errors</code> arrays.</p>
+</div>
 
 
 
@@ -1302,7 +2886,7 @@ and cannot be evaluated in XPath, and I hate it, we just strip it out.</p>
 
             
 
-            <td class="description last"></td>
+            <td class="description last"><p>Array of existing warnings.</p></td>
         </tr>
 
     
@@ -1325,7 +2909,7 @@ and cannot be evaluated in XPath, and I hate it, we just strip it out.</p>
 
             
 
-            <td class="description last"></td>
+            <td class="description last"><p>Array of existing errors.</p></td>
         </tr>
 
     
@@ -1355,7 +2939,7 @@ and cannot be evaluated in XPath, and I hate it, we just strip it out.</p>
 
     
 
-    <h4 class="name" id="enketoEvaluate"><span class="type-signature"></span>enketoEvaluate<span class="signature">(expr, type<span class="signature-attributes">opt</span>, contextPath<span class="signature-attributes">opt</span>)</span><span class="type-signature"></span></h4>
+    <h4 class="name" id="enketoEvaluate"><span class="type-signature"></span>enketoEvaluate<span class="signature">(expr, type<span class="signature-attributes">opt</span>, contextPath<span class="signature-attributes">opt</span>)</span><span class="type-signature"> &rarr; {Array.&lt;Element>}</span></h4>
 
     
 
@@ -1367,7 +2951,7 @@ and cannot be evaluated in XPath, and I hate it, we just strip it out.</p>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="xform.js.html">xform.js</a>, <a href="xform.js.html#line151">line 151</a>
+        <a href="xform.js.html">xform.js</a>, <a href="xform.js.html#line195">line 195</a>
     </li></ul></dd>
     
 
@@ -1407,7 +2991,7 @@ and cannot be evaluated in XPath, and I hate it, we just strip it out.</p>
 
 
 <div class="description">
-    <p>enketoEvaluate</p>
+    <p>Evaluates an expression over the model.</p>
 </div>
 
 
@@ -1455,7 +3039,7 @@ and cannot be evaluated in XPath, and I hate it, we just strip it out.</p>
             <td class="type">
             
                 
-<span class="param-type">*</span>
+<span class="param-type">string</span>
 
 
             
@@ -1477,7 +3061,7 @@ and cannot be evaluated in XPath, and I hate it, we just strip it out.</p>
                 </td>
             
 
-            <td class="description last"></td>
+            <td class="description last"><p>The expression to evaluate.</p></td>
         </tr>
 
     
@@ -1516,7 +3100,7 @@ and cannot be evaluated in XPath, and I hate it, we just strip it out.</p>
                 </td>
             
 
-            <td class="description last"></td>
+            <td class="description last"><p>One of boolean, string, number, node, nodes.</p></td>
         </tr>
 
     
@@ -1555,7 +3139,1717 @@ and cannot be evaluated in XPath, and I hate it, we just strip it out.</p>
                 </td>
             
 
+            <td class="description last"><p>Query selector.</p></td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h5>Returns:</h5>
+
+        
+<div class="param-desc">
+    <p>an array of elements.</p>
+</div>
+
+
+
+<dl class="param-type">
+    <dt>
+        Type
+    </dt>
+    <dd>
+        
+<span class="param-type">Array.&lt;Element></span>
+
+
+    </dd>
+</dl>
+
+    
+
+
+
+        
+            
+
+    
+
+    <h4 class="name" id="nsPrefixResolver"><span class="type-signature"></span>nsPrefixResolver<span class="signature">(ns)</span><span class="type-signature"> &rarr; {string}</span></h4>
+
+    
+
+
+
+
+<dl class="details">
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="xform.js.html">xform.js</a>, <a href="xform.js.html#line139">line 139</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+<div class="description">
+    <p>Returns namespace prefix for given namespace.</p>
+</div>
+
+
+
+
+
+
+
+
+
+
+
+    <h5>Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>ns</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">string</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>One of predefined <a href="XForm.html#NAMESPACES"><code>NAMESPACES</code></a>.</p></td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h5>Returns:</h5>
+
+        
+<div class="param-desc">
+    <p>namespace prefix.</p>
+</div>
+
+
+
+<dl class="param-type">
+    <dt>
+        Type
+    </dt>
+    <dd>
+        
+<span class="param-type">string</span>
+
+
+    </dd>
+</dl>
+
+    
+
+
+
+        
+            
+
+    
+
+    <h4 class="name" id="parseModel"><span class="type-signature"></span>parseModel<span class="signature">()</span><span class="type-signature"></span></h4>
+
+    
+
+
+
+
+<dl class="details">
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="xform.js.html">xform.js</a>, <a href="xform.js.html#line157">line 157</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+<div class="description">
+    <p>The reason this is not included in the constructor is to separate different types of errors,
+and keep the constructor just for XML parse errors.</p>
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        
+    
+
+    
+
+    
+</article>
+
+</section>
+
+
+
+
+
+
+
+<section>
+
+<header>
+    
+        <h2>
+        XForm
+        </h2>
+        
+    
+</header>
+
+<article>
+    
+        <div class="container-overview">
+        
+            
+
+    
+
+    <h4 class="name" id="XForm"><span class="type-signature"></span>new XForm<span class="signature">()</span><span class="type-signature"></span></h4>
+
+    
+
+
+
+
+<dl class="details">
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="xform.js.html">xform.js</a>, <a href="xform.js.html#line14">line 14</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    <h5>Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+
+            <td class="type">
+            
+            </td>
+
+            
+
+            
+
             <td class="description last"></td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        
+        </div>
+    
+
+    
+
+    
+
+    
+    
+    
+
+     
+
+    
+
+    
+        <h3 class="subsection-title">Members</h3>
+
+        
+            
+<h4 class="name" id="binds"><span class="type-signature"></span>binds<span class="type-signature"> :Array.&lt;Node></span></h4>
+
+
+
+
+
+<dl class="details">
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="xform.js.html">xform.js</a>, <a href="xform.js.html#line40">line 40</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+    <h5>Type:</h5>
+    <ul>
+        <li>
+            
+<span class="param-type">Array.&lt;Node></span>
+
+
+        </li>
+    </ul>
+
+
+
+
+
+
+        
+            
+<h4 class="name" id="bindsWithCalc"><span class="type-signature"></span>bindsWithCalc<span class="type-signature"> :Array.&lt;Node></span></h4>
+
+
+
+
+
+<dl class="details">
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="xform.js.html">xform.js</a>, <a href="xform.js.html#line48">line 48</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+    <h5>Type:</h5>
+    <ul>
+        <li>
+            
+<span class="param-type">Array.&lt;Node></span>
+
+
+        </li>
+    </ul>
+
+
+
+
+
+
+        
+            
+<h4 class="name" id="formControls"><span class="type-signature"></span>formControls<span class="type-signature"> :Array.&lt;Node></span></h4>
+
+
+
+
+
+<dl class="details">
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="xform.js.html">xform.js</a>, <a href="xform.js.html#line56">line 56</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+    <h5>Type:</h5>
+    <ul>
+        <li>
+            
+<span class="param-type">Array.&lt;Node></span>
+
+
+        </li>
+    </ul>
+
+
+
+
+
+
+        
+            
+<h4 class="name" id="groups"><span class="type-signature"></span>groups<span class="type-signature"> :Array.&lt;Node></span></h4>
+
+
+
+
+
+<dl class="details">
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="xform.js.html">xform.js</a>, <a href="xform.js.html#line70">line 70</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+    <h5>Type:</h5>
+    <ul>
+        <li>
+            
+<span class="param-type">Array.&lt;Node></span>
+
+
+        </li>
+    </ul>
+
+
+
+
+
+
+        
+            
+<h4 class="name" id="items"><span class="type-signature"></span>items<span class="type-signature"> :Array.&lt;Node></span></h4>
+
+
+
+
+
+<dl class="details">
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="xform.js.html">xform.js</a>, <a href="xform.js.html#line96">line 96</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+    <h5>Type:</h5>
+    <ul>
+        <li>
+            
+<span class="param-type">Array.&lt;Node></span>
+
+
+        </li>
+    </ul>
+
+
+
+
+
+
+        
+            
+<h4 class="name" id="NAMESPACES"><span class="type-signature"></span>NAMESPACES<span class="type-signature"> :Array.&lt;string></span></h4>
+
+
+
+
+
+<dl class="details">
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="xform.js.html">xform.js</a>, <a href="xform.js.html#line111">line 111</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+<div class="description">
+    <p>List of hardcoded namespaces.</p>
+</div>
+
+
+
+    <h5>Type:</h5>
+    <ul>
+        <li>
+            
+<span class="param-type">Array.&lt;string></span>
+
+
+        </li>
+    </ul>
+
+
+
+
+
+
+        
+            
+<h4 class="name" id="repeats"><span class="type-signature"></span>repeats<span class="type-signature"> :Array.&lt;Node></span></h4>
+
+
+
+
+
+<dl class="details">
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="xform.js.html">xform.js</a>, <a href="xform.js.html#line83">line 83</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+    <h5>Type:</h5>
+    <ul>
+        <li>
+            
+<span class="param-type">Array.&lt;Node></span>
+
+
+        </li>
+    </ul>
+
+
+
+
+
+
+        
+    
+
+    
+        <h3 class="subsection-title">Methods</h3>
+
+        
+            
+
+    
+
+    <h4 class="name" id="_cleanXmlDomParserError"><span class="type-signature"></span>_cleanXmlDomParserError<span class="signature">(error)</span><span class="type-signature"> &rarr; {Error|string}</span></h4>
+
+    
+
+
+
+
+<dl class="details">
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="xform.js.html">xform.js</a>, <a href="xform.js.html#line542">line 542</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+<div class="description">
+    <p>Returns clean XmlDomParser error string unless in debug mode.</p>
+</div>
+
+
+
+
+
+
+
+
+
+
+
+    <h5>Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>error</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Error</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"></td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h5>Returns:</h5>
+
+        
+
+
+<dl class="param-type">
+    <dt>
+        Type
+    </dt>
+    <dd>
+        
+<span class="param-type">Error</span>
+|
+
+<span class="param-type">string</span>
+
+
+    </dd>
+</dl>
+
+    
+
+
+
+        
+            
+
+    
+
+    <h4 class="name" id="_cleanXPathException"><span class="type-signature"></span>_cleanXPathException<span class="signature">(error)</span><span class="type-signature"> &rarr; {Error|string}</span></h4>
+
+    
+
+
+
+
+<dl class="details">
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="xform.js.html">xform.js</a>, <a href="xform.js.html#line556">line 556</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+<div class="description">
+    <p>Returns clean XPath Exception error string unless in debug mode.</p>
+</div>
+
+
+
+
+
+
+
+
+
+
+
+    <h5>Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>error</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Error</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"></td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h5>Returns:</h5>
+
+        
+
+
+<dl class="param-type">
+    <dt>
+        Type
+    </dt>
+    <dd>
+        
+<span class="param-type">Error</span>
+|
+
+<span class="param-type">string</span>
+
+
+    </dd>
+</dl>
+
+    
+
+
+
+        
+            
+
+    
+
+    <h4 class="name" id="_extractModelStr"><span class="type-signature"></span>_extractModelStr<span class="signature">()</span><span class="type-signature"> &rarr; {string|Document}</span></h4>
+
+    
+
+
+
+
+<dl class="details">
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="xform.js.html">xform.js</a>, <a href="xform.js.html#line485">line 485</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+<div class="description">
+    <p>This discombulated heavy-handed method ensures that the namespaces are included in their expected locations,
+at least where Enketo Core knows how to handle them.</p>
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h5>Returns:</h5>
+
+        
+<div class="param-desc">
+    <p>The XML content to apply the stylesheet to given as a string or a libxmljs document.</p>
+</div>
+
+
+
+<dl class="param-type">
+    <dt>
+        Type
+    </dt>
+    <dd>
+        
+<span class="param-type">string</span>
+|
+
+<span class="param-type">Document</span>
+
+
+    </dd>
+</dl>
+
+    
+
+
+
+        
+            
+
+    
+
+    <h4 class="name" id="_getDom"><span class="type-signature"></span>_getDom<span class="signature">()</span><span class="type-signature"> &rarr; {JSDOM}</span></h4>
+
+    
+
+
+
+
+<dl class="details">
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="xform.js.html">xform.js</a>, <a href="xform.js.html#line493">line 493</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h5>Returns:</h5>
+
+        
+
+
+<dl class="param-type">
+    <dt>
+        Type
+    </dt>
+    <dd>
+        
+<span class="param-type">JSDOM</span>
+
+
+    </dd>
+</dl>
+
+    
+
+
+
+        
+            
+
+    
+
+    <h4 class="name" id="_getExternalDummyContent"><span class="type-signature"></span>_getExternalDummyContent<span class="signature">()</span><span class="type-signature"> &rarr; {Array.&lt;{id: string, xml: Document}>}</span></h4>
+
+    
+
+
+
+
+<dl class="details">
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="xform.js.html">xform.js</a>, <a href="xform.js.html#line455">line 455</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h5>Returns:</h5>
+
+        
+
+
+<dl class="param-type">
+    <dt>
+        Type
+    </dt>
+    <dd>
+        
+<span class="param-type">Array.&lt;{id: string, xml: Document}></span>
+
+
+    </dd>
+</dl>
+
+    
+
+
+
+        
+            
+
+    
+
+    <h4 class="name" id="_getWindow"><span class="type-signature"></span>_getWindow<span class="signature">(scriptContent<span class="signature-attributes">opt</span>)</span><span class="type-signature"></span></h4>
+
+    
+
+
+
+
+<dl class="details">
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="xform.js.html">xform.js</a>, <a href="xform.js.html#line436">line 436</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+<div class="description">
+    <p>Obtain an isolated &quot;browser&quot; window context and optionally, run a script in this context.</p>
+</div>
+
+
+
+
+
+
+
+
+
+
+
+    <h5>Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+        <th>Attributes</th>
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>scriptContent</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">string</span>
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+
+            <td class="description last"><p>Script to be run in the context of window.</p></td>
         </tr>
 
     
@@ -1585,6 +4879,1827 @@ and cannot be evaluated in XPath, and I hate it, we just strip it out.</p>
 
     
 
+    <h4 class="name" id="_nodeNames"><span class="type-signature"></span>_nodeNames<span class="signature">(bind)</span><span class="type-signature"> &rarr; {string}</span></h4>
+
+    
+
+
+
+
+<dl class="details">
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="xform.js.html">xform.js</a>, <a href="xform.js.html#line531">line 531</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    <h5>Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>bind</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Element</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>The XForm <bind> element.</p></td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h5>Returns:</h5>
+
+        
+<div class="param-desc">
+    <p>the node name.</p>
+</div>
+
+
+
+<dl class="param-type">
+    <dt>
+        Type
+    </dt>
+    <dd>
+        
+<span class="param-type">string</span>
+
+
+    </dd>
+</dl>
+
+    
+
+
+
+        
+            
+
+    
+
+    <h4 class="name" id="_stripJrChoiceName"><span class="type-signature"></span>_stripJrChoiceName<span class="signature">(expr)</span><span class="type-signature"> &rarr; {string}</span></h4>
+
+    
+
+
+
+
+<dl class="details">
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="xform.js.html">xform.js</a>, <a href="xform.js.html#line471">line 471</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+<div class="description">
+    <p>Since this is such a weird function that queries the body of the XForm,
+and cannot be evaluated in XPath, and I hate it, we just strip it out.</p>
+</div>
+
+
+
+
+
+
+
+
+
+
+
+    <h5>Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>expr</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">string</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>The initial expression.</p></td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h5>Returns:</h5>
+
+        
+<div class="param-desc">
+    <p>expression after stripping.</p>
+</div>
+
+
+
+<dl class="param-type">
+    <dt>
+        Type
+    </dt>
+    <dd>
+        
+<span class="param-type">string</span>
+
+
+    </dd>
+</dl>
+
+    
+
+
+
+        
+            
+
+    
+
+    <h4 class="name" id="_withFormControl"><span class="type-signature"></span>_withFormControl<span class="signature">(bind)</span><span class="type-signature"> &rarr; {boolean}</span></h4>
+
+    
+
+
+
+
+<dl class="details">
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="xform.js.html">xform.js</a>, <a href="xform.js.html#line509">line 509</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+<div class="description">
+    <p>Determines whether bind element has corresponding input form control.</p>
+</div>
+
+
+
+
+
+
+
+
+
+
+
+    <h5>Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>bind</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Element</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>The XForm <bind> element.</p></td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h5>Returns:</h5>
+
+        
+
+
+<dl class="param-type">
+    <dt>
+        Type
+    </dt>
+    <dd>
+        
+<span class="param-type">boolean</span>
+
+
+    </dd>
+</dl>
+
+    
+
+
+
+        
+            
+
+    
+
+    <h4 class="name" id="_withoutFormControl"><span class="type-signature"></span>_withoutFormControl<span class="signature">(bind)</span><span class="type-signature"> &rarr; {boolean}</span></h4>
+
+    
+
+
+
+
+<dl class="details">
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="xform.js.html">xform.js</a>, <a href="xform.js.html#line523">line 523</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+<div class="description">
+    <p>A reverse method of <a href="XForm.html#_withFormControl"><code>_withFormControl</code></a></p>
+</div>
+
+
+
+
+
+
+
+
+
+
+
+    <h5>Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>bind</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Element</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>The XForm <bind> element.</p></td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h5>Returns:</h5>
+
+        
+
+
+<dl class="param-type">
+    <dt>
+        Type
+    </dt>
+    <dd>
+        
+<span class="param-type">boolean</span>
+
+
+    </dd>
+</dl>
+
+    
+
+
+
+        
+            
+
+    
+
+    <h4 class="name" id="bind"><span class="type-signature"></span>bind<span class="signature">(nodeset)</span><span class="type-signature"> &rarr; {Node}</span></h4>
+
+    
+
+
+
+
+<dl class="details">
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="xform.js.html">xform.js</a>, <a href="xform.js.html#line129">line 129</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+<div class="description">
+    <p>Returns given <code>nodeset</code> Node.</p>
+</div>
+
+
+
+
+
+
+
+
+
+
+
+    <h5>Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>nodeset</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">string</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"></td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h5>Returns:</h5>
+
+        
+
+
+<dl class="param-type">
+    <dt>
+        Type
+    </dt>
+    <dd>
+        
+<span class="param-type">Node</span>
+
+
+    </dd>
+</dl>
+
+    
+
+
+
+        
+            
+
+    
+
+    <h4 class="name" id="checkAppearances"><span class="type-signature"></span>checkAppearances<span class="signature">(warnings, errors)</span><span class="type-signature"></span></h4>
+
+    
+
+
+
+
+<dl class="details">
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="xform.js.html">xform.js</a>, <a href="xform.js.html#line342">line 342</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+<div class="description">
+    <p>Checks if appearances are valid. Modifies provided <code>warnings</code> and <code>errors</code> arrays.</p>
+</div>
+
+
+
+
+
+
+
+
+
+
+
+    <h5>Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>warnings</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Array</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>Array of existing warnings.</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>errors</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Array</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>Array of existing errors.</p></td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        
+            
+
+    
+
+    <h4 class="name" id="checkBinds"><span class="type-signature"></span>checkBinds<span class="signature">(warnings, errors)</span><span class="type-signature"></span></h4>
+
+    
+
+
+
+
+<dl class="details">
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="xform.js.html">xform.js</a>, <a href="xform.js.html#line322">line 322</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+<div class="description">
+    <p>Checks if binds are valid. Modifies provided <code>warnings</code> and <code>errors</code> arrays.</p>
+</div>
+
+
+
+
+
+
+
+
+
+
+
+    <h5>Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>warnings</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Array</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>Array of existing warnings.</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>errors</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Array</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>Array of existing errors.</p></td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        
+            
+
+    
+
+    <h4 class="name" id="checkOpenClinicaRules"><span class="type-signature"></span>checkOpenClinicaRules<span class="signature">(warnings, errors)</span><span class="type-signature"></span></h4>
+
+    
+
+
+
+
+<dl class="details">
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="xform.js.html">xform.js</a>, <a href="xform.js.html#line405">line 405</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+<div class="description">
+    <p>Checks special OpenClinica rules. Modifies provided <code>warnings</code> and <code>errors</code> arrays.</p>
+</div>
+
+
+
+
+
+
+
+
+
+
+
+    <h5>Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>warnings</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Array</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>Array of existing warnings.</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>errors</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Array</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>Array of existing errors.</p></td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        
+            
+
+    
+
+    <h4 class="name" id="checkStructure"><span class="type-signature"></span>checkStructure<span class="signature">(warnings, errors)</span><span class="type-signature"></span></h4>
+
+    
+
+
+
+
+<dl class="details">
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="xform.js.html">xform.js</a>, <a href="xform.js.html#line216">line 216</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+<div class="description">
+    <p>Checks if the structure is valid. Modifies provided <code>warnings</code> and <code>errors</code> arrays.</p>
+</div>
+
+
+
+
+
+
+
+
+
+
+
+    <h5>Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>warnings</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Array</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>Array of existing warnings.</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>errors</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">Array</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>Array of existing errors.</p></td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        
+            
+
+    
+
+    <h4 class="name" id="enketoEvaluate"><span class="type-signature"></span>enketoEvaluate<span class="signature">(expr, type<span class="signature-attributes">opt</span>, contextPath<span class="signature-attributes">opt</span>)</span><span class="type-signature"> &rarr; {Array.&lt;Element>}</span></h4>
+
+    
+
+
+
+
+<dl class="details">
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="xform.js.html">xform.js</a>, <a href="xform.js.html#line195">line 195</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+<div class="description">
+    <p>Evaluates an expression over the model.</p>
+</div>
+
+
+
+
+
+
+
+
+
+
+
+    <h5>Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+        <th>Attributes</th>
+        
+
+        
+        <th>Default</th>
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>expr</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">string</span>
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                </td>
+            
+
+            <td class="description last"><p>The expression to evaluate.</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>type</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">string</span>
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                    <code>string</code>
+                
+                </td>
+            
+
+            <td class="description last"><p>One of boolean, string, number, node, nodes.</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>contextPath</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">string</span>
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+                <td class="default">
+                
+                    <code>null</code>
+                
+                </td>
+            
+
+            <td class="description last"><p>Query selector.</p></td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h5>Returns:</h5>
+
+        
+<div class="param-desc">
+    <p>an array of elements.</p>
+</div>
+
+
+
+<dl class="param-type">
+    <dt>
+        Type
+    </dt>
+    <dd>
+        
+<span class="param-type">Array.&lt;Element></span>
+
+
+    </dd>
+</dl>
+
+    
+
+
+
+        
+            
+
+    
+
+    <h4 class="name" id="nsPrefixResolver"><span class="type-signature"></span>nsPrefixResolver<span class="signature">(ns)</span><span class="type-signature"> &rarr; {string}</span></h4>
+
+    
+
+
+
+
+<dl class="details">
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="xform.js.html">xform.js</a>, <a href="xform.js.html#line139">line 139</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+<div class="description">
+    <p>Returns namespace prefix for given namespace.</p>
+</div>
+
+
+
+
+
+
+
+
+
+
+
+    <h5>Parameters:</h5>
+    
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>ns</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">string</span>
+
+
+            
+            </td>
+
+            
+
+            
+
+            <td class="description last"><p>One of predefined <a href="XForm.html#NAMESPACES"><code>NAMESPACES</code></a>.</p></td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<h5>Returns:</h5>
+
+        
+<div class="param-desc">
+    <p>namespace prefix.</p>
+</div>
+
+
+
+<dl class="param-type">
+    <dt>
+        Type
+    </dt>
+    <dd>
+        
+<span class="param-type">string</span>
+
+
+    </dd>
+</dl>
+
+    
+
+
+
+        
+            
+
+    
+
     <h4 class="name" id="parseModel"><span class="type-signature"></span>parseModel<span class="signature">()</span><span class="type-signature"></span></h4>
 
     
@@ -1597,7 +6712,7 @@ and cannot be evaluated in XPath, and I hate it, we just strip it out.</p>
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="xform.js.html">xform.js</a>, <a href="xform.js.html#line114">line 114</a>
+        <a href="xform.js.html">xform.js</a>, <a href="xform.js.html#line157">line 157</a>
     </li></ul></dd>
     
 

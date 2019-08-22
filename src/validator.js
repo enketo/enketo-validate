@@ -15,9 +15,11 @@ const { version } = require( '../package' );
  */
 
 /**
- * @param {string} xformStr
- * @param {object} [options]
- * @return {ValidateResult}
+ * The validate function. Relies heavily on the {@link XForm} class.
+ *
+ * @param {string} xformStr - form content.
+ * @param {object} [options] - Will be passed to XForm class. Also enables OpenClinica features.
+ * @return {ValidateResult} validation results.
  */
 let validate = ( xformStr, options = {} ) => {
     let warnings = [];
