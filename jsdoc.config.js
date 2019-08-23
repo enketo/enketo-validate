@@ -40,7 +40,7 @@ module.exports = {
         sort: true,
         meta: {
             title: 'Enketo Validate',
-            description: "An XForm validator around Enketo's form engine"
+            description: 'An XForm validator around Enketo\'s form engine'
         },
         search: true,
         collapse: false,

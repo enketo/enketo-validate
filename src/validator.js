@@ -5,6 +5,11 @@
 'use strict';
 
 const { XForm } = require( './xform' );
+/**
+ * @constant
+ * @static
+ * @type string
+ */
 const { version } = require( '../package' );
 
 /**
@@ -23,6 +28,7 @@ const { version } = require( '../package' );
 /**
  * The validate function. Relies heavily on the {@link XForm} class.
  *
+ * @static
  * @param {string} xformStr - XForm content.
  * @param {ValidationOptions} [options] - Validation options.
  * @return {ValidateResult} validation results.
