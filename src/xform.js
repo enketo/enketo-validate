@@ -22,7 +22,7 @@ class XForm {
      * @constructs
      *
      * @param {string} xformStr - XForm content.
-     * @param {ValidationOptions} [options] - Validation options.
+     * @param {module:validator~ValidateResult} [options] - Validation options.
      */
     constructor( xformStr, options = {} ) {
         this.options = options;

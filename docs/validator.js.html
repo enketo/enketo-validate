@@ -32,7 +32,7 @@
     
     <input type="text" id="nav-search" placeholder="Search" />
     
-    <h2><a href="index.html">Home</a></h2><h2><a href="https://github.com/enketo/enketo-validate" target="_blank" class="menu-item" id="repository" >Github repo</a></h2><h2><a href="https://github.com/enketo/enketo-validate/blob/master/CHANGELOG.md" target="_blank" class="menu-item" id="change-log" >Change log</a></h2><h3>Classes</h3><ul><li><a href="FormModel.html">FormModel</a></li><li><a href="XForm.html">XForm</a><ul class='methods'><li data-type='method'><a href="XForm.html#_cleanXmlDomParserError">_cleanXmlDomParserError</a></li><li data-type='method'><a href="XForm.html#_cleanXPathException">_cleanXPathException</a></li><li data-type='method'><a href="XForm.html#_extractModelStr">_extractModelStr</a></li><li data-type='method'><a href="XForm.html#_getDom">_getDom</a></li><li data-type='method'><a href="XForm.html#_getExternalDummyContent">_getExternalDummyContent</a></li><li data-type='method'><a href="XForm.html#_getWindow">_getWindow</a></li><li data-type='method'><a href="XForm.html#_nodeNames">_nodeNames</a></li><li data-type='method'><a href="XForm.html#_stripJrChoiceName">_stripJrChoiceName</a></li><li data-type='method'><a href="XForm.html#_withFormControl">_withFormControl</a></li><li data-type='method'><a href="XForm.html#_withoutFormControl">_withoutFormControl</a></li><li data-type='method'><a href="XForm.html#bind">bind</a></li><li data-type='method'><a href="XForm.html#checkAppearances">checkAppearances</a></li><li data-type='method'><a href="XForm.html#checkBinds">checkBinds</a></li><li data-type='method'><a href="XForm.html#checkOpenClinicaRules">checkOpenClinicaRules</a></li><li data-type='method'><a href="XForm.html#checkStructure">checkStructure</a></li><li data-type='method'><a href="XForm.html#enketoEvaluate">enketoEvaluate</a></li><li data-type='method'><a href="XForm.html#nsPrefixResolver">nsPrefixResolver</a></li><li data-type='method'><a href="XForm.html#parseModel">parseModel</a></li></ul></li><li></li></ul><h3>Modules</h3><ul><li><a href="module-utils.html">utils</a></li><li><a href="module-validator.html">validator</a><ul class='methods'><li data-type='method'><a href="module-validator.html#~validate">validate</a></li></ul></li></ul>
+    <h2><a href="index.html">Home</a></h2><h2><a href="https://github.com/enketo/enketo-validate" target="_blank" class="menu-item" id="repository" >Github repo</a></h2><h2><a href="https://github.com/enketo/enketo-validate/blob/master/CHANGELOG.md" target="_blank" class="menu-item" id="change-log" >Change log</a></h2><h3>Classes</h3><ul><li><a href="FormModel.html">FormModel</a></li><li><a href="XForm.html">XForm</a><ul class='methods'><li data-type='method'><a href="XForm.html#_cleanXmlDomParserError">_cleanXmlDomParserError</a></li><li data-type='method'><a href="XForm.html#_cleanXPathException">_cleanXPathException</a></li><li data-type='method'><a href="XForm.html#_extractModelStr">_extractModelStr</a></li><li data-type='method'><a href="XForm.html#_getDom">_getDom</a></li><li data-type='method'><a href="XForm.html#_getExternalDummyContent">_getExternalDummyContent</a></li><li data-type='method'><a href="XForm.html#_getWindow">_getWindow</a></li><li data-type='method'><a href="XForm.html#_nodeName">_nodeName</a></li><li data-type='method'><a href="XForm.html#_stripJrChoiceName">_stripJrChoiceName</a></li><li data-type='method'><a href="XForm.html#_withFormControl">_withFormControl</a></li><li data-type='method'><a href="XForm.html#_withoutFormControl">_withoutFormControl</a></li><li data-type='method'><a href="XForm.html#checkAppearances">checkAppearances</a></li><li data-type='method'><a href="XForm.html#checkBinds">checkBinds</a></li><li data-type='method'><a href="XForm.html#checkOpenClinicaRules">checkOpenClinicaRules</a></li><li data-type='method'><a href="XForm.html#checkStructure">checkStructure</a></li><li data-type='method'><a href="XForm.html#enketoEvaluate">enketoEvaluate</a></li><li data-type='method'><a href="XForm.html#getBind">getBind</a></li><li data-type='method'><a href="XForm.html#nsPrefixResolver">nsPrefixResolver</a></li><li data-type='method'><a href="XForm.html#parseModel">parseModel</a></li></ul></li><li></li></ul><h3>Modules</h3><ul><li><a href="module-utils.html">utils</a></li><li><a href="module-validator.html">validator</a><ul class='methods'><li data-type='method'><a href="module-validator.html#~validate">validate</a></li></ul></li></ul>
 </nav>
 
 <div id="main">
@@ -64,10 +64,16 @@ const { version } = require( '../package' );
  */
 
 /**
+ * @typedef ValidationOptions
+ * @property {boolean} debug - Run validator in debug mode.
+ * @property {boolean} openclinica - Run validator in OpenClinica mode.
+ */
+
+/**
  * The validate function. Relies heavily on the {@link XForm} class.
  *
- * @param {string} xformStr - form content.
- * @param {object} [options] - Will be passed to XForm class. Also enables OpenClinica features.
+ * @param {string} xformStr - XForm content.
+ * @param {ValidationOptions} [options] - Validation options.
  * @return {ValidateResult} validation results.
  */
 let validate = ( xformStr, options = {} ) => {
@@ -147,8 +153,7 @@ let validate = ( xformStr, options = {} ) => {
     return { warnings, errors, version };
 };
 
-module.exports = { validate, version };
-</code></pre>
+module.exports = { validate, version };</code></pre>
         </article>
     </section>
 
