@@ -32,7 +32,7 @@
     
     <input type="text" id="nav-search" placeholder="Search" />
     
-    <h2><a href="index.html">Home</a></h2><h2><a href="https://github.com/enketo/enketo-validate" target="_blank" class="menu-item" id="repository" >Github repo</a></h2><h2><a href="https://github.com/enketo/enketo-validate/blob/master/CHANGELOG.md" target="_blank" class="menu-item" id="change-log" >Change log</a></h2><h3>Classes</h3><ul><li><a href="FormModel.html">FormModel</a></li><li><a href="XForm.html">XForm</a><ul class='methods'><li data-type='method'><a href="XForm.html#_cleanXmlDomParserError">_cleanXmlDomParserError</a></li><li data-type='method'><a href="XForm.html#_cleanXPathException">_cleanXPathException</a></li><li data-type='method'><a href="XForm.html#_extractModelStr">_extractModelStr</a></li><li data-type='method'><a href="XForm.html#_getDom">_getDom</a></li><li data-type='method'><a href="XForm.html#_getExternalDummyContent">_getExternalDummyContent</a></li><li data-type='method'><a href="XForm.html#_getWindow">_getWindow</a></li><li data-type='method'><a href="XForm.html#_nodeName">_nodeName</a></li><li data-type='method'><a href="XForm.html#_stripJrChoiceName">_stripJrChoiceName</a></li><li data-type='method'><a href="XForm.html#_withFormControl">_withFormControl</a></li><li data-type='method'><a href="XForm.html#_withoutFormControl">_withoutFormControl</a></li><li data-type='method'><a href="XForm.html#checkAppearances">checkAppearances</a></li><li data-type='method'><a href="XForm.html#checkBinds">checkBinds</a></li><li data-type='method'><a href="XForm.html#checkOpenClinicaRules">checkOpenClinicaRules</a></li><li data-type='method'><a href="XForm.html#checkStructure">checkStructure</a></li><li data-type='method'><a href="XForm.html#enketoEvaluate">enketoEvaluate</a></li><li data-type='method'><a href="XForm.html#getBind">getBind</a></li><li data-type='method'><a href="XForm.html#nsPrefixResolver">nsPrefixResolver</a></li><li data-type='method'><a href="XForm.html#parseModel">parseModel</a></li></ul></li><li></li></ul><h3>Modules</h3><ul><li><a href="module-utils.html">utils</a></li><li><a href="module-validator.html">validator</a><ul class='methods'><li data-type='method'><a href="module-validator.html#~validate">validate</a></li></ul></li></ul>
+    <h2><a href="index.html">Home</a></h2><h2><a href="https://github.com/enketo/enketo-validate" target="_blank" class="menu-item" id="repository" >Github repo</a></h2><h2><a href="https://github.com/enketo/enketo-validate/blob/master/CHANGELOG.md" target="_blank" class="menu-item" id="change-log" >Change log</a></h2><h3>Classes</h3><ul><li><a href="FormModel.html">FormModel</a></li><li><a href="XForm.html">XForm</a><ul class='methods'><li data-type='method'><a href="XForm.html#_cleanXmlDomParserError">_cleanXmlDomParserError</a></li><li data-type='method'><a href="XForm.html#_cleanXPathException">_cleanXPathException</a></li><li data-type='method'><a href="XForm.html#_extractModelStr">_extractModelStr</a></li><li data-type='method'><a href="XForm.html#_getDom">_getDom</a></li><li data-type='method'><a href="XForm.html#_getExternalDummyContent">_getExternalDummyContent</a></li><li data-type='method'><a href="XForm.html#_getWindow">_getWindow</a></li><li data-type='method'><a href="XForm.html#_nodeName">_nodeName</a></li><li data-type='method'><a href="XForm.html#_stripJrChoiceName">_stripJrChoiceName</a></li><li data-type='method'><a href="XForm.html#_withFormControl">_withFormControl</a></li><li data-type='method'><a href="XForm.html#_withoutFormControl">_withoutFormControl</a></li><li data-type='method'><a href="XForm.html#checkAppearances">checkAppearances</a></li><li data-type='method'><a href="XForm.html#checkBinds">checkBinds</a></li><li data-type='method'><a href="XForm.html#checkOpenClinicaRules">checkOpenClinicaRules</a></li><li data-type='method'><a href="XForm.html#checkStructure">checkStructure</a></li><li data-type='method'><a href="XForm.html#enketoEvaluate">enketoEvaluate</a></li><li data-type='method'><a href="XForm.html#getBind">getBind</a></li><li data-type='method'><a href="XForm.html#nsPrefixResolver">nsPrefixResolver</a></li><li data-type='method'><a href="XForm.html#parseModel">parseModel</a></li></ul></li><li></li></ul><h3>Modules</h3><ul><li><a href="module-utils.html">utils</a><ul class='members'><li data-type='member'><a href="module-utils.html#.addXPathExtensionsOc">addXPathExtensionsOc</a></li><li data-type='member'><a href="module-utils.html#.parseFunctionFromExpression">parseFunctionFromExpression</a></li></ul></li><li><a href="module-validator.html">validator</a><ul class='methods'><li data-type='method'><a href="module-validator.html#.validate">validate</a></li></ul></li></ul>
 </nav>
 
 <div id="main">
@@ -62,8 +62,6 @@ const appearanceRules = require( './appearances' );
 
 /**
  * @class XForm
- *
- * @param
  */
 class XForm {
 
@@ -201,7 +199,7 @@ class XForm {
 
     /**
      * Parses the Model
-     * 
+     *
      * The reason this is not included in the constructor is to separate different types of errors,
      * and keep the constructor just for XML parse errors.
      */
@@ -502,7 +500,7 @@ class XForm {
 
     /**
      * Returns some dummy external data that can be used to instantiate a Form instance that requires external data.
-     * 
+     *
      * @return {Array&lt;{id: string, xml: Document}>}
      */
     _getExternalDummyContent() {
@@ -516,7 +514,7 @@ class XForm {
 
     /**
      * Strips jr:choice-name function.
-     * 
+     *
      * Since this is such a weird function that queries the body of the XForm,
      * and cannot be evaluated in XPath, we just strip it out.
      *
@@ -544,7 +542,7 @@ class XForm {
 
     /**
      * Returns a JSDOM instance of the XForm.
-     * 
+     *
      * @return {JSDOM}
      */
     _getDom() {
@@ -583,7 +581,7 @@ class XForm {
 
     /**
      * Returns the model node name that a provided `&lt;bind>` element binds with.
-     * 
+     *
      * @param {Element} bind - The XForm &lt;bind> element.
      * @return {string} the node name.
      */
@@ -631,7 +629,8 @@ class XForm {
 
 module.exports = {
     XForm: XForm
-};</code></pre>
+};
+</code></pre>
         </article>
     </section>
 
