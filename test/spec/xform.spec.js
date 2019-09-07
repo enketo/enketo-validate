@@ -154,7 +154,7 @@ describe( 'XForm', () => {
             expect( arrContains( result.errors, /"i" has no label/i ) ).to.equal( true );
             expect( arrContains( result.errors, /option for question "f" has no label/i ) ).to.equal( true );
             expect( arrContains( result.errors, /option for question "i" has no label/i ) ).to.equal( true );
-        } )
+        } );
     } );
 
     xdescribe( 'with disallowed self-referencing', () => {
