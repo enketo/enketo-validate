@@ -38,4 +38,12 @@ describe( 'XML', () => {
         } );
     } );
 
+    describe( 'with invalid primary element namespace', () => {
+        const xf = loadXForm( 'invalid-primary-namespace.xml' );
+        it( 'should return an error', () => {
+            const result = validator.validate( xf );
+            expect( result.errors.indexOf( 'Primary instance element has incorrect namespace.' ) ).to.not.equal( -1 );
+        } );
+    } );
+
 } );
