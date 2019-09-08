@@ -152,7 +152,7 @@ class XForm {
 
     /**
      * Parses the Model
-     * 
+     *
      * The reason this is not included in the constructor is to separate different types of errors,
      * and keep the constructor just for XML parse errors.
      */
@@ -294,7 +294,7 @@ class XForm {
         if ( primInstanceEl ) {
             const children = primInstanceEl.children;
             if ( children.length === 0 ) {
-                errors.push( 'Primary instance element has child.' );
+                errors.push( 'Primary instance element has no child.' );
             } else if ( children.length > 1 ) {
                 errors.push( 'Primary instance element has more than 1 child.' );
             }
@@ -453,7 +453,7 @@ class XForm {
 
     /**
      * Returns some dummy external data that can be used to instantiate a Form instance that requires external data.
-     * 
+     *
      * @return {Array<{id: string, xml: Document}>}
      */
     _getExternalDummyContent() {
@@ -467,7 +467,7 @@ class XForm {
 
     /**
      * Strips jr:choice-name function.
-     * 
+     *
      * Since this is such a weird function that queries the body of the XForm,
      * and cannot be evaluated in XPath, we just strip it out.
      *
@@ -495,7 +495,7 @@ class XForm {
 
     /**
      * Returns a JSDOM instance of the XForm.
-     * 
+     *
      * @return {JSDOM}
      */
     _getDom() {
@@ -534,7 +534,7 @@ class XForm {
 
     /**
      * Returns the model node name that a provided `<bind>` element binds with.
-     * 
+     *
      * @param {Element} bind - The XForm <bind> element.
      * @return {string} the node name.
      */

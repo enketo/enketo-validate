@@ -46,4 +46,14 @@ describe( 'XML', () => {
         } );
     } );
 
+    describe( 'with group missing ref attribute that has repeat inside', () => {
+        const xf = loadXForm( 'no-group-repeat-ref.xml' );
+        it( 'should return a warning', () => {
+            const result = validator.validate( xf );
+            expect( result.warnings.length ).to.equal( 2 );
+            expect( result.warnings[ 0 ] ).to.include( '<group> without ref attribute' );
+            expect( result.warnings[ 1 ] ).to.include( '<repeat> that has a parent <group> without a ref attribute' );
+        } );
+    } );
+
 } );
