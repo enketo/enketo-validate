@@ -1,11 +1,11 @@
 <?xml version="1.0"?>
-<h:html xmlns="http://www.w3.org/2002/xforms" 
-    xmlns:ev="http://www.w3.org/2001/xml-events" 
-    xmlns:h="http://www.w3.org/1999/xhtml" 
-    xmlns:jr="http://openrosa.org/javarosa" 
-    xmlns:oc="http://openclinica.org/xforms" 
-    xmlns:odkkkkkk="http://www.opendatakit.org/xforms" 
-    xmlns:orxxxx="http://openrosa.org/xforms" 
+<h:html xmlns="http://www.w3.org/2002/xforms"
+    xmlns:ev="http://www.w3.org/2001/xml-events"
+    xmlns:h="http://www.w3.org/1999/xhtml"
+    xmlns:jr="http://openrosa.org/javarosa"
+    xmlns:oc="http://openclinica.org/xforms"
+    xmlns:odkkkkkk="http://www.opendatakit.org/xforms"
+    xmlns:orxxxx="http://openrosa.org/xforms"
     xmlns:xsdddd="http://www.w3.org/2001/XMLSchema">
     <h:head>
         <h:title>appearances</h:title>
@@ -51,23 +51,23 @@
                 <label>Valid because it has a form control</label>
             </input>
             <input ref="/data/one/b" appearance="minimal compact-2">
-                <label>label</label>
+                <label>label b</label>
             </input>
             <input ref="/data/one/c" appearance="maximal">
-                <label>label</label>
+                <label>label c</label>
             </input>
             <select1 ref="/data/one/d" appearance="minimal hide-input search">                <!-- minimal is correct -->
-                <label>label</label>
+                <label>label d</label>
                 <item>
                     <label>Alaska</label>
                     <value>AK</value>
                 </item>
             </select1>
             <range ref="/data/one/e" start="0" end="10" step="1" appearance="horizontal compact">                <!-- all good, except compact-->
-                <label>label</label>
+                <label>label e</label>
             </range>
             <select1 ref="/data/one/f" appearance="compact-19">
-                <label>label</label>
+                <label>label f</label>
                 <item>
                     <label>Alaska</label>
                     <value>AK</value>
@@ -75,24 +75,24 @@
             </select1>
 
             <input ref="/data/one/g" appearance="numbers no-ticks">
-                <label>label</label>
+                <label>label g</label>
             </input>
             <input ref="/data/one/h" appearance="numbers maps signature">                <!-- numbers is correct -->
-                <label>label</label>
+                <label>label h</label>
             </input>
 
             <odkkkkkk:rank ref="/data/one/i" appearance="pulldown">
-                <label>label</label>
+                <label>label i</label>
                 <item>
                     <label>Alaska</label>
                     <value>AK</value>
                 </item>
             </odkkkkkk:rank>
             <input ref="/data/one/j" appearance="analog-scale no-ticks">
-                <label>label</label>
+                <label>label j</label>
             </input>
             <select1 ref="/data/one/k" appearance="horizontal-compact">
-                <label>label</label>
+                <label>label k</label>
                 <item>
                     <label>Alaska</label>
                     <value>AK</value>
