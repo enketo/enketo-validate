@@ -2,6 +2,7 @@
 
 'use strict';
 
+const XForm = require( '../../src/xform' ).XForm;
 const validator = require( '../../src/validator' );
 const expect = require( 'chai' ).expect;
 const fs = require( 'fs' );
@@ -28,6 +29,15 @@ describe( 'XForm', () => {
             const result = validator.validate( xf );
             expect( result.errors.length ).to.equal( 1 );
             expect( result.errors[ 0 ] ).to.include( 'instanceID' );
+        } );
+    } );
+
+    describe( 'with bind that has no nodeset', () => {
+        const xf = loadXForm( 'bind-without-nodeset.xml' );
+        it( 'should return a warning', () => {
+            const result = validator.validate( xf );
+            expect( result.warnings.length ).to.equal( 1 );
+            expect( result.warnings[ 0 ] ).to.include( 'without nodeset attribute' );
         } );
     } );
 
@@ -154,7 +164,7 @@ describe( 'XForm', () => {
             expect( arrContains( result.errors, /"i" has no label/i ) ).to.equal( true );
             expect( arrContains( result.errors, /option for question "f" has no label/i ) ).to.equal( true );
             expect( arrContains( result.errors, /option for question "i" has no label/i ) ).to.equal( true );
-        } )
+        } );
     } );
 
     xdescribe( 'with disallowed self-referencing', () => {
@@ -170,3 +180,29 @@ describe( 'XForm', () => {
     } );
 
 } );
+
+describe('XForm Class', () => {
+    it( 'should throw if XForm string not provided', () => {
+        let failure = () => { new XForm(); };
+        expect( failure ).to.throw();
+    });
+
+    describe( 'nsPrefixResolver method', () => {
+        const xf = new XForm( loadXForm( 'model-only.xml' ) );
+        it( 'should return namespace prefix', () => {
+            expect( xf.nsPrefixResolver( 'http://enketo.org/xforms' ) ).to.equal( 'enk' );
+        } );
+        it( 'should return null if namespace not given', () => {
+            expect( xf.nsPrefixResolver() ).to.equal( null );
+        } );
+    } );
+
+    describe( 'enketoEvaluate method', () => {
+        const xf = new XForm( loadXForm( 'model-only.xml' ) );
+        it( 'should parse model if it wasn\'t parsed already', () => {
+            expect( typeof xf.model === 'undefined' ).to.equal( true );
+            xf.enketoEvaluate('floor(1)');
+            expect( typeof xf.model === 'undefined' ).to.equal( false );
+        } );
+    } );
+});

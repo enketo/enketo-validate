@@ -292,7 +292,7 @@ class XForm {
         if ( primInstanceEl ) {
             const children = primInstanceEl.children;
             if ( children.length === 0 ) {
-                errors.push( 'Primary instance element has child.' );
+                errors.push( 'Primary instance element has no child.' );
             } else if ( children.length > 1 ) {
                 errors.push( 'Primary instance element has more than 1 child.' );
             }
