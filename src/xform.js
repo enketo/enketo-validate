@@ -299,21 +299,19 @@ class XForm {
             if ( children && !children[ 0 ].id ) {
                 errors.push( `Data root node <${children[0].nodeName}> has no id attribute.` );
             }
-        }
 
-        // add warning for duplicate nodenames
-        let controlLabels = [];
-        this.formControls.forEach( control => {
-            const controlChilds = [ ...control.childNodes ];
-            const controlLabel = controlChilds.find( el => el.nodeName === 'label');
-            if ( controlLabel && controlLabel.textContent ) {
-                controlLabels.push(controlLabel.textContent);
-            }
-        });
-        if ( controlLabels.length > 0 ) {
-            const uniqueControlLabels = new Set(controlLabels);
-            if ( [...uniqueControlLabels].length !== controlLabels.length ) {
-                warnings.push('Duplicate nodenames found.');
+            // add warning for duplicate nodenames
+            const dataEl = children[0];
+            const dataNodes = dataEl.querySelectorAll( '*' );
+            if ( dataNodes.length > 0 ) {
+                let dataNodeNames = [];
+                dataNodes.forEach( dataNode => {
+                    dataNodeNames.push(dataNode.nodeName);
+                } );
+                const uniqueDataNodeNames = new Set( dataNodeNames );
+                if ( [ ...uniqueDataNodeNames ].length !== dataNodeNames.length ) {
+                    warnings.push('Duplicate nodenames found.');
+                }
             }
         }
 
