@@ -1,4 +1,4 @@
-![coverage-shield-badge-1](https://img.shields.io/badge/coverage-97.15%25-brightgreen.svg)
+![coverage-shield-badge-1](https://img.shields.io/badge/coverage-97.24%25-brightgreen.svg)
 [![npm version](https://badge.fury.io/js/enketo-validate.svg)](http://badge.fury.io/js/enketo-validate) [![Build Status](https://travis-ci.org/enketo/enketo-validate.svg?branch=master)](https://travis-ci.org/enketo/enketo-validate) [![Dependency Status](https://david-dm.org/enketo/enketo-validate/status.svg)](https://david-dm.org/enketo/enketo-validate) [![devDependency Status](https://david-dm.org/enketo/enketo-validate/dev-status.svg)](https://david-dm.org/enketo/enketo-validate?type=dev)
 
 Enketo Validate
@@ -85,11 +85,14 @@ const result = validator.validate( xformStr, options );
 In it's current iteration, the validator does the following:
 
 * It checks whether the XForm is a valid XML document.
-* It performs some basic ODK XForm structure checks.
+* It performs some elementary ODK XForm structure checks.
 * It checks if each bind `nodeset` exists in the primary instance.
-* It checks if appearance values are supported for that type of question.
+* It checks if appearance values are supported or deprecated for that type of question.
 * It checks for each `<bind>` whether the `relevant`, `constraint`, `calculate`, and `required` expressions are supported and valid\* XPath.
 * It checks whether required `<label>` elements exist.
+* It checks for duplicate question or group names.
+* It checks for nested repeats.
+* It checks for form controls that have a calculation but are not set as readonly.
 
 \* Note, that `/path/to/nonexisting/node` is perfectly valid XPath.
 

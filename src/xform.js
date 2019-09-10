@@ -315,13 +315,26 @@ class XForm {
             }
         }
 
+        if ( this.repeats.length ) {
+            const repeatPaths = [];
+            this.repeats.reverse().forEach( repeat => {
+                const nodeset = repeat.getAttribute( 'nodeset' );
+                // This check will fail if relative nodesets are used (not supported in Enketo any more).
+                if ( repeatPaths.some( repeatPath => repeatPath.startsWith( nodeset ) ) ) {
+                    const name = nodeset.substring( nodeset.lastIndexOf( '/' ) + 1 );
+                    warnings.push( `Repeat "${name}" contains a nested repeat. This not recommended.` );
+                }
+                repeatPaths.push( nodeset );
+            } );
+        }
+
         // ODK Build bug
-        if ( this.doc.querySelector( 'group:not([ref])' ) ) {
+        if ( bodyEl && bodyEl.querySelector( 'group:not([ref])' ) ) {
             warnings.push( 'Found <group> without ref attribute. This might be fine as long as the group has no relevant logic.' );
         }
 
         // ODK Build output
-        if ( this.doc.querySelector( 'group:not([ref]) > repeat' ) ) {
+        if ( bodyEl && bodyEl.querySelector( 'group:not([ref]) > repeat' ) ) {
             warnings.push( 'Found <repeat> that has a parent <group> without a ref attribute. ' +
                 'If the repeat has relevant logic, this will make the form very slow.' );
         }

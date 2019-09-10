@@ -6,6 +6,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 ---------------------
 ##### Added
 - Check for duplicate question/group names (warning).
+- Check for nested repeats (warning).
 
 [1.7.0]
 ---------------------

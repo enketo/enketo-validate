@@ -180,6 +180,18 @@ describe( 'XForm', () => {
 
     } );
 
+    describe( 'with nested repeats', () => {
+        const xf = loadXForm( 'nested-repeats.xml' );
+        const result = validator.validate( xf );
+
+        it( 'outputs warnings', () => {
+            expect( result.warnings.length ).to.equal( 2 );
+            expect( arrContains( result.warnings, /Repeat "immunization-info" .* nested/i ) ).to.equal( true );
+            expect( arrContains( result.warnings, /Repeat "kids-details" .* nested/i ) ).to.equal( true );
+        } );
+
+    } );
+
     xdescribe( 'with disallowed self-referencing', () => {
         // Unit tests are in xpath.spec.js
         const xf = loadXForm( 'self-reference.xml' );
