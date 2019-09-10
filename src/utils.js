@@ -1,4 +1,5 @@
 import { parseFunctionFromExpression } from 'enketo-core/src/js/utils';
+import { getXPath } from 'enketo-core/src/js/dom-utils';
 import addXPathExtensionsOc from 'enketo-xpath-extensions-oc';
 
 /**
@@ -16,5 +17,6 @@ module.exports = {
      * @type function
      * @see {@link https://github.com/OpenClinica/enketo-xpath-extensions-oc|addXPathExtensionsOc}
      */
-    addXPathExtensionsOc
+    addXPathExtensionsOc,
+    getXPath
 };

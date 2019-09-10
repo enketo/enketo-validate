@@ -13,8 +13,18 @@
                 <data id="data">
                     <a/>
                     <g>
+                        <!-- warning -->
                         <a/>
+                        <!-- another warning -->
+                        <g/>
                     </g>
+                    <rep>
+                        <b/>
+                    </rep>
+                    <rep>
+                        <!-- no warning because it is a repeat instance -->
+                        <b/>
+                    </rep>
                     <meta>
                         <instanceID/>
                     </meta>
