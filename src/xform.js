@@ -301,17 +301,16 @@ class XForm {
             }
             if ( children && children[ 0 ] ) {
                 const dataNodeNames = [];
-                const dataNodePaths = [];
-                [ ...children[ 0 ].querySelectorAll( '*' ) ].forEach( el => {
+                const dataNodes = children[ 0 ].querySelectorAll( '*' );
+
+                dataNodes.forEach( el => {
                     const nodeName = el.nodeName;
-                    const xPath = utils.getXPath( el, 'instance' );
                     const index = dataNodeNames.indexOf( nodeName );
-                    if ( index !== -1 && dataNodePaths[ index ] !== xPath ) {
+                    // Save XPath determination for when necessary, to not negatively affect performance.
+                    if ( index !== -1 && utils.getXPath( dataNodes[ index ], 'instance' ) !== utils.getXPath( el, 'instance' ) ) {
                         warnings.push( `Duplicate question or group name "${nodeName}" found. Unique names are recommended` );
-                    } else {
-                        dataNodeNames.push( nodeName );
-                        dataNodePaths.push( xPath );
                     }
+                    dataNodeNames.push( nodeName );
                 } );
             }
         }
