@@ -1,6 +1,7 @@
 'use strict';
 
 module.exports = {
+    include: ['src/*.js'],
     reporter: [
         'html',
         'text-summary',
