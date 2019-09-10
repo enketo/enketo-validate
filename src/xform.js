@@ -299,6 +299,20 @@ class XForm {
             if ( children && !children[ 0 ].id ) {
                 errors.push( `Data root node <${children[0].nodeName}> has no id attribute.` );
             }
+
+            // add warning for duplicate nodenames
+            const dataEl = children[0];
+            const dataNodes = dataEl.querySelectorAll( '*' );
+            if ( dataNodes.length > 0 ) {
+                let dataNodeNames = [];
+                dataNodes.forEach( dataNode => {
+                    dataNodeNames.push(dataNode.nodeName);
+                } );
+                const uniqueDataNodeNames = new Set( dataNodeNames );
+                if ( [ ...uniqueDataNodeNames ].length !== dataNodeNames.length ) {
+                    warnings.push('Duplicate nodenames found.');
+                }
+            }
         }
 
         // ODK Build bug
