@@ -299,19 +299,19 @@ class XForm {
             if ( children && !children[ 0 ].id ) {
                 errors.push( `Data root node <${children[0].nodeName}> has no id attribute.` );
             }
+            if ( children && children[ 0 ] ) {
+                const dataNodeNames = [];
+                const dataNodes = children[ 0 ].querySelectorAll( '*' );
 
-            // add warning for duplicate nodenames
-            const dataEl = children[0];
-            const dataNodes = dataEl.querySelectorAll( '*' );
-            if ( dataNodes.length > 0 ) {
-                let dataNodeNames = [];
-                dataNodes.forEach( dataNode => {
-                    dataNodeNames.push(dataNode.nodeName);
+                dataNodes.forEach( el => {
+                    const nodeName = el.nodeName;
+                    const index = dataNodeNames.indexOf( nodeName );
+                    // Save XPath determination for when necessary, to not negatively affect performance.
+                    if ( index !== -1 && utils.getXPath( dataNodes[ index ], 'instance' ) !== utils.getXPath( el, 'instance' ) ) {
+                        warnings.push( `Duplicate question or group name "${nodeName}" found. Unique names are recommended` );
+                    }
+                    dataNodeNames.push( nodeName );
                 } );
-                const uniqueDataNodeNames = new Set( dataNodeNames );
-                if ( [ ...uniqueDataNodeNames ].length !== dataNodeNames.length ) {
-                    warnings.push('Duplicate nodenames found.');
-                }
             }
         }
 
