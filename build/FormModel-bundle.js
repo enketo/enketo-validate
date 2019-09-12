@@ -3,46 +3,58 @@
 
 	var commonjsGlobal = typeof globalThis !== 'undefined' ? globalThis : typeof window !== 'undefined' ? window : typeof global !== 'undefined' ? global : typeof self !== 'undefined' ? self : {};
 
+	function commonjsRequire () {
+		throw new Error('Dynamic requires are not currently supported by rollup-plugin-commonjs');
+	}
+
 	function createCommonjsModule(fn, module) {
 		return module = { exports: {} }, fn(module, module.exports), module.exports;
 	}
 
 	var mergexml = createCommonjsModule(function (module, exports) {
 	/**
-	 * XML merging class
-	 * Merge multiple XML sources
+	 * JS XML merging class
+	 * merge multiple XML sources
+	 * supports browser and NodeJS environments
 	 * 
 	 * @package     MergeXML
 	 * @author      Vallo Reima
-	 * @copyright   (C)2014-2016
+	 * @copyright   (C)2014-2019
 	 */
 
 	/**
 	 * AMD/CommonJS wrapper
+	 * @author Martijn van de Rijdt
+	 * 
 	 * @param {object} root
 	 * @param {function} factory
 	 */
-	(function(root, factory) {
+	(function (root, factory) {
 	  {
 	    // Does not work with strict CommonJS, 
 	    // but only CommonJS-like environments 
 	    // that support module.exports, like Node
 	    module.exports = factory();
 	  }
-	}(commonjsGlobal, function() {
+	}(commonjsGlobal, function () {
 	  /**
 	   * Return a function as the exported value
-	   * @param {object} opts -- stay, join, updn (see readme)
+	   * @param {object} opts -- processiong options (see readme)
 	   */
-	  return function(opts) {
+	  return function (opts) {
 
-	    var mde;        /* access mode 0,1,2 */
+	    var mde;        /* access mode: 1 - IE, 2 - browser, 3 - nodejs */
 	    var msv;        /* MS DOM version */
-	    var psr;        /* DOM parser object */
-	    var nse;        /* parsererror namespace */
-	    var xpe;        /* xPath evaluator */
-	    var nsr;        /* namespace resolver */
-	    var nsd = '_';  /* default namespace prefix */
+	    var psr;        /* DOMParser object */
+	    var xpe;        /* xPath evaluator object */
+	    var xpr;        /* XPathResult object */
+	    var nsr;        /* namespace resolver method */
+	    var nsd = {/* default namespace prefix and URIs */
+	      pfx: '_',
+	      psr: 'http://www.w3.org/1999/xhtml',
+	      xpe: 'http://www.w3.org/2000/xmlns/'
+	    };
+	    var erp;        /* parsing error flag */
 	    var stay;       /* overwrite protection */
 	    var join;       /* joining root name and status*/
 	    var updn;       /* update nodes sequentially by name */
@@ -52,15 +64,137 @@
 	    var XML_PI_NODE = 7;
 	    var that = this;
 
-	    that.Init = function() {
+	    var Init = function () {
+	      that.error = {};
+	      /* detect NodeJS environment */
+	      if (typeof process !== 'undefined' && process.versions && process.versions.node) {
+	        var p = typeof opts === 'object' && typeof opts.path === 'string' ? opts.path : '';
+	        try {  //obtain xml support
+	          commonjsGlobal.XPathEvaluator = commonjsRequire(p + 'xpath');
+	          commonjsGlobal.DOMParser = commonjsRequire(p + 'xmldom').DOMParser;
+	          commonjsGlobal.XMLSerializer = commonjsRequire(p + 'xmldom').XMLSerializer;
+	        } catch (e) {
+	          console.log(e.message);
+	        }
+	      }
+	      mde = Setup(); //set mode
+	      that.Init(opts);
+	    };
+
+	    /**
+	     * determine mode, set functionality
+	     * @returns {mixed} -- int - mode
+	     *                     false - failed 
+	     */
+	    var Setup = function () {
+	      var m;
+	      var f = false;
+	      var vers = [//IE 
+	        'MSXML2.DOMDocument.6.0',
+	        'MSXML2.DOMDocument.3.0',
+	        'MSXML2.DOMDocument',
+	        'Microsoft.XmlDom'
+	      ];
+	      var n = vers.length;
+	      for (var i = 0; i < n; i++) {
+	        try {
+	          var d = new ActiveXObject(vers[i]);
+	          d.async = false;
+	          f = true;   /* DOM supported */
+	          if (d.loadXML('<x></x>') && d.selectSingleNode('/')) {
+	            break;    /* xPath supported */
+	          }
+	        } catch (e) {
+	          /* skip */
+	        }
+	      }
+	      if (f) {
+	        if (i < n) {
+	          msv = vers[i];
+	          m = 1;  /* IE mode */
+	        } else {
+	          m = 'nox';  /* no xPath */
+	        }
+	      } else {
+	        var env;
+	        if (typeof window !== 'undefined') {
+	          env = window;
+	          m = 2;  // any browser 
+	        } else if (typeof commonjsGlobal !== 'undefined') {
+	          env = commonjsGlobal;
+	          m = 3; // NodeJS
+	        } else {
+	          env = {}; //unknown
+	        }
+	        if (!env.DOMParser) {
+	          m = 'nod';  /* no DOM */
+	        } else if (!env.XMLSerializer) {
+	          m = 'nos';  /* no Serializer */
+	        } else if (!env.XPathEvaluator) {
+	          m = 'nox';  /* no xPath */
+	        } else if (m === 2) { //browser
+	          psr = new env.DOMParser();
+	          xpe = new env.XPathEvaluator();
+	          xpr = env.XPathResult;
+	          f = psr.parseFromString('<invalid', 'text/xml'); /* force parsing error */
+	          nsd.psr = f.getElementsByTagName('parsererror')[0].namespaceURI; //browser default namespace
+	        } else {
+	          psr = new env.DOMParser({xmlns: nsd.psr, errorHandler: function () {
+	              erp = true; //indicate parse error
+	            }});
+	          xpe = env.XPathEvaluator;
+	          xpr = env.XPathEvaluator.XPathResult;
+	          nsd.xpe = xpe.XPath.XMLNS_NAMESPACE_URI;
+	        }
+	      }
+	      return typeof m === 'string' ? Error(m) : m;
+	    };
+
+	    /**
+	     * (re)set the objects
+	     * @param {object} opt -- processiong options
+	     * @returns {mixed} -- false - error 
+	     */
+	    that.Init = function (opt) {
+	      if (typeof opt !== 'object') {
+	        opt = {};
+	      }
+	      /* set stay attribute value to check */
+	      if (typeof opt.stay === 'undefined') {
+	        if (typeof stay === 'undefined') {
+	          stay = ['all'];
+	        }
+	      } else if (!opt.stay) {
+	        stay = [];
+	      } else if (typeof opt.stay === 'object' && opt.stay instanceof Array) {
+	        stay = opt.stay;
+	      } else {
+	        stay = [opt.stay];
+	      }
+	      /* set join condition for different roots */
+	      if (typeof opt.join === 'undefined') {
+	        if (typeof join === 'undefined') {
+	          join = ['root'];
+	        }
+	      } else if (!opt.join) {
+	        join = [false];
+	      } else {
+	        join = [String(opt.join)];
+	      }
+	      join[1] = false;
+	      /* set update sequence manner */
+	      if (typeof opt.updn !== 'undefined') {
+	        updn = opt.updn; 
+	      } else if (typeof updn === 'undefined') {
+	        updn = true; 
+	      }
 	      that.dom = null; /* result DOM object */
 	      that.nsp = {};   /* namespaces */
 	      that.count = 0; /* adding counter */
-	      join[1] = false;
-	      if (mde > 0) {
+	      if (mde) {
 	        that.error = {code: '', text: ''};
 	      }
-	      return (mde > 0);
+	      return mde;
 	    };
 
 	    /**
@@ -68,9 +202,11 @@
 	     * @param {object} file -- FileList element
 	     * @return {object|false}
 	     */
-	    that.AddFile = function(file) {
+	    that.AddFile = function (file) {
 	      var rlt;
-	      if (!file || !file.target) {
+	      if (!mde) {
+	        rlt = mde;
+	      } else if (!file || !file.target) {
 	        rlt = Error('nof');
 	      } else if (!file.target.result) {
 	        rlt = Error('emf');
@@ -86,22 +222,26 @@
 	     * @return mixed -- false - bad content
 	     *                  object - result
 	     */
-	    that.AddSource = function(xml) {
+	    that.AddSource = function (xml) {
 	      var rlt, doc;
-	      if (typeof xml === 'object') {
-	        doc = that.Get(1, xml) ? xml : false;
-	        if (doc && ((mde === 1 && !window.DOMParser) || (mde === 2 && !doc.selectSingleNode('/')))) {
-	          doc = null; /* not compatible */
-	        }
-	      } else {
-	        try {
-	          doc = Load(xml);
-	        } catch (e) {
-	          doc = false;
+	      if (mde) {
+	        if (typeof xml === 'object') {
+	          doc = that.Get(1, xml) ? xml : false;
+	          if (doc && ((mde > 1 && !DOMParser) || (mde === 1 && !doc.selectSingleNode('/')))) {
+	            doc = null; /* not compatible */
+	          }
+	        } else {
+	          try {
+	            doc = Load(xml);
+	          } catch (e) {
+	            doc = false;
+	          }
 	        }
 	      }
-	      if (doc === null) {
-	        rlt = Error('nos');
+	      if (!mde) {
+	        rlt = mde;
+	      } else if (doc === null) {
+	        rlt = Error('nob');
 	      } else if (doc === false) {
 	        rlt = Error('inv');
 	      } else if (doc === true) {
@@ -129,9 +269,10 @@
 	     *                    true - 1st load
 	     *                    object - loaded doc
 	     */
-	    var Load = function(src) {
+	    var Load = function (src) {
 	      var rlt, doc;
-	      if (mde === 1) {
+	      if (mde > 1) {
+	        erp = false;
 	        if (that.dom) {
 	          doc = psr.parseFromString(src, 'text/xml');
 	          rlt = ParseError(doc) ? doc : false;
@@ -153,12 +294,12 @@
 	    };
 
 	    /**
-	     * check for xml syntax (mode 1)
+	     * check for xml syntax (mode 2)
 	     * @param {object} doc
 	     * @return {bool} -- true - ok
 	     */
-	    var ParseError = function(doc) {
-	      return doc.getElementsByTagNameNS(nse, 'parsererror').length === 0;
+	    var ParseError = function (doc) {
+	      return !erp && !doc.getElementsByTagNameNS(nsd.psr, 'parsererror').length;
 	    };
 
 	    /**
@@ -166,7 +307,7 @@
 	     * @param {object} doc
 	     * @return {bool} -- true - ok
 	     */
-	    var CheckSource = function(doc) {
+	    var CheckSource = function (doc) {
 	      var rlt = true;
 	      var charSet1 = that.dom.characterSet || that.dom.inputEncoding || that.dom.xmlEncoding;
 	      var charSet2 = doc.characterSet || doc.inputEncoding || doc.xmlEncoding;
@@ -200,7 +341,7 @@
 	        for (var c in a) {
 	          if (!that.nsp[c]) {
 	            if (typeof that.dom.documentElement.setAttributeNS !== 'undefined') {
-	              that.dom.documentElement.setAttributeNS('http://www.w3.org/2000/xmlns/', 'xmlns:' + c, a[c]);
+	              that.dom.documentElement.setAttributeNS(nsd.xpe, 'xmlns:' + c, a[c]);
 	            } else {
 	              // no choice but to use the incorrect setAttribute instead
 	              that.dom.documentElement.setAttribute('xmlns:' + c, a[c]);
@@ -211,9 +352,11 @@
 	        if (!updn) {
 	          nsr = null;
 	        } else if (mde === 1) {
-	          nsr = Resolver;
-	        } else {
 	          ResolverIE();
+	        } else if (mde === 3) {
+	          nsr = that;
+	        } else {
+	          nsr = that.lookupNamespaceURI;
 	        }
 	      }
 	      return rlt;
@@ -223,7 +366,7 @@
 	     * @param {object} src -- current source node
 	     * @param {string} pth -- current source path
 	     */
-	    var Merge = function(src, pth) {
+	    var Merge = function (src, pth) {
 	      for (var i = 0; i < src.childNodes.length; i++) {
 	        var tmp;
 	        var node = src.childNodes[i]; //$node->getNodePath()
@@ -267,6 +410,7 @@
 	            obj.appendChild(tmp); /* add leaf */
 	          } else {
 	            obj.nodeValue = node.nodeValue; /* replace leaf */
+	            obj.data = node.data; //to ensure serializing
 	          }
 	        }
 	      }
@@ -280,7 +424,7 @@
 	     * @param {int} eln -- element sequence number
 	     * @return {string} query path
 	     */
-	    var GetNodePath = function(nodes, node, pth, eln) {
+	    var GetNodePath = function (nodes, node, pth, eln) {
 	      var p, i;
 	      var j = 0;
 	      if (node.nodeType === XML_ELEMENT_NODE) {
@@ -294,9 +438,9 @@
 	          var f = false;
 	          var a = NameSpaces(node);
 	          for (var c in a) {
-	            if (c !== nsd) {
+	            if (c !== nsd.pfx) {
 	              that.nsp[c] = a[c];
-	              f = (mde === 2);
+	              f = (mde === 1);
 	            }
 	          }
 	          if (f) {
@@ -304,8 +448,8 @@
 	          }
 	          if (node.prefix) {
 	            p = node.prefix + ':';
-	          } else if (that.nsp[nsd]) {
-	            p = nsd + ':';
+	          } else if (that.nsp[nsd.pfx]) {
+	            p = nsd.pfx + ':';
 	          } else {
 	            p = '';
 	          }
@@ -334,13 +478,13 @@
 	     * @param {object} node
 	     * @return {array} 
 	     */
-	    var NameSpaces = function(node) {
+	    var NameSpaces = function (node) {
 	      var rlt = {};
 	      var attrs = node.attributes;
 	      for (var i = 0; i < attrs.length; ++i) {
 	        var a = attrs[i].name.split(':');
 	        if (a[0] === 'xmlns') {
-	          var c = a[1] ? a[1] : nsd;
+	          var c = a[1] ? a[1] : nsd.pfx;
 	          rlt[c] = attrs[i].value;
 	        }
 	      }
@@ -352,20 +496,22 @@
 	     * @param {string} qry -- query statement
 	     * @return {object}
 	     */
-	    that.Query = function(qry) {
+	    that.Query = function (qry) {
+	      if (!mde) {
+	        return null;
+	      }
 	      var rlt;
 	      if (join[1]) {
 	        qry = '/' + that.dom.documentElement.nodeName + (qry === '/' ? '' : qry);
 	      }
 	      try {
-	        if (mde === 1) {
-	          rlt = xpe.evaluate(qry, that.dom, nsr, XPathResult.FIRST_ORDERED_NODE_TYPE, null);
+	        if (mde > 1) {
+	          rlt = xpe.evaluate(qry, that.dom, nsr, xpr.FIRST_ORDERED_NODE_TYPE, null);
 	          rlt = rlt.singleNodeValue;
 	        } else {
 	          rlt = that.dom.selectSingleNode(qry);
 	        }
-	      }
-	      catch (e) {
+	      } catch (e) {
 	        rlt = null; /* no such path */
 	      }
 	      return rlt;
@@ -376,14 +522,14 @@
 	     * @param {string} pfx node prefix
 	     * @return {string} namespace URI
 	     */
-	    var Resolver = function(pfx) {
+	    that.lookupNamespaceURI = function (pfx) {
 	      return that.nsp[pfx] || null;
 	    };
 
 	    /**
 	     * XPath IE Resolver 
 	     */
-	    var ResolverIE = function() {
+	    var ResolverIE = function () {
 	      var p = '';
 	      for (var c in that.nsp) {
 	        p += ' xmlns:' + c + '=' + "'" + that.nsp[c] + "'";
@@ -399,7 +545,7 @@
 	     * @param {array} arr
 	     * @returns {mixed}
 	     */
-	    var ArraySearch = function(val, arr) {
+	    var ArraySearch = function (val, arr) {
 	      var rlt = false;
 	      for (var key in arr) {
 	        if (arr[key] === val) {
@@ -418,12 +564,14 @@
 	     * @param {object} doc
 	     * @return {mixed}
 	     */
-	    that.Get = function(flg, doc) {
+	    that.Get = function (flg, doc) {
 	      var rlt;
 	      if (flg && !doc) {
 	        doc = that.dom;
 	      }
-	      if (!flg) {
+	      if (!mde) {
+	        rlt = that.error.text;
+	      } else if (!flg) {
 	        rlt = that.dom;
 	      } else if (!doc) {
 	        rlt = '';
@@ -433,7 +581,8 @@
 	        try {
 	          rlt = (new XMLSerializer()).serializeToString(doc);
 	        } catch (e) {
-	          rlt = null;
+	          rlt = e.message;
+	          flg = null;
 	        }
 	      }
 	      if (rlt && flg === 2) { /* make html view */
@@ -450,13 +599,14 @@
 	    /**
 	     * set error message
 	     * @param {string} err -- token
-	     * @return {false}
+	     * @return {bool} false
 	     */
-	    var Error = function(err) {
+	    var Error = function (err) {
 	      var errs = {
-	        nod: 'XML DOM is not supported in this browser',
-	        nox: 'xPath is not supported in this browser',
-	        nos: 'Incompatible source object',
+	        nod: 'XML DOM is not supported',
+	        nos: 'Serializer is not supported',
+	        nox: 'xPath is not supported',
+	        nob: 'Incompatible source object',
 	        nof: 'File not found',
 	        emf: 'File is empty', /* possible delivery fault */
 	        inv: 'Invalid XML source',
@@ -471,86 +621,7 @@
 	      return false;
 	    };
 
-	    /**
-	     * identify browser functionality
-	     * @return {int|string} mode number or error code
-	     */
-	    var GetMode = function() {
-	      var m;
-	      var f = false;
-	      var vers = [
-	        'MSXML2.DOMDocument.6.0',
-	        'MSXML2.DOMDocument.3.0',
-	        'MSXML2.DOMDocument',
-	        'Microsoft.XmlDom'
-	      ];
-	      var n = vers.length;
-	      for (var i = 0; i < n; i++) {
-	        try {
-	          var d = new ActiveXObject(vers[i]);
-	          d.async = false;
-	          f = true;   /* DOM supported */
-	          if (d.loadXML('<x></x>') && d.selectSingleNode('/')) {
-	            break;    /* xPath supported */
-	          }
-	        } catch (e) {
-	          /* skip */
-	        }
-	      }
-	      if (f) {
-	        if (i < n) {
-	          msv = vers[i];
-	          m = 2;  /* IE mode */
-	        } else {
-	          m = 'nox';  /* no xPath */
-	        }
-	      } else if (!window.DOMParser) {
-	        m = 'nod';  /* no DOM */
-	      } else if (!window.XPathEvaluator) {
-	        m = 'nox';  /* no xPath */
-	      } else {
-	        psr = new DOMParser();
-	        var e = psr.parseFromString('Invalid', 'text/xml'); /* to detect source error */
-	        nse = e.getElementsByTagName('parsererror')[0].namespaceURI;
-	        xpe = new XPathEvaluator();
-	        m = 1;  /*  Firefox, Safari, Chrome, Opera */
-	      }
-	      return m;
-	    };
-
-	    if (typeof opts !== 'object') {
-	      opts = {};
-	    }
-	    /* set stay attribute value to check */
-	    if (typeof opts.stay === 'undefined') {
-	      stay = ['all'];
-	    } else if (!opts.stay) {
-	      stay = [];
-	    } else if (typeof opts.stay === 'object' && opts.stay instanceof Array) {
-	      stay = opts.stay;
-	    } else {
-	      stay = [opts.stay];
-	    }
-	    /* set join condtion for different roots */
-	    if (typeof opts.join === 'undefined') {
-	      join = ['root'];
-	    } else {
-	      join = [opts.join ? String(opts.join) : false];
-	    }
-	    /* set update sequence manner */
-	    if (typeof opts.updn === 'undefined') {
-	      updn = true;
-	    } else {
-	      updn = opts.updn;
-	    }
-	    /* detect browser features: 2 - IE, 1 - rest, 0 - N/A */
-	    mde = GetMode();
-	    if (typeof mde === 'string') {
-	      that.error = {};
-	      Error(mde);
-	      mde = 0;
-	    }
-	    that.Init();
+	    Init();
 	  };
 	}));
 	});
@@ -566,9 +637,10 @@
 	/**
 	 * Parses an Expression to extract all function calls and theirs argument arrays.
 	 *
+	 * @static
 	 * @param {string} expr - The expression to search
 	 * @param {string} func - The function name to search for
-	 * @return {Array.Array.<string, any>} The result array, where each result is an array containing the function call and array of arguments.
+	 * @return {Array<Array<string, any>>} The result array, where each result is an array containing the function call and array of arguments.
 	 */
 	function parseFunctionFromExpression( expr, func ) {
 	    let index;
@@ -613,6 +685,11 @@
 	    return results;
 	}
 
+	/**
+	 * @static
+	 * @param {string} str
+	 * @return {string}
+	 */
 	function stripQuotes( str ) {
 	    if ( /^".+"$/.test( str ) || /^'.+'$/.test( str ) ) {
 	        return str.substring( 1, str.length - 1 );
@@ -624,6 +701,12 @@
 	// unique-ified filename.
 	//
 	// See https://github.com/kobotoolbox/enketo-express/issues/374
+	/**
+	 * @static
+	 * @param {object} file
+	 * @param {string} postfix
+	 * @return {string}
+	 */
 	function getFilename( file, postfix ) {
 	    let filenameParts;
 	    if ( typeof file === 'object' && file !== null && file.name ) {
@@ -642,6 +725,7 @@
 	/**
 	 * Converts NodeLists or DOMtokenLists to an array.
 	 *
+	 * @static
 	 * @param {NodeList|DOMTokenList} list
 	 * @return {Array}
 	 */
@@ -654,10 +738,20 @@
 	    return array;
 	}
 
+	/**
+	 * @static
+	 * @param {*} n
+	 * @return {boolean}
+	 */
 	function isNumber( n ) {
 	    return !isNaN( parseFloat( n ) ) && isFinite( n );
 	}
 
+	/**
+	 * @static
+	 * @param {string} name
+	 * @return {string}
+	 */
 	function readCookie( name ) {
 	    let c;
 	    let C;
@@ -685,6 +779,11 @@
 	    return cookies[ name ];
 	}
 
+	/**
+	 * @static
+	 * @param {string} dataURI
+	 * @return {Blob}
+	 */
 	function dataUriToBlobSync( dataURI ) {
 	    let byteString;
 	    let mimeString;
@@ -711,6 +810,11 @@
 	    } );
 	}
 
+	/**
+	 * @static
+	 * @param {Event} event
+	 * @return {string|null}
+	 */
 	function getPasteData( event ) {
 	    const clipboardData = event.originalEvent.clipboardData || window.clipboardData; // modern || IE11
 	    return ( clipboardData ) ? clipboardData.getData( 'text' ) : null;
@@ -719,9 +823,10 @@
 	/**
 	 * Update a HTML anchor to serve as a download or reset it if an empty objectUrl is provided.
 	 *
-	 * @param {HTMLElement} anchor the anchor element
-	 * @param {*} objectUrl the objectUrl to download
-	 * @param {*} fileName  the filename of the file
+	 * @static
+	 * @param {HTMLElement} anchor - The anchor element
+	 * @param {string} objectUrl - The objectUrl to download
+	 * @param {string} fileName - The filename of the file
 	 */
 	function updateDownloadLink( anchor, objectUrl, fileName ) {
 	    if ( window.updateDownloadLinkIe11 ) {
@@ -732,12 +837,10 @@
 	}
 
 	/**
-	 * @function resizeImage
-	 *
-	 * @param {File} file - image file to be resized
-	 * @param {number} maxPixels - maximum pixels of resized image
-	 *
-	 * @return {Promise<Blob>} promise of resized image blob
+	 * @static
+	 * @param {File} file - Image file to be resized
+	 * @param {number} maxPixels - Maximum pixels of resized image
+	 * @return {Promise<Blob>} Promise of resized image blob
 	 */
 	function resizeImage( file, maxPixels ) {
 	    return new Promise( ( resolve, reject ) => {
@@ -778,7 +881,7 @@
 
 	var jquery = createCommonjsModule(function (module) {
 	/*!
-	 * jQuery JavaScript Library v3.3.1
+	 * jQuery JavaScript Library v3.4.1
 	 * https://jquery.com/
 	 *
 	 * Includes Sizzle.js
@@ -788,7 +891,7 @@
 	 * Released under the MIT license
 	 * https://jquery.org/license
 	 *
-	 * Date: 2018-01-20T17:24Z
+	 * Date: 2019-05-01T21:04Z
 	 */
 	( function( global, factory ) {
 
@@ -860,20 +963,33 @@
 		var preservedScriptAttributes = {
 			type: true,
 			src: true,
+			nonce: true,
 			noModule: true
 		};
 
-		function DOMEval( code, doc, node ) {
+		function DOMEval( code, node, doc ) {
 			doc = doc || document;
 
-			var i,
+			var i, val,
 				script = doc.createElement( "script" );
 
 			script.text = code;
 			if ( node ) {
 				for ( i in preservedScriptAttributes ) {
-					if ( node[ i ] ) {
-						script[ i ] = node[ i ];
+
+					// Support: Firefox 64+, Edge 18+
+					// Some browsers don't support the "nonce" property on scripts.
+					// On the other hand, just using `getAttribute` is not enough as
+					// the `nonce` attribute is reset to an empty string whenever it
+					// becomes browsing-context connected.
+					// See https://github.com/whatwg/html/issues/2369
+					// See https://html.spec.whatwg.org/#nonce-attributes
+					// The `node.getAttribute` check was added for the sake of
+					// `jQuery.globalEval` so that it can fake a nonce-containing node
+					// via an object.
+					val = node[ i ] || node.getAttribute && node.getAttribute( i );
+					if ( val ) {
+						script.setAttribute( i, val );
 					}
 				}
 			}
@@ -898,7 +1014,7 @@
 
 
 	var
-		version = "3.3.1",
+		version = "3.4.1",
 
 		// Define a local copy of jQuery
 		jQuery = function( selector, context ) {
@@ -1027,25 +1143,28 @@
 
 				// Extend the base object
 				for ( name in options ) {
-					src = target[ name ];
 					copy = options[ name ];
 
+					// Prevent Object.prototype pollution
 					// Prevent never-ending loop
-					if ( target === copy ) {
+					if ( name === "__proto__" || target === copy ) {
 						continue;
 					}
 
 					// Recurse if we're merging plain objects or arrays
 					if ( deep && copy && ( jQuery.isPlainObject( copy ) ||
 						( copyIsArray = Array.isArray( copy ) ) ) ) {
+						src = target[ name ];
 
-						if ( copyIsArray ) {
-							copyIsArray = false;
-							clone = src && Array.isArray( src ) ? src : [];
-
+						// Ensure proper type for the source value
+						if ( copyIsArray && !Array.isArray( src ) ) {
+							clone = [];
+						} else if ( !copyIsArray && !jQuery.isPlainObject( src ) ) {
+							clone = {};
 						} else {
-							clone = src && jQuery.isPlainObject( src ) ? src : {};
+							clone = src;
 						}
+						copyIsArray = false;
 
 						// Never move original objects, clone them
 						target[ name ] = jQuery.extend( deep, clone, copy );
@@ -1098,9 +1217,6 @@
 		},
 
 		isEmptyObject: function( obj ) {
-
-			/* eslint-disable no-unused-vars */
-			// See https://github.com/eslint/eslint/issues/6125
 			var name;
 
 			for ( name in obj ) {
@@ -1110,8 +1226,8 @@
 		},
 
 		// Evaluates a script in a global context
-		globalEval: function( code ) {
-			DOMEval( code );
+		globalEval: function( code, options ) {
+			DOMEval( code, { nonce: options && options.nonce } );
 		},
 
 		each: function( obj, callback ) {
@@ -1267,14 +1383,14 @@
 	}
 	var Sizzle =
 	/*!
-	 * Sizzle CSS Selector Engine v2.3.3
+	 * Sizzle CSS Selector Engine v2.3.4
 	 * https://sizzlejs.com/
 	 *
-	 * Copyright jQuery Foundation and other contributors
+	 * Copyright JS Foundation and other contributors
 	 * Released under the MIT license
-	 * http://jquery.org/license
+	 * https://js.foundation/
 	 *
-	 * Date: 2016-08-08
+	 * Date: 2019-04-08
 	 */
 	(function( window ) {
 
@@ -1308,6 +1424,7 @@
 		classCache = createCache(),
 		tokenCache = createCache(),
 		compilerCache = createCache(),
+		nonnativeSelectorCache = createCache(),
 		sortOrder = function( a, b ) {
 			if ( a === b ) {
 				hasDuplicate = true;
@@ -1369,8 +1486,7 @@
 
 		rcomma = new RegExp( "^" + whitespace + "*," + whitespace + "*" ),
 		rcombinators = new RegExp( "^" + whitespace + "*([>+~]|" + whitespace + ")" + whitespace + "*" ),
-
-		rattributeQuotes = new RegExp( "=" + whitespace + "*([^\\]'\"]*?)" + whitespace + "*\\]", "g" ),
+		rdescend = new RegExp( whitespace + "|>" ),
 
 		rpseudo = new RegExp( pseudos ),
 		ridentifier = new RegExp( "^" + identifier + "$" ),
@@ -1391,6 +1507,7 @@
 				whitespace + "*((?:-\\d)?\\d*)" + whitespace + "*\\)|)(?=[^-]|$)", "i" )
 		},
 
+		rhtml = /HTML$/i,
 		rinputs = /^(?:input|select|textarea|button)$/i,
 		rheader = /^h\d$/i,
 
@@ -1445,9 +1562,9 @@
 			setDocument();
 		},
 
-		disabledAncestor = addCombinator(
+		inDisabledFieldset = addCombinator(
 			function( elem ) {
-				return elem.disabled === true && ("form" in elem || "label" in elem);
+				return elem.disabled === true && elem.nodeName.toLowerCase() === "fieldset";
 			},
 			{ dir: "parentNode", next: "legend" }
 		);
@@ -1560,18 +1677,22 @@
 
 				// Take advantage of querySelectorAll
 				if ( support.qsa &&
-					!compilerCache[ selector + " " ] &&
-					(!rbuggyQSA || !rbuggyQSA.test( selector )) ) {
+					!nonnativeSelectorCache[ selector + " " ] &&
+					(!rbuggyQSA || !rbuggyQSA.test( selector )) &&
 
-					if ( nodeType !== 1 ) {
-						newContext = context;
-						newSelector = selector;
-
-					// qSA looks outside Element context, which is not what we want
-					// Thanks to Andrew Dupont for this workaround technique
-					// Support: IE <=8
+					// Support: IE 8 only
 					// Exclude object elements
-					} else if ( context.nodeName.toLowerCase() !== "object" ) {
+					(nodeType !== 1 || context.nodeName.toLowerCase() !== "object") ) {
+
+					newSelector = selector;
+					newContext = context;
+
+					// qSA considers elements outside a scoping root when evaluating child or
+					// descendant combinators, which is not what we want.
+					// In such cases, we work around the behavior by prefixing every selector in the
+					// list with an ID selector referencing the scope context.
+					// Thanks to Andrew Dupont for this technique.
+					if ( nodeType === 1 && rdescend.test( selector ) ) {
 
 						// Capture the context ID, setting it first if necessary
 						if ( (nid = context.getAttribute( "id" )) ) {
@@ -1593,17 +1714,16 @@
 							context;
 					}
 
-					if ( newSelector ) {
-						try {
-							push.apply( results,
-								newContext.querySelectorAll( newSelector )
-							);
-							return results;
-						} catch ( qsaError ) {
-						} finally {
-							if ( nid === expando ) {
-								context.removeAttribute( "id" );
-							}
+					try {
+						push.apply( results,
+							newContext.querySelectorAll( newSelector )
+						);
+						return results;
+					} catch ( qsaError ) {
+						nonnativeSelectorCache( selector, true );
+					} finally {
+						if ( nid === expando ) {
+							context.removeAttribute( "id" );
 						}
 					}
 				}
@@ -1767,7 +1887,7 @@
 						// Where there is no isDisabled, check manually
 						/* jshint -W018 */
 						elem.isDisabled !== !disabled &&
-							disabledAncestor( elem ) === disabled;
+							inDisabledFieldset( elem ) === disabled;
 				}
 
 				return elem.disabled === disabled;
@@ -1824,10 +1944,13 @@
 	 * @returns {Boolean} True iff elem is a non-HTML XML node
 	 */
 	isXML = Sizzle.isXML = function( elem ) {
-		// documentElement is verified for cases where it doesn't yet exist
-		// (such as loading iframes in IE - #4833)
-		var documentElement = elem && (elem.ownerDocument || elem).documentElement;
-		return documentElement ? documentElement.nodeName !== "HTML" : false;
+		var namespace = elem.namespaceURI,
+			docElem = (elem.ownerDocument || elem).documentElement;
+
+		// Support: IE <=8
+		// Assume HTML when documentElement doesn't yet exist, such as inside loading iframes
+		// https://bugs.jquery.com/ticket/4833
+		return !rhtml.test( namespace || docElem && docElem.nodeName || "HTML" );
 	};
 
 	/**
@@ -2249,11 +2372,8 @@
 			setDocument( elem );
 		}
 
-		// Make sure that attribute selectors are quoted
-		expr = expr.replace( rattributeQuotes, "='$1']" );
-
 		if ( support.matchesSelector && documentIsHTML &&
-			!compilerCache[ expr + " " ] &&
+			!nonnativeSelectorCache[ expr + " " ] &&
 			( !rbuggyMatches || !rbuggyMatches.test( expr ) ) &&
 			( !rbuggyQSA     || !rbuggyQSA.test( expr ) ) ) {
 
@@ -2267,7 +2387,9 @@
 						elem.document && elem.document.nodeType !== 11 ) {
 					return ret;
 				}
-			} catch (e) {}
+			} catch (e) {
+				nonnativeSelectorCache( expr, true );
+			}
 		}
 
 		return Sizzle( expr, document, null, [ elem ] ).length > 0;
@@ -2726,7 +2848,7 @@
 			"contains": markFunction(function( text ) {
 				text = text.replace( runescape, funescape );
 				return function( elem ) {
-					return ( elem.textContent || elem.innerText || getText( elem ) ).indexOf( text ) > -1;
+					return ( elem.textContent || getText( elem ) ).indexOf( text ) > -1;
 				};
 			}),
 
@@ -2865,7 +2987,11 @@
 			}),
 
 			"lt": createPositionalPseudo(function( matchIndexes, length, argument ) {
-				var i = argument < 0 ? argument + length : argument;
+				var i = argument < 0 ?
+					argument + length :
+					argument > length ?
+						length :
+						argument;
 				for ( ; --i >= 0; ) {
 					matchIndexes.push( i );
 				}
@@ -3914,18 +4040,18 @@
 			return siblings( elem.firstChild );
 		},
 		contents: function( elem ) {
-	        if ( nodeName( elem, "iframe" ) ) {
-	            return elem.contentDocument;
-	        }
+			if ( typeof elem.contentDocument !== "undefined" ) {
+				return elem.contentDocument;
+			}
 
-	        // Support: IE 9 - 11 only, iOS 7 only, Android Browser <=4.3 only
-	        // Treat the template element as a regular one in browsers that
-	        // don't support it.
-	        if ( nodeName( elem, "template" ) ) {
-	            elem = elem.content || elem;
-	        }
+			// Support: IE 9 - 11 only, iOS 7 only, Android Browser <=4.3 only
+			// Treat the template element as a regular one in browsers that
+			// don't support it.
+			if ( nodeName( elem, "template" ) ) {
+				elem = elem.content || elem;
+			}
 
-	        return jQuery.merge( [], elem.childNodes );
+			return jQuery.merge( [], elem.childNodes );
 		}
 	}, function( name, fn ) {
 		jQuery.fn[ name ] = function( until, selector ) {
@@ -5234,6 +5360,26 @@
 
 	var cssExpand = [ "Top", "Right", "Bottom", "Left" ];
 
+	var documentElement = document.documentElement;
+
+
+
+		var isAttached = function( elem ) {
+				return jQuery.contains( elem.ownerDocument, elem );
+			},
+			composed = { composed: true };
+
+		// Support: IE 9 - 11+, Edge 12 - 18+, iOS 10.0 - 10.2 only
+		// Check attachment across shadow DOM boundaries when possible (gh-3504)
+		// Support: iOS 10.0-10.2 only
+		// Early iOS 10 versions support `attachShadow` but not `getRootNode`,
+		// leading to errors. We need to check for `getRootNode`.
+		if ( documentElement.getRootNode ) {
+			isAttached = function( elem ) {
+				return jQuery.contains( elem.ownerDocument, elem ) ||
+					elem.getRootNode( composed ) === elem.ownerDocument;
+			};
+		}
 	var isHiddenWithinTree = function( elem, el ) {
 
 			// isHiddenWithinTree might be called from jQuery#filter function;
@@ -5248,7 +5394,7 @@
 				// Support: Firefox <=43 - 45
 				// Disconnected elements can have computed display: none, so first confirm that elem is
 				// in the document.
-				jQuery.contains( elem.ownerDocument, elem ) &&
+				isAttached( elem ) &&
 
 				jQuery.css( elem, "display" ) === "none";
 		};
@@ -5290,7 +5436,8 @@
 			unit = valueParts && valueParts[ 3 ] || ( jQuery.cssNumber[ prop ] ? "" : "px" ),
 
 			// Starting value computation is required for potential unit mismatches
-			initialInUnit = ( jQuery.cssNumber[ prop ] || unit !== "px" && +initial ) &&
+			initialInUnit = elem.nodeType &&
+				( jQuery.cssNumber[ prop ] || unit !== "px" && +initial ) &&
 				rcssNum.exec( jQuery.css( elem, prop ) );
 
 		if ( initialInUnit && initialInUnit[ 3 ] !== unit ) {
@@ -5437,7 +5584,7 @@
 	} );
 	var rcheckableType = ( /^(?:checkbox|radio)$/i );
 
-	var rtagName = ( /<([a-z][^\/\0>\x20\t\r\n\f]+)/i );
+	var rtagName = ( /<([a-z][^\/\0>\x20\t\r\n\f]*)/i );
 
 	var rscriptType = ( /^$|^module$|\/(?:java|ecma)script/i );
 
@@ -5509,7 +5656,7 @@
 	var rhtml = /<|&#?\w+;/;
 
 	function buildFragment( elems, context, scripts, selection, ignored ) {
-		var elem, tmp, tag, wrap, contains, j,
+		var elem, tmp, tag, wrap, attached, j,
 			fragment = context.createDocumentFragment(),
 			nodes = [],
 			i = 0,
@@ -5573,13 +5720,13 @@
 				continue;
 			}
 
-			contains = jQuery.contains( elem.ownerDocument, elem );
+			attached = isAttached( elem );
 
 			// Append to fragment
 			tmp = getAll( fragment.appendChild( elem ), "script" );
 
 			// Preserve script evaluation history
-			if ( contains ) {
+			if ( attached ) {
 				setGlobalEval( tmp );
 			}
 
@@ -5622,8 +5769,6 @@
 		div.innerHTML = "<textarea>x</textarea>";
 		support.noCloneChecked = !!div.cloneNode( true ).lastChild.defaultValue;
 	} )();
-	var documentElement = document.documentElement;
-
 
 
 	var
@@ -5639,8 +5784,19 @@
 		return false;
 	}
 
+	// Support: IE <=9 - 11+
+	// focus() and blur() are asynchronous, except when they are no-op.
+	// So expect focus to be synchronous when the element is already active,
+	// and blur to be synchronous when the element is not already active.
+	// (focus and blur are always synchronous in other supported browsers,
+	// this just defines when we can count on it).
+	function expectSync( elem, type ) {
+		return ( elem === safeActiveElement() ) === ( type === "focus" );
+	}
+
 	// Support: IE <=9 only
-	// See #13393 for more info
+	// Accessing document.activeElement can throw unexpectedly
+	// https://bugs.jquery.com/ticket/13393
 	function safeActiveElement() {
 		try {
 			return document.activeElement;
@@ -5940,9 +6096,10 @@
 				while ( ( handleObj = matched.handlers[ j++ ] ) &&
 					!event.isImmediatePropagationStopped() ) {
 
-					// Triggered event must either 1) have no namespace, or 2) have namespace(s)
-					// a subset or equal to those in the bound event (both can have no namespace).
-					if ( !event.rnamespace || event.rnamespace.test( handleObj.namespace ) ) {
+					// If the event is namespaced, then each handler is only invoked if it is
+					// specially universal or its namespaces are a superset of the event's.
+					if ( !event.rnamespace || handleObj.namespace === false ||
+						event.rnamespace.test( handleObj.namespace ) ) {
 
 						event.handleObj = handleObj;
 						event.data = handleObj.data;
@@ -6066,39 +6223,51 @@
 				// Prevent triggered image.load events from bubbling to window.load
 				noBubble: true
 			},
-			focus: {
-
-				// Fire native event if possible so blur/focus sequence is correct
-				trigger: function() {
-					if ( this !== safeActiveElement() && this.focus ) {
-						this.focus();
-						return false;
-					}
-				},
-				delegateType: "focusin"
-			},
-			blur: {
-				trigger: function() {
-					if ( this === safeActiveElement() && this.blur ) {
-						this.blur();
-						return false;
-					}
-				},
-				delegateType: "focusout"
-			},
 			click: {
 
-				// For checkbox, fire native event so checked state will be right
-				trigger: function() {
-					if ( this.type === "checkbox" && this.click && nodeName( this, "input" ) ) {
-						this.click();
-						return false;
+				// Utilize native event to ensure correct state for checkable inputs
+				setup: function( data ) {
+
+					// For mutual compressibility with _default, replace `this` access with a local var.
+					// `|| data` is dead code meant only to preserve the variable through minification.
+					var el = this || data;
+
+					// Claim the first handler
+					if ( rcheckableType.test( el.type ) &&
+						el.click && nodeName( el, "input" ) ) {
+
+						// dataPriv.set( el, "click", ... )
+						leverageNative( el, "click", returnTrue );
 					}
+
+					// Return false to allow normal processing in the caller
+					return false;
+				},
+				trigger: function( data ) {
+
+					// For mutual compressibility with _default, replace `this` access with a local var.
+					// `|| data` is dead code meant only to preserve the variable through minification.
+					var el = this || data;
+
+					// Force setup before triggering a click
+					if ( rcheckableType.test( el.type ) &&
+						el.click && nodeName( el, "input" ) ) {
+
+						leverageNative( el, "click" );
+					}
+
+					// Return non-false to allow normal event-path propagation
+					return true;
 				},
 
-				// For cross-browser consistency, don't fire native .click() on links
+				// For cross-browser consistency, suppress native .click() on links
+				// Also prevent it if we're currently inside a leveraged native-event stack
 				_default: function( event ) {
-					return nodeName( event.target, "a" );
+					var target = event.target;
+					return rcheckableType.test( target.type ) &&
+						target.click && nodeName( target, "input" ) &&
+						dataPriv.get( target, "click" ) ||
+						nodeName( target, "a" );
 				}
 			},
 
@@ -6114,6 +6283,93 @@
 			}
 		}
 	};
+
+	// Ensure the presence of an event listener that handles manually-triggered
+	// synthetic events by interrupting progress until reinvoked in response to
+	// *native* events that it fires directly, ensuring that state changes have
+	// already occurred before other listeners are invoked.
+	function leverageNative( el, type, expectSync ) {
+
+		// Missing expectSync indicates a trigger call, which must force setup through jQuery.event.add
+		if ( !expectSync ) {
+			if ( dataPriv.get( el, type ) === undefined ) {
+				jQuery.event.add( el, type, returnTrue );
+			}
+			return;
+		}
+
+		// Register the controller as a special universal handler for all event namespaces
+		dataPriv.set( el, type, false );
+		jQuery.event.add( el, type, {
+			namespace: false,
+			handler: function( event ) {
+				var notAsync, result,
+					saved = dataPriv.get( this, type );
+
+				if ( ( event.isTrigger & 1 ) && this[ type ] ) {
+
+					// Interrupt processing of the outer synthetic .trigger()ed event
+					// Saved data should be false in such cases, but might be a leftover capture object
+					// from an async native handler (gh-4350)
+					if ( !saved.length ) {
+
+						// Store arguments for use when handling the inner native event
+						// There will always be at least one argument (an event object), so this array
+						// will not be confused with a leftover capture object.
+						saved = slice.call( arguments );
+						dataPriv.set( this, type, saved );
+
+						// Trigger the native event and capture its result
+						// Support: IE <=9 - 11+
+						// focus() and blur() are asynchronous
+						notAsync = expectSync( this, type );
+						this[ type ]();
+						result = dataPriv.get( this, type );
+						if ( saved !== result || notAsync ) {
+							dataPriv.set( this, type, false );
+						} else {
+							result = {};
+						}
+						if ( saved !== result ) {
+
+							// Cancel the outer synthetic event
+							event.stopImmediatePropagation();
+							event.preventDefault();
+							return result.value;
+						}
+
+					// If this is an inner synthetic event for an event with a bubbling surrogate
+					// (focus or blur), assume that the surrogate already propagated from triggering the
+					// native event and prevent that from happening again here.
+					// This technically gets the ordering wrong w.r.t. to `.trigger()` (in which the
+					// bubbling surrogate propagates *after* the non-bubbling base), but that seems
+					// less bad than duplication.
+					} else if ( ( jQuery.event.special[ type ] || {} ).delegateType ) {
+						event.stopPropagation();
+					}
+
+				// If this is a native event triggered above, everything is now in order
+				// Fire an inner synthetic event with the original arguments
+				} else if ( saved.length ) {
+
+					// ...and capture the result
+					dataPriv.set( this, type, {
+						value: jQuery.event.trigger(
+
+							// Support: IE <=9 - 11+
+							// Extend with the prototype to reset the above stopImmediatePropagation()
+							jQuery.extend( saved[ 0 ], jQuery.Event.prototype ),
+							saved.slice( 1 ),
+							this
+						)
+					} );
+
+					// Abort handling of the native event
+					event.stopImmediatePropagation();
+				}
+			}
+		} );
+	}
 
 	jQuery.removeEvent = function( elem, type, handle ) {
 
@@ -6227,6 +6483,7 @@
 		shiftKey: true,
 		view: true,
 		"char": true,
+		code: true,
 		charCode: true,
 		key: true,
 		keyCode: true,
@@ -6272,6 +6529,33 @@
 			return event.which;
 		}
 	}, jQuery.event.addProp );
+
+	jQuery.each( { focus: "focusin", blur: "focusout" }, function( type, delegateType ) {
+		jQuery.event.special[ type ] = {
+
+			// Utilize native event if possible so blur/focus sequence is correct
+			setup: function() {
+
+				// Claim the first handler
+				// dataPriv.set( this, "focus", ... )
+				// dataPriv.set( this, "blur", ... )
+				leverageNative( this, type, expectSync );
+
+				// Return false to allow normal processing in the caller
+				return false;
+			},
+			trigger: function() {
+
+				// Force setup before trigger
+				leverageNative( this, type );
+
+				// Return non-false to allow normal event-path propagation
+				return true;
+			},
+
+			delegateType: delegateType
+		};
+	} );
 
 	// Create mouseenter/leave events using mouseover/out and event-time checks
 	// so that event delegation works in jQuery.
@@ -6523,11 +6807,13 @@
 							if ( node.src && ( node.type || "" ).toLowerCase()  !== "module" ) {
 
 								// Optional AJAX dependency, but won't run scripts if not present
-								if ( jQuery._evalUrl ) {
-									jQuery._evalUrl( node.src );
+								if ( jQuery._evalUrl && !node.noModule ) {
+									jQuery._evalUrl( node.src, {
+										nonce: node.nonce || node.getAttribute( "nonce" )
+									} );
 								}
 							} else {
-								DOMEval( node.textContent.replace( rcleanScript, "" ), doc, node );
+								DOMEval( node.textContent.replace( rcleanScript, "" ), node, doc );
 							}
 						}
 					}
@@ -6549,7 +6835,7 @@
 			}
 
 			if ( node.parentNode ) {
-				if ( keepData && jQuery.contains( node.ownerDocument, node ) ) {
+				if ( keepData && isAttached( node ) ) {
 					setGlobalEval( getAll( node, "script" ) );
 				}
 				node.parentNode.removeChild( node );
@@ -6567,7 +6853,7 @@
 		clone: function( elem, dataAndEvents, deepDataAndEvents ) {
 			var i, l, srcElements, destElements,
 				clone = elem.cloneNode( true ),
-				inPage = jQuery.contains( elem.ownerDocument, elem );
+				inPage = isAttached( elem );
 
 			// Fix IE cloning issues
 			if ( !support.noCloneChecked && ( elem.nodeType === 1 || elem.nodeType === 11 ) &&
@@ -6863,8 +7149,10 @@
 
 			// Support: IE 9 only
 			// Detect overflow:scroll screwiness (gh-3699)
+			// Support: Chrome <=64
+			// Don't get tricked when zoom affects offsetWidth (gh-4029)
 			div.style.position = "absolute";
-			scrollboxSizeVal = div.offsetWidth === 36 || "absolute";
+			scrollboxSizeVal = roundPixelMeasures( div.offsetWidth / 3 ) === 12;
 
 			documentElement.removeChild( container );
 
@@ -6935,7 +7223,7 @@
 		if ( computed ) {
 			ret = computed.getPropertyValue( name ) || computed[ name ];
 
-			if ( ret === "" && !jQuery.contains( elem.ownerDocument, elem ) ) {
+			if ( ret === "" && !isAttached( elem ) ) {
 				ret = jQuery.style( elem, name );
 			}
 
@@ -6991,29 +7279,12 @@
 	}
 
 
-	var
+	var cssPrefixes = [ "Webkit", "Moz", "ms" ],
+		emptyStyle = document.createElement( "div" ).style,
+		vendorProps = {};
 
-		// Swappable if display is none or starts with table
-		// except "table", "table-cell", or "table-caption"
-		// See here for display values: https://developer.mozilla.org/en-US/docs/CSS/display
-		rdisplayswap = /^(none|table(?!-c[ea]).+)/,
-		rcustomProp = /^--/,
-		cssShow = { position: "absolute", visibility: "hidden", display: "block" },
-		cssNormalTransform = {
-			letterSpacing: "0",
-			fontWeight: "400"
-		},
-
-		cssPrefixes = [ "Webkit", "Moz", "ms" ],
-		emptyStyle = document.createElement( "div" ).style;
-
-	// Return a css property mapped to a potentially vendor prefixed property
+	// Return a vendor-prefixed property or undefined
 	function vendorPropName( name ) {
-
-		// Shortcut for names that are not vendor prefixed
-		if ( name in emptyStyle ) {
-			return name;
-		}
 
 		// Check for vendor prefixed names
 		var capName = name[ 0 ].toUpperCase() + name.slice( 1 ),
@@ -7027,15 +7298,32 @@
 		}
 	}
 
-	// Return a property mapped along what jQuery.cssProps suggests or to
-	// a vendor prefixed property.
+	// Return a potentially-mapped jQuery.cssProps or vendor prefixed property
 	function finalPropName( name ) {
-		var ret = jQuery.cssProps[ name ];
-		if ( !ret ) {
-			ret = jQuery.cssProps[ name ] = vendorPropName( name ) || name;
+		var final = jQuery.cssProps[ name ] || vendorProps[ name ];
+
+		if ( final ) {
+			return final;
 		}
-		return ret;
+		if ( name in emptyStyle ) {
+			return name;
+		}
+		return vendorProps[ name ] = vendorPropName( name ) || name;
 	}
+
+
+	var
+
+		// Swappable if display is none or starts with table
+		// except "table", "table-cell", or "table-caption"
+		// See here for display values: https://developer.mozilla.org/en-US/docs/CSS/display
+		rdisplayswap = /^(none|table(?!-c[ea]).+)/,
+		rcustomProp = /^--/,
+		cssShow = { position: "absolute", visibility: "hidden", display: "block" },
+		cssNormalTransform = {
+			letterSpacing: "0",
+			fontWeight: "400"
+		};
 
 	function setPositiveNumber( elem, value, subtract ) {
 
@@ -7108,7 +7396,10 @@
 				delta -
 				extra -
 				0.5
-			) );
+
+			// If offsetWidth/offsetHeight is unknown, then we can't determine content-box scroll gutter
+			// Use an explicit zero to avoid NaN (gh-3964)
+			) ) || 0;
 		}
 
 		return delta;
@@ -7118,9 +7409,16 @@
 
 		// Start with computed style
 		var styles = getStyles( elem ),
+
+			// To avoid forcing a reflow, only fetch boxSizing if we need it (gh-4322).
+			// Fake content-box until we know it's needed to know the true value.
+			boxSizingNeeded = !support.boxSizingReliable() || extra,
+			isBorderBox = boxSizingNeeded &&
+				jQuery.css( elem, "boxSizing", false, styles ) === "border-box",
+			valueIsBorderBox = isBorderBox,
+
 			val = curCSS( elem, dimension, styles ),
-			isBorderBox = jQuery.css( elem, "boxSizing", false, styles ) === "border-box",
-			valueIsBorderBox = isBorderBox;
+			offsetProp = "offset" + dimension[ 0 ].toUpperCase() + dimension.slice( 1 );
 
 		// Support: Firefox <=54
 		// Return a confounding non-pixel value or feign ignorance, as appropriate.
@@ -7131,22 +7429,29 @@
 			val = "auto";
 		}
 
-		// Check for style in case a browser which returns unreliable values
-		// for getComputedStyle silently falls back to the reliable elem.style
-		valueIsBorderBox = valueIsBorderBox &&
-			( support.boxSizingReliable() || val === elem.style[ dimension ] );
 
 		// Fall back to offsetWidth/offsetHeight when value is "auto"
 		// This happens for inline elements with no explicit setting (gh-3571)
 		// Support: Android <=4.1 - 4.3 only
 		// Also use offsetWidth/offsetHeight for misreported inline dimensions (gh-3602)
-		if ( val === "auto" ||
-			!parseFloat( val ) && jQuery.css( elem, "display", false, styles ) === "inline" ) {
+		// Support: IE 9-11 only
+		// Also use offsetWidth/offsetHeight for when box sizing is unreliable
+		// We use getClientRects() to check for hidden/disconnected.
+		// In those cases, the computed value can be trusted to be border-box
+		if ( ( !support.boxSizingReliable() && isBorderBox ||
+			val === "auto" ||
+			!parseFloat( val ) && jQuery.css( elem, "display", false, styles ) === "inline" ) &&
+			elem.getClientRects().length ) {
 
-			val = elem[ "offset" + dimension[ 0 ].toUpperCase() + dimension.slice( 1 ) ];
+			isBorderBox = jQuery.css( elem, "boxSizing", false, styles ) === "border-box";
 
-			// offsetWidth/offsetHeight provide border-box values
-			valueIsBorderBox = true;
+			// Where available, offsetWidth/offsetHeight approximate border box dimensions.
+			// Where not available (e.g., SVG), assume unreliable box-sizing and interpret the
+			// retrieved value as a content box dimension.
+			valueIsBorderBox = offsetProp in elem;
+			if ( valueIsBorderBox ) {
+				val = elem[ offsetProp ];
+			}
 		}
 
 		// Normalize "" and auto
@@ -7192,6 +7497,13 @@
 			"flexGrow": true,
 			"flexShrink": true,
 			"fontWeight": true,
+			"gridArea": true,
+			"gridColumn": true,
+			"gridColumnEnd": true,
+			"gridColumnStart": true,
+			"gridRow": true,
+			"gridRowEnd": true,
+			"gridRowStart": true,
 			"lineHeight": true,
 			"opacity": true,
 			"order": true,
@@ -7247,7 +7559,9 @@
 				}
 
 				// If a number was passed in, add the unit (except for certain CSS properties)
-				if ( type === "number" ) {
+				// The isCustomProp check can be removed in jQuery 4.0 when we only auto-append
+				// "px" to a few hardcoded values.
+				if ( type === "number" && !isCustomProp ) {
 					value += ret && ret[ 3 ] || ( jQuery.cssNumber[ origName ] ? "" : "px" );
 				}
 
@@ -7347,18 +7661,29 @@
 			set: function( elem, value, extra ) {
 				var matches,
 					styles = getStyles( elem ),
-					isBorderBox = jQuery.css( elem, "boxSizing", false, styles ) === "border-box",
-					subtract = extra && boxModelAdjustment(
-						elem,
-						dimension,
-						extra,
-						isBorderBox,
-						styles
-					);
+
+					// Only read styles.position if the test has a chance to fail
+					// to avoid forcing a reflow.
+					scrollboxSizeBuggy = !support.scrollboxSize() &&
+						styles.position === "absolute",
+
+					// To avoid forcing a reflow, only fetch boxSizing if we need it (gh-3991)
+					boxSizingNeeded = scrollboxSizeBuggy || extra,
+					isBorderBox = boxSizingNeeded &&
+						jQuery.css( elem, "boxSizing", false, styles ) === "border-box",
+					subtract = extra ?
+						boxModelAdjustment(
+							elem,
+							dimension,
+							extra,
+							isBorderBox,
+							styles
+						) :
+						0;
 
 				// Account for unreliable border-box dimensions by comparing offset* to computed and
 				// faking a content-box to get border and padding (gh-3699)
-				if ( isBorderBox && support.scrollboxSize() === styles.position ) {
+				if ( isBorderBox && scrollboxSizeBuggy ) {
 					subtract -= Math.ceil(
 						elem[ "offset" + dimension[ 0 ].toUpperCase() + dimension.slice( 1 ) ] -
 						parseFloat( styles[ dimension ] ) -
@@ -7526,9 +7851,9 @@
 				// Use .style if available and use plain properties where available.
 				if ( jQuery.fx.step[ tween.prop ] ) {
 					jQuery.fx.step[ tween.prop ]( tween );
-				} else if ( tween.elem.nodeType === 1 &&
-					( tween.elem.style[ jQuery.cssProps[ tween.prop ] ] != null ||
-						jQuery.cssHooks[ tween.prop ] ) ) {
+				} else if ( tween.elem.nodeType === 1 && (
+						jQuery.cssHooks[ tween.prop ] ||
+						tween.elem.style[ finalPropName( tween.prop ) ] != null ) ) {
 					jQuery.style( tween.elem, tween.prop, tween.now + tween.unit );
 				} else {
 					tween.elem[ tween.prop ] = tween.now;
@@ -9235,6 +9560,10 @@
 					encodeURIComponent( value == null ? "" : value );
 			};
 
+		if ( a == null ) {
+			return "";
+		}
+
 		// If an array was passed in, assume that it is an array of form elements.
 		if ( Array.isArray( a ) || ( a.jquery && !jQuery.isPlainObject( a ) ) ) {
 
@@ -9737,12 +10066,14 @@
 							if ( !responseHeaders ) {
 								responseHeaders = {};
 								while ( ( match = rheaders.exec( responseHeadersString ) ) ) {
-									responseHeaders[ match[ 1 ].toLowerCase() ] = match[ 2 ];
+									responseHeaders[ match[ 1 ].toLowerCase() + " " ] =
+										( responseHeaders[ match[ 1 ].toLowerCase() + " " ] || [] )
+											.concat( match[ 2 ] );
 								}
 							}
-							match = responseHeaders[ key.toLowerCase() ];
+							match = responseHeaders[ key.toLowerCase() + " " ];
 						}
-						return match == null ? null : match;
+						return match == null ? null : match.join( ", " );
 					},
 
 					// Raw string
@@ -10131,7 +10462,7 @@
 	} );
 
 
-	jQuery._evalUrl = function( url ) {
+	jQuery._evalUrl = function( url, options ) {
 		return jQuery.ajax( {
 			url: url,
 
@@ -10141,7 +10472,16 @@
 			cache: true,
 			async: false,
 			global: false,
-			"throws": true
+
+			// Only evaluate the response if it is successful (gh-4126)
+			// dataFilter is not invoked for failure responses, so using it instead
+			// of the default converter is kludgy but it works.
+			converters: {
+				"text script": function() {}
+			},
+			dataFilter: function( response ) {
+				jQuery.globalEval( response, options );
+			}
 		} );
 	};
 
@@ -10424,24 +10764,21 @@
 	// Bind script tag hack transport
 	jQuery.ajaxTransport( "script", function( s ) {
 
-		// This transport only deals with cross domain requests
-		if ( s.crossDomain ) {
+		// This transport only deals with cross domain or forced-by-attrs requests
+		if ( s.crossDomain || s.scriptAttrs ) {
 			var script, callback;
 			return {
 				send: function( _, complete ) {
-					script = jQuery( "<script>" ).prop( {
-						charset: s.scriptCharset,
-						src: s.url
-					} ).on(
-						"load error",
-						callback = function( evt ) {
+					script = jQuery( "<script>" )
+						.attr( s.scriptAttrs || {} )
+						.prop( { charset: s.scriptCharset, src: s.url } )
+						.on( "load error", callback = function( evt ) {
 							script.remove();
 							callback = null;
 							if ( evt ) {
 								complete( evt.type === "error" ? 404 : 200, evt.type );
 							}
-						}
-					);
+						} );
 
 					// Use native DOM manipulation to avoid our domManip AJAX trickery
 					document.head.appendChild( script[ 0 ] );
@@ -11117,9 +11454,10 @@
 	/**
 	 * Gets siblings that match selector and self _in DOM order_.
 	 *
+	 * @static
 	 * @param {Node} element - Target element.
-	 * @param {*} selector - A CSS selector.
-	 * @return {Array} Array of sibling nodes plus target element.
+	 * @param {string} selector - A CSS selector.
+	 * @return {Array<Node>} Array of sibling nodes plus target element.
 	 */
 	function getSiblingElementsAndSelf( element, selector ) {
 	    return _getSiblingElements( element, selector, [ element ] );
@@ -11128,14 +11466,23 @@
 	/**
 	 * Gets siblings that match selector _in DOM order_.
 	 *
+	 * @static
 	 * @param {Node} element - Target element.
-	 * @param {*} selector - A CSS selector.
-	 * @return {Array} Array of sibling nodes.
+	 * @param {string} selector - A CSS selector.
+	 * @return {Array<Node>} Array of sibling nodes.
 	 */
 	function getSiblingElements( element, selector ) {
 	    return _getSiblingElements( element, selector );
 	}
 
+	/**
+	 * Gets siblings that match selector _in DOM order_.
+	 *
+	 * @param {Node} element - Target element.
+	 * @param {string} [selector] - A CSS selector.
+	 * @param {Array<Node>} [startArray] - Array of nodes to start with.
+	 * @return {Array<Node>} Array of sibling nodes.
+	 */
 	function _getSiblingElements( element, selector = '*', startArray = [] ) {
 	    const siblings = startArray;
 	    let prev = element.previousElementSibling;
@@ -11157,6 +11504,14 @@
 	    return siblings;
 	}
 
+	/**
+	 * Gets ancestors that match selector _in DOM order_.
+	 *
+	 * @static
+	 * @param {Node} element - Target element.
+	 * @param {string} [selector] - A CSS selector.
+	 * @return {Array<Node>} Array of ancestors.
+	 */
 	function getAncestors( element, selector = '*' ) {
 	    const ancestors = [];
 	    let parent = element.parentElement;
@@ -11172,6 +11527,15 @@
 	    return ancestors;
 	}
 
+	/**
+	 * Gets closest ancestor that match selector until the end selector.
+	 *
+	 * @static
+	 * @param {Node} element - Target element.
+	 * @param {string} filterSelector - A CSS selector.
+	 * @param {string} endSelector - A CSS selector.
+	 * @return {Node} Closest ancestor.
+	 */
 	function closestAncestorUntil( element, filterSelector, endSelector ) {
 	    let parent = element.parentElement;
 	    let found = null;
@@ -11189,6 +11553,7 @@
 	/**
 	 * Removes all children elements.
 	 *
+	 * @static
 	 * @param {Node} element - Target element.
 	 * @return {undefined}
 	 */
@@ -11197,28 +11562,165 @@
 	}
 
 	/**
+	 * @param {Element} el - Target node
+	 * @return {boolean} Whether previous sibling has same name
+	 */
+	function hasPreviousSiblingElementSameName( el ) {
+	    let found = false;
+	    const nodeName = el.nodeName;
+	    el = el.previousSibling;
+
+	    while ( el ) {
+	        // Ignore any sibling text and comment nodes (e.g. whitespace with a newline character)
+	        // also deal with repeats that have non-repeat siblings in between them, event though that would be a bug.
+	        if ( el.nodeName && el.nodeName === nodeName ) {
+	            found = true;
+	            break;
+	        }
+	        el = el.previousSibling;
+	    }
+	    return found;
+	}
+
+	/**
+	 * @param {Element} node - Target node
+	 * @param {string} content - Text content to look for
+	 * @return {boolean} Whether previous comment sibling has given text content
+	 */
+	function hasPreviousCommentSiblingWithContent( node, content ) {
+	    let found = false;
+	    node = node.previousSibling;
+
+	    while ( node ) {
+	        if ( node.nodeType === Node.COMMENT_NODE && node.textContent === content ) {
+	            found = true;
+	            break;
+	        }
+	        node = node.previousSibling;
+	    }
+	    return found;
+	}
+
+
+	/**
+	 * Creates an XPath from a node
+	 *
+	 * @param {Element} node - XML node
+	 * @param {string} [rootNodeName] - Defaults to #document
+	 * @param {boolean} [includePosition] - Whether or not to include the positions `/path/to/repeat[2]/node`
+	 * @return {string} XPath
+	 */
+	function getXPath( node, rootNodeName = '#document', includePosition = false ) {
+	    let index;
+	    const steps = [];
+	    let position = '';
+	    if ( !node || node.nodeType !== 1 ) {
+	        return null;
+	    }
+	    const nodeName = node.nodeName;
+	    let parent = node.parentElement;
+	    let parentName = parent ? parent.nodeName : null;
+
+	    if ( includePosition ) {
+	        index = getRepeatIndex( node );
+	        if ( index > 0 ) {
+	            position = `[${index + 1}]`;
+	        }
+	    }
+
+	    steps.push( nodeName + position );
+
+	    while ( parent && parentName !== rootNodeName && parentName !== '#document' ) {
+	        if ( includePosition ) {
+	            index = getRepeatIndex( parent );
+	            position = ( index > 0 ) ? `[${index + 1}]` : '';
+	        }
+	        steps.push( parentName + position );
+	        parent = parent.parentElement;
+	        parentName = parent ? parent.nodeName : null;
+	    }
+
+	    return `/${steps.reverse().join( '/' )}`;
+	}
+
+	/**
+	 * Obtains the index of a repeat instance within its own series.
+	 *
+	 * @param {Element} node - XML node
+	 * @return {number} index
+	 */
+	function getRepeatIndex( node ) {
+	    let index = 0;
+	    const nodeName = node.nodeName;
+	    let prevSibling = node.previousSibling;
+
+	    while ( prevSibling ) {
+	        // ignore any sibling text and comment nodes (e.g. whitespace with a newline character)
+	        if ( prevSibling.nodeName && prevSibling.nodeName === nodeName ) {
+	            index++;
+	        }
+	        prevSibling = prevSibling.previousSibling;
+	    }
+
+	    return index;
+	}
+
+	/**
 	 * Adapted from https://stackoverflow.com/a/46522991/3071529
 	 *
 	 * A storage solution aimed at replacing jQuerys data function.
 	 * Implementation Note: Elements are stored in a (WeakMap)[https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WeakMap].
 	 * This makes sure the data is garbage collected when the node is removed.
+	 *
+	 * @namespace
 	 */
 	const elementDataStore = {
+	    /**
+	     * @type WeakMap
+	     */
 	    _storage: new WeakMap(),
+	    /**
+	     * Adds object to element storage. Ensures that element storage exist.
+	     *
+	     * @param {Node} element - Target element.
+	     * @param {string} key - Name of the stored data.
+	     * @param {object} obj - Stored data.
+	     */
 	    put: function( element, key, obj ) {
 	        if ( !this._storage.has( element ) ) {
 	            this._storage.set( element, new Map() );
 	        }
 	        this._storage.get( element ).set( key, obj );
 	    },
+	    /**
+	     * Return object from element storage.
+	     *
+	     * @param {Node} element - Target element.
+	     * @param {string} key - Name of the stored data.
+	     * @return {object} Stored data object.
+	     */
 	    get: function( element, key ) {
 	        const item = this._storage.get( element );
 	        return item ? item.get( key ) : item;
 	    },
+	    /**
+	     * Checkes whether element has given storage item.
+	     *
+	     * @param {Node} element - Target element.
+	     * @param {string} key - Name of the stored data.
+	     * @return {boolean}
+	     */
 	    has: function( element, key ) {
 	        const item = this._storage.get( element );
 	        return item && item.has( key );
 	    },
+	    /**
+	     * Removes item from element storage. Removes element storage if empty.
+	     *
+	     * @param {Node} element - Target element.
+	     * @param {string} key - Name of the stored data.
+	     * @return {object} Removed data object.
+	     */
 	    remove: function( element, key ) {
 	        var ret = this._storage.get( element ).delete( key );
 	        if ( !this._storage.get( key ).size === 0 ) {
@@ -11230,9 +11732,9 @@
 
 	/**
 	 * A custom error type for form logic
-	 * 
-	 * @class 
-	 * @extends Error
+	 *
+	 * @class
+	 * @augments Error
 	 * @param {string} message - Optional message.
 	 */
 	function FormLogicError( message ) {
@@ -11278,11 +11780,19 @@
 	const MERIDIAN_PART = `[^: ${NUMBER}]+`;
 	const HAS_MERIDIAN = new RegExp( `^(${TIME_PART} ?(${MERIDIAN_PART}))|((${MERIDIAN_PART}) ?${TIME_PART})$` );
 
+	/**
+	 * @param {Date} dt - Date object
+	 * @return {string}
+	 */
 	function _getCleanLocalTime( dt ) {
 	    dt = typeof dt == 'undefined' ? new Date() : dt;
 	    return _cleanSpecialChars( dt.toLocaleTimeString( _locale ) );
 	}
 
+	/**
+	 * @param {string} timeStr
+	 * @return {string}
+	 */
 	function _cleanSpecialChars( timeStr ) {
 	    return timeStr.replace( /[\u200E\u200F]/g, '' );
 	}
@@ -11292,26 +11802,27 @@
 	 */
 	const time = {
 	    // For now we just look at a subset of numbers in Arabic and Latin. There are actually over 20 number scripts and :digit: doesn't work in browsers
-	    /**   
-	     * @type {string}
+	    /**
+	     * @type string
 	     */
 	    get hour12() {
 	        return this.hasMeridian( _getCleanLocalTime() );
 	    },
-	    /**   
-	     * @type {string}
+	    /**
+	     * @type string
 	     */
 	    get pmNotation() {
 	        return this.meridianNotation( new Date( 2000, 1, 1, 23, 0, 0 ) );
 	    },
-	    /**   
-	     * @type {string}
+	    /**
+	     * @type string
 	     */
 	    get amNotation() {
 	        return this.meridianNotation( new Date( 2000, 1, 1, 1, 0, 0 ) );
 	    },
 	    /**
-	     * @param dt
+	     * @type function
+	     * @param {Date} dt
 	     */
 	    meridianNotation( dt ) {
 	        let matches = _getCleanLocalTime( dt ).match( HAS_MERIDIAN );
@@ -11324,38 +11835,71 @@
 	    /**
 	     * Whether time string has meridian parts
 	     *
-	     * @param {string} time - time string
+	     * @type function
+	     * @param {string} time - Time string
 	     */
 	    hasMeridian( time ) {
 	        return HAS_MERIDIAN.test( _cleanSpecialChars( time ) );
 	    }
 	};
 
-	/** 
-	 * @module types 
-	 **/
+	/**
+	 * @module types
+	 */
 
+	/**
+	 * @namespace types
+	 */
 	const types = {
+	    /**
+	     * @namespace
+	     */
 	    'string': {
+	        /**
+	         * @param {string} x
+	         * @return {string}
+	         */
 	        convert( x ) {
 	            return x.replace( /^\s+$/, '' );
 	        },
 	        //max length of type string is 255 chars.Convert( truncate ) silently ?
+	        /**
+	         * @return {boolean} always `true`
+	         */
 	        validate() {
 	            return true;
 	        }
 	    },
+	    /**
+	     * @namespace
+	     */
 	    'select': {
+	        /**
+	         * @return {boolean} always `true`
+	         */
 	        validate() {
 	            return true;
 	        }
 	    },
+	    /**
+	     * @namespace
+	     */
 	    'select1': {
+	        /**
+	         * @return {boolean} always `true`
+	         */
 	        validate() {
 	            return true;
 	        }
 	    },
+	    /**
+	     * @namespace
+	     */
 	    'decimal': {
+	        /**
+	         * @param {number|string} x
+	         * @return {number}
+	         */
 	        convert( x ) {
 	            const num = Number( x );
 	            if ( isNaN( num ) || num === Number.POSITIVE_INFINITY || num === Number.NEGATIVE_INFINITY ) {
@@ -11364,12 +11908,23 @@
 	            }
 	            return num;
 	        },
+	        /**
+	         * @param {number|string} x
+	         * @return {boolean}
+	         */
 	        validate( x ) {
 	            const num = Number( x );
 	            return !isNaN( num ) && num !== Number.POSITIVE_INFINITY && num !== Number.NEGATIVE_INFINITY;
 	        }
 	    },
+	    /**
+	     * @namespace
+	     */
 	    'int': {
+	        /**
+	         * @param {number|string} x
+	         * @return {number}
+	         */
 	        convert( x ) {
 	            const num = Number( x );
 	            if ( isNaN( num ) || num === Number.POSITIVE_INFINITY || num === Number.NEGATIVE_INFINITY ) {
@@ -11378,12 +11933,23 @@
 	            }
 	            return ( num >= 0 ) ? Math.floor( num ) : -Math.floor( Math.abs( num ) );
 	        },
+	        /**
+	         * @param {number|string} x
+	         * @return {boolean}
+	         */
 	        validate( x ) {
 	            const num = Number( x );
 	            return !isNaN( num ) && num !== Number.POSITIVE_INFINITY && num !== Number.NEGATIVE_INFINITY && Math.round( num ) === num && num.toString() === x.toString();
 	        }
 	    },
+	    /**
+	     * @namespace
+	     */
 	    'date': {
+	        /**
+	         * @param {string} x
+	         * @return {boolean}
+	         */
 	        validate( x ) {
 	            const pattern = /^([0-9]{4})-([0-9]{2})-([0-9]{2})$/;
 	            const segments = pattern.exec( x );
@@ -11397,6 +11963,10 @@
 	            }
 	            return false;
 	        },
+	        /**
+	         * @param {number|string} x
+	         * @return {string}
+	         */
 	        convert( x ) {
 	            if ( isNumber( x ) ) {
 	                // The XPath expression "2012-01-01" + 2 returns a number of days in XPath.
@@ -11414,15 +11984,26 @@
 	            }
 	        }
 	    },
+	    /**
+	     * @namespace
+	     */
 	    'datetime': {
+	        /**
+	         * @param {string} x
+	         * @return {boolean}
+	         */
 	        validate( x ) {
 	            const parts = x.split( 'T' );
 	            if ( parts.length === 2 ) {
 	                return types.date.validate( parts[ 0 ] ) && types.time.validate( parts[ 1 ], false );
 	            }
 
-	            return types.data.validate( parts[ 0 ] );
+	            return types.date.validate( parts[ 0 ] );
 	        },
+	        /**
+	         * @param {number|string} x
+	         * @return {string}
+	         */
 	        convert( x ) {
 	            let date = 'Invalid Date';
 	            const parts = x.split( 'T' );
@@ -11446,10 +12027,18 @@
 	            return date.toString() !== 'Invalid Date' ? date.toISOLocalString() : '';
 	        }
 	    },
+	    /**
+	     * @namespace
+	     */
 	    'time': {
 	        // Note that it's okay if the validate function is stricter than the spec,
 	        // (for timezone offset), as long as the convertor automatically converts
 	        // to a valid time.
+	        /**
+	         * @param {string} x
+	         * @param {boolean} [requireMillis]
+	         * @return {boolean}
+	         */
 	        validate( x, requireMillis ) {
 	            let m = x.match( /^(\d\d):(\d\d):(\d\d)\.\d\d\d(\+|-)(\d\d):(\d\d)$/ );
 
@@ -11470,6 +12059,11 @@
 	                m[ 5 ] < 24 && m[ 5 ] >= 0 && // this could be tighter
 	                m[ 6 ] < 60 && m[ 6 ] >= 0; // this is probably either 0 or 30
 	        },
+	        /**
+	         * @param {string} x
+	         * @param {boolean} [requireMillis]
+	         * @return {string}
+	         */
 	        convert( x, requireMillis ) {
 	            let date;
 	            const o = {};
@@ -11520,8 +12114,13 @@
 
 	            return this.validate( x, requireMillis ) ? x : '';
 	        },
-	        // converts "11:30 AM", and "11:30 ", and "11:30 上午" to: "11:30"
-	        // converts "11:30 PM", and "11:30 下午" to: "23:30"
+	        /**
+	         * converts "11:30 AM", and "11:30 ", and "11:30 上午" to: "11:30"
+	         * converts "11:30 PM", and "11:30 下午" to: "23:30"
+	         *
+	         * @param {string} x
+	         * @return {string}
+	         */
 	        convertMeridian( x ) {
 	            x = x.trim();
 	            if ( time.hasMeridian( x ) ) {
@@ -11540,45 +12139,90 @@
 	            return x;
 	        }
 	    },
+	    /**
+	     * @namespace
+	     */
 	    'barcode': {
+	        /**
+	         * @return {boolean} always `true`
+	         */
 	        validate() {
 	            return true;
 	        }
 	    },
+	    /**
+	     * @namespace
+	     */
 	    'geopoint': {
+	        /**
+	         * @param {string} x
+	         * @return {boolean}
+	         */
 	        validate( x ) {
 	            const coords = x.toString().trim().split( ' ' );
 	            // Note that longitudes from -180 to 180 are problematic when recording points close to the international
-	            // dateline. They are therefore set from -360  to 360 (circumventing Earth twice, I think) which is 
+	            // dateline. They are therefore set from -360  to 360 (circumventing Earth twice, I think) which is
 	            // an arbitrary limit. https://github.com/kobotoolbox/enketo-express/issues/1033
 	            return ( coords[ 0 ] !== '' && coords[ 0 ] >= -90 && coords[ 0 ] <= 90 ) &&
 	                ( coords[ 1 ] !== '' && coords[ 1 ] >= -360 && coords[ 1 ] <= 360 ) &&
 	                ( typeof coords[ 2 ] === 'undefined' || !isNaN( coords[ 2 ] ) ) &&
 	                ( typeof coords[ 3 ] === 'undefined' || ( !isNaN( coords[ 3 ] ) && coords[ 3 ] >= 0 ) );
 	        },
+	        /**
+	         * @param {string} x
+	         * @return {string}
+	         */
 	        convert( x ) {
 	            return x.toString().trim();
 	        }
 	    },
+	    /**
+	     * @namespace
+	     */
 	    'geotrace': {
+	        /**
+	         * @param {string} x
+	         * @return {boolean}
+	         */
 	        validate( x ) {
 	            const geopoints = x.toString().split( ';' );
 	            return geopoints.length >= 2 && geopoints.every( geopoint => types.geopoint.validate( geopoint ) );
 	        },
+	        /**
+	         * @param {string} x
+	         * @return {string}
+	         */
 	        convert( x ) {
 	            return x.toString().trim();
 	        }
 	    },
+	    /**
+	     * @namespace
+	     */
 	    'geoshape': {
+	        /**
+	         * @param {string} x
+	         * @return {boolean}
+	         */
 	        validate( x ) {
 	            const geopoints = x.toString().split( ';' );
 	            return geopoints.length >= 4 && ( geopoints[ 0 ] === geopoints[ geopoints.length - 1 ] ) && geopoints.every( geopoint => types.geopoint.validate( geopoint ) );
 	        },
+	        /**
+	         * @param {string} x
+	         * @return {string}
+	         */
 	        convert( x ) {
 	            return x.toString().trim();
 	        }
 	    },
+	    /**
+	     * @namespace
+	     */
 	    'binary': {
+	        /**
+	         * @return {boolean} always `true`
+	         */
 	        validate() {
 	            return true;
 	        }
@@ -11591,10 +12235,11 @@
 	// TODO: add second "propagate" parameter to constructors to add .enketo namespace to event.
 
 	/**
-	 * Data update event
+	 * Data update event.
 	 *
-	 * @param detail
-	 * @return {CustomEvent}
+	 * @static
+	 * @param {*} detail - Data to be passed with event
+	 * @return {CustomEvent} Custom "dataupdate" event
 	 */
 	function DataUpdate( detail ) {
 	    return new CustomEvent( 'dataupdate', { detail } );
@@ -11603,7 +12248,7 @@
 	/**
 	 * Fake focus event.
 	 *
-	 * @return {CustomEvent}
+	 * @return {CustomEvent} Custom "fakefocus" event (bubbling)
 	 */
 	function FakeFocus() {
 	    return new CustomEvent( 'fakefocus', { bubbles: true } );
@@ -11612,7 +12257,7 @@
 	/**
 	 * Apply focus event.
 	 *
-	 * @return {CustomEvent}
+	 * @return {CustomEvent} Custom "applyfocus" event
 	 */
 	function ApplyFocus() {
 	    return new CustomEvent( 'applyfocus' );
@@ -11621,7 +12266,7 @@
 	/**
 	 * Page flip event.
 	 *
-	 * @return {CustomEvent}
+	 * @return {CustomEvent} Custom "pageflip" event (bubbling)
 	 */
 	function PageFlip() {
 	    return new CustomEvent( 'pageflip', { bubbles: true } );
@@ -11630,8 +12275,8 @@
 	/**
 	 * Removed event.
 	 *
-	 * @param detail
-	 * @return {CustomEvent}
+	 * @param {*} detail - Data to be passed with event
+	 * @return {CustomEvent} Custom "removed" event (bubbling)
 	 */
 	function Removed( detail ) {
 	    return new CustomEvent( 'removed', { detail, bubbles: true } );
@@ -11640,8 +12285,8 @@
 	/**
 	 * Add repeat event.
 	 *
-	 * @param detail
-	 * @return {CustomEvent}
+	 * @param {*} detail - Data to be passed with event
+	 * @return {CustomEvent} Custom "addrepeat" event (bubbling)
 	 */
 	function AddRepeat( detail ) {
 	    return new CustomEvent( 'addrepeat', { detail, bubbles: true } );
@@ -11650,7 +12295,7 @@
 	/**
 	 * Remove repeat event.
 	 *
-	 * @return {CustomEvent}
+	 * @return {CustomEvent} Custom "removerepeat" event (bubbling)
 	 */
 	function RemoveRepeat() {
 	    return new CustomEvent( 'removerepeat', { bubbles: true } );
@@ -11659,7 +12304,7 @@
 	/**
 	 * Change language event.
 	 *
-	 * @return {CustomEvent}
+	 * @return {CustomEvent} Custom "changelanguage" event (bubbling)
 	 */
 	function ChangeLanguage() {
 	    return new CustomEvent( 'changelanguage', { bubbles: true } );
@@ -11668,7 +12313,7 @@
 	/**
 	 * Change event.
 	 *
-	 * @return {Event}
+	 * @return {Event} "change" event (bubbling)
 	 */
 	function Change() {
 	    return new Event( 'change', { bubbles: true } );
@@ -11677,16 +12322,16 @@
 	/**
 	 * Input event.
 	 *
-	 * @return {Event}
+	 * @return {Event} "input" event (bubbling)
 	 */
 	function Input() {
 	    return new Event( 'input', { bubbles: true } );
 	}
 
 	/**
-	 * Input update event
+	 * Input update event.
 	 *
-	 * @return {CustomEvent}
+	 * @return {CustomEvent} Custom "inputupdate" event (bubbling)
 	 */
 	function InputUpdate() {
 	    return new CustomEvent( 'inputupdate', { bubbles: true } );
@@ -11695,7 +12340,7 @@
 	/**
 	 * Edited event.
 	 *
-	 * @return {CustomEvent}
+	 * @return {CustomEvent} Custom "edited" event (bubbling)
 	 */
 	function Edited() {
 	    return new CustomEvent( 'edited', { bubbles: true } );
@@ -11704,7 +12349,7 @@
 	/**
 	 * Validation complete event.
 	 *
-	 * @return {CustomEvent}
+	 * @return {CustomEvent} Custom "validationcomplete" event (bubbling)
 	 */
 	function ValidationComplete() {
 	    return new CustomEvent( 'validationcomplete', { bubbles: true } );
@@ -11713,17 +12358,17 @@
 	/**
 	 * Invalidated event.
 	 *
-	 * @return {CustomEvent}
+	 * @return {CustomEvent} Custom "invalidated" event (bubbling)
 	 */
 	function Invalidated() {
 	    return new CustomEvent( 'invalidated', { bubbles: true } );
 	}
 
 	/**
-	 * Progress update event
+	 * Progress update event.
 	 *
-	 * @param detail
-	 * @return {CustomEvent}
+	 * @param {*} detail - Data to be passed with event
+	 * @return {CustomEvent} Custom "progressupdate" event (bubbling)
 	 */
 	function ProgressUpdate( detail ) {
 	    return new CustomEvent( 'progressupdate', { detail, bubbles: true } );
@@ -11732,7 +12377,7 @@
 	/**
 	 * Go to hidden event.
 	 *
-	 * @return {CustomEvent}
+	 * @return {CustomEvent} Custom "gotohidden" event (bubbling)
 	 */
 	function GoToHidden() {
 	    return new CustomEvent( 'gotohidden', { bubbles: true } );
@@ -11795,8 +12440,8 @@
 	    offsetMinutesTotal = this.getTimezoneOffset();
 
 	    direction = ( offsetMinutesTotal < 0 ) ? '+' : '-';
-	    hours = pad2( Math.abs( Math.floor( offsetMinutesTotal / 60 ) ) );
-	    minutes = pad2( Math.abs( Math.floor( offsetMinutesTotal % 60 ) ) );
+	    hours = pad2(  Math.floor( Math.abs(offsetMinutesTotal) / 60 ) );
+	    minutes = pad2( Math.floor( Math.abs(offsetMinutesTotal) % 60 ) );
 
 	    return direction + hours + ':' + minutes;
 	};
@@ -11804,8 +12449,16 @@
 	// Extend native objects, aka monkey patching ..... really I see no harm!
 
 	/**
+	 * The built in string object.
+	 *
+	 * @external String
+	 * @see {@link https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String|String}
+	 */
+
+	/**
 	 * Pads a string with prefixed zeros until the requested string length is achieved.
 	 *
+	 * @function external:String#pad
 	 * @param  {number} digits - The desired string length.
 	 * @return {string} - Padded string.
 	 */
@@ -11816,7 +12469,6 @@
 	    }
 	    return x;
 	};
-
 
 
 	if ( typeof console.deprecate === 'undefined' ) {
@@ -19775,12 +20427,11 @@
 					fn: function(dt)
 					{
 						var MS_IN_DAY = 1000 * 60 * 60 * 24;
-						var PRECISION = 1000;
 						var d = dt.toDate();
 						var dec;
 
 						if ( d.toString() !== 'Invalid Date' ) {
-							dec = Math.round(d.getTime() * PRECISION / MS_IN_DAY) / PRECISION;
+							dec = d.getTime() / MS_IN_DAY;
 						} else {
 							dec = Number.NaN;
 						}
@@ -19806,7 +20457,6 @@
 						// and conversion here, manually.
 						var	m = time.toString().match( /^(\d\d):(\d\d):(\d\d)(\.\d\d?\d?)?(\+|-)(\d\d):(\d\d)$/ );
 						//var ERR = new Error('Invalid time format provided.');
-						var PRECISION = 1000;
 						var dec;
 						
 						if ( m && 
@@ -19823,7 +20473,7 @@
 							if ( d.toString() === 'Invalid Date' ){
 								dec = Number.NaN;
 							} else {
-								dec =  Math.round( (d.getSeconds() / 3600 + d.getMinutes() / 60 + d.getHours() )* PRECISION / 24) / PRECISION;
+								dec =  (d.getSeconds() / 3600 + d.getMinutes() / 60 + d.getHours() ) / 24;
 							}
 						} else {
 							dec = Number.NaN;
@@ -21200,19 +21850,23 @@
 		
 	})();
 
+	/**
+	 * @function xpath-evaluator-binding
+	 * @param {Function} addExtensions
+	 */
 	function bindJsEvaluator( addExtensions ) {
 	    const evaluator = new engine.XPathEvaluator();
 
 	    /*
 	     * Note: it's inefficient to extend XPathJS here (for every model instance)
 	     * instead of just once in the prototype.
-	     * 
+	     *
 	     * However, this is done to prevent breaking Medic Mobile.
 	     * The performance impact is probably negligible, since we don't instantiate
 	     * models very often.
-	     * 
-	     * In any case, you don't have to use it like this. It was done for 
-	     * Enketo Validate only. In an app that doesn't override enketo-xpathjs, 
+	     *
+	     * In any case, you don't have to use it like this. It was done for
+	     * Enketo Validate only. In an app that doesn't override enketo-xpathjs,
 	     * I'd recommend using `require('extension')(require('enketo-xpathjs'))` instead
 	     * and leave the addExtensions parameter empty here.
 	     */
@@ -21285,32 +21939,28 @@
 
 	/**
 	 * Getter and setter functions
-	 * @type {Object}
 	 */
 	FormModel.prototype = {
+	    /**
+	     * @type string
+	     */
 	    get version() {
 	        return this.evaluate( '/node()/@version', 'string', null, null, true );
 	    },
 	    /**
-	     * Gets the instance ID
-	     *
-	     * @return {string} instanceID
+	     * @type {string}
 	     */
 	    get instanceID() {
 	        return this.getMetaNode( 'instanceID' ).getVal();
 	    },
 	    /**
-	     * Gets the deprecated ID
-	     *
-	     * @return {string} deprecatedID
+	     * @type {string}
 	     */
 	    get deprecatedID() {
 	        return this.getMetaNode( 'deprecatedID' ).getVal() || '';
 	    },
 	    /**
-	     * Gets the instance Name
-	     *
-	     * @return {string} instanceID
+	     * @type {string}
 	     */
 	    get instanceName() {
 	        return this.getMetaNode( 'instanceName' ).getVal();
@@ -21319,6 +21969,8 @@
 
 	/**
 	 * Initializes FormModel
+	 *
+	 * @return {Array<string>} list of initialization errors
 	 */
 	FormModel.prototype.init = function() {
 	    let id;
@@ -21420,12 +22072,20 @@
 	    return this.loadErrors;
 	};
 
+	/**
+	 * @param {Document} xmlDoc - XML Document
+	 * @param {string} xmlStr - XML string
+	 */
 	FormModel.prototype.throwParserErrors = ( xmlDoc, xmlStr ) => {
 	    if ( !xmlDoc || xmlDoc.querySelector( 'parsererror' ) ) {
 	        throw new Error( `Invalid XML: ${xmlStr}` );
 	    }
 	};
 
+	/**
+	 * @param {string} id - Instance ID
+	 * @param {object} [sessObj]
+	 */
 	FormModel.prototype.createSession = function( id, sessObj ) {
 	    let instance;
 	    let session;
@@ -21483,11 +22143,9 @@
 	/**
 	 * Returns a new Nodeset instance
 	 *
-	 * @param {(string|null)=} selector - [type/description]
-	 * @param {(string|number|null)=} index    - [type/description]
-	 * @param {(Object|null)=} filter   - [type/description]
-	 * @param filter.onlyLeaf
-	 * @param filter.noEmpty
+	 * @param {string|null} [selector]
+	 * @param {string|number|null} [index]
+	 * @param {NodesetFilter|null} [filter]
 	 * @return {Nodeset}
 	 */
 	FormModel.prototype.node = function( selector, index, filter ) {
@@ -21498,8 +22156,8 @@
 	 * Alternative adoptNode on IE11 (http://stackoverflow.com/questions/1811116/ie-support-for-dom-importnode)
 	 * TODO: remove to be replaced by separate IE11-only polyfill file/service
 	 *
-	 * @param node
-	 * @param allChildren
+	 * @param {Element} node - Node to be imported
+	 * @param {Array<Node>} allChildren - All children of imported Node
 	 */
 	FormModel.prototype.importNode = function( node, allChildren ) {
 	    let i;
@@ -21537,8 +22195,8 @@
 	/**
 	 * Merges an XML instance string into the XML Model
 	 *
-	 * @param  {string} recordStr The XML record as string
-	 * @param  {string} modelDoc  The XML model to merge the record into
+	 * @param {string} recordStr - The XML record as string
+	 * @param {string} modelDoc - The XML model to merge the record into
 	 */
 	FormModel.prototype.mergeXml = function( recordStr ) {
 	    let modelInstanceChildStr;
@@ -21607,11 +22265,11 @@
 	            let positionedPath;
 	            let repeatParts;
 	            try {
-	                path = that.getXPath( node, 'instance', false );
+	                path = getXPath( node, 'instance', false );
 	                // If this is a templated repeat (check templates)
 	                // or a repeat without templates
-	                if ( typeof that.templates[ path ] !== 'undefined' || that.getRepeatIndex( node ) > 0 ) {
-	                    positionedPath = that.getXPath( node, 'instance', true );
+	                if ( typeof that.templates[ path ] !== 'undefined' || getRepeatIndex( node ) > 0 ) {
+	                    positionedPath = getXPath( node, 'instance', true );
 	                    if ( !that.evaluate( positionedPath, 'node', null, null, true ) ) {
 	                        repeatParts = positionedPath.match( /([^[]+)\[(\d+)\]\//g );
 	                        // If the positionedPath has a non-0 repeat index followed by (at least) 1 node, avoid cloning out of order.
@@ -21639,7 +22297,7 @@
 	            return recordNode.children.length === 0 && val.trim().length === 0;
 	        } )
 	        .forEach( leafNode => {
-	            const path = that.getXPath( leafNode, 'instance', true );
+	            const path = getXPath( leafNode, 'instance', true );
 	            const instanceNode = that.node( path, 0 ).getElement();
 	            if ( instanceNode ) {
 	                // TODO: after dropping support for IE11, we can also use instanceNode.children.length
@@ -21708,74 +22366,7 @@
 	};
 
 	/**
-	 * Creates an XPath from a node
-	 *
-	 * @param { XMLElement} node - XML node
-	 * @param  {string=} rootNodeName - if absent the root is #document
-	 * @param  {boolean=} includePosition - whether or not to include the positions /path/to/repeat[2]/node
-	 * @return {string} XPath
-	 */
-	FormModel.prototype.getXPath = function( node, rootNodeName, includePosition ) {
-	    let index;
-	    const steps = [];
-	    let position = '';
-	    if ( !node || node.nodeType !== 1 ) {
-	        return null;
-	    }
-	    const nodeName = node.nodeName;
-	    let parent = node.parentElement;
-	    let parentName = parent ? parent.nodeName : null;
-
-	    rootNodeName = rootNodeName || '#document';
-	    includePosition = includePosition || false;
-
-	    if ( includePosition ) {
-	        index = this.getRepeatIndex( node );
-	        if ( index > 0 ) {
-	            position = `[${index + 1}]`;
-	        }
-	    }
-
-	    steps.push( nodeName + position );
-
-	    while ( parent && parentName !== rootNodeName && parentName !== '#document' ) {
-	        if ( includePosition ) {
-	            index = this.getRepeatIndex( parent );
-	            position = ( index > 0 ) ? `[${index + 1}]` : '';
-	        }
-	        steps.push( parentName + position );
-	        parent = parent.parentElement;
-	        parentName = parent ? parent.nodeName : null;
-	    }
-
-	    return `/${steps.reverse().join( '/' )}`;
-	};
-
-	/**
-	 * Obtains the index of a repeat instance within its own series.
-	 *
-	 * @param {Node} node
-	 * @return {number} index
-	 */
-	FormModel.prototype.getRepeatIndex = node => {
-	    let index = 0;
-	    const nodeName = node.nodeName;
-	    let prevSibling = node.previousSibling;
-
-	    while ( prevSibling ) {
-	        // ignore any sibling text and comment nodes (e.g. whitespace with a newline character)
-	        if ( prevSibling.nodeName && prevSibling.nodeName === nodeName ) {
-	            index++;
-	        }
-	        prevSibling = prevSibling.previousSibling;
-	    }
-
-	    return index;
-	};
-
-	/**
-	 * Trims values
-	 *
+	 * Trims values of all Form elements
 	 */
 	FormModel.prototype.trimValues = function() {
 	    this.node( null, null, {
@@ -21786,7 +22377,7 @@
 	};
 
 	/**
-	 * [deprecateId description]
+	 * Sets instance ID and deprecated ID
 	 */
 	FormModel.prototype.setInstanceIdAndDeprecatedId = function() {
 	    let instanceIdObj;
@@ -21824,9 +22415,18 @@
 	        this.getMetaNode( 'deprecatedID' ).setVal( instanceIdExistingVal );
 	    }
 	};
-
+	/**
+	 * Creates a custom XPath Evaluator to be used for XPath Expresssions that contain custom
+	 * OpenRosa functions or for browsers that do not have a native evaluator.
+	 *
+	 * @type function
+	 */
 	FormModel.prototype.bindJsEvaluator = bindJsEvaluator;
 
+	/**
+	 * @param {string} localName
+	 * @return {Element} node
+	 */
 	FormModel.prototype.getMetaNode = function( localName ) {
 	    const orPrefix = this.getNamespacePrefix( OPENROSA_XFORMS_NS );
 	    let n = this.node( `/*/${orPrefix}:meta/${orPrefix}:${localName}` );
@@ -21838,15 +22438,28 @@
 	    return n;
 	};
 
+	/**
+	 * @param {string} path
+	 * @return {string} repeat comment text
+	 */
 	FormModel.prototype.getRepeatCommentText = path => {
 	    path = path.trim();
 	    return REPEAT_COMMENT_PREFIX + path;
 	};
 
+	/**
+	 * @param {string} repeatPath
+	 * @return {string} selector
+	 */
 	FormModel.prototype.getRepeatCommentSelector = function( repeatPath ) {
 	    return `//comment()[self::comment()="${this.getRepeatCommentText( repeatPath )}"]`;
 	};
 
+	/**
+	 * @param {string} repeatPath
+	 * @param {number} repeatSeriesIndex
+	 * @return {Element} node
+	 */
 	FormModel.prototype.getRepeatCommentEl = function( repeatPath, repeatSeriesIndex ) {
 	    return this.evaluate( this.getRepeatCommentSelector( repeatPath ), 'nodes', null, null, true )[ repeatSeriesIndex ];
 	};
@@ -21907,10 +22520,19 @@
 	    }
 	};
 
+	/**
+	 * @param {Element} repeat - Set ordinal attribue to this node
+	 * @param {Element} firstRepeatInSeries - Used to know what the next ordinal attribute value should be. Defaults to `repeat` node.
+	 */
 	FormModel.prototype.addOrdinalAttribute = function( repeat, firstRepeatInSeries ) {
 	    const enkNs = this.getNamespacePrefix( ENKETO_XFORMS_NS );
 	};
 
+	/**
+	 * Removes all ordinal attriubetes from all applicable nodes
+	 *
+	 * @param {Element} el - Target node
+	 */
 	FormModel.prototype.removeOrdinalAttributes = el => {
 	};
 
@@ -21919,7 +22541,7 @@
 	 *
 	 * @param {string} repeatPath - The absolute path of the repeat.
 	 * @param {number} repeatSeriesIndex - The index of the series of that repeat.
-	 * @return {Array.Element} Array of all repeat elements in a series.
+	 * @return {Array<Element>} Array of all repeat elements in a series.
 	 */
 	FormModel.prototype.getRepeatSeries = function( repeatPath, repeatSeriesIndex ) {
 	    let pathSegments;
@@ -21949,51 +22571,18 @@
 	    return result;
 	};
 
-	FormModel.prototype.hasPreviousSiblingElementSameName = el => {
-	    let found = false;
-	    const nodeName = el.nodeName;
-	    el = el.previousSibling;
-
-	    while ( el ) {
-	        // Ignore any sibling text and comment nodes (e.g. whitespace with a newline character)
-	        // also deal with repeats that have non-repeat siblings in between them, event though that would be a bug.
-	        if ( el.nodeName && el.nodeName === nodeName ) {
-	            found = true;
-	            break;
-	        }
-	        el = el.previousSibling;
-	    }
-	    return found;
-	};
-
-	FormModel.prototype.hasPreviousCommentSiblingWithContent = ( node, content ) => {
-	    let found = false;
-	    node = node.previousSibling;
-
-	    while ( node ) {
-	        if ( node.nodeType === Node.COMMENT_NODE && node.textContent === content ) {
-	            found = true;
-	            break;
-	        }
-	        node = node.previousSibling;
-	    }
-	    return found;
-	};
-
 	/**
 	 * Determines the index of a repeated node amongst all nodes with the same XPath selector
 	 *
-	 * @param  {Element} element
-	 * @return {number} determined index.
+	 * @param {Element} element - Target node
+	 * @return {number} Determined index
 	 */
 	FormModel.prototype.determineIndex = function( element ) {
-	    const that = this;
-
 	    if ( element ) {
 	        const nodeName = element.nodeName;
-	        const path = this.getXPath( element, 'instance' );
+	        const path = getXPath( element, 'instance' );
 	        const family = Array.prototype.slice.call( this.xml.querySelectorAll( nodeName.replace( /\./g, '\\.' ) ) )
-	            .filter( node => path === that.getXPath( node, 'instance' ) );
+	            .filter( node => path === getXPath( node, 'instance' ) );
 	        return family.length === 1 ? null : family.indexOf( element );
 	    } else {
 	        console.error( 'no node, or multiple nodes, provided to determineIndex function' );
@@ -22009,7 +22598,7 @@
 
 	    // in reverse document order to properly deal with nested repeat templates
 	    this.getTemplateNodes().reverse().forEach( templateEl => {
-	        const xPath = that.getXPath( templateEl, 'instance' );
+	        const xPath = getXPath( templateEl, 'instance' );
 	        that.addTemplate( xPath, templateEl );
 	        /*
 	         * Nested repeats that have a template attribute are correctly add to that.templates.
@@ -22020,6 +22609,9 @@
 	    } );
 	};
 
+	/**
+	 * @param {Array<string>} repeatPaths
+	 */
 	FormModel.prototype.extractFakeTemplates = function( repeatPaths ) {
 	    const that = this;
 	    let repeat;
@@ -22034,18 +22626,26 @@
 	    } );
 	};
 
+	/**
+	 * @param {string} repeatPath
+	 */
 	FormModel.prototype.addRepeatComments = function( repeatPath ) {
 	    const comment = this.getRepeatCommentText( repeatPath );
-	    const that = this;
+
 	    // Find all repeat series.
 	    this.evaluate( repeatPath, 'nodes', null, null, true ).forEach( repeat => {
-	        if ( !that.hasPreviousSiblingElementSameName( repeat ) && !that.hasPreviousCommentSiblingWithContent( repeat, comment ) ) {
+	        if ( !hasPreviousSiblingElementSameName( repeat ) && !hasPreviousCommentSiblingWithContent( repeat, comment ) ) {
 	            // Add a comment to the primary instance that serves as an insertion point for each repeat series,
 	            repeat.before( document.createComment( comment ) );
 	        }
 	    } );
 	};
 
+	/**
+	 * @param {string} repeatPath
+	 * @param {Element} repeat - Target node
+	 * @param {boolean} empty
+	 */
 	FormModel.prototype.addTemplate = function( repeatPath, repeat, empty ) {
 	    this.addRepeatComments( repeatPath );
 
@@ -22065,6 +22665,9 @@
 	    }
 	};
 
+	/**
+	 * @return {Array<Element>} template nodes list
+	 */
 	FormModel.prototype.getTemplateNodes = function() {
 	    const jrPrefix = this.getNamespacePrefix( JAVAROSA_XFORMS_NS );
 	    // For now we support both the official namespaced template and the hacked non-namespaced template attributes
@@ -22077,7 +22680,7 @@
 	/**
 	 * Obtains a cleaned up string of the data instance
 	 *
-	 * @return {string}           XML string
+	 * @return {string} XML string
 	 */
 	FormModel.prototype.getStr = function() {
 	    let dataStr = ( new XMLSerializer() ).serializeToString( this.xml.querySelector( 'instance > *' ) || this.xml.documentElement, 'text/xml' );
@@ -22092,6 +22695,10 @@
 	    return dataStr;
 	};
 
+	/**
+	 * @param {string} xmlStr - XML string
+	 * @return {string} XML string without duplicates
+	 */
 	FormModel.prototype.removeDuplicateEnketoNsDeclarations = function( xmlStr ) {
 	    let i = 0;
 	    const declarationExp = new RegExp( `( xmlns:${this.getNamespacePrefix( ENKETO_XFORMS_NS )}="${ENKETO_XFORMS_NS}")`, 'g' );
@@ -22124,9 +22731,9 @@
 	 *
 	 * Already it should leave proper XPaths untouched.
 	 *
-	 * @param  {string} expr        the XPath expression
-	 * @param  {string} selector    of the (context) node on which expression is evaluated
-	 * @param  {number} index       of the instance node with that selector
+	 * @param {string} expr - The XPath expression
+	 * @param {string} selector - Selector of the (context) node on which expression is evaluated
+	 * @param {number} index - Index of the instance node with that selector
 	 */
 	FormModel.prototype.makeBugCompliant = function( expr, selector, index ) {
 	    let target = this.node( selector, index ).getElement();
@@ -22137,7 +22744,6 @@
 	    }
 
 	    const parents = [ target ];
-	    const that = this;
 
 	    while ( target && target.parentElement && target.nodeName.toLowerCase() !== 'instance' ) {
 	        target = target.parentElement;
@@ -22152,7 +22758,7 @@
 
 	        // if the node is a repeat node that has been cloned at least once (i.e. if it has siblings with the same nodeName)
 	        if ( siblingsAndSelf.length > 1 ) {
-	            const parentSelector = that.getXPath( element, 'instance' );
+	            const parentSelector = getXPath( element, 'instance' );
 	            const parentIndex = siblingsAndSelf.indexOf( element );
 	            // Add position to segments that do not have an XPath predicate.
 	            expr = expr.replace( new RegExp( `${parentSelector}/`, 'g' ), `${parentSelector}[${parentIndex + 1}]/` );
@@ -22162,6 +22768,9 @@
 	    return expr;
 	};
 
+	/**
+	 * Set namespaces for all nodes
+	 */
 	FormModel.prototype.setNamespaces = function() {
 	    /**
 	     * Passing through all nodes would be very slow with an XForms model that contains lots of nodes such as large secondary instances.
@@ -22200,16 +22809,22 @@
 	            }
 	        } );
 	    } );
-
 	};
 
+	/**
+	 * @param {string} namespace - Target namespace
+	 * @return {string|undefined} Namespace prefix
+	 */
 	FormModel.prototype.getNamespacePrefix = function( namespace ) {
 	    const found = Object.entries( this.namespaces ).find( arr => arr[ 1 ] === namespace );
 	    return found ? found[ 0 ] : undefined;
-
-
 	};
 
+	/**
+	 * Returns a namespace resolver with single `lookupNamespaceURI` method
+	 *
+	 * @return {{lookupNamespaceURI: Function}}
+	 */
 	FormModel.prototype.getNsResolver = function() {
 	    const namespaces = ( typeof this.namespaces === 'undefined' ) ? {} : this.namespaces;
 
@@ -22224,8 +22839,8 @@
 	/**
 	 * Shift root to first instance for all absolute paths not starting with /model
 	 *
-	 * @param  {string} expr original expression
-	 * @return {string}      new expression
+	 * @param {string} expr - Original expression
+	 * @return {string} New expression
 	 */
 	FormModel.prototype.shiftRoot = function( expr ) {
 	    const LITERALS = /"([^"]*)(")|'([^']*)(')/g;
@@ -22254,8 +22869,8 @@
 	 * Doing this here instead of adding an instance() function to the XPath evaluator, means we can keep using
 	 * the much faster native evaluator in most cases!
 	 *
-	 * @param  {string} expr original expression
-	 * @return {string}      new expression
+	 * @param {string} expr - Original expression
+	 * @return {string} New expression
 	 */
 	FormModel.prototype.replaceInstanceFn = function( expr ) {
 	    let prefix;
@@ -22281,9 +22896,9 @@
 	 *
 	 * Root will be shifted, and repeat positions injected, **later on**, so it's not included here.
 	 *
-	 * @param  {string} expr            original expression
-	 * @param  {string} contextSelector context selector
-	 * @return {string}                 new expression
+	 * @param {string} expr - Original expression
+	 * @param {string} contextSelector - Context selector
+	 * @return {string} New expression
 	 */
 	FormModel.prototype.replaceCurrentFn = ( expr, contextSelector ) => {
 	    // relative paths
@@ -22300,10 +22915,10 @@
 	 * Replaces indexed-repeat(node, path, position, path, position, etc) substrings by converting them
 	 * to their native XPath equivalents using [position() = x] predicates
 	 *
-	 * @param  {string} expr - the XPath expression.
-	 * @param  {string} selector
-	 * @param  {string} index
-	 * @return {string} converted XPath expression
+	 * @param {string} expr - The XPath expression
+	 * @param {string} selector
+	 * @param {number} index
+	 * @return {string} Converted XPath expression
 	 */
 	FormModel.prototype.replaceIndexedRepeatFn = function( expr, selector, index ) {
 	    const that = this;
@@ -22336,6 +22951,10 @@
 	    return expr;
 	};
 
+	/**
+	 * @param {string} expr - The XPath expression
+	 * @return {string} Converted XPath expression
+	 */
 	FormModel.prototype.replaceVersionFn = function( expr ) {
 	    const that = this;
 	    let version;
@@ -22350,6 +22969,12 @@
 	    return expr;
 	};
 
+	/**
+	 * @param {string} expr - The XPath expression
+	 * @param {string} selector
+	 * @param {number} index
+	 * @return {string} Converted XPath expression
+	 */
 	FormModel.prototype.replacePullDataFn = function( expr, selector, index ) {
 	    let pullDataResult;
 	    const that = this;
@@ -22365,6 +22990,12 @@
 	    return expr;
 	};
 
+	/**
+	 * @param {string} expr - The XPath expression
+	 * @param {string} selector
+	 * @param {number} index
+	 * @return {string} Converted XPath expression
+	 */
 	FormModel.prototype.convertPullDataFn = function( expr, selector, index ) {
 	    const that = this;
 	    const pullDatas = parseFunctionFromExpression( expr, 'pulldata' );
@@ -22411,13 +23042,13 @@
 	 * muliple nodes can be accessed by returned node.snapshotItem(i)(.textContent)
 	 * a single node can be accessed by returned node(.textContent)
 	 *
-	 * @param  { string }     expr        the expression to evaluate
-	 * @param  { string= }    resTypeStr  boolean, string, number, node, nodes (best to always supply this)
-	 * @param  { string= }    selector    query selector which will be use to provide the context to the evaluator
-	 * @param  { number= }    index       0-based index of selector in document
-	 * @param  { boolean= }   tryNative   whether an attempt to try the Native Evaluator is safe (ie. whether it is
-	 *                                    certain that there are no date comparisons)
-	 * @return { ?(number|string|boolean|Array<element>) } the result
+	 * @param {string} expr - The expression to evaluate
+	 * @param {string} [resTypeStr] - "boolean", "string", "number", "node", "nodes" (best to always supply this)
+	 * @param {string} [selector] - Query selector which will be use to provide the context to the evaluator
+	 * @param {number} [index] - 0-based index of selector in document
+	 * @param {boolean} [tryNative] - Whether an attempt to try the Native Evaluator is safe (ie. whether it is
+	 *                                certain that there are no date comparisons)
+	 * @return {number|string|boolean|Array<element>} The result
 	 */
 	FormModel.prototype.evaluate = function( expr, resTypeStr, selector, index, tryNative ) {
 	    let j, context, doc, resTypeNum, resultTypes, result, collection, response, repeats, cacheKey, original, cacheable;
@@ -22461,7 +23092,7 @@
 	        expr = expr.trim();
 	        expr = this.replaceInstanceFn( expr );
 	        expr = this.replaceVersionFn( expr );
-	        expr = this.replaceCurrentFn( expr, this.getXPath( context, 'instance', true ) );
+	        expr = this.replaceCurrentFn( expr, getXPath( context, 'instance', true ) );
 	        // shiftRoot should come after replaceCurrentFn
 	        expr = this.shiftRoot( expr );
 	        // path corrections for repeated nodes: http://opendatakit.github.io/odk-xform-spec/#a-big-deviation-with-xforms
@@ -22552,13 +23183,19 @@
 	};
 
 	/**
+	 * @typedef NodesetFilter
+	 * @property {boolean} onlyLeaf
+	 * @property {boolean} noEmpty
+	 */
+
+	/**
 	 * Class dealing with nodes and nodesets of the XML instance
 	 *
 	 * @class
-	 * @param {string=} selector - simpleXPath or jQuery selectedor
-	 * @param {number=} index - the index of the target node with that selector
-	 * @param {?{onlyLeaf: boolean, noEmpty: boolean}=} filter - filter object for the result nodeset
-	 * @param { FormModel } model - instance of FormModel
+	 * @param {string} [selector] - SimpleXPath or jQuery selectedor
+	 * @param {number} [index] - The index of the target node with that selector
+	 * @param {NodesetFilter} [filter] - Filter object for the result nodeset
+	 * @param {FormModel} model - Instance of FormModel
 	 */
 	Nodeset = function( selector, index, filter, model ) {
 	    const defaultSelector = model.hasInstance ? '/model/instance[1]//*' : '//*';
@@ -22573,10 +23210,16 @@
 	    this.index = index;
 	};
 
+	/**
+	 * @return {Element} Single node
+	 */
 	Nodeset.prototype.getElement = function() {
 	    return this.getElements()[ 0 ];
 	};
 
+	/**
+	 * @return {Array<Element>} List of nodes
+	 */
 	Nodeset.prototype.getElements = function() {
 	    let nodes;
 	    let /** @type {string} */ val;
@@ -22611,7 +23254,7 @@
 	/**
 	 * Sets the index of the Nodeset instance
 	 *
-	 * @param {number=} index - The 0-based index
+	 * @param {number} [index] - The 0-based index
 	 */
 	Nodeset.prototype.setIndex = function( index ) {
 	    this.index = index;
@@ -22620,11 +23263,11 @@
 	/**
 	 * Sets data node values.
 	 *
-	 * @param {(string|Array.<string>)=} newVals - The new value of the node.
-	 * @param {string=} xmlDataType - XML data type of the node
+	 * @param {(string|Array<string>)} [newVals] - The new value of the node.
+	 * @param {string} [xmlDataType] - XML data type of the node
 	 *
-	 * @return {?*} wrapping {?boolean}; null is returned when the node is not found or multiple nodes were selected,
-	 *                            otherwise an object with update information is returned.
+	 * @return {null|UpdatedDataNodes} `null` is returned when the node is not found or multiple nodes were selected,
+	 *                       otherwise an object with update information is returned.
 	 */
 	Nodeset.prototype.setVal = function( newVals, xmlDataType ) {
 	    let /**@type {string}*/ newVal;
@@ -22680,14 +23323,18 @@
 	/**
 	 * Obtains the data value of the first node.
 	 *
-	 * @return {string} [description]
+	 * @return {string|undefined} data value of first node or `undefined` if zero nodes
 	 */
 	Nodeset.prototype.getVal = function() {
 	    const nodes = this.getElements();
 	    return nodes.length ? nodes[ 0 ].textContent : undefined;
 	};
 
-	// If repeats have not been cloned yet, they are not considered a repeat by this function
+	/**
+	 * Note: If repeats have not been cloned yet, they are not considered a repeat by this function
+	 *
+	 * @return {{repeatPath: string, repeatIndex: number}|{}} Empty object for nothing found
+	 */
 	Nodeset.prototype.getClosestRepeat = function() {
 	    let el = this.getElement();
 	    let nodeName = el.nodeName;
@@ -22698,7 +23345,7 @@
 	    }
 
 	    return ( !nodeName || nodeName === 'instance' ) ? {} : {
-	        repeatPath: this.model.getXPath( el, 'instance' ),
+	        repeatPath: getXPath( el, 'instance' ),
 	        repeatIndex: this.model.determineIndex( el )
 	    };
 	};
@@ -22711,7 +23358,7 @@
 
 	    if ( dataNode ) {
 	        const nodeName = dataNode.nodeName;
-	        const repeatPath = this.model.getXPath( dataNode, 'instance' );
+	        const repeatPath = getXPath( dataNode, 'instance' );
 	        let repeatIndex = this.model.determineIndex( dataNode );
 	        const removalEventData = this.model.getRemovalEventData( dataNode );
 
@@ -22754,11 +23401,11 @@
 	};
 
 	/**
-	 * Convert a value to a specified data type( though always stringified )
+	 * Convert a value to a specified data type (though always stringified)
 	 *
-	 * @param  {?string=} x - value to convert
-	 * @param  {?string=} xmlDataType - XML data type
-	 * @return {string} - string representation of converted value
+	 * @param {string} [x] - Value to convert
+	 * @param {string} [xmlDataType] - XML data type
+	 * @return {string} - String representation of converted value
 	 */
 	Nodeset.prototype.convert = ( x, xmlDataType ) => {
 	    if ( x.toString() === '' ) {
@@ -22772,6 +23419,12 @@
 	    return x;
 	};
 
+	/**
+	 * @param {string} constraintExpr - The XPath expression
+	 * @param {string} requiredExpr - The XPath expression
+	 * @param {string} xmlDataType - XML data type
+	 * @return {Promise}
+	 */
 	Nodeset.prototype.validate = function( constraintExpr, requiredExpr, xmlDataType ) {
 	    const that = this;
 	    const result = {};
@@ -22791,8 +23444,8 @@
 	/**
 	 * Validate a value with an XPath Expression and /or xml data type
 	 *
-	 * @param  {?string=} expr - XPath expression
-	 * @param  {?string=} xmlDataType - XML datatype
+	 * @param {string} [expr] - The XPath expression
+	 * @param {string} [xmlDataType] - XML data type
 	 * @return {Promise} wrapping a boolean indicating if the value is valid or not; error also indicates invalid field, or problem validating it
 	 */
 	Nodeset.prototype.validateConstraintAndType = function( expr, xmlDataType ) {
@@ -22825,10 +23478,20 @@
 	};
 
 	// TODO: rename to isTrue?
+	/**
+	 * @param {string} [expr] - The XPath expression
+	 * @return {boolean} Whether node is required
+	 */
 	Nodeset.prototype.isRequired = function( expr ) {
 	    return !expr || expr.trim() === 'false()' ? false : expr.trim() === 'true()' || this.model.evaluate( expr, 'boolean', this.originalSelector, this.index );
 	};
 
+	/**
+	 * Validates if requiredness is fulfilled.
+	 *
+	 * @param {string} [expr] - The XPath expression
+	 * @return {Promise<boolean>}
+	 */
 	Nodeset.prototype.validateRequired = function( expr ) {
 	    const that = this;
 
@@ -22843,18 +23506,26 @@
 	            !that.isRequired( expr ) );
 	};
 
-	// Placeholder function meant to be overwritten
+	/**
+	 * Placeholder function meant to be overwritten
+	 */
 	FormModel.prototype.getUpdateEventData = () => /*node, type*/ {};
 
-	// Placeholder function meant to be overwritten
+	/**
+	 * Placeholder function meant to be overwritten
+	 */
 	FormModel.prototype.getRemovalEventData = () => /* node */ {};
 
-	// Expose types to facilitate extending with custom types
+	/**
+	 * Exposed {@link module:types|types} to facilitate extending with custom types
+	 *
+	 * @type object
+	 */
 	FormModel.prototype.types = types;
 
-	/** 
+	/**
 	 * Placeholder module for translator. It is meant to be overwritten by a translator used in your app.
-	 * 
+	 *
 	 * @module fake-translator
 	 */
 
@@ -22864,22 +23535,6 @@
 	    'constraint': {
 	        'invalid': 'Value not allowed',
 	        'required': 'This field is required'
-	    },
-	    'esri-geopicker': {
-	        'coordinate-mgrs': 'MGRS coordinate',
-	        'decimal': 'decimal',
-	        'degrees': 'degrees, minutes, seconds',
-	        'latitude-degrees': 'latitude (d° m’ s” N)',
-	        'longitude-degrees': 'longitude (d° m’ s” W)',
-	        'mgrs': 'MGRS',
-	        'notavailable': 'Not Available',
-	        'utm': 'UTM',
-	        'utm-easting': 'easting (m)',
-	        'utm-hemisphere': 'hemisphere',
-	        'utm-north': 'North',
-	        'utm-northing': 'northing (m)',
-	        'utm-south': 'South',
-	        'utm-zone': 'zone'
 	    },
 	    'filepicker': {
 	        'placeholder': 'Click here to upload file. (< __maxSize__)',
@@ -22928,6 +23583,9 @@
 	    'alert': {
 	        'gotonotfound': {
 	            'msg': 'Failed to find question \'__path__\' in form. Is it a valid path?'
+	        },
+	        'valuehasspaces': {
+	            'multiple': 'Select multiple question has an illegal value "__value__" that contains a space.'
 	        }
 	    },
 	    'confirm': {
@@ -22943,14 +23601,16 @@
 	 *
 	 * t('constraint.invalid');
 	 * t('constraint.required');
+	 * t('hint.guidance.details');
 	 */
 
 	/**
 	 * Meant to be replaced by a real translator in the app that consumes enketo-core
 	 *
-	 * @param  {string} key - translation key
-	 * @param  {*} options - translation options
-	 * @return {string} translation output
+	 * @static
+	 * @param  {string} key - Translation key
+	 * @param  {object} [options] - Translation options object
+	 * @return {string} Translation output
 	 */
 	function t( key, options ) {
 	    let str = '';
@@ -22972,14 +23632,22 @@
 
 	/**
 	 * Form control (input, select, textarea) helper functions.
-	 * 
+	 *
 	 * @module input
 	 */
 
 	var inputHelper = {
+	    /**
+	     * @param {Element} control
+	     * @return {Element} Wrap node
+	     */
 	    getWrapNode( control ) {
 	        return control.closest( '.question, .calculation' );
 	    },
+	    /**
+	     * @param {Array<Element>} controls
+	     * @return {Array<Element>} Wrap nodes
+	     */
 	    getWrapNodes( controls ) {
 	        const result = [];
 	        controls.forEach( control => {
@@ -22990,6 +23658,10 @@
 	        } );
 	        return result;
 	    },
+	    /**
+	     * @param {Element} control
+	     * @return {object} control element properties
+	     */
 	    getProps( control ) {
 	        return {
 	            path: this.getName( control ),
@@ -23006,6 +23678,10 @@
 	            multiple: this.isMultiple( control )
 	        };
 	    },
+	    /**
+	     * @param {Element} control
+	     * @return {string} input type
+	     */
 	    getInputType( control ) {
 	        const nodeName = control.nodeName.toLowerCase();
 	        if ( nodeName === 'input' ) {
@@ -23027,27 +23703,55 @@
 	            return console.error( 'unexpected input node type provided' );
 	        }
 	    },
+	    /**
+	     * @param {Element} control
+	     * @return {string} element constraint
+	     */
 	    getConstraint( control ) {
 	        return control.dataset.constraint;
 	    },
+	    /**
+	     * @param {Element} control
+	     * @return {string|undefined} element required
+	     */
 	    getRequired( control ) {
 	        // only return value if input is not a table heading input
 	        if ( !closestAncestorUntil( control, '.or-appearance-label', '.or' ) ) {
 	            return control.dataset.required;
 	        }
 	    },
+	    /**
+	     * @param {Element} control
+	     * @return {string} element relevant
+	     */
 	    getRelevant( control ) {
 	        return control.dataset.relevant;
 	    },
+	    /**
+	     * @param {Element} control
+	     * @return {boolean} whether element is read only
+	     */
 	    getReadonly( control ) {
 	        return control.matches( '[readonly]' );
 	    },
+	    /**
+	     * @param {Element} control
+	     * @return {string} element calculate
+	     */
 	    getCalculation( control ) {
 	        return control.dataset.calculate;
 	    },
+	    /**
+	     * @param {Element} control
+	     * @return {string} element XML type
+	     */
 	    getXmlType( control ) {
 	        return control.dataset.typeXml;
 	    },
+	    /**
+	     * @param {Element} control
+	     * @return {string} element name
+	     */
 	    getName( control ) {
 	        const name = control.dataset.name || control.getAttribute( 'name' );
 	        if ( !name ) {
@@ -23055,15 +23759,31 @@
 	        }
 	        return name;
 	    },
+	    /**
+	     * @param {Element} control
+	     * @return {string}
+	     */
 	    getIndex( control ) {
 	        return this.form.repeats.getIndex( control.closest( '.or-repeat' ) );
 	    },
+	    /**
+	     * @param {Element} control
+	     * @return {boolean} whether element is multiple
+	     */
 	    isMultiple( control ) {
 	        return this.getInputType( control ) === 'checkbox' || control.multiple;
 	    },
+	    /**
+	     * @param {Element} control
+	     * @return {boolean} whether element is enabled
+	     */
 	    isEnabled( control ) {
 	        return !( control.disabled || closestAncestorUntil( control, '.disabled', '.or' ) );
 	    },
+	    /**
+	     * @param {Element} control
+	     * @return {string} element value
+	     */
 	    getVal( control ) {
 	        let value = '';
 	        const inputType = this.getInputType( control );
@@ -23099,6 +23819,11 @@
 
 	        return value || '';
 	    },
+	    /**
+	     * @param {string} name
+	     * @param {number} index
+	     * @return {Element} found element
+	     */
 	    find( name, index ) {
 	        let attr = 'name';
 	        if ( this.form.view.html.querySelector( `input[type="radio"][data-name="${name}"]:not(.ignore)` ) ) {
@@ -23108,6 +23833,12 @@
 
 	        return question ? question.querySelector( `[${attr}="${name}"]:not(.ignore)` ) : null;
 	    },
+	    /**
+	     * @param {Element} control
+	     * @param {*} value
+	     * @param {Event} [event]
+	     * @return {Element}
+	     */
 	    setVal( control, value, event = events.InputUpdate() ) {
 	        let inputs;
 	        const type = this.getInputType( control );
@@ -23216,6 +23947,10 @@
 
 	        return inputs[ 0 ];
 	    },
+	    /**
+	     * @param {Element} control
+	     * @return {Promise<undefined|ValidateInputResolution>}
+	     */
 	    validate( control ) {
 	        return this.form.validateInput( control );
 	    }
@@ -23223,12 +23958,19 @@
 
 	/**
 	 * This placeholder module is meant to be overwritten with one that uses the app's own dialogs.
-	 * 
+	 *
 	 * @module dialog
 	 */
 
 	/**
-	 * @param {string | {message: string, heading: string}} content - Dialog content
+	 * @typedef DialogContentObj
+	 * @property {string} message
+	 * @property {string} heading
+	 */
+
+	/**
+	 * @static
+	 * @param {string | DialogContentObj} content - Dialog content
 	 */
 	function alert( content ) {
 	    window.alert( content );
@@ -23236,13 +23978,19 @@
 	}
 
 	/**
-	 * @param {string | {message: string, heading: string}} content - Dialog content
+	 * @static
+	 * @param {string | DialogContentObj} content - Dialog content
 	 */
 	function confirm( content ) {
 	    const msg = content.message ? content.message : content;
 	    return Promise.resolve( window.confirm( msg ) );
 	}
 
+	/**
+	 * @static
+	 * @param {string | DialogContentObj} content - Dialog content
+	 * @param {string} def - Default input value
+	 */
 	function prompt( content, def ) {
 	    return Promise.resolve( window.prompt( content, def ) );
 	}
@@ -23262,7 +24010,7 @@
 	 *
 	 * Note that with nested repeats you may have many more series of repeats than templates, because a nested repeat
 	 * may have multiple series.
-	 * 
+	 *
 	 * @module repeat
 	 */
 	const disableFirstRepeatRemoval = config.repeatOrdinals === true;
@@ -23507,7 +24255,7 @@
 	     * Checks whether repeat count value has been updated and updates repeat instances
 	     * accordingly.
 	     *
-	     * @param {Object} updated
+	     * @param {UpdatedDataNodes} updated - The object containing info on updated data nodes.
 	     */
 	    countUpdate( updated ) {
 	        let $repeatInfos;
@@ -23679,14 +24427,28 @@
 
 	/**
 	 * Pages module.
-	 * 
+	 *
 	 * @module pages
 	 */
 
 	var pageModule = {
+	    /**
+	     * @type boolean
+	     * @default
+	     */
 	    active: false,
+	    /**
+	     * @type Array|jQuery
+	     * @default
+	     */
 	    $current: [],
+	    /**
+	     * @type jQuery
+	     */
 	    $activePages: jquery(),
+	    /**
+	     * @type function
+	     */
 	    init() {
 	        if ( !this.form ) {
 	            throw new Error( 'Repeats module not correctly instantiated with form property.' );
@@ -23726,10 +24488,14 @@
 	            }*/
 	        }
 	    },
-	    // flips to the page provided as jQueried parameter or the page containing
-	    // the jQueried element provided as parameter
-	    // alternatively, (e.g. if a top level repeat without field-list appearance is provided as parameter)
-	    // it flips to the page contained with the jQueried parameter;
+	    /**
+	     * flips to the page provided as jQueried parameter or the page containing
+	     * the jQueried element provided as parameter
+	     * alternatively, (e.g. if a top level repeat without field-list appearance is provided as parameter)
+	     * it flips to the page contained with the jQueried parameter;
+	     *
+	     * @param {jQuery} $e
+	     */
 	    flipToPageContaining( $e ) {
 	        let $closest;
 
@@ -23742,6 +24508,9 @@
 	        }
 	        this.$toc.parent().find( '.pages-toc__overlay' ).click();
 	    },
+	    /**
+	     * sets button handlers
+	     */
 	    _setButtonHandlers() {
 	        const that = this;
 	        // Make sure eventhandlers are not duplicated after resetting form.
@@ -23770,6 +24539,9 @@
 	            return false;
 	        } );
 	    },
+	    /**
+	     * sets swipe handlers
+	     */
 	    _setSwipeHandlers() {
 	        const that = this;
 	        const $main = this.form.view.$.closest( '.main' );
@@ -23789,10 +24561,10 @@
 	                if ( phase === 'start' ) {
 	                    /*
 	                     * Triggering blur will fire a change event on the currently focused form control
-	                     * This will trigger validation and is required to block page navigation on swipe 
+	                     * This will trigger validation and is required to block page navigation on swipe
 	                     * with form.pageNavigationBlocked
 	                     * The only potential problem with this approach is that the threshold (250ms)
-	                     * may theoretically not be sufficient to ensure validation is completed to 
+	                     * may theoretically not be sufficient to ensure validation is completed to
 	                     * set form.pageNavigationBlocked to true. The edge case will be very slow devices
 	                     * and/or amazingly complex constraint expressions.
 	                     */
@@ -23801,6 +24573,9 @@
 	            }
 	        } );
 	    },
+	    /**
+	     * sets toc handlers
+	     */
 	    _setTocHandlers() {
 	        const that = this;
 	        this.$toc
@@ -23815,6 +24590,9 @@
 	                that.$toc.parent().find( '#toc-toggle' ).prop( 'checked', false );
 	            } );
 	    },
+	    /**
+	     * sets repeat handlers
+	     */
 	    _setRepeatHandlers() {
 	        // TODO: can be optimized by smartly updating the active pages
 	        this.form.view.html.addEventListener( events.AddRepeat().type, event => {
@@ -23841,6 +24619,9 @@
 	            }
 	        } );
 	    },
+	    /**
+	     * sets branch handlers
+	     */
 	    _setBranchHandlers() {
 	        const that = this;
 	        // TODO: can be optimized by smartly updating the active pages
@@ -23855,15 +24636,24 @@
 	                that._toggleButtons();
 	            } );
 	    },
+	    /**
+	     * sets language change handlers
+	     */
 	    _setLangChangeHandlers() {
 	        this.form.view.html
 	            .addEventListener( events.ChangeLanguage().type, () => {
 	                this._updateToc();
 	            } );
 	    },
+	    /**
+	     * @return {jQuery} current page
+	     */
 	    _getCurrent() {
 	        return this.$current;
 	    },
+	    /**
+	     * @param {jQuery} $all
+	     */
 	    _updateAllActive( $all ) {
 	        $all = $all || this.form.view.$.find( '[role="page"]' );
 	        this.$activePages = $all.filter( function() {
@@ -23871,18 +24661,29 @@
 	            return $this.closest( '.disabled' ).length === 0 &&
 	                ( $this.is( '.question' ) || $this.find( '.question:not(.disabled)' ).length > 0 ||
 	                    // or-repeat-info is only considered a page by itself if it has no sibling repeats
-	                    // When there are siblings repeats, we use CSS trickery to show the + button underneath the last 
+	                    // When there are siblings repeats, we use CSS trickery to show the + button underneath the last
 	                    // repeat.
 	                    ( $this.is( '.or-repeat-info' ) && $this.siblings( '.or-repeat' ).length === 0 ) );
 	        } );
 	        this._updateToc();
 	    },
+	    /**
+	     * @param {number} currentIndex
+	     * @return {jQuery} Previous page
+	     */
 	    _getPrev( currentIndex ) {
 	        return this.$activePages[ currentIndex - 1 ];
 	    },
+	    /**
+	     * @param {number} currentIndex
+	     * @return {jQuery} Next page
+	     */
 	    _getNext( currentIndex ) {
 	        return this.$activePages[ currentIndex + 1 ];
 	    },
+	    /**
+	     * @return {number} Current page index
+	     */
 	    _getCurrentIndex() {
 	        return this.$activePages.index( this.$current );
 	    },
@@ -23920,6 +24721,9 @@
 	                return true;
 	            } );
 	    },
+	    /**
+	     * Switches to previous page
+	     */
 	    _prev() {
 	        const currentIndex = this._getCurrentIndex();
 	        const prev = this._getPrev( currentIndex );
@@ -23928,12 +24732,21 @@
 	            this._flipTo( prev, currentIndex - 1 );
 	        }
 	    },
+	    /**
+	     * @param {Element} pageEl
+	     */
 	    _setToCurrent( pageEl ) {
 	        const $n = jquery( pageEl );
 	        $n.addClass( 'current hidden' );
 	        this.$current = $n.removeClass( 'hidden' )
 	            .parentsUntil( '.or', '.or-group, .or-group-data, .or-repeat' ).addClass( 'contains-current' ).end();
 	    },
+	    /**
+	     * Switches to a page
+	     *
+	     * @param {Element} pageEl
+	     * @param {number} newIndex
+	     */
 	    _flipTo( pageEl, newIndex ) {
 	        // if there is a current page
 	        if ( this.$current.length > 0 && this.$current.closest( 'html' ).length === 1 ) {
@@ -23952,13 +24765,23 @@
 	            pageEl.dispatchEvent( events.PageFlip() );
 	        }
 	    },
+	    /**
+	     * Switches to first page
+	     */
 	    _flipToFirst() {
 	        this._flipTo( this.$activePages[ 0 ] );
 	    },
+	    /**
+	     * Switches to last page
+	     */
 	    _flipToLast() {
 	        this._flipTo( this.$activePages.last()[ 0 ] );
 	    },
-
+	    /**
+	     * Focuses on first question and scrolls it into view
+	     *
+	     * @param {Element} pageEl
+	     */
 	    _focusOnFirstQuestion( pageEl ) {
 	        //triggering fake focus in case element cannot be focused (if hidden by widget)
 	        jquery( pageEl )
@@ -23974,6 +24797,11 @@
 
 	        pageEl.scrollIntoView();
 	    },
+	    /**
+	     * Updates status of navigation buttons
+	     *
+	     * @param {number} index
+	     */
 	    _toggleButtons( index ) {
 	        const i = index || this._getCurrentIndex(),
 	            next = this._getNext( i ),
@@ -23982,6 +24810,9 @@
 	        this.$btnPrev.add( this.$btnFirst ).toggleClass( 'disabled', !prev );
 	        this.$formFooter.toggleClass( 'end', !next );
 	    },
+	    /**
+	     * Updates Table of Contents
+	     */
 	    _updateToc() {
 	        if ( this.$toc.length ) {
 	            // regenerate complete ToC from first enabled question/group label of each page
@@ -24005,6 +24836,12 @@
 	            this.$toc.closest( '.pages-toc' ).removeClass( 'hide' );
 	        }
 	    },
+	    /**
+	     * Builds Table of Contents
+	     *
+	     * @param {Array<object>} tocItems
+	     * @return {Array<Element>}
+	     */
 	    _getTocHtmlFragment( tocItems ) {
 	        const items = document.createDocumentFragment();
 	        tocItems.forEach( item => {
@@ -24023,11 +24860,13 @@
 	 * @module relevant
 	 *
 	 * @description Updates branches
-	 *
-	 * @param  {{nodes:Array<string>=, repeatPath: string=, repeatIndex: number=}=} updated The object containing info on updated data nodes
 	 */
 
 	var relevantModule = {
+	    /**
+	     * @param {UpdatedDataNodes} [updated] - The object containing info on updated data nodes.
+	     * @param {boolean} forceClearIrrelevant
+	     */
 	    update( updated, forceClearIrrelevant ) {
 	        let $nodes;
 
@@ -24039,6 +24878,10 @@
 
 	        this.updateNodes( $nodes, forceClearIrrelevant );
 	    },
+	    /**
+	     * @param {jQuery} $nodes
+	     * @param {boolean} forceClearIrrelevant
+	     */
 	    updateNodes( $nodes, forceClearIrrelevant ) {
 	        let p;
 	        let $branchNode;
@@ -24202,6 +25045,8 @@
 	     * Enables and reveals a branch node/group
 	     *
 	     * @param {jQuery} $branchNode - The jQuery object to reveal and enable
+	     * @param {string} path
+	     * @return {boolean}
 	     */
 	    enable( $branchNode, path ) {
 	        let change = false;
@@ -24228,7 +25073,10 @@
 	    /**
 	     * Disables and hides a branch node/group
 	     *
-	     * @param  {jQuery} $branchNode The jQuery object to hide and disable
+	     * @param {jQuery} $branchNode - The jQuery object to hide and disable
+	     * @param {string} path
+	     * @param {boolean} forceClearIrrelevant
+	     * @return {boolean}
 	     */
 	    disable( $branchNode, path, forceClearIrrelevant ) {
 	        const virgin = $branchNode.hasClass( 'pre-init' );
@@ -24253,8 +25101,8 @@
 	     * Clears values from branchnode.
 	     * This function is separated so it can be overridden in custom apps.
 	     *
-	     * @param  {jQuery} $branchNode
-	     * @param  {string} path
+	     * @param {jQuery} $branchNode
+	     * @param {string} path
 	     */
 	    clear( $branchNode, path ) {
 	        // A change event ensures the model is updated
@@ -24268,6 +25116,10 @@
 	            } );
 	        }
 	    },
+	    /**
+	     * @param {jQuery} $branchNode
+	     * @param {boolean} bool
+	     */
 	    setDisabledProperty( $branchNode, bool ) {
 	        const type = $branchNode.prop( 'nodeName' ).toLowerCase();
 
@@ -24304,13 +25156,13 @@
 
 	/**
 	 * Updates itemsets.
-	 * 
+	 *
 	 * @module itemset
 	 */
 
 	var itemsetModule = {
 	    /**
-	     * @param  {{nodes:Array<string>=, repeatPath: string=, repeatIndex: number=}=} updated The object containing info on updated data nodes
+	     * @param {UpdatedDataNodes} [updated] - The object containing info on updated data nodes.
 	     */
 	    update( updated = {} ) {
 	        const that = this;
@@ -24336,6 +25188,7 @@
 	        }
 
 	        const clonedRepeatsPresent = this.form.repeatsPresent && this.form.view.html.querySelector( '.or-repeat.clone' );
+	        const alerts = [];
 
 	        $nodes.each( function() {
 	            let $input;
@@ -24469,7 +25322,13 @@
 	                }
 	                // Obtain the value of the secondary instance item found.
 	                const value = that.getNodeFromItem( valueRef, item ).textContent;
-
+	                /**
+	                 * #510 Show warning if select_multiple value has spaces
+	                 */
+	                const multiple = ( inputAttributes[ 'data-type-xml' ] == 'select' ) && ( inputAttributes[ 'type' ] == 'checkbox' ) || ( $list[ 0 ] && $list[ 0 ].multiple );
+	                if ( multiple && ( value.indexOf( ' ' ) > -1 ) ) {
+	                    alerts[ alerts.length ] = t( 'alert.valuehasspaces.multiple', { value: value } );
+	                }
 	                if ( templateNodeName === 'label' ) {
 	                    optionsFragment.appendChild( that.createInput( inputAttributes, translations, value ) );
 	                } else if ( templateNodeName === 'option' ) {
@@ -24495,7 +25354,7 @@
 
 	            /**
 	             * Attempt to populate inputs with current value in model (except for ranking input)
-	             * Note that if the current value is not empty and the new itemset does not 
+	             * Note that if the current value is not empty and the new itemset does not
 	             * include (an) item(s) with this/se value(s), this will clear/update the model and
 	             * this will trigger a dataupdate event. This may call this update function again.
 	             */
@@ -24513,10 +25372,21 @@
 	            }
 
 	        } );
+	        if ( alerts.length > 0 ) {
+	            /**
+	             * We're assuming the enketo-core-consuming app has a dialog that supports some basic HTML rendering
+	             */
+	            dialog.alert( alerts.join( '<br>' ) );
+	        }
 	    },
 
 	    /**
 	     * Minimal XPath evaluation helper that queries from a single item context.
+	     *
+	     * @param {string} expr - The XPath expression
+	     * @param {string} context
+	     * @param {boolean} single
+	     * @return {Array<Element>} found nodes
 	     */
 	    getNodesFromItem( expr, context, single ) {
 	        if ( !expr || !context ) {
@@ -24536,11 +25406,21 @@
 	        return response;
 	    },
 
+	    /**
+	     * @param {string} expr - The XPath expression
+	     * @param {string} content
+	     * @return {Element|null} found nodes
+	     */
 	    getNodeFromItem( expr, content ) {
 	        const nodes = this.getNodesFromItem( expr, content, true );
 	        return nodes.length ? nodes[ 0 ] : null;
 	    },
 
+	    /**
+	     * @param {string} label
+	     * @param {string} value
+	     * @return {Element} created option
+	     */
 	    createOption( label, value ) {
 	        const option = document.createElement( 'option' );
 	        option.textContent = label;
@@ -24548,6 +25428,11 @@
 	        return option;
 	    },
 
+	    /**
+	     * @param {string} translation
+	     * @param {string} value
+	     * @return {Element} created element
+	     */
 	    createOptionTranslation( translation, value ) {
 	        const el = document.createElement( translation.type || 'span' );
 	        if ( translation.text ) {
@@ -24566,6 +25451,12 @@
 	        return el;
 	    },
 
+	    /**
+	     * @param {Array<object>} attributes
+	     * @param {Array<object>} translations
+	     * @param {string} value
+	     * @return {Element} label element (wrapper)
+	     */
 	    createInput( attributes, translations, value ) {
 	        const that = this;
 	        const label = document.createElement( 'label' );
@@ -24584,7 +25475,7 @@
 
 	/**
 	 * Progress module.
-	 * 
+	 *
 	 * @module progress
 	 */
 
@@ -24593,9 +25484,21 @@
 	 * currently focused input or the last changed input as the indicator for the current location.
 	 */
 	var progressModule = {
+	    /**
+	     * @type number
+	     */
 	    status: 0,
+	    /**
+	     * @type Element
+	     */
 	    lastChanged: null,
+	    /**
+	     * @type Array<Element>
+	     */
 	    all: null,
+	    /**
+	     * Updates total
+	     */
 	    updateTotal() {
 	        this.all = [ ...this.form.view.html.querySelectorAll( '.question:not(.disabled):not(.or-appearance-comment):not(.or-appearance-dn):not(.readonly)' ) ]
 	            .filter( question => !question.closest( '.disabled' ) );
@@ -24624,14 +25527,17 @@
 	        }
 	    },
 	    /**
-	     * @returns string
+	     * @return {string} status
 	     */
 	    get() {
 	        return this.status;
 	    }
 	};
 
-	// Since this class has no static selector getter, there will be no attempt to instantiate it.
+	/**
+	 * @class NoteWidget
+	 * @description Since this class has no static selector getter, there will be no attempt to instantiate it.
+	 */
 	class NoteWidget {}
 
 	const range = document.createRange();
@@ -24640,11 +25546,10 @@
 	 * A Widget class that can be extended to provide some of the basic widget functionality out of the box.
 	 */
 	class Widget {
-	    /*
-	     * @constructor
-	     * @param {Element} element The DOM element the widget is applied on
-	     * @param {string} name Name of the widget
-	     * @param {(boolean|{touch: boolean})} options Options passed to the widget during instantiation
+	    /**
+	     * @class
+	     * @param {Element} element - The DOM element the widget is applied on
+	     * @param {(boolean|{touch: boolean})} [options] - Options passed to the widget during instantiation
 	     */
 	    constructor( element, options ) {
 	        this.element = element;
@@ -24655,14 +25560,21 @@
 	        return this._init() || this;
 	    }
 
-	    // Meant to be overridden, but automatically called.
+	    /**
+	     * Meant to be overridden, but automatically called.
+	     *
+	     */
 	    _init() {
 	        // load default value into the widget
 	        this.value = this.originalInputValue;
 	        // if widget initializes asynchronously return a promise here. Otherwise, return nothing/undefined/null.
 	    }
 
-	    // Not meant to be overridden, but could be. Recommend to extend `get props()` instead.
+	    /**
+	     * Not meant to be overridden, but could be. Recommend to extend `get props()` instead.
+	     *
+	     * @return {object} props object
+	     */
 	    _getProps() {
 	        const that = this;
 	        return {
@@ -24700,7 +25612,7 @@
 	     * Returns widget properties. May need to be extended.
 	     *
 	     * @readonly
-	     * @memberof Widget
+	     * @type object
 	     */
 	    get props() {
 	        return this._props;
@@ -24710,13 +25622,13 @@
 	     * Returns a HTML document fragment for a reset button.
 	     *
 	     * @readonly
-	     * @memberof Widget
+	     * @type Element
 	     */
 	    get resetButtonHtml() {
 	        return range.createContextualFragment(
-	            `<button 
-                type="button" 
-                class="btn-icon-only btn-reset" 
+	            `<button
+                type="button"
+                class="btn-icon-only btn-reset"
                 aria-label="reset">
                 <i class="icon icon-refresh"> </i>
             </button>`
@@ -24727,14 +25639,14 @@
 	     * Returns a HTML document fragment for a download button.
 	     *
 	     * @readonly
-	     * @memberof Widget
+	     * @type Element
 	     */
 	    get downloadButtonHtml() {
 	        return range.createContextualFragment(
-	            `<a 
-                class="btn-icon-only btn-download" 
-                aria-label="download" 
-                download 
+	            `<a
+                class="btn-icon-only btn-download"
+                aria-label="download"
+                download
                 href=""><i class="icon icon-download"> </i></a>`
 	        );
 	    }
@@ -24743,7 +25655,7 @@
 	     * Obtains the value from the current widget state. Should be overridden.
 	     *
 	     * @readonly
-	     * @memberof Widget
+	     * @type *
 	     */
 	    get value() {
 	        return undefined;
@@ -24752,7 +25664,8 @@
 	    /**
 	     * Sets a value in the widget. Should be overridden.
 	     *
-	     * @memberof Widget
+	     * @param {*} value
+	     * @type *
 	     */
 	    set value( value ) {}
 
@@ -24761,7 +25674,7 @@
 	     * This form control is often hidden by the widget.
 	     *
 	     * @readonly
-	     * @memberof Widget
+	     * @type *
 	     */
 	    get originalInputValue() {
 	        return inputHelper.getVal( this.element );
@@ -24771,7 +25684,8 @@
 	     * Updates the value in the original form control the widget is instantiated on.
 	     * This form control is often hidden by the widget.
 	     *
-	     * @memberof Widget
+	     * @param {*} value
+	     * @type *
 	     */
 	    set originalInputValue( value ) {
 	        // Avoid unnecessary change events as they could have significant negative consequences!
@@ -24781,12 +25695,12 @@
 	        this.element.dispatchEvent( events.Change() );
 	    }
 
-	    /** 
+	    /**
 	     * Returns its own name.
-	     * 
-	     * @readonly
+	     *
 	     * @static
-	     * @memberof Widget
+	     * @readonly
+	     * @type string
 	     */
 	    static get name() {
 	        return this.constructor.name;
@@ -24797,7 +25711,7 @@
 	     *
 	     * @readonly
 	     * @static
-	     * @memberof Widget
+	     * @type boolean
 	     */
 	    static get list() {
 	        return false;
@@ -24806,14 +25720,17 @@
 	    /**
 	     * Tests whether widget needs to be instantiated (e.g. if not to be used for touchscreens).
 	     * Note that the Element (used in the constructor) will be provided as parameter.
+	     *
+	     * @static
+	     * @return {boolean}
 	     */
 	    static condition() {
 	        return true;
 	    }
 	}
 
-	/** 
-	 * @module sniffer 
+	/**
+	 * @module sniffer
 	 **/
 
 	const ua = navigator.userAgent;
@@ -24821,17 +25738,17 @@
 	// We usually don't need to know which OS is running, but want to know
 	// whether a specific OS is runnning.
 
-	/** 
+	/**
 	 * @namespace os
 	 **/
 	const os = {
-	    /** 
+	    /**
 	     * @type string
 	     **/
 	    get ios() {
 	        return /iPad|iPhone|iPod/i.test( ua );
 	    },
-	    /** 
+	    /**
 	     * @type string
 	     **/
 	    get android() {
@@ -25055,15 +25972,23 @@
 	 * @extends Widget
 	 */
 	class DesktopSelectpicker extends Widget {
-
+	    /**
+	     * @type string
+	     */
 	    static get selector() {
 	        return '.question select';
 	    }
 
+	    /**
+	     * @type boolean
+	     */
 	    static get list() {
 	        return true;
 	    }
 
+	    /**
+	     * @return {boolean}
+	     */
 	    static condition() {
 	        return !support.touch;
 	    }
@@ -25079,6 +26004,10 @@
 	        this._clickListener();
 	        this._focusListener();
 	    }
+
+	    /**
+	     * @return {string} HTML string
+	     */
 	    _getTemplate() {
 	        return `
         <div class="btn-group bootstrap-select widget clearfix">
@@ -25089,6 +26018,10 @@
         </div>`;
 	    }
 
+	    /**
+	     * @param {string} template
+	     * @return {jQuery}
+	     */
 	    _createLi( template ) {
 	        const li = [];
 	        let liHtml = '';
@@ -25138,8 +26071,9 @@
 
 
 	    /**
-	     * create text to show in closed picker
-	     * @param  {jQuery=} $select  jQuery-wrapped select element
+	     * Create text to show in closed picker
+	     *
+	     * @param {jQuery} [$select] - jQuery-wrapped select element
 	     * @return {string}
 	     */
 	    _createSelectedStr() {
@@ -25162,6 +26096,9 @@
 	        }
 	    }
 
+	    /**
+	     * Handles click listener
+	     */
 	    _clickListener() {
 	        const _this = this;
 
@@ -25238,6 +26175,9 @@
 	            } );
 	    }
 
+	    /**
+	     * Handles focus listener
+	     */
 	    _focusListener() {
 	        const _this = this;
 
@@ -25245,9 +26185,11 @@
 	        this.element.addEventListener( events.ApplyFocus().type, () => {
 	            _this.$picker.find( '.dropdown-toggle' ).focus();
 	        } );
-
 	    }
 
+	    /**
+	     * Disables widget
+	     */
 	    disable() {
 	        this.$picker[ 0 ].querySelectorAll( 'li' ).forEach( el => {
 	            el.classList.add( 'disabled' );
@@ -25258,6 +26200,9 @@
 	        } );
 	    }
 
+	    /**
+	     * Enables widget
+	     */
 	    enable() {
 	        this.$picker[ 0 ].querySelectorAll( 'li' ).forEach( el => {
 	            el.classList.remove( 'disabled' );
@@ -25265,9 +26210,11 @@
 	            input.disabled = false;
 	            input.readOnly = false;
 	        } );
-
 	    }
 
+	    /**
+	     * Updates widget
+	     */
 	    update() {
 	        this.$picker.remove();
 	        this._init();
@@ -25276,15 +26223,21 @@
 
 	/**
 	 * An enhancement for the native multi-selectpicker found on most mobile devices,
-	 * that shows the selected values next to the select box
+	 * to show the selected values next to the select box
+	 *
 	 * @extends Widget
 	 */
 	class MobileSelectPicker extends Widget {
-
+	    /**
+	     * @type string
+	     */
 	    static get selector() {
 	        return '.question select[multiple]';
 	    }
 
+	    /**
+	     * @return {boolean}
+	     */
 	    static condition() {
 	        return support.touch;
 	    }
@@ -25310,6 +26263,9 @@
 	        this.widget.textContent = this.originalInputValue.join( ', ' );
 	    }
 
+	    /**
+	     * Updates widget
+	     */
 	    update() {
 	        this._showSelectedValues();
 	    }
@@ -25544,14 +26500,20 @@
 
 	/**
 	 * Autocomplete select1 picker for modern browsers.
+	 *
 	 * @extends Widget
 	 */
 	class AutocompleteSelectpicker extends Widget {
-
+	    /**
+	     * @type string
+	     */
 	    static get selector() {
 	        return '.question input[list]';
 	    }
 
+	    /**
+	     * @type boolean
+	     */
 	    static get list() {
 	        return true;
 	    }
@@ -25605,6 +26567,9 @@
 	        this._showCurrentLabel(); // after setting fakeInputListener!
 	    }
 
+	    /**
+	     * Displays current label
+	     */
 	    _showCurrentLabel() {
 	        const inputValue = this.originalInputValue;
 	        const label = this._findLabel( inputValue );
@@ -25618,6 +26583,9 @@
 	        }
 	    }
 
+	    /**
+	     * Sets fake input listener
+	     */
 	    _setFakeInputListener() {
 	        this.fakeInput.addEventListener( 'input', e => {
 	            const input = e.target;
@@ -25630,6 +26598,10 @@
 	        } );
 	    }
 
+	    /**
+	     * @param {string} label
+	     * @return {string} value
+	     */
 	    _findValue( label ) {
 	        let value = '';
 
@@ -25647,6 +26619,10 @@
 	        return value;
 	    }
 
+	    /**
+	     * @param {string} value
+	     * @return {string} label
+	     */
 	    _findLabel( value ) {
 	        let label = '';
 
@@ -25663,6 +26639,9 @@
 	        return label;
 	    }
 
+	    /**
+	     * Handles focus listener
+	     */
 	    _setFocusListener() {
 	        // Handle original input focus
 	        this.element.addEventListener( events.ApplyFocus().type, () => {
@@ -25670,24 +26649,31 @@
 	        } );
 	    }
 
+	    /**
+	     * Disables widget
+	     */
 	    disable() {
 	        this.fakeInput.classList.add( 'disabled' );
 	    }
 
+	    /**
+	     * Enables widget
+	     */
 	    enable() {
 	        this.fakeInput.classList.remove( 'disabled' );
-
 	    }
 
+	    /**
+	     * Updates widget
+	     *
+	     * There are 3 scenarios for which method is called:
+	     * 1. The options change (dynamic itemset)
+	     * 2. The language changed. (just this._showCurrentLabel() would be more efficient)
+	     * 3. The value of the underlying original input changed due a calculation. (same as #2?)
+	     *
+	     * For now we just dumbly reinstantiate it (including the polyfill).
+	     */
 	    update() {
-	        /*
-	         * There are 3 scenarios for which method is called:
-	         * 1. The options change (dynamic itemset)
-	         * 2. The language changed. (just this._showCurrentLabel() would be more efficient)
-	         * 3. The value of the underlying original input changed due a calculation. (same as #2?)
-	         *
-	         * For now we just dumbly reinstantiate it (including the polyfill).
-	         */
 	        this.element.parentElement.querySelector( '.widget' ).remove();
 	        this._init();
 	    }
@@ -40233,14 +41219,37 @@
 	} );
 
 	/**
+	 * @typedef LatLngArray
+	 * @description An array of two (or four) elements, `[0]` latitude and `[1]` longitude.
+	 * @property {string|number} 0 - Latitude
+	 * @property {string|number} 1 - Longitude
+	 * @property {string|number} [2] - Altitude
+	 * @property {string|number} [3] - Accuracy
+	 */
+
+	/**
+	 * @typedef LatLngObj
+	 * @property {number} lat - Latitude
+	 * @property {number} long - Longitude
+	 * @property {number} [alt] - Altitude
+	 * @property {number} [acc] - Accuracy
+	 */
+
+	/**
 	 * @extends Widget
 	 */
 	class Geopicker extends Widget {
-
+	    /**
+	     * @type string
+	     */
 	    static get selector() {
 	        return '.question input[data-type-xml="geopoint"], .question input[data-type-xml="geotrace"], .question input[data-type-xml="geoshape"]';
 	    }
 
+	    /**
+	     * @param {Element} element
+	     * @return {boolean}
+	     */
 	    static condition( element ) {
 	        // Allow geopicker and ArcGIS geopicker to be used in same form
 	        return !elementDataStore.has( element, 'ArcGisGeopicker' );
@@ -40454,6 +41463,9 @@
 	        }
 	    }
 
+	    /**
+	     * @param {string} type
+	     */
 	    _switchInputType( type ) {
 	        if ( type === 'kml' ) {
 	            this.$inputGroup.addClass( 'kml-input-mode' );
@@ -40604,8 +41616,8 @@
 	     * error feedback than provided by the form controller. This can be used to pinpoint the exact
 	     * invalid geopoints in a list of geopoints (the form controller only validates the total list).
 	     *
-	     * @param  {string}  geopoint [description]
-	     * @return {boolean}          [description]
+	     * @param {string} geopoint
+	     * @return {boolean}
 	     */
 	    _isValidGeopoint( geopoint ) {
 	        return geopoint ? types.geopoint.validate( geopoint ) : false;
@@ -40614,7 +41626,7 @@
 	    /**
 	     * Validates a list of latLng Arrays or Objects.
 	     *
-	     * @param {Array.Array.<number|string>|{lat: number, long:number}} latLngs - Array of latLng objects or arrays.
+	     * @param {Array<LatLngArray|LatLngObj>} latLngs - Array of latLng objects or arrays.
 	     * @return {boolean} Whether list is valid or not.
 	     */
 	    _isValidLatLngList( latLngs ) {
@@ -40623,6 +41635,9 @@
 	        return latLngs.every( ( latLng, index, array ) => that._isValidLatLng( latLng ) || ( latLng.join() === '' && index === array.length - 1 ) );
 	    }
 
+	    /**
+	     * @type LatLngArray|LatLngObj
+	     */
 	    _cleanLatLng( latLng ) {
 	        if ( Array.isArray( latLng ) ) {
 	            return [ latLng[ 0 ], latLng[ 1 ] ];
@@ -40632,8 +41647,9 @@
 
 	    /**
 	     * Validates an individual latlng Array or Object
-	     * @param  {(Array.<number|string>|{lat: number, long:number})}  latLng latLng object or array
-	     * @return {boolean}        Whether latLng is valid or not
+	     *
+	     * @param {LatLngArray|LatLngObj} latLng - latLng object or array
+	     * @return {boolean} Whether latLng is valid or not
 	     */
 	    _isValidLatLng( latLng ) {
 	        const lat = ( typeof latLng[ 0 ] === 'number' ) ? latLng[ 0 ] : ( typeof latLng.lat === 'number' ) ? latLng.lat : null;
@@ -40645,7 +41661,8 @@
 
 	    /**
 	     * Marks a point as invalid in the points navigation bar
-	     * @param  {number} index Index of point
+	     *
+	     * @param {number} index - Index of point
 	     */
 	    _markAsInvalid( index ) {
 	        this.$points.find( '.point' ).eq( index ).addClass( 'has-error' );
@@ -40660,6 +41677,8 @@
 
 	    /**
 	     * Changes the current point in the list of points
+	     *
+	     * @param {number} index
 	     */
 	    _setCurrent( index ) {
 	        this.currentIndex = index;
@@ -40752,12 +41771,15 @@
 	    }
 
 	    /**
-	     * Determines whether map is available for manipulation.
+	     * @return {boolean} Whether map is available for manipulation
 	     */
 	    _dynamicMapAvailable() {
 	        return !!this.map;
 	    }
 
+	    /**
+	     * @return {boolean} Whether map is in fullscreen mode
+	     */
 	    _inFullScreenMode() {
 	        return this.$widget.hasClass( 'full-screen' );
 	    }
@@ -40766,9 +41788,8 @@
 	     * Updates the map to either show the provided coordinates (in the center), with the provided zoom level
 	     * or update any markers, polylines, or polygons.
 	     *
-	     * @param  @param  {Array.<number>|{lat: number, lng: number}} latLng  latitude and longitude coordinates
-	     * @param  {number=} zoom zoom level
-	     * @return {Function} Returns call to function
+	     * @param {LatLngArray|LatLngObj} latLng - Latitude and longitude coordinates
+	     * @param {number} [zoom] - zoom level
 	     */
 	    _updateMap( latLng, zoom ) {
 	        const that = this;
@@ -40807,6 +41828,9 @@
 	        }
 	    }
 
+	    /**
+	     * @return {Promise}
+	     */
 	    _addDynamicMap() {
 	        const that = this;
 
@@ -40866,8 +41890,11 @@
 	            } );
 	    }
 
+	    /**
+	     * @param {LatLngArray|LatLngObj} latLng - Latitude and longitude coordinates
+	     * @param {number} [zoom] - zoom level
+	     */
 	    _updateDynamicMapView( latLng, zoom ) {
-
 	        if ( !latLng ) {
 	            this._updatePolyline();
 	            this._updateMarkers();
@@ -40883,6 +41910,9 @@
 	        }
 	    }
 
+	    /**
+	     * Displays intersect error
+	     */
 	    _showIntersectError() {
 	        dialog.alert( 'Borders cannot intersect!' );
 	    }
@@ -40890,7 +41920,7 @@
 	    /**
 	     * Obtains the tile layers according to the definition in the app configuration.
 	     *
-	     * @return {Promise} [description]
+	     * @return {Promise}
 	     */
 	    _getLayers() {
 	        const that = this;
@@ -40913,8 +41943,8 @@
 	    /**
 	     * Asynchronously (fake) obtains a Leaflet/Mapbox tilelayer
 	     *
-	     * @param  {{}}     map   map layer as defined in the apps configuration
-	     * @param  {number} index the index of the layer
+	     * @param {object} map - Map layer as defined in the apps configuration.
+	     * @param {number} index - The index of the layer.
 	     * @return {Promise}
 	     */
 	    _getLeafletTileLayer( map, index ) {
@@ -40931,8 +41961,8 @@
 	    /**
 	     * Asynchronously obtains a Google Maps tilelayer
 	     *
-	     * @param  {{}}     map   map layer as defined in the apps configuration
-	     * @param  {number} index the index of the layer
+	     * @param {object} map - Map layer as defined in the apps configuration.
+	     * @param {number} index - The index of the layer.
 	     * @return {Promise}
 	     */
 	    _getGoogleTileLayer( map, index ) {
@@ -40947,9 +41977,9 @@
 	    /**
 	     * Creates the tile layer options object from the maps configuration and defaults.
 	     *
-	     * @param {Object} map - Map layer as defined in the apps configuration.
+	     * @param {object} map - Map layer as defined in the apps configuration.
 	     * @param {number} index - The index of the layer.
-	     * @return {{id: string, maxZoom: number, minZoom: number, name: string, attribution: string}}   Tilelayer options object
+	     * @return {{id: string, maxZoom: number, minZoom: number, name: string, attribution: string}} Tilelayer options object
 	     */
 	    _getTileOptions( map, index ) {
 	        const name = map.name || `map-${index + 1}`;
@@ -40967,7 +41997,7 @@
 	     * Loader for the Google Maps script that can be called multiple times, but will ensure the
 	     * script is only requested once.
 	     *
-	     * @return {Promise} [description]
+	     * @return {Promise}
 	     */
 	    _loadGoogleMapsScript() {
 	        // request Google maps script only once, using a variable outside of the scope of the current widget
@@ -40995,6 +42025,10 @@
 	        return googleMapsScriptRequest;
 	    }
 
+	    /**
+	     * @param {Array<object>} layers
+	     * @return {object} Default layer
+	     */
 	    _getDefaultLayer( layers ) {
 	        let defaultLayer;
 	        const that = this;
@@ -41007,6 +42041,10 @@
 	        return defaultLayer;
 	    }
 
+	    /**
+	     * @param {Array<object>} layers
+	     * @return {Array<object>} Base layers
+	     */
 	    _getBaseLayers( layers ) {
 	        const baseLayers = {};
 
@@ -41173,7 +42211,7 @@
 	    /**
 	     * Updates the area in m2 shown inside a polygon.
 	     *
-	     * @param {Array.<{lat: number, lng: number}>} points - A polygon.
+	     * @param {Array<LatLngObj>} points - A polygon.
 	     */
 	    _updateArea( points ) {
 	        let area;
@@ -41199,6 +42237,9 @@
 	        }
 	    }
 
+	    /**
+	     * Adds a point.
+	     */
 	    _addPoint() {
 	        this._addPointBtn();
 	        this.points.push( [] );
@@ -41209,7 +42250,7 @@
 	    /**
 	     * Edits a point in the list of points.
 	     *
-	     * @param {Array.<number>|{lat: number, lng: number, alt: number, acc: number}} latLng - LatLng object or array.
+	     * @param {LatLngArray|LatLngObj} latLng - LatLng object or array.
 	     * @return {boolean} Whether point changed.
 	     */
 	    _editPoint( latLng ) {
@@ -41242,6 +42283,11 @@
 	        this._updateMap();
 	    }
 
+	    /**
+	     * Closes polygon
+	     *
+	     * @return {Error|undefined}
+	     */
 	    _closePolygon() {
 	        const lastPoint = this.points[ this.points.length - 1 ];
 	        // console.debug( 'closing polygon' );
@@ -41273,8 +42319,8 @@
 	    /**
 	     * Updates the (fake) input element for latitude, longitude, altitude and accuracy.
 	     *
-	     * @param {Array.<number>|{lat: number, lng: number, alt: number, acc: number}} coords - Latitude, longitude, altitude and accuracy.
-	     * @param {string=} ev
+	     * @param {LatLngArray|LatLngObj} coords - Latitude, longitude, altitude and accuracy.
+	     * @param {string} [ev]
 	     */
 	    _updateInputs( coords, ev ) {
 	        const lat = coords[ 0 ] || coords.lat || '';
@@ -41296,8 +42342,8 @@
 	     * only between. Separator between KML tuples can be newline, space or a combination.
 	     * It only extracts the value of the first <coordinates> element or, if <coordinates> are not included from the whole string.
 	     *
-	     * @param  {string} kmlCoordinates [description]
-	     * @return {Array.<Array<Number>>} Array of geopoint coordinates
+	     * @param {string} kmlCoordinates
+	     * @return {Array<Array<number>>} Array of geopoint coordinates
 	     */
 	    _convertKmlCoordinatesToLeafletCoordinates( kmlCoordinates ) {
 	        const coordinates = [];
@@ -41329,7 +42375,7 @@
 	     * Check if a polyline created from the current collection of points
 	     * where one point is added or edited would have intersections.
 	     *
-	     * @param {Array|{lat: number, lng: number}} latLng - An object or array notation of point.
+	     * @param {LatLngArray|LatLngObj} latLng - An object or array notation of point.
 	     * @param {number} index
 	     * @return {boolean} Whether polyline would have intersections.
 	     */
@@ -41383,8 +42429,8 @@
 	    /**
 	     * Checks whether the array of points contains empty ones.
 	     *
-	     * @param {} points
-	     * @param {number=} allowedIndex - The index in which an empty value is allowed.
+	     * @param {Array<LatLngArray>} points
+	     * @param {number} [allowedIndex] - The index in which an empty value is allowed.
 	     * @return {boolean}
 	     */
 	    containsEmptyPoints( points, allowedIndex ) {
@@ -41408,6 +42454,9 @@
 	        return props;
 	    }
 
+	    /**
+	     * @type string
+	     */
 	    get value() {
 	        let newValue = '';
 	        // all points should be valid geopoints and only the last item may be empty
@@ -41500,10 +42549,13 @@
 
 	/**
 	 * Auto-resizes textarea elements.
+	 *
 	 * @extends Widget
 	 */
 	class TextareaWidget extends Widget {
-
+	    /**
+	     * @type string
+	     */
 	    static get selector() {
 	        return 'form';
 	    }
@@ -41525,15 +42577,21 @@
 	    }
 	}
 
-	// Since this class has no static selector getter, there will be no attempt to instantiate it.
+	/**
+	 * @class TableWidget
+	 * @description Since this class has no static selector getter, there will be no attempt to instantiate it.
+	 */
 	class TableWidget {}
 
 	/**
 	 * Enhances radio buttons
+	 *
 	 * @extends Widget
 	 */
 	class Radiopicker extends Widget {
-
+	    /**
+	     * @type string
+	     */
 	    static get selector() {
 	        return 'form';
 	    }
@@ -41603,6 +42661,9 @@
 
 	    }
 
+	    /**
+	     * @param {Element} el
+	     */
 	    _updateDataChecked( el ) {
 	        if ( el.checked ) {
 	            el.parentNode.dataset.checked = true;
@@ -43656,11 +44717,16 @@
 	 * @extends Widget
 	 */
 	class DatepickerExtended extends Widget {
-
+	    /**
+	     * @type string
+	     */
 	    static get selector() {
 	        return '.question input[type="date"]:not([readonly])';
 	    }
 
+	    /**
+	     * @type boolean
+	     */
 	    static condition() {
 	        const badSamsung = /GT-P31[0-9]{2}.+AppleWebKit\/534\.30/;
 
@@ -43713,8 +44779,9 @@
 
 	    /**
 	     * Creates fake date input elements
-	     * @param  {string} format the date format
-	     * @return {jQuery}        the jQuery-wrapped fake date input element
+	     *
+	     * @param {string} format - The date format
+	     * @return {jQuery} The jQuery-wrapped fake date input element
 	     */
 	    _createFakeDateInput( format ) {
 	        const $dateI = jquery( this.element );
@@ -43730,7 +44797,7 @@
 	    /**
 	     * Copy manual changes that were not detected by bootstrap-datepicker (one without pressing Enter) to original date input field
 	     *
-	     * @param { jQuery } $fakeDateI Fake date input element
+	     * @param {jQuery} $fakeDateI - Fake date input element
 	     */
 	    _setChangeHandler( $fakeDateI ) {
 	        const settings = this.settings;
@@ -43751,18 +44818,19 @@
 	                }
 	            }
 
+	            $fakeDateI.val( this._toDisplayDate( convertedValue ) ).datepicker( 'update' );
+
 	            // Here we have to do something unusual to prevent native inputs from automatically
 	            // changing 2012-12-32 into 2013-01-01
 	            // convertedValue is '' for invalid 2012-12-32
-	            if ( convertedValue === '' || this.originalInputValue !== convertedValue ) {
-	                if ( e.type === 'paste' ) {
-	                    e.stopImmediatePropagation();
-	                }
-	                this.originalInputValue = convertedValue;
-	                this.element.blur();
+	            if ( convertedValue === '' && e.type === 'paste' ) {
+	                e.stopImmediatePropagation();
 	            }
 
-	            $fakeDateI.val( this._toDisplayDate( convertedValue ) ).datepicker( 'update' );
+	            // Avoid triggering unnecessary change events as they mess up sensitive custom applications (OC)
+	            if ( this.originalInputValue !== convertedValue ) {
+	                this.originalInputValue = convertedValue;
+	            }
 
 	            return false;
 	        } );
@@ -43771,7 +44839,7 @@
 	    /**
 	     * Reset button handler
 	     *
-	     * @param { jQuery } $fakeDateI Fake date input element
+	     * @param {jQuery} $fakeDateI - Fake date input element
 	     */
 	    _setResetHandler( $fakeDateI ) {
 	        $fakeDateI.next( '.btn-reset' ).on( 'click', () => {
@@ -43785,7 +44853,7 @@
 	     * Handler for focus events.
 	     * These events on the original input are used to check whether to display the 'required' message
 	     *
-	     * @param { jQuery } $fakeDateI Fake date input element
+	     * @param {jQuery} $fakeDateI - Fake date input element
 	     */
 	    _setFocusHandler( $fakeDateI ) {
 	        // Handle focus on original input (goTo functionality)
@@ -43794,11 +44862,19 @@
 	        } );
 	    }
 
+	    /**
+	     * @param {string} [date]
+	     * @return string
+	     */
 	    _toActualDate( date = '' ) {
 	        date = date.trim();
 	        return date && this.settings.format === 'yyyy' && date.length < 5 ? `${date}-01-01` : ( date && this.settings.format === 'yyyy-mm' && date.length < 8 ? `${date}-01` : date );
 	    }
 
+	    /**
+	     * @param {string} [date]
+	     * @return string
+	     */
 	    _toDisplayDate( date = '' ) {
 	        date = date.trim();
 	        return date && this.settings.format === 'yyyy' ? date.substring( 0, 4 ) : ( this.settings.format === 'yyyy-mm' ? date.substring( 0, 7 ) : date );
@@ -43808,10 +44884,16 @@
 	        this.value = this.element.value;
 	    }
 
+	    /**
+	     * @type string
+	     */
 	    get displayedValue() {
 	        return this.question.querySelector( '.widget input' ).value;
 	    }
 
+	    /**
+	     * @type string
+	     */
 	    get value() {
 	        return this._toActualDate( this.displayedValue );
 	    }
@@ -43833,13 +44915,22 @@
 	 * @extends Widget
 	 */
 	class DatepickerNative extends Widget {
+	    /**
+	     * @type string
+	     */
 	    static get selector() {
 	        return '.question input[type="date"]';
 	    }
+
+	    /**
+	     * @param {Element} element
+	     * @return {boolean}
+	     */
 	    static condition( element ) {
 	        // Do not instantiate if DatepickerExtended was instantiated on element or if mobile device is used.
 	        return !elementDataStore.has( element, 'DatepickerExtended' ) && !support.touch;
 	    }
+
 	    _init() {
 	        this.element.type = 'text';
 	        this.element.classList.add( 'mask-date' );
@@ -43849,14 +44940,21 @@
 	/**
 	 * For now, the whole purpose of this widget is to show a native month picker on
 	 * MOBILE devices with browsers that support it.
+	 *
 	 * @extends Widget
 	 */
 	class DatepickerMobile extends Widget {
-
+	    /**
+	     * @type string
+	     */
 	    static get selector() {
 	        return '.or-appearance-month-year input[type="date"]';
 	    }
 
+	    /**
+	     * @param {Element} element
+	     * @return {boolean}
+	     */
 	    static condition( element ) {
 	        // Do not instantiate if DatepickerExtended was instantiated on element or if non-mobile device is used.
 	        return !elementDataStore.has( element, 'DatepickerExtended' ) && support.touch;
@@ -43877,6 +44975,9 @@
 	        }
 	    }
 
+	    /**
+	     * @type string
+	     */
 	    get value() {
 	        return this.widgetInput.value ? `${this.widgetInput.value}-01` : '';
 	    }
@@ -43886,6 +44987,9 @@
 	        this.widgetInput.value = toSet;
 	    }
 
+	    /**
+	     * Updates value
+	     */
 	    update() {
 	        this.value = this.originalInputValue;
 	    }
@@ -45071,11 +46175,16 @@
 	 * @extends Widget
 	 */
 	class TimepickerExtended extends Widget {
-
+	    /**
+	     * @type string
+	     */
 	    static get selector() {
 	        return '.question input[type="time"]:not([readonly])';
 	    }
 
+	    /**
+	     * @return {boolean}
+	     */
 	    static condition() {
 	        return !support.touch || !support.inputTypes.time;
 	    }
@@ -45117,9 +46226,11 @@
 	        this.element.addEventListener( events.ApplyFocus().type, () => {
 	            this.fakeTimeI.focus();
 	        } );
-
 	    }
 
+	    /**
+	     * Resets widget
+	     */
 	    _reset() {
 	        const ev = this.originalInputValue ? events.Change() : null;
 	        if ( ev || this.value ) {
@@ -45129,6 +46240,9 @@
 	        }
 	    }
 
+	    /**
+	     * Updates widget
+	     */
 	    update() {
 	        if ( this.element.value !== this.value ) {
 	            jquery( this.element )
@@ -45138,6 +46252,9 @@
 	        }
 	    }
 
+	    /**
+	     * @type string
+	     */
 	    get value() {
 	        return this.fakeTimeI.value;
 	    }
@@ -45151,11 +46268,15 @@
 	 * @extends Widget
 	 */
 	class DatetimepickerExtended extends Widget {
-
+	    /**
+	     * @type string
+	     */
 	    static get selector() {
 	        return '.question input[type="datetime"]:not([readonly])';
 	    }
-
+	    /**
+	     * @return {boolean}
+	     */
 	    static condition() {
 	        const badSamsung = /GT-P31[0-9]{2}.+AppleWebKit\/534\.30/;
 
@@ -45227,9 +46348,11 @@
 	                this.$fakeTimeI.val( '' ).trigger( event );
 	            }
 	        } );
-
 	    }
 
+	    /**
+	     * @return {Element} fake date input
+	     */
 	    _createFakeDateInput() {
 	        const $fakeDate = jquery(
 	            '<div class="date">' +
@@ -45239,6 +46362,9 @@
 	        return $fakeDate.find( 'input' );
 	    }
 
+	    /**
+	     * @return {Element} fake time input
+	     */
 	    _createFakeTimeInput() {
 	        const $fakeTime = jquery(
 	                `<div class="timepicker">
@@ -45249,6 +46375,9 @@
 	        return $fakeTime.find( 'input' );
 	    }
 
+	    /**
+	     * @param {jQuery} $els
+	     */
 	    _setFocusHandler( $els ) {
 	        // Handle focus on original input (goTo functionality)
 	        this.element.addEventListener( events.ApplyFocus().type, () => {
@@ -45270,6 +46399,9 @@
 	        }
 	    }
 
+	    /**
+	     * @type string
+	     */
 	    get value() {
 	        if ( this.$fakeDateI.val().length > 0 && this.$fakeTimeI.val().length > 3 ) {
 	            const d = this.$fakeDateI.val().split( '-' );
@@ -45299,10 +46431,13 @@
 
 	/**
 	 * Media Picker. Hides text labels if a media label is present.
+	 *
 	 * @extends Widget
 	 */
 	class MediaPicker extends Widget {
-
+	    /**
+	     * @type string
+	     */
 	    static get selector() {
 	        return '.or-appearance-no-buttons';
 	    }
@@ -45330,6 +46465,7 @@
 	const fileManager = {};
 
 	/**
+	 * @static
 	 * @function init
 	 *
 	 * @description Initialize the file manager.
@@ -45339,6 +46475,7 @@
 	fileManager.init = () => { return Promise.resolve( true ); };
 
 	/**
+	 * @static
 	 * @function isWaitingForPermissions
 	 *
 	 * @description Whether the filemanager is waiting for user permissions
@@ -45348,6 +46485,7 @@
 	fileManager.isWaitingForPermissions = () => { return false; };
 
 	/**
+	 * @static
 	 * @function getFileUrl
 	 *
 	 * @description Obtains a URL that can be used to show a preview of the file when used
@@ -45381,6 +46519,7 @@
 	};
 
 	/**
+	 * @static
 	 * @function getObjectUrl
 	 *
 	 * @description Similar to getFileURL, except that this one is guaranteed to return an objectURL
@@ -45399,6 +46538,7 @@
 	    } );
 
 	/**
+	 * @static
 	 * @function urlToBlob
 	 *
 	 * @param {string} url - url to get
@@ -45418,6 +46558,7 @@
 	};
 
 	/**
+	 * @static
 	 * @function getCurrentFiles
 	 *
 	 * @description Obtain files currently stored in file input elements of open record
@@ -45449,23 +46590,15 @@
 	            // the File constructor to do this.
 	            newFilename = getFilename( file, this.dataset.filenamePostfix );
 
-	            // If file is resized, get Blob representation of file URL
-	            if ( this.dataset.resized && this.dataset.resizedFileUrl ) {
-	                fileManager.urlToBlob( this.dataset.resizedFileUrl )
-	                    .then( resizedFileBlob => {
-	                        file = new Blob( [ resizedFileBlob ], {
-	                            type: file.type
-	                        } );
-	                        file.name = newFilename;
-	                        files.push( file );
-	                    } );
-	            } else {
-	                file = new Blob( [ file ], {
-	                    type: file.type
-	                } );
-	                file.name = newFilename;
-	                files.push( file );
+	            // If file is resized, get Blob representation of data URI
+	            if ( this.dataset.resized && this.dataset.resizedDataURI ) {
+	                file = dataUriToBlobSync( this.dataset.resizedDataURI );
 	            }
+	            file = new Blob( [ file ], {
+	                type: file.type
+	            } );
+	            file.name = newFilename;
+	            files.push( file );
 	        }
 	    } );
 
@@ -45473,6 +46606,7 @@
 	};
 
 	/**
+	 * @static
 	 * @function isTooLarge
 	 *
 	 * @description Placeholder function to check if file size is acceptable.
@@ -45482,6 +46616,7 @@
 	fileManager.isTooLarge = () => { return false; };
 
 	/**
+	 * @static
 	 * @function getMaxSizeReadable
 	 *
 	 * @description Replace with function that determines max size published in OpenRosa server response header.
@@ -45513,10 +46648,13 @@
 	/**
 	 * FilePicker that works both offline and online. It abstracts the file storage/cache away
 	 * with the injected fileManager.
+	 *
 	 * @extends Widget
 	 */
 	class Filepicker extends Widget {
-
+	    /**
+	     * @type string
+	     */
 	    static get selector() {
 	        return '.question:not(.or-appearance-draw):not(.or-appearance-signature):not(.or-appearance-annotate) input[type="file"]';
 	    }
@@ -45590,10 +46728,18 @@
 	            } );
 	    }
 
+	    /**
+	     * Updates placeholder
+	     */
 	    _updatePlaceholder() {
 	        this.fakeInput.setAttribute( 'placeholder', t( 'filepicker.placeholder', { maxSize: fileManager.getMaxSizeReadable() || '?MB' } ) );
 	    }
 
+	    /**
+	     * Click action of reset button
+	     *
+	     * @param {Element} resetButton
+	     */
 	    _setResetButtonListener( resetButton ) {
 	        if ( resetButton ) {
 	            resetButton.addEventListener( 'click', () => {
@@ -45610,6 +46756,9 @@
 	        }
 	    }
 
+	    /**
+	     * Handles change listener
+	     */
 	    _setChangeListener() {
 	        const that = this;
 
@@ -45649,18 +46798,15 @@
 	                this._resizeFile( file, that.props.mediaType )
 	                    .then( resizedFile => {
 	                        // Put information in file element that file is resized
+	                        // Put resizedDataURI that will be used by fileManager.getCurrentFiles to get blob synchronously
 	                        event.target.dataset.resized = true;
-	                        file = resizedFile;
+	                        event.target.dataset.resizedDataURI = resizedFile.dataURI;
+	                        file = resizedFile.blob;
 	                    } )
 	                    .catch( () => {} )
 	                    .finally( () => {
 	                        fileManager.getFileUrl( file, fileName )
 	                            .then( url => {
-	                                // If file is resized, put information of resized file URL in file element
-	                                // Will be used by fileManager.getCurrentFiles
-	                                if ( event.target.dataset.resized ) {
-	                                    event.target.dataset.resizedFileUrl = url;
-	                                }
 	                                // Update UI
 	                                that._showPreview( url, that.props.mediaType );
 	                                that._showFeedback();
@@ -45708,19 +46854,30 @@
 	        } );
 	    }
 
+	    /**
+	     * Handle focus listener
+	     */
 	    _setFocusListener() {
-
 	        // Handle focus on original input (goTo functionality)
 	        this.element.addEventListener( events.ApplyFocus().type, () => {
 	            this.fakeInput.focus();
 	        } );
 	    }
 
+	    /**
+	     * Sets file name as value
+	     *
+	     * @param {string} fileName
+	     */
 	    _showFileName( fileName ) {
 	        this.value = fileName;
 	        this.fakeInput.readOnly = !!fileName;
 	    }
 
+	    /**
+	     * @param {TranslatedError|Error} fb
+	     * @param {string} [status]
+	     */
 	    _showFeedback( fb, status ) {
 	        const message = fb instanceof TranslatedError ? t( fb.translationKey, fb.translationOptions ) :
 	            fb instanceof Error ? fb.message :
@@ -45731,6 +46888,10 @@
 	        this.feedback.setAttribute( 'class', `file-feedback ${status}` );
 	    }
 
+	    /**
+	     * @param {string} url
+	     * @param {string} mediaType
+	     */
 	    _showPreview( url, mediaType ) {
 	        let htmlStr;
 
@@ -45755,6 +46916,11 @@
 	        }
 	    }
 
+	    /**
+	     * @param {File} file - Image file to be resized
+	     * @param {string} mediaType
+	     * @return {Promise<Blob|File>} Resolves with blob, rejects with input file
+	     */
 	    _resizeFile( file, mediaType ) {
 	        return new Promise( ( resolve, reject ) => {
 	            if ( mediaType !== 'image/*' ) {
@@ -45765,7 +46931,11 @@
 	            if ( this.props && this.props.maxPixels ) {
 	                resizeImage( file, this.props.maxPixels )
 	                    .then( blob => {
-	                        resolve( blob );
+	                        const reader = new FileReader();
+	                        reader.addEventListener( 'load', function() {
+	                            resolve( { blob, 'dataURI': reader.result } );
+	                        }, false );
+	                        reader.readAsDataURL( blob );
 	                    } )
 	                    .catch( () => {
 	                        reject( file );
@@ -45776,19 +46946,33 @@
 	        } );
 	    }
 
+	    /**
+	     * @param {string} objectUrl
+	     * @param {string} fileName
+	     */
 	    _updateDownloadLink( objectUrl, fileName ) {
 	        updateDownloadLink( this.downloadLink, objectUrl, fileName );
 	    }
 
+	    /**
+	     * Disables widget
+	     */
 	    disable() {
 	        this.element.disabled = true;
 	        this.question.querySelector( '.btn-reset' ).disabled = true;
 	    }
+
+	    /**
+	     * Enables widget
+	     */
 	    enable() {
 	        this.element.disabled = false;
 	        this.question.querySelector( '.btn-reset' ).disabled = false;
 	    }
 
+	    /**
+	     * @type object
+	     */
 	    get props() {
 	        const props = this._props;
 	        props.mediaType = this.element.getAttribute( 'accept' );
@@ -45800,6 +46984,9 @@
 	        return props;
 	    }
 
+	    /**
+	     * @type string
+	     */
 	    get value() {
 	        return this.fakeInput.value;
 	    }
@@ -46417,8 +47604,10 @@
 	 * In addition it also fixes a bug where a loaded image is stretched to fit
 	 * the canvas.
 	 *
+	 * @function external:SignaturePad#fromObjectURL
 	 * @param {*} objectUrl
 	 * @param {*} options
+	 * @return {Promise}
 	 */
 	SignaturePad.prototype.fromObjectURL = function( objectUrl, options ) {
 	    const image = new Image();
@@ -46460,6 +47649,7 @@
 	 * Similar to SignaturePad.prototype.fromData except that it doesn't clear the canvas.
 	 * This is to facilitate undoing a drawing stroke over a background (bitmap) image.
 	 *
+	 * @function external:SignaturePad#updateData
 	 * @param {*} pointGroups
 	 */
 	SignaturePad.prototype.updateData = function( pointGroups ) {
@@ -46475,9 +47665,13 @@
 
 	/**
 	 * Widget to obtain user-provided drawings or signature.
+	 *
 	 * @extends Widget
 	 */
 	class DrawWidget extends Widget {
+	    /**
+	     * @type string
+	     */
 	    static get selector() {
 	        // note that the selector needs to match both the pre-instantiated form and the post-instantiated form (type attribute changes)
 	        return '.or-appearance-draw input[data-type-xml="binary"][accept^="image"], .or-appearance-signature input[data-type-xml="binary"][accept^="image"], .or-appearance-annotate input[data-type-xml="binary"][accept^="image"]';
@@ -46607,6 +47801,9 @@
 	    }
 
 	    // All this is copied from the file-picker widget
+	    /**
+	     * @param {string} loadedFileName
+	     */
 	    _handleFiles( loadedFileName ) {
 	        // Monitor maxSize changes to update placeholder text in annotate widget. This facilitates asynchronous
 	        // obtaining of max size from server without slowing down form loading.
@@ -46675,14 +47872,23 @@
 	                false );
 	    }
 
+	    /**
+	     * @param {string} fileName
+	     */
 	    _showFileName( fileName ) {
 	        this.$widget.find( '.fake-file-input' ).val( fileName ).prop( 'readonly', !!fileName );
 	    }
 
+	    /**
+	     * Updates placeholder
+	     */
 	    _updatePlaceholder() {
 	        this.$widget.find( '.fake-file-input' ).attr( 'placeholder', t( 'filepicker.placeholder', { maxSize: fileManager.getMaxSizeReadable() || '?MB' } ) );
 	    }
 
+	    /**
+	     * @return {DocumentFragment}
+	     */
 	    _getMarkup() {
 	        // HTML syntax copied from filepicker widget
 	        const load = this.props.load ? `<input type="file" class="ignore draw-widget__load"${this.props.capture !== null ? ` capture="${this.props.capture}"` : ''} accept="${this.props.accept}"/><div class="widget file-picker"><input class="ignore fake-file-input"/><div class="file-feedback"></div></div>` : '';
@@ -46716,6 +47922,9 @@
 	        return fragment;
 	    }
 
+	    /**
+	     * Updates value
+	     */
 	    _updateValue() {
 	        const now = new Date();
 	        const postfix = `-${now.getHours()}_${now.getMinutes()}_${now.getSeconds()}`;
@@ -46728,6 +47937,9 @@
 	        this._updateDownloadLink( this.value );
 	    }
 
+	    /**
+	     * Clears pad, cache, loaded file name, download link and others
+	     */
 	    _reset() {
 	        const that = this;
 
@@ -46757,8 +47969,8 @@
 	    }
 
 	    /**
-	     *
-	     * @param {*} file Either a filename or a file.
+	     * @param {string|File} file - Either a filename or a file.
+	     * @return {Promise<string>}
 	     */
 	    _loadFileIntoPad( file ) {
 	        const that = this;
@@ -46776,6 +47988,9 @@
 	            } );
 	    }
 
+	    /**
+	     * @param {string} message
+	     */
 	    _showFeedback( message ) {
 	        message = message || '';
 
@@ -46783,6 +47998,9 @@
 	        this.$widget.find( '.draw-widget__feedback' ).text( message );
 	    }
 
+	    /**
+	     * @param {string} url
+	     */
 	    _updateDownloadLink( url ) {
 	        if ( url && url.indexOf( 'data:' ) === 0 ) {
 	            url = URL.createObjectURL( dataUriToBlobSync( url ) );
@@ -46791,6 +48009,11 @@
 	        updateDownloadLink( this.$widget.find( '.btn-download' )[ 0 ], url, fileName );
 	    }
 
+	    /**
+	     * Forces update and resizes canvas on window resize
+	     *
+	     * @param {Element} canvas - Canvas element
+	     */
 	    _handleResize( canvas ) {
 	        const that = this;
 	        jquery( window ).on( 'resize', () => {
@@ -46799,9 +48022,13 @@
 	        } );
 	    }
 
-	    // Adjust canvas coordinate space taking into account pixel ratio,
-	    // to make it look crisp on mobile devices.
-	    // This also causes canvas to be cleared.
+	    /**
+	     * Adjust canvas coordinate space taking into account pixel ratio,
+	     * to make it look crisp on mobile devices.
+	     * This also causes canvas to be cleared.
+	     *
+	     * @param {Element} canvas - Canvas element
+	     */
 	    _resizeCanvas( canvas ) {
 	        // Use a little trick to avoid resizing currently-hidden canvases
 	        // https://github.com/enketo/enketo-core/issues/605
@@ -46817,6 +48044,9 @@
 	        }
 	    }
 
+	    /**
+	     * Disables widget
+	     */
 	    disable() {
 	        const that = this;
 	        const canvas = this.$widget.find( '.draw-widget__body__canvas' )[ 0 ];
@@ -46831,6 +48061,9 @@
 	            } );
 	    }
 
+	    /**
+	     * Enables widget
+	     */
 	    enable() {
 	        const that = this;
 	        const canvas = this.$widget.find( '.draw-widget__body__canvas' )[ 0 ];
@@ -46867,6 +48100,9 @@
 	        }
 	    }
 
+	    /**
+	     * @type object
+	     */
 	    get props() {
 	        const props = this._props;
 
@@ -46881,6 +48117,9 @@
 	        return props;
 	    }
 
+	    /**
+	     * @type string
+	     */
 	    get value() {
 	        return this.cache || '';
 	    }
@@ -46891,7 +48130,10 @@
 
 	}
 
-	// Since this class has no static selector getter, there will be no attempt to instantiate it.
+	/**
+	 * @class LikertItem
+	 * @description Since this class has no static selector getter, there will be no attempt to instantiate it.
+	 */
 	class LikertItem {}
 
 	/**
@@ -46901,7 +48143,9 @@
 	 * @extends Widget
 	 */
 	class Columns extends Widget {
-
+	    /**
+	     * @type string
+	     */
 	    static get selector() {
 	        return '.question.or-appearance-columns';
 	    }
@@ -46926,7 +48170,9 @@
 	 * @extends Widget
 	 */
 	class RangeWidget extends Widget {
-
+	    /**
+	     * @type string
+	     */
 	    static get selector() {
 	        return '.or-appearance-distress input[type="number"], .question:not(.or-appearance-analog-scale) > input[type="number"][min][max][step]';
 	    }
@@ -46995,6 +48241,8 @@
 
 	    /**
 	     * This is separated so it can be extended (in the analog-scale widget)
+	     *
+	     * @return {string} HTML string
 	     */
 	    _getHtmlStr() {
 	        const html =
@@ -47019,12 +48267,19 @@
 	        return html;
 	    }
 
+	    /**
+	     * @param {number} completeness
+	     */
 	    _updateMercury( completeness ) {
 	        const trackHeight = this.widget.querySelector( '.range-widget__ticks' ).clientHeight;
 	        const bulbHeight = this.widget.querySelector( '.range-widget__bulb' ).clientHeight;
 	        this.widget.querySelector( '.range-widget__bulb__mercury' ).style.height = `${( completeness * trackHeight ) + ( 0.5 * bulbHeight )}px`;
 	    }
 
+	    /**
+	     * @param {object} props
+	     * @return {string} HTML string
+	     */
 	    _stepsBetweenHtmlStr( props ) {
 	        let html = '';
 	        if ( props.distress ) {
@@ -47038,6 +48293,9 @@
 	        return html;
 	    }
 
+	    /**
+	     * Resets widget
+	     */
 	    _reset() {
 	        // Update UI stuff before the actual value to avoid issues in custom clients that may want to programmatically undo a reset ("strict required" in OpenClinica)
 	        // as that is subtly different from updating a value with a calculation since this.originalInputValue=  sets the evaluation cascade in motion.
@@ -47047,14 +48305,23 @@
 	        this.originalInputValue = '';
 	    }
 
+	    /**
+	     * Disables widget
+	     */
 	    disable() {
 	        this.widget.querySelectorAll( 'input, button' ).forEach( el => el.disabled = true );
 	    }
 
+	    /**
+	     * Enables widget
+	     */
 	    enable() {
 	        this.widget.querySelectorAll( 'input, button' ).forEach( el => el.disabled = false );
 	    }
 
+	    /**
+	     * Updates widget
+	     */
 	    update() {
 	        const value = this.element.value;
 
@@ -47066,6 +48333,9 @@
 	        }
 	    }
 
+	    /**
+	     * @type object
+	     */
 	    get props() {
 	        const props = this._props;
 	        const min = isNumber( this.element.getAttribute( 'min' ) ) ? this.element.getAttribute( 'min' ) : 0;
@@ -47084,6 +48354,9 @@
 	        return props;
 	    }
 
+	    /**
+	     * @type string
+	     */
 	    get value() {
 	        return this.range.classList.contains( 'empty' ) ? '' : this.range.value;
 	    }
@@ -47101,7 +48374,9 @@
 	 * @extends RangeWidget
 	 */
 	class AnalogScaleWidget extends RangeWidget {
-
+	    /**
+	     * @type string
+	     */
 	    static get selector() {
 	        return '.or-appearance-analog-scale input[type="number"]';
 	    }
@@ -47116,6 +48391,9 @@
 	        this._setResizeListener();
 	    }
 
+	    /**
+	     * @return {string} HTML string
+	     */
 	    _getHtmlStr() {
 	        const html =
 	            `<div class="widget analog-scale-widget">
@@ -47143,6 +48421,9 @@
 	        this._updateLabels();
 	    }
 
+	    /**
+	     * Updates labels
+	     */
 	    _updateLabels() {
 	        if ( !this.question.classList.contains( 'or-analog-scale-initialized' ) ) {
 	            return;
@@ -47185,8 +48466,7 @@
 	        }
 	    }
 
-
-	    /*
+	    /**
 	     * Stretch the question to full page height.
 	     * Doing this with pure css flexbox using "flex-direction: column" interferes with the Grid theme
 	     * because that theme relies on flexbox with "flex-direction: row".
@@ -47199,15 +48479,24 @@
 	        }
 	    }
 
+	    /**
+	     * Stretches height
+	     */
 	    _stretchHeight() {
 	        this.question.style[ 'min-height' ] = 'auto';
 	    }
 
+	    /**
+	     * Updates with labels
+	     */
 	    update() {
 	        super.update();
 	        this._updateLabels();
 	    }
 
+	    /**
+	     * @type object
+	     */
 	    get props() {
 	        const props = this._props;
 	        props.touch = support.touch;
@@ -47220,6 +48509,9 @@
 	        return props;
 	    }
 
+	    /**
+	     * @type *
+	     */
 	    get value() {
 	        return super.value;
 	    }
@@ -47231,10 +48523,13 @@
 
 	/**
 	 * Viewer for image labels that have set a big-image version.
+	 *
 	 * @extends Widget
 	 */
 	class ImageViewer extends Widget {
-
+	    /**
+	     * @type string
+	     */
 	    static get selector() {
 	        return 'a.or-big-image';
 	    }
@@ -47260,11 +48555,16 @@
 	 * @extends Widget
 	 */
 	class Comment extends Widget {
-
+	    /**
+	     * @type string
+	     */
 	    static get selector() {
 	        return '.or-appearance-comment input[type="text"][data-for], .or-appearance-comment textarea[data-for]';
 	    }
 
+	    /**
+	     * @type string
+	     */
 	    static get helpersRequired() {
 	        return [ 'input', 'pathToAbsolute' ];
 	    }
@@ -47292,6 +48592,10 @@
 	        }
 	    }
 
+	    /**
+	     * @param {Element} input
+	     * @return {Element}
+	     */
 	    _getLinkedQuestion( input ) {
 	        const contextPath = this.options.helpers.input.getName( input );
 	        const targetPath = this.element.dataset.for.trim();
@@ -47305,16 +48609,26 @@
 	            .getWrapNode( root.querySelector( `[name="${absoluteTargetPath}"], [data-name="${absoluteTargetPath}"]` ) );
 	    }
 
+	    /**
+	     * @return {boolean}
+	     */
 	    _commentHasError() {
 	        return this.commentQuestion.classList.contains( 'invalid-required' ) || this.commentQuestion.classList.contains( 'invalid-constraint' );
 	    }
 
+	    /**
+	     * @param {*} value
+	     * @param {Error} error
+	     */
 	    _setCommentButtonState( value, error ) {
 	        value = typeof value === 'string' ? value.trim() : value;
 	        this.commentButton.classList.toggle( 'empty', !value );
 	        this.commentButton.classList.toggle( 'invalid', !!error );
 	    }
 
+	    /**
+	     * Sets comment button handler
+	     */
 	    _setCommentButtonHandler() {
 	        this.commentButton.addEventListener( 'click', ev => {
 	            if ( this._isCommentModalShown( this.linkedQuestion ) ) {
@@ -47327,6 +48641,9 @@
 	        } );
 	    }
 
+	    /**
+	     * Sets validation handler
+	     */
 	    _setValidationHandler() {
 	        this.element.closest( 'form.or' ).addEventListener( events.ValidationComplete().type, () => {
 	            const error = this._commentHasError();
@@ -47335,6 +48652,9 @@
 	        } );
 	    }
 
+	    /**
+	     * Sets focus handler
+	     */
 	    _setFocusHandler() {
 	        jquery( this.element ).on( 'applyfocus', () => {
 	            if ( this.commentButton.matches( ':visible' ) ) {
@@ -47345,10 +48665,17 @@
 	        } );
 	    }
 
+	    /**
+	     * @param {Element} linkedQuestion
+	     * @return {boolean}
+	     */
 	    _isCommentModalShown( linkedQuestion ) {
 	        return !!linkedQuestion.querySelector( '.or-comment-widget' );
 	    }
 
+	    /**
+	     * Shows comment modal
+	     */
 	    _showCommentModal() {
 	        const comment = this.question.cloneNode( true );
 	        const updateText = t( 'widget.comment.update' ) || 'Update';
@@ -47419,6 +48746,11 @@
 	        } );
 	    }
 
+	    /**
+	     * Hides comment modal
+	     *
+	     * @param {Element} linkedQuestion
+	     */
 	    _hideCommentModal( linkedQuestion ) {
 	        linkedQuestion.querySelector( '.or-comment-widget' ).remove();
 	        const overlay = linkedQuestion.previousElementSibling;
@@ -47430,11 +48762,14 @@
 
 	/**
 	 * Image Map widget that turns an SVG image into a clickable map
-	 * by matching radiobutton/checkbox values with id attribute values in the SVG
+	 * by matching radiobutton/checkbox values with id attribute values in the SVG.
+	 *
 	 * @extends Widget
 	 */
 	class ImageMap extends Widget {
-
+	    /**
+	     * @type string
+	     */
 	    static get selector() {
 	        return '.simple-select.or-appearance-image-map label:first-child > input';
 	    }
@@ -47469,6 +48804,9 @@
 	        }
 	    }
 
+	    /**
+	     * @param {object} widget
+	     */
 	    _addFunctionality( widget ) {
 	        this.svg = widget.querySelector( 'svg' );
 	        this.tooltip = widget.querySelector( '.image-map__ui__tooltip' );
@@ -47481,6 +48819,10 @@
 	        this._updateImage();
 	    }
 
+	    /**
+	     * @param {Element} img
+	     * @return {Promise}
+	     */
 	    _addMarkup( img ) {
 	        const that = this;
 	        const src = img.getAttribute( 'src' );
@@ -47533,6 +48875,9 @@
 	            .catch( this._showSvgNotFoundError.bind( that ) );
 	    }
 
+	    /**
+	     * @param {Error} err
+	     */
 	    _showSvgNotFoundError( err ) {
 	        console.error( err );
 	        const fragment = document.createRange().createContextualFragment(
@@ -47546,7 +48891,8 @@
 	    /**
 	     * Removes id attributes from unmatched path elements in order to prevent hover effect (and click listener).
 	     *
-	     * @return {jQuery} [description]
+	     * @param {Element} svg
+	     * @return {Element} cleaned up SVG
 	     */
 	    _removeUnmatchedIds( svg ) {
 	        svg.querySelectorAll( 'path[id], g[id]' ).forEach( el => {
@@ -47558,10 +48904,17 @@
 	        return svg;
 	    }
 
+	    /**
+	     * @param {string} id
+	     * @return {Element}
+	     */
 	    _getInput( id ) {
 	        return this.question.querySelector( `input[value="${id}"]` );
 	    }
 
+	    /**
+	     * Handles SVG click listener
+	     */
 	    _setSvgClickHandler() {
 	        this.svg.addEventListener( 'click', ev => {
 	            if ( !ev.target.closest( 'svg' ).matches( '[or-readonly]' ) && ev.target.matches( 'path[id], g[id]' ) ) {
@@ -47576,10 +48929,16 @@
 	        } );
 	    }
 
+	    /**
+	     * Handles change listener
+	     */
 	    _setChangeHandler() {
 	        this.question.addEventListener( 'change', this._updateImage.bind( this ) );
 	    }
 
+	    /**
+	     * Handles hover listener
+	     */
 	    _setHoverHandler() {
 	        this.svg.querySelectorAll( 'path[id], g[id]' ).forEach( el => {
 	            el.addEventListener( 'mouseenter', ev => {
@@ -47596,6 +48955,10 @@
 	        } );
 	    }
 
+	    /**
+	     * @param {object} data
+	     * @return {boolean}
+	     */
 	    _isSvgDoc( data ) {
 	        return typeof data === 'object' && data.querySelector( 'svg' );
 	    }
@@ -47620,18 +48983,30 @@
 	        } );
 	    }
 
+	    /**
+	     * Disables widget
+	     */
 	    disable() {
 	        this.svg.setAttribute( 'or-readonly', '' );
 	    }
 
+	    /**
+	     * Enables widget
+	     */
 	    enable() {
 	        this.svg.removeAttribute( 'or-readonly' );
 	    }
 
+	    /**
+	     * Updates widget image
+	     */
 	    update() {
 	        this._updateImage();
 	    }
 
+	    /**
+	     * @type string
+	     */
 	    get value() {
 	        // This widget is unusual. It would better to get the value from the map.
 	        return this.originalInputValue;
@@ -48858,11 +50233,16 @@
 	 * @extends Widget
 	 */
 	class RankWidget extends Widget {
-
+	    /**
+	     * @type string
+	     */
 	    static get selector() {
 	        return '.question input.rank';
 	    }
 
+	    /**
+	     * @type boolean
+	     */
 	    static get list() {
 	        return true;
 	    }
@@ -48915,10 +50295,16 @@
 	        }
 	    }
 
+	    /**
+	     * Resets widget
+	     */
 	    _reset() {
 	        this.originalInputValue = '';
 	    }
 
+	    /**
+	     * @type string
+	     */
 	    get value() {
 	        const result = html5sortable_cjs( this.list, 'serialize' );
 	        return result[ 0 ].container.value;
@@ -48952,6 +50338,9 @@
 	        } );
 	    }
 
+	    /**
+	     * Disables widget
+	     */
 	    disable() {
 	        jquery( this.element )
 	            .prop( 'disabled', true )
@@ -48962,6 +50351,9 @@
 	        html5sortable_cjs( this.list, 'disable' );
 	    }
 
+	    /**
+	     * Enables widget
+	     */
 	    enable() {
 	        jquery( this.element )
 	            .prop( 'disabled', false )
@@ -48972,6 +50364,9 @@
 	        html5sortable_cjs( this.list, 'enable' );
 	    }
 
+	    /**
+	     * Updates widget
+	     */
 	    update() {
 	        const value = this.element.value;
 	        // re-initalize sortable because the options may have changed
@@ -48987,12 +50382,17 @@
 
 	    // Since we're overriding the setter we also have to overwrite the getter
 	    // https://stackoverflow.com/questions/28950760/override-a-setter-and-the-getter-must-also-be-overridden
+	    /**
+	     * @type string
+	     */
 	    get originalInputValue() {
 	        return super.originalInputValue;
 	    }
 
 	    /**
 	     * This is the input that Enketo's engine listens on.
+	     *
+	     * @type string
 	     */
 	    set originalInputValue( value ) {
 	        super.originalInputValue = value;
@@ -49005,7 +50405,9 @@
 	 * @extends Widget
 	 */
 	class UrlWidget extends Widget {
-
+	    /**
+	     * @type string
+	     */
 	    static get selector() {
 	        return '.or-appearance-url input[type="text"]';
 	    }
@@ -49019,10 +50421,16 @@
 	        this.value = this.originalInputValue;
 	    }
 
+	    /**
+	     * Updates widget
+	     */
 	    update() {
 	        this.value = this.originalInputValue;
 	    }
 
+	    /**
+	     * @type string
+	     */
 	    get value() {
 	        return this.question.querySelector( '.url-widget' ).href;
 	    }
@@ -49042,7 +50450,9 @@
 	 * but this is the easiest way to do it.
 	 */
 	class TextMaxWidget extends Widget {
-
+	    /**
+	     * @type string
+	     */
 	    static get selector() {
 	        return '[data-type-xml="string"]';
 	    }
@@ -49061,25 +50471,34 @@
 	 * @extends Widget
 	 */
 	class DatepickerNativeIos extends Widget {
+	    /**
+	     * @type string
+	     */
 	    static get selector() {
 	        return '.question input[type="date"]';
 	    }
+
+	    /**
+	     * @param {Element} element
+	     * @return {boolean}
+	     */
 	    static condition( element ) {
 	        // Do not instantiate if DatepickerExtended was instantiated on element or if non-iOS browser is used.
 	        return !elementDataStore.has( element, 'DatepickerExtended' ) && os.ios;
 	    }
+
 	    _init() {
 
 	        /*
 	         * Bug 1.
 	         *
-	         * This bug deals with readonly date inputs on iOS browsers (e.g. Safari and Chrome). 
+	         * This bug deals with readonly date inputs on iOS browsers (e.g. Safari and Chrome).
 	         * See https://github.com/OpenClinica/enketo-express-oc/issues/219.
 	         * Once this bug is fixed in iOS, this code can be removed.
-	         * 
-	         * Unfortunately, I don't think we can detect the presence of the bug itself to avoid 
+	         *
+	         * Unfortunately, I don't think we can detect the presence of the bug itself to avoid
 	         * using the workaround automatically (after Apple fixes it).
-	         * 
+	         *
 	         * This is a very ugly solution, but the bug is fairly obscure, and the workaround is hopefully
 	         * just temporary.
 	         */
@@ -49093,11 +50512,16 @@
 	    }
 	}
 
+	/**
+	 * A collection of all available widgets
+	 *
+	 * @module widgets
+	 */
 	//import zz from '../widget/example/my-widget';
 
 	var _widgets = [ NoteWidget, DesktopSelectpicker, MobileSelectPicker, AutocompleteSelectpicker, Geopicker, TextareaWidget, TableWidget, Radiopicker, DatepickerExtended, DatepickerNative, DatepickerMobile, TimepickerExtended, DatetimepickerExtended, MediaPicker, Filepicker, DrawWidget, LikertItem, Columns, AnalogScaleWidget, ImageViewer, Comment, ImageMap, RangeWidget, RankWidget, UrlWidget, TextMaxWidget, DatepickerNativeIos ];
 
-	/** 
+	/**
 	 * @module widgets-controller
 	 */
 	const widgets = _widgets.filter( widget => widget.selector );
@@ -49107,8 +50531,10 @@
 	/**
 	 * Initializes widgets
 	 *
-	 * @param  {jQuery} $group The element inside which the widgets have to be initialized.
-	 * @param { *} options Options (e.g. helper function of Form.js passed)
+	 * @static
+	 * @param {jQuery} $group - The element inside which the widgets have to be initialized.
+	 * @param {*} [opts] - Options (e.g. helper function of Form.js passed)
+	 * @return {boolean} `true` when initialized successfuly
 	 */
 	function init( $group, opts = {} ) {
 	    if ( !this.form ) {
@@ -49135,7 +50561,8 @@
 	 * actually preferable than waiting for create() to complete, because enable() will never do anything that isn't
 	 * done during create().
 	 *
-	 * @param  {Element} group [description]
+	 * @static
+	 * @param {Element} group
 	 */
 	function enable( group ) {
 	    widgets.forEach( Widget => {
@@ -49150,7 +50577,8 @@
 	 * In most widgets, this function will do nothing because all fieldsets, inputs, textareas and selects will get
 	 * the disabled attribute automatically when the branch element provided as parameter becomes irrelevant.
 	 *
-	 * @param  { Element } group The element inside which all widgets need to be disabled.
+	 * @static
+	 * @param {Element} group - The element inside which all widgets need to be disabled.
 	 */
 	function disable( group ) {
 	    widgets.forEach( Widget => {
@@ -49162,9 +50590,9 @@
 	/**
 	 * Returns the elements on which to apply the widget
 	 *
-	 * @param {Element} group - a jQuery-wrapped element
-	 * @param {string} selector - if the selector is null, the form element will be returned
-	 * @return {jQuery} a jQuery collection
+	 * @param {Element} group - A jQuery-wrapped element
+	 * @param {string|null} selector - If the selector is `null`, the form element will be returned
+	 * @return {jQuery} A jQuery collection
 	 */
 	function _getElements( group, selector ) {
 	    if ( selector ) {
@@ -49185,7 +50613,7 @@
 	/**
 	 * Instantiate a widget on a group (whole form or newly cloned repeat)
 	 *
-	 * @param {Object} Widget - The widget to instantiate
+	 * @param {object} Widget - The widget to instantiate
 	 * @param {Element} group - The element inside which widgets need to be created.
 	 */
 	function _instantiate( Widget, group ) {
@@ -49222,7 +50650,7 @@
 	 * the elements of the repeat, there should be no duplicate eventhandlers.
 	 *
 	 * @param {{name: string}} Widget - The widget configuration object
-	 * @param {Element} els - Array of elements that the widget has been instantiated on.
+	 * @param {Array<Element>} els - Array of elements that the widget has been instantiated on.
 	 */
 	function _setLangChangeListener( Widget, els ) {
 	    // call update for all widgets when language changes
@@ -49239,7 +50667,7 @@
 	 * the elements of the repeat, there should be no duplicate eventhandlers.
 	 *
 	 * @param {{name: string}} Widget - The widget configuration object
-	 * @param {Element} els - The array of elements that the widget has been instantiated on.
+	 * @param {Array<Element>} els - The array of elements that the widget has been instantiated on.
 	 */
 	function _setOptionChangeListener( Widget, els ) {
 	    if ( els.length > 0 && Widget.list ) {
@@ -49255,7 +50683,7 @@
 	 * of the widget (e.g. a calculation).
 	 *
 	 * @param {{name: string}} Widget - The widget configuration object.
-	 * @param {Element} els - The array of elements that the widget has been instantiated on.
+	 * @param {Array<Element>} els - The array of elements that the widget has been instantiated on.
 	 */
 	function _setValChangeListener( Widget, els ) {
 	    // avoid adding eventhandlers on widgets that apply to the <form> or <label> element
@@ -49267,12 +50695,21 @@
 	}
 
 	class Collection {
+	    /**
+	     * @class
+	     * @param {Array<Element>} elements
+	     */
 	    constructor( elements ) {
 	        if ( !Array.isArray( elements ) ) {
 	            elements = [ elements ];
 	        }
 	        this.elements = elements;
 	    }
+	    /**
+	     * @param {Element} element
+	     * @param {object} Widget
+	     * @param {object} [options]
+	     */
 	    _instantiateSingleWidget( element, Widget, options = {} ) {
 	        if ( !Widget.condition( element ) ) {
 	            return;
@@ -49287,6 +50724,10 @@
 	            elementDataStore.put( element, Widget.name, w );
 	        }
 	    }
+	    /**
+	     * @param {object} Widget
+	     * @param {Function} method
+	     */
 	    _methodCall( Widget, method ) {
 	        this.elements.forEach( element => {
 	            const w = elementDataStore.get( element, Widget.name );
@@ -49295,15 +50736,28 @@
 	            }
 	        } );
 	    }
+	    /**
+	     * @param {object} Widget
+	     * @param {object} [options]
+	     */
 	    instantiate( Widget, options ) {
 	        this.elements.forEach( el => this._instantiateSingleWidget( el, Widget, options ) );
 	    }
+	    /**
+	     * @param {object} Widget
+	     */
 	    update( Widget ) {
 	        this._methodCall( Widget, 'update' );
 	    }
+	    /**
+	     * @param {object} Widget
+	     */
 	    disable( Widget ) {
 	        this._methodCall( Widget, 'disable' );
 	    }
+	    /**
+	     * @param {object} Widget
+	     */
 	    enable( Widget ) {
 	        this._methodCall( Widget, 'enable' );
 	    }
@@ -49317,11 +50771,14 @@
 
 	/**
 	 * Form languages module.
-	 * 
+	 *
 	 * @module language
 	 */
 
 	var languageModule = {
+	    /**
+	     * @param {string} overrideLang
+	     */
 	    init( overrideLang ) {
 	        if ( !this.form ) {
 	            throw new Error( 'Language module not correctly instantiated with form property.' );
@@ -49373,13 +50830,23 @@
 
 	        this.form.view.html.addEventListener( events.AddRepeat().type, event => this.setUi( this._currentLang, event.target ) );
 	    },
+	    /**
+	     * @type string
+	     */
 	    get currentLang() {
 	        return this._currentLang;
 	    },
+	    /**
+	     * @type string|null
+	     */
 	    get currentLangDesc() {
 	        const langOption = this.formLanguages.querySelector( `[value="${this._currentLang}"]` );
 	        return langOption ? langOption.textContent : null;
 	    },
+	    /**
+	     * @param {string} lang
+	     * @param {Element} [group]
+	     */
 	    setUi( lang, group = this.form.view.html ) {
 	        const dir = this.formLanguages.querySelector( `[value="${lang}"]` ).dataset.dir || 'ltr';
 	        const translations = [ ...group.querySelectorAll( '[lang]' ) ];
@@ -49400,7 +50867,11 @@
 	        this.form.view.html.querySelectorAll( 'select, datalist' ).forEach( el => this.setSelect( el ) );
 	        this.form.view.html.dispatchEvent( events.ChangeLanguage() );
 	    },
-	    // swap language of <select> and <datalist> <option>s
+	    /**
+	     * swap language of <select> and <datalist> <option>s
+	     *
+	     * @param {Element} select
+	     */
 	    setSelect( select ) {
 	        const type = select.nodeName.toLowerCase();
 	        const question = select.closest( '.question' );
@@ -49425,12 +50896,15 @@
 	    }
 	};
 
-	/** 
+	/**
 	 * Preloader module (soon to be deprecated).
-	 * 
+	 *
 	 * @module preloader
 	 */
 	var preloadModule = {
+	    /**
+	     * Initializes preloader
+	     */
 	    init() {
 	        const that = this;
 
@@ -49465,6 +50939,10 @@
 	            }
 	        } );
 	    },
+	    /**
+	     * @param {object} o
+	     * @return {string}
+	     */
 	    'timestamp': function( o ) {
 	        let value;
 	        const that = this;
@@ -49483,6 +50961,10 @@
 	        }
 	        return 'error - unknown timestamp parameter';
 	    },
+	    /**
+	     * @param {object} o
+	     * @return {string}
+	     */
 	    'date': function( o ) {
 	        let today;
 	        let year;
@@ -49499,6 +50981,10 @@
 	        }
 	        return o.curVal;
 	    },
+	    /**
+	     * @param {object} o
+	     * @return {string}
+	     */
 	    'property': function( o ) {
 	        let node;
 
@@ -49513,6 +50999,10 @@
 	        }
 	        return o.curVal;
 	    },
+	    /**
+	     * @param {object} o
+	     * @return {string}
+	     */
 	    'context': function( o ) {
 	        // 'application', 'user'??
 	        if ( o.curVal.length === 0 ) {
@@ -49520,18 +51010,30 @@
 	        }
 	        return o.curVal;
 	    },
+	    /**
+	     * @param {object} o
+	     * @return {string}
+	     */
 	    'patient': function( o ) {
 	        if ( o.curVal.length === 0 ) {
 	            return 'patient preload item not supported in enketo';
 	        }
 	        return o.curVal;
 	    },
+	    /**
+	     * @param {object} o
+	     * @return {string}
+	     */
 	    'user': function( o ) {
 	        if ( o.curVal.length === 0 ) {
 	            return 'user preload item not supported in enketo yet';
 	        }
 	        return o.curVal;
 	    },
+	    /**
+	     * @param {object} o
+	     * @return {string}
+	     */
 	    'uid': function( o ) {
 	        if ( o.curVal.length === 0 ) {
 	            return this.form.model.evaluate( 'concat("uuid:", uuid())', 'string' );
@@ -49540,7 +51042,7 @@
 	    }
 	};
 
-	/** 
+	/**
 	 * @module output
 	 */
 
@@ -49548,7 +51050,7 @@
 	    /**
 	     * Updates output values, optionally filtered by those values that contain a changed node name
 	     *
-	     * @param  {{nodes:Array<string>=, repeatPath: string=, repeatIndex: number=}=} updated The object containing info on updated data nodes
+	     * @param {UpdatedDataNodes} [updated] - The object containing info on updated data nodes.
 	     */
 	    update( updated ) {
 	        const outputCache = {};
@@ -49589,9 +51091,9 @@
 
 	            let contextPath = that.form.input.getName( context );
 
-	            /* 
+	            /*
 	             * If the output is part of a group label and that group contains repeats with the same name,
-	             * but currently has 0 repeats, the context will not be available. See issue 502. 
+	             * but currently has 0 repeats, the context will not be available. See issue 502.
 	             * This same logic is applied in branch.js.
 	             */
 	            if ( jquery( context ).children( `.or-repeat-info[data-name="${contextPath}"]` ).length && !jquery( context ).children( `.or-repeat[name="${contextPath}"]` ).length ) {
@@ -49625,8 +51127,8 @@
 	    /**
 	     * Updates calculated items.
 	     *
-	     * @param {{nodes:Array<string>=, repeatPath: string=, repeatIndex: number=}=} updated - The object containing info on updated data nodes.
-	     * @param {string=} filter - CSS selector filter.
+	     * @param {UpdatedDataNodes} [updated] - The object containing info on updated data nodes.
+	     * @param {string} [filter] - CSS selector filter.
 	     */
 	    update( updated = {}, filter = '' ) {
 	        let $nodes;
@@ -49762,9 +51264,9 @@
 	    }
 	};
 
-	/**  
+	/**
 	 * Deals with form logic around required questions.
-	 * 
+	 *
 	 * @module required
 	 */
 
@@ -49772,7 +51274,7 @@
 	    /**
 	     * Updates readonly
 	     *
-	     * @param  {{nodes:Array<string>=, repeatPath: string=, repeatIndex: number=}=} updated The object containing info on updated data nodes
+	     * @param {UpdatedDataNodes} [updated] - The object containing info on updated data nodes.
 	     */
 	    update( updated /*, filter*/ ) {
 	        const that = this;
@@ -49812,6 +51314,9 @@
 	 */
 	const KEYBOARD_CUT_PASTE = 'xvc';
 
+	/**
+	 * @static
+	 */
 	function init$1() {
 	    /*
 	     * These are hardcoded number input masks. The approach will be different if we
@@ -49821,6 +51326,11 @@
 	    _setNumberMask( '[data-type-xml="decimal"]', /^(-?[0-9]+[.,]?[0-9]*$)/, '-0123456789.,' );
 	}
 
+	/**
+	 * @param {string} selector
+	 * @param {string} validRegex
+	 * @param {string} allowedChars
+	 */
 	function _setNumberMask( selector, validRegex, allowedChars ) {
 
 	    jquery( selector )
@@ -49850,8 +51360,8 @@
 	        /*
 	         * Workaround for most browsers keeping invalid numbers visible in the input without a means to access the invalid value.
 	         * E.g. see https://bugs.chromium.org/p/chromium/issues/detail?id=178437&can=2&q=178437&colspec=ID%20Pri%20M%20Stars%20ReleaseBlock%20Component%20Status%20Owner%20Summary%20OS%20Modified
-	         * 
-	         * A much more intelligent way to solve the problem would be to add a feedback loop from the Model to the input that would 
+	         *
+	         * A much more intelligent way to solve the problem would be to add a feedback loop from the Model to the input that would
 	         * correct (a converted number) or empty (an invalid number). https://github.com/enketo/enketo-core/issues/407
 	         */
 	        .on( 'blur', function() {
@@ -49867,11 +51377,19 @@
 	}
 
 	// Using the (assumed) fact that a non-printable character key always has length > 1
-	// IE11: non-confirming 'Spacebar' 
+	// IE11: non-confirming 'Spacebar'
+	/**
+	 * @param {Event} e
+	 * @return {boolean}
+	 */
 	function _isNotPrintableKey( e ) {
 	    return e.key.length > 1 && e.key !== 'Spacebar';
 	}
 
+	/**
+	 * @param {Event} e
+	 * @return {boolean}
+	 */
 	function _isKeyboardCutPaste( e ) {
 	    return KEYBOARD_CUT_PASTE.indexOf( e.key ) !== -1 && ( e.metaKey || e.ctrlKey );
 	}
@@ -49888,7 +51406,7 @@
 	    /**
 	     * Updates readonly
 	     *
-	     * @param  {{nodes:Array<string>=, repeatPath: string=, repeatIndex: number=}=} updated The object containing info on updated data nodes
+	     * @param {UpdatedDataNodes} [updated] - The object containing info on updated data nodes.
 	     */
 	    update( updated ) {
 	        const $nodes = this.form.getRelatedNodes( 'readonly', '', updated );
@@ -49903,13 +51421,18 @@
 	};
 
 	/**
+	 * @external jQuery
+	 */
+
+	/**
 	 * Clears form input fields and triggers events when doing this. If formelement is cloned but not yet added to DOM
 	 * (and not synchronized with data object), the desired event is probably 'edit' (default). If it is already added
 	 * to the DOM (and synchronized with data object) a regular change event should be fired
 	 *
-	 * @param  {string=} ev1 event to be triggered when a value is cleared
-	 * @param  {string=} ev2 event to be triggered when a value is cleared
-	 * @return { jQuery} [description]
+	 * @function external:jQuery#clearInputs
+	 * @param {string} [ev1] - Event to be triggered when a value is cleared
+	 * @param {string} [ev2] - Event to be triggered when a value is cleared
+	 * @return {jQuery}
 	 */
 	jquery.fn.clearInputs = function( ev1, ev2 ) {
 	    ev1 = ev1 || 'edit';
@@ -49974,9 +51497,31 @@
 
 	/**
 	 * Reverses a jQuery collection
+	 *
+	 * @function external:jQuery#reverse
 	 * @type {Array}
 	 */
 	jquery.fn.reverse = [].reverse;
+
+	/**
+	 * @typedef FormDataObj
+	 * @property {string} modelStr
+	 * @property {string} [instanceStr]
+	 * @property {boolean} [submitted]
+	 * @property {object} external
+	 * @property {string} external.id
+	 * @property {string} [external.xmlStr]
+	 */
+
+	/**
+	 * @typedef UpdatedDataNodes
+	 * @global
+	 * @description The object containing info on updated data nodes
+	 * @property {Array<string>} [nodes]
+	 * @property {string} [repeatPath]
+	 * @property {number} [repeatIndex]
+	 * @property {string} [relevantPath]
+	 */
 
 	/**
 	 * Class: Form
@@ -49984,7 +51529,7 @@
 	 * Most methods are prototype method to facilitate customizations outside of enketo-core.
 	 *
 	 * @param {string} formSelector - jQuery selector for the form
-	 * @param {{modelStr: string, instanceStr: string|undefined, submitted: boolean|undefined, external: {id: string, xmlStr: string }|undefined }} data - Data object containing XML model, (partial) XML instance-to-load, external data and flag about whether instance-to-load has already been submitted before.
+	 * @param {FormDataObj} data - Data object containing XML model, (partial) XML instance-to-load, external data and flag about whether instance-to-load has already been submitted before.
 	 * @param {{webMapId: string|undefined}} options - form options
 	 *
 	 * @class
@@ -50012,10 +51557,15 @@
 
 	/**
 	 * Getter and setter functions
-	 * @type {Object}
 	 */
 	Form.prototype = {
+	    /**
+	     * @type Array
+	     */
 	    evaluationCascadeAdditions: [],
+	    /**
+	     * @type Array
+	     */
 	    get evaluationCascade() {
 	        return [
 	            this.calc.update.bind( this.calc ),
@@ -50028,12 +51578,18 @@
 	            this.validationUpdate
 	        ].concat( this.evaluationCascadeAdditions );
 	    },
+	    /**
+	     * @type string
+	     */
 	    get recordName() {
 	        return this.view.$.attr( 'name' );
 	    },
 	    set recordName( name ) {
 	        this.view.$.attr( 'name', name );
 	    },
+	    /**
+	     * @type boolean
+	     */
 	    get editStatus() {
 	        return this.view.html.dataset.edited === 'true';
 	    },
@@ -50044,30 +51600,57 @@
 	        }
 	        this.view.html.dataset.edited = status;
 	    },
+	    /**
+	     * @type string
+	     */
 	    get surveyName() {
 	        return this.view.$.find( '#form-title' ).text();
 	    },
+	    /**
+	     * @type string
+	     */
 	    get instanceID() {
 	        return this.model.instanceID;
 	    },
+	    /**
+	     * @type string
+	     */
 	    get deprecatedID() {
 	        return this.model.deprecatedID;
 	    },
+	    /**
+	     * @type string
+	     */
 	    get instanceName() {
 	        return this.model.instanceName;
 	    },
+	    /**
+	     * @type string
+	     */
 	    get version() {
 	        return this.model.version;
 	    },
+	    /**
+	     * @type string
+	     */
 	    get encryptionKey() {
 	        return this.view.$.data( 'base64rsapublickey' );
 	    },
+	    /**
+	     * @type string
+	     */
 	    get action() {
 	        return this.view.$.attr( 'action' );
 	    },
+	    /**
+	     * @type string
+	     */
 	    get method() {
 	        return this.view.$.attr( 'method' );
 	    },
+	    /**
+	     * @type string
+	     */
 	    get id() {
 	        return this.view.html.id;
 	    }
@@ -50076,7 +51659,8 @@
 	/**
 	 * Returns a module and adds the form property to it.
 	 *
-	 * @param module
+	 * @param {object} module
+	 * @return {object} updated module
 	 */
 	Form.prototype.addModule = function( module ) {
 	    return Object.create( module, {
@@ -50091,6 +51675,7 @@
 	 *
 	 * Initializes the Form instance (XML Model and HTML View).
 	 *
+	 * @return {Array<string>} List of initialization errors.
 	 */
 	Form.prototype.init = function() {
 	    let loadErrors = [];
@@ -50207,6 +51792,10 @@
 	    return loadErrors;
 	};
 
+	/**
+	 * @param {string} xpath
+	 * @return {Array<string>} A list of errors originated from `goToTarget`. Empty if everything went fine.
+	 */
 	Form.prototype.goTo = function( xpath ) {
 	    const errors = [];
 	    if ( !this.goToTarget( this.getGoToTarget( xpath ) ) ) {
@@ -50220,8 +51809,8 @@
 	/**
 	 * Obtains a string of primary instance.
 	 *
-	 * @param  {!{include: boolean}=} include optional object items to exclude if false
-	 * @return {string}        XML string of primary instance
+	 * @param {{include: boolean}} [include] - Optional object items to exclude if false
+	 * @return {string} XML string of primary instance
 	 */
 	Form.prototype.getDataStr = function( include ) {
 	    include = ( typeof include !== 'object' || include === null ) ? {} : include;
@@ -50249,11 +51838,11 @@
 	 * TODO: this needs to work for all expressions (relevants, constraints), now it only works for calculated items
 	 * Ideally this belongs in the form Model, but unfortunately it needs access to the view
 	 *
-	 * @param  {string} expr
-	 * @param  {string} resTypeStr
-	 * @param  {string} selector
-	 * @param  {number} index
-	 * @param  {boolean} tryNative
+	 * @param {string} expr
+	 * @param {string} resTypeStr
+	 * @param {string} selector
+	 * @param {number} index
+	 * @param {boolean} tryNative
 	 * @return {string} updated expression
 	 */
 	Form.prototype.replaceChoiceNameFn = function( expr, resTypeStr, selector, index, tryNative ) {
@@ -50296,8 +51885,8 @@
 	 * Since not all data nodes with a value have a corresponding input element,
 	 * we cycle through the HTML form elements and check for each form element whether data is available.
 	 *
-	 * @param $group
-	 * @param groupIndex
+	 * @param {jQuery} $group
+	 * @param {number} groupIndex
 	 */
 	Form.prototype.setAllVals = function( $group, groupIndex ) {
 	    const that = this;
@@ -50313,7 +51902,7 @@
 	        .forEach( element => {
 	            try {
 	                var value = element.textContent;
-	                var name = that.model.getXPath( element, 'instance' );
+	                var name = getXPath( element, 'instance' );
 	                const index = that.model.node( name ).getElements().indexOf( element );
 	                const control = that.input.find( name, index );
 	                if ( control ) {
@@ -50326,9 +51915,12 @@
 	                throw new Error( `Could not load input field value with name: ${name} and value: ${value}` );
 	            }
 	        } );
-	    return;
 	};
 
+	/**
+	 * @param {jQuery} $control
+	 * @return {string|undefined} Value
+	 */
 	Form.prototype.getModelValue = function( $control ) {
 	    const control = $control[ 0 ];
 	    const path = this.input.getName( control );
@@ -50339,9 +51931,9 @@
 	/**
 	 * Finds nodes that have attributes with XPath expressions that refer to particular XML elements.
 	 *
-	 * @param  {string} attr - The attribute name to search for
-	 * @param  {?string} filter - The optional filter to append to each selector
-	 * @param  {{nodes:Array<string>=, repeatPath: string=, repeatIndex: number=}=} updated - The object containing info on updated data nodes
+	 * @param {string} attr - The attribute name to search for
+	 * @param {string} [filter] - The optional filter to append to each selector
+	 * @param {UpdatedDataNodes} [updated] - The object containing info on updated data nodes.
 	 * @return {jQuery} - A jQuery collection of elements
 	 */
 	Form.prototype.getRelatedNodes = function( attr, filter, updated ) {
@@ -50413,6 +52005,10 @@
 	    return $collection;
 	};
 
+	/**
+	 * @param {jQuery} $controls
+	 * @return {jQuery}
+	 */
 	Form.prototype.filterRadioCheckSiblings = $controls => {
 	    const wrappers = [];
 	    return $controls.filter( function() {
@@ -50432,10 +52028,10 @@
 	/**
 	 * Crafts an optimized jQuery selector for element attributes that contain an expression with a target node name.
 	 *
-	 * @param  {string} filter   The filter to use
-	 * @param  {string} attr     The attribute to target
-	 * @param  {string} nodeName The XML nodeName to find
-	 * @return {string}          The selector
+	 * @param {string} filter - The filter to use
+	 * @param {string} attr - The attribute to target
+	 * @param {string} nodeName - The XML nodeName to find
+	 * @return {string} The selector
 	 */
 	Form.prototype.getQuerySelectorsForLogic = ( filter, attr, nodeName ) => [
 	    // The target node name is ALWAYS at the END of a path inside the expression.
@@ -50461,7 +52057,7 @@
 	 * alternative is to add some logic to relevant.update to mark irrelevant nodes in the model
 	 * but that would slow down form loading and form traversal when it does matter.
 	 *
-	 * @return {string} [description]
+	 * @return {string} Data string
 	 */
 	Form.prototype.getDataStrWithoutIrrelevantNodes = function() {
 	    const that = this;
@@ -50530,11 +52126,16 @@
 	 *
 	 * Note: it does not take care of re-validating a question itself after its value has changed due to a calculation update!
 	 *
-	 * @param {Object} updated
+	 * @param {object} [updated]
+	 * @param {boolean} [updated.cloned]
+	 * @param {string} repeatPath
 	 */
 	Form.prototype.validationUpdate = function( updated ) {
 	};
 
+	/**
+	 * A big function that sets event handlers.
+	 */
 	Form.prototype.setEventHandlers = function() {
 	    const that = this;
 
@@ -50636,11 +52237,19 @@
 	    } );
 	};
 
+	/**
+	 * @param {Element} node
+	 * @param {string} [type] - One of "constraint", "required" and "relevant".
+	 */
 	Form.prototype.setValid = function( node, type ) {
 	    const classes = ( type ) ? [ `invalid-${type}` ] : [ 'invalid-constraint', 'invalid-required', 'invalid-relevant' ];
 	    this.input.getWrapNode( node ).classList.remove( ...classes );
 	};
 
+	/**
+	 * @param {Element} node
+	 * @param {string} [type] - One of "constraint", "required" and "relevant".
+	 */
 	Form.prototype.setInvalid = function( node, type ) {
 	    type = type || 'constraint';
 
@@ -50663,8 +52272,8 @@
 	/**
 	 * Checks whether the question is not currently marked as invalid. If no argument is provided, it checks the whole form.
 	 *
-	 * @param $node
-	 * @return {!boolean} whether the question/form is not marked as invalid.
+	 * @param {Element} node
+	 * @return {!boolean} Whether the question/form is not marked as invalid.
 	 */
 	Form.prototype.isValid = function( node ) {
 	    if ( node ) {
@@ -50675,6 +52284,9 @@
 	    return this.view.html.querySelector( '.invalid-required, .invalid-constraint, .invalid-relevant' ) === null;
 	};
 
+	/**
+	 * Clears irrelevant
+	 */
 	Form.prototype.clearIrrelevant = function() {
 	    this.relevant.update( null, true );
 	};
@@ -50701,13 +52313,15 @@
 
 	/**
 	 * Alias of validateAll
+	 *
+	 * @function
 	 */
 	Form.prototype.validate = Form.prototype.validateAll;
 
 	/**
 	 * Validates all enabled input fields in the supplied container, after first resetting everything as valid.
 	 *
-	 * @param $container
+	 * @param {jQuery} $container
 	 * @return {Promise} wrapping {boolean} whether the container contains any errors
 	 */
 	Form.prototype.validateContent = function( $container ) {
@@ -50747,6 +52361,11 @@
 	            false );
 	};
 
+	/**
+	 * @param {string} targetPath
+	 * @param {string} contextPath
+	 * @return {string} path
+	 */
 	Form.prototype.pathToAbsolute = function( targetPath, contextPath ) {
 	    let target;
 
@@ -50757,7 +52376,7 @@
 	    // index is irrelevant (no positions in returned path)
 	    target = this.model.evaluate( targetPath, 'node', contextPath, 0, true );
 
-	    return this.model.getXPath( target, 'instance', false );
+	    return getXPath( target, 'instance', false );
 	};
 
 	/**
@@ -50769,7 +52388,7 @@
 	/**
 	 * Validates question values.
 	 *
-	 * @param  {Element} control    [description]
+	 * @param {Element} control
 	 * @return {Promise<undefined|ValidateInputResolution>} resolves with validation result
 	 */
 	Form.prototype.validateInput = function( control ) {
@@ -50846,6 +52465,10 @@
 	        } );
 	};
 
+	/**
+	 * @param {string} path
+	 * @return {undefined|Element}
+	 */
 	Form.prototype.getGoToTarget = function( path ) {
 	    let hits;
 	    let modelNode;
@@ -50865,7 +52488,7 @@
 	    }
 
 	    // Convert to absolute path, while maintaining positions.
-	    path = this.model.getXPath( modelNode, 'instance', true );
+	    path = getXPath( modelNode, 'instance', true );
 
 	    // Not inside a cloned repeat.
 	    target = this.view.html.querySelector( `[name="${path}"]` );
@@ -50890,9 +52513,10 @@
 	};
 
 	/**
-	 * Scrolls to a HTML Element, flips to the page it is on and focuses on the nearest form control.
+	 * Scrolls to an HTML question or group element, flips to the page it is on and focuses on the nearest form control.
 	 *
-	 * @param {HTMLElement} target - A HTML element to scroll to
+	 * @param {HTMLElement} target - An HTML question or group element to scroll to
+	 * @return {boolean} whether target found
 	 */
 	Form.prototype.goToTarget = function( target ) {
 	    if ( target ) {
@@ -50919,8 +52543,19 @@
 
 	/**
 	 * Static method to obtain required enketo-transform version direct from class.
+	 *
+	 * @type string
+	 * @default
 	 */
-	Form.requiredTransformerVersion = '1.32.0';
+	Form.requiredTransformerVersion = '1.34.0';
+
+	/**
+	 * @class FormModel
+	 *
+	 * @description Class imported from Enketo Core.
+	 *
+	 * @see {@link https://enketo.github.io/enketo-core/FormModel.html|Enketo Core documentation}
+	 */
 
 	window.FormModel = FormModel;
 

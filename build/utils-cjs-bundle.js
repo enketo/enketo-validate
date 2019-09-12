@@ -9,9 +9,10 @@
 /**
  * Parses an Expression to extract all function calls and theirs argument arrays.
  *
+ * @static
  * @param {string} expr - The expression to search
  * @param {string} func - The function name to search for
- * @return {Array.Array.<string, any>} The result array, where each result is an array containing the function call and array of arguments.
+ * @return {Array<Array<string, any>>} The result array, where each result is an array containing the function call and array of arguments.
  */
 function parseFunctionFromExpression( expr, func ) {
     let index;
@@ -54,6 +55,74 @@ function parseFunctionFromExpression( expr, func ) {
     }
 
     return results;
+}
+
+/**
+ * @module dom-utils
+ */
+
+
+/**
+ * Creates an XPath from a node
+ *
+ * @param {Element} node - XML node
+ * @param {string} [rootNodeName] - Defaults to #document
+ * @param {boolean} [includePosition] - Whether or not to include the positions `/path/to/repeat[2]/node`
+ * @return {string} XPath
+ */
+function getXPath( node, rootNodeName = '#document', includePosition = false ) {
+    let index;
+    const steps = [];
+    let position = '';
+    if ( !node || node.nodeType !== 1 ) {
+        return null;
+    }
+    const nodeName = node.nodeName;
+    let parent = node.parentElement;
+    let parentName = parent ? parent.nodeName : null;
+
+    if ( includePosition ) {
+        index = getRepeatIndex( node );
+        if ( index > 0 ) {
+            position = `[${index + 1}]`;
+        }
+    }
+
+    steps.push( nodeName + position );
+
+    while ( parent && parentName !== rootNodeName && parentName !== '#document' ) {
+        if ( includePosition ) {
+            index = getRepeatIndex( parent );
+            position = ( index > 0 ) ? `[${index + 1}]` : '';
+        }
+        steps.push( parentName + position );
+        parent = parent.parentElement;
+        parentName = parent ? parent.nodeName : null;
+    }
+
+    return `/${steps.reverse().join( '/' )}`;
+}
+
+/**
+ * Obtains the index of a repeat instance within its own series.
+ *
+ * @param {Element} node - XML node
+ * @return {number} index
+ */
+function getRepeatIndex( node ) {
+    let index = 0;
+    const nodeName = node.nodeName;
+    let prevSibling = node.previousSibling;
+
+    while ( prevSibling ) {
+        // ignore any sibling text and comment nodes (e.g. whitespace with a newline character)
+        if ( prevSibling.nodeName && prevSibling.nodeName === nodeName ) {
+            index++;
+        }
+        prevSibling = prevSibling.previousSibling;
+    }
+
+    return index;
 }
 
 function addXPathExtensionsOc( XPathJS ) {
@@ -104,4 +173,21 @@ function addXPathExtensionsOc( XPathJS ) {
 
 }
 
-module.exports = { parseFunctionFromExpression, addXPathExtensionsOc };
+/**
+ * @module utils
+ *
+ * @description Gathers utility functions from third parties.
+ */
+module.exports = {
+    /**
+     * @type function
+     * @see {@link https://enketo.github.io/enketo-core/module-utils.html#~parseFunctionFromExpression|parseFunctionFromExpression}
+     */
+    parseFunctionFromExpression,
+    /**
+     * @type function
+     * @see {@link https://github.com/OpenClinica/enketo-xpath-extensions-oc|addXPathExtensionsOc}
+     */
+    addXPathExtensionsOc,
+    getXPath
+};
