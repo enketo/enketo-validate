@@ -341,22 +341,49 @@ class XForm {
         if ( primInstanceEl ) {
             const children = primInstanceEl.children;
             if ( children.length === 0 ) {
-                errors.push( 'Primary instance element has child.' );
+                errors.push( 'Primary instance element has no child.' );
             } else if ( children.length > 1 ) {
                 errors.push( 'Primary instance element has more than 1 child.' );
             }
             if ( children &amp;&amp; !children[ 0 ].id ) {
                 errors.push( `Data root node &lt;${children[0].nodeName}> has no id attribute.` );
             }
+            if ( children &amp;&amp; children[ 0 ] ) {
+                const dataNodeNames = [];
+                const dataNodes = children[ 0 ].querySelectorAll( '*' );
+
+                dataNodes.forEach( el => {
+                    const nodeName = el.nodeName;
+                    const index = dataNodeNames.indexOf( nodeName );
+                    // Save XPath determination for when necessary, to not negatively affect performance.
+                    if ( index !== -1 &amp;&amp; utils.getXPath( dataNodes[ index ], 'instance' ) !== utils.getXPath( el, 'instance' ) ) {
+                        warnings.push( `Duplicate question or group name "${nodeName}" found. Unique names are recommended` );
+                    }
+                    dataNodeNames.push( nodeName );
+                } );
+            }
+        }
+
+        if ( this.repeats.length ) {
+            const repeatPaths = [];
+            this.repeats.reverse().forEach( repeat => {
+                const nodeset = repeat.getAttribute( 'nodeset' );
+                // This check will fail if relative nodesets are used (not supported in Enketo any more).
+                if ( repeatPaths.some( repeatPath => repeatPath.startsWith( nodeset ) ) ) {
+                    const name = nodeset.substring( nodeset.lastIndexOf( '/' ) + 1 );
+                    warnings.push( `Repeat "${name}" contains a nested repeat. This not recommended.` );
+                }
+                repeatPaths.push( nodeset );
+            } );
         }
 
         // ODK Build bug
-        if ( this.doc.querySelector( 'group:not([ref])' ) ) {
+        if ( bodyEl &amp;&amp; bodyEl.querySelector( 'group:not([ref])' ) ) {
             warnings.push( 'Found &lt;group> without ref attribute. This might be fine as long as the group has no relevant logic.' );
         }
 
         // ODK Build output
-        if ( this.doc.querySelector( 'group:not([ref]) > repeat' ) ) {
+        if ( bodyEl &amp;&amp; bodyEl.querySelector( 'group:not([ref]) > repeat' ) ) {
             warnings.push( 'Found &lt;repeat> that has a parent &lt;group> without a ref attribute. ' +
                 'If the repeat has relevant logic, this will make the form very slow.' );
         }
@@ -629,8 +656,7 @@ class XForm {
 
 module.exports = {
     XForm: XForm
-};
-</code></pre>
+};</code></pre>
         </article>
     </section>
 

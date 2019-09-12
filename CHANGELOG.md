@@ -2,13 +2,13 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
-[Unreleased]
+[1.8.0] - 2019-09-12
 ---------------------
 ##### Added
 - Check for duplicate question/group names (warning).
 - Check for nested repeats (warning).
 
-[1.7.0]
+[1.7.0] - 2019-08-02
 ---------------------
 ##### Added
 - Check for missing label elements.

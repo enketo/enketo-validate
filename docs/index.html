@@ -62,7 +62,7 @@
 
 
     <section class="readme">
-        <article><p><img src="https://img.shields.io/badge/coverage-89.96%25-brightgreen.svg" alt="coverage-shield-badge-1">
+        <article><p><img src="https://img.shields.io/badge/coverage-97.24%25-brightgreen.svg" alt="coverage-shield-badge-1">
 <a href="http://badge.fury.io/js/enketo-validate"><img src="https://badge.fury.io/js/enketo-validate.svg" alt="npm version"></a> <a href="https://travis-ci.org/enketo/enketo-validate"><img src="https://travis-ci.org/enketo/enketo-validate.svg?branch=master" alt="Build Status"></a> <a href="https://david-dm.org/enketo/enketo-validate"><img src="https://david-dm.org/enketo/enketo-validate/status.svg" alt="Dependency Status"></a> <a href="https://david-dm.org/enketo/enketo-validate?type=dev"><img src="https://david-dm.org/enketo/enketo-validate/dev-status.svg" alt="devDependency Status"></a></p>
 <h1 id="enketo-validate">Enketo Validate</h1>
 <p><em>Validate <a href="https://opendatakit.github.io/xforms-spec/">ODK XForms</a> using Enketo's form engine</em></p>
@@ -122,11 +122,14 @@ const result = validator.validate( xformStr, options );
 <p>In it's current iteration, the validator does the following:</p>
 <ul>
 <li>It checks whether the XForm is a valid XML document.</li>
-<li>It performs some basic ODK XForm structure checks.</li>
+<li>It performs some elementary ODK XForm structure checks.</li>
 <li>It checks if each bind <code>nodeset</code> exists in the primary instance.</li>
-<li>It checks if appearance values are supported for that type of question.</li>
+<li>It checks if appearance values are supported or deprecated for that type of question.</li>
 <li>It checks for each <code>&lt;bind&gt;</code> whether the <code>relevant</code>, <code>constraint</code>, <code>calculate</code>, and <code>required</code> expressions are supported and valid* XPath.</li>
 <li>It checks whether required <code>&lt;label&gt;</code> elements exist.</li>
+<li>It checks for duplicate question or group names.</li>
+<li>It checks for nested repeats.</li>
+<li>It checks for form controls that have a calculation but are not set as readonly.</li>
 </ul>
 <p>* Note, that <code>/path/to/nonexisting/node</code> is perfectly valid XPath.</p>
 <h2 id="funding">Funding</h2>
