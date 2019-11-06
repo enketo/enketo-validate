@@ -115,7 +115,7 @@ let validate = ( xformStr, options = {} ) => {
         errors = errors.concat( ers );
     }
 
-    if ( xform &amp;&amp; errors.length === 0 ) {
+    if ( xform ) {
 
         // Find binds
         xform.binds.forEach( ( bind, index ) => {
@@ -159,8 +159,7 @@ let validate = ( xformStr, options = {} ) => {
     return { warnings, errors, version };
 };
 
-module.exports = { validate, version };
-</code></pre>
+module.exports = { validate, version };</code></pre>
         </article>
     </section>
 
