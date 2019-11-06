@@ -1,6 +1,5 @@
 <?xml version="1.0"?>
-<h:html 
-  xmlns="http://www.w3.org/2002/xforms" 
+<h:html xmlns="http://www.w3.org/2002/xforms" 
   xmlns:ev="http://www.w3.org/2001/xml-events" 
   xmlns:h="http://www.w3.org/1999/xhtml" 
   xmlns:jr="http://openrosa.org/javarosa" 
@@ -58,7 +57,7 @@
       <bind nodeset="/openclinica-validation-rules/two"/>
       <bind calculate="1+2" nodeset="/openclinica-validation-rules/two/two-valid" type="string"/>
       <bind calculate="1+3" nodeset="/openclinica-validation-rules/two/two-valid1" readonly="true()" type="string"/>
-      <bind calculate="1+4" nodeset="/openclinica-validation-rules/two/two-valid2" readonly="true()" type="int"/>
+      <bind calculate="pad2(1+4)" nodeset="/openclinica-validation-rules/two/two-valid2" readonly="true()" type="int"/>
       <bind calculate="&quot;AL&quot;" nodeset="/openclinica-validation-rules/two/two-valid3" readonly="true()" type="select1"/>
       <bind calculate="1+1" nodeset="/openclinica-validation-rules/two/two-invalid1" type="string"/>
       <bind calculate="1+2" nodeset="/openclinica-validation-rules/two/two-invalid2" type="int"/>

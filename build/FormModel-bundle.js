@@ -11844,6 +11844,8 @@
 	};
 
 	/**
+	 * XML types
+	 * 
 	 * @module types
 	 */
 
@@ -22903,10 +22905,10 @@
 	FormModel.prototype.replaceCurrentFn = ( expr, contextSelector ) => {
 	    // relative paths
 	    if ( contextSelector ) {
-	        expr = expr.replace( 'current()/.', `${contextSelector}/.` );
+	        expr = expr.replace( /current\(\)\/\./g, `${contextSelector}/.` );
 	    }
 	    // absolute paths
-	    expr = expr.replace( 'current()/', '/' );
+	    expr = expr.replace( /current\(\)\//g, '/' );
 
 	    return expr;
 	};
@@ -23168,7 +23170,9 @@
 	                    }
 	                }
 	            }
-	            console.error( `Expression: ${expr} did not return any boolean, string or number value as expected` );
+	            if ( !response ) {
+	                console.error( `Expression: ${expr} did not return any boolean, string or number value as expected` );
+	            }
 	        } else if ( resTypeNum === 7 ) {
 	            // response is an array of Elements
 	            response = [];
@@ -23689,7 +23693,15 @@
 	                return 'drawing';
 	            }
 	            if ( control.type ) {
-	                return control.type.toLowerCase();
+	                if ( control.type === 'text' && this.getXmlType( control ) === 'date' ) {
+	                    // for browsers that don't support type='date' and return 'text' (e.g. Safari Desktop)
+	                    return 'date';
+	                } else if ( control.type === 'text' && this.getXmlType( control ) === 'datetime' ) {
+	                    // for browsers that don't support type='datetime-local' and return 'text' (e.g. Safari and Firefox Desktop)
+	                    return 'datetime-local';
+	                } else {
+	                    return control.type.toLowerCase();
+	                }
 	            }
 	            return console.error( '<input> node has no type' );
 
@@ -23746,7 +23758,7 @@
 	     * @return {string} element XML type
 	     */
 	    getXmlType( control ) {
-	        return control.dataset.typeXml;
+	        return control.dataset.typeXml.toLowerCase() || 'string';
 	    },
 	    /**
 	     * @param {Element} control
@@ -23811,6 +23823,17 @@
 	                    }
 	                    break;
 	                }
+	            case 'datetime-local':
+	                {
+	                    if ( control.value ) {
+	                        const dt = control.value.split( 'T' )[ 1 ].length === 5 ? control.value + ':00' : control.value;
+	                        // Add local timezone offset
+	                        // do not use .toISOLocalString() because new Date("2019-10-17T16:34:23.048") works differently in iOS/Safari
+	                        // Take care to get DST offsets right for the date value.
+	                        value = dt + new Date( dt ).getTimezoneOffsetAsTime();
+	                    }
+	                    break;
+	                }
 	            default:
 	                {
 	                    value = control.value;
@@ -23842,6 +23865,7 @@
 	    setVal( control, value, event = events.InputUpdate() ) {
 	        let inputs;
 	        const type = this.getInputType( control );
+	        const xmlType = this.getXmlType( control );
 	        const question = this.getWrapNode( control );
 	        const name = this.getName( control );
 
@@ -23862,10 +23886,20 @@
 	                }
 	            }
 
-	            if ( type === 'date' || type === 'datetime' ) {
-	                // convert current value (loaded from instance) to a value that a native datepicker understands
-	                // TODO: test for IE, FF, Safari when those browsers start including native datepickers
-	                value = types[ type ].convert( value );
+	            if ( xmlType === 'date' || xmlType === 'datetime' ) {
+	                if ( value ) {
+	                    // convert current value (loaded from instance) to a value that a native datepicker understands
+	                    // TODO: test for IE, FF, Safari when those browsers start including native datepickers
+	                    value = types[ xmlType.toLowerCase() ].convert( value );
+
+	                    if ( xmlType === 'datetime' ) {
+	                        // convert to local time zone
+	                        value = new Date( value ).toISOLocalString();
+	                        // chop off local timezone offset to display properly in (native datetime-local) widget
+	                        const parts = value.split( 'T' );
+	                        value = `${parts[0]}T${parts[1].split(/[Z\-+]/)[0]}`;
+	                    }
+	                }
 	            }
 
 	            if ( type === 'time' ) {
@@ -24408,6 +24442,152 @@
 	    }
 	};
 
+	/**
+	 * Table of Contents (toc) module.
+	 *
+	 * @module toc
+	 */
+
+	var tocModule = {
+	    /**
+	     * @type Array
+	     * @default
+	     */
+	    tocItems: [],
+	    /**
+	     * @type Number
+	     * @default
+	     */
+	    _maxTocLevel: [],
+	    /**
+	     * Generate ToC Items
+	     */
+	    generateTocItems() {
+	        this.tocItems = [];
+	        const tocElements = [ ...this.form.view.$[ 0 ].querySelectorAll( '.question:not([role="comment"]), .or-group' ) ]
+	            .filter( tocEl => {
+	                return !tocEl.closest( '.disabled' ) &&
+	                    ( tocEl.matches( '.question' ) || tocEl.querySelector( '.question:not(.disabled)' ) ||
+	                        // or-repeat-info is only considered a page by itself if it has no sibling repeats
+	                        // When there are siblings repeats, we use CSS trickery to show the + button underneath the last
+	                        // repeat.
+	                        ( tocEl.matches( '.or-repeat-info' ) && getSiblingElements( tocEl, '.or-repeat' ).length === 0 ) );
+	            } )
+	            .filter( tocEl => !tocEl.classList.contains( 'or-repeat-info' ) );
+	        tocElements.forEach( ( element, index ) => {
+	            const groupParents = getAncestors( element, '.or-group' );
+	            this.tocItems.push( {
+	                element: element,
+	                level: groupParents.length,
+	                parent: groupParents.length > 0 ? groupParents[ groupParents.length - 1 ] : null,
+	                tocId: index,
+	                tocParentId: null
+	            } );
+	        } );
+
+	        this._maxTocLevel = Math.max.apply( Math, this.tocItems.map( el => el.level ) );
+	        const newTocParents = this.tocItems.filter( item => item.level < this._maxTocLevel && item.element.classList.contains( 'or-group' ) );
+
+	        this.tocItems.forEach( item => {
+	            const parentItem = newTocParents.find( parent => item.parent === parent.element );
+	            if ( parentItem ) {
+	                item.tocParentId = parentItem.tocId;
+	            }
+	        } );
+	    },
+	    /**
+	     * Generate ToC Html Fragment
+	     *
+	     * @return DocumentFragment
+	     */
+	    getHtmlFragment() {
+	        this.generateTocItems();
+
+	        const toc = document.createDocumentFragment();
+
+	        let currentTocLevel = 0;
+	        do {
+	            const currentTocLevelItems = this.tocItems.filter( item => item.level === currentTocLevel );
+
+	            if ( currentTocLevel === 0 ) {
+	                this._buildTocHtmlList( currentTocLevelItems, toc );
+	            } else {
+	                const currentLevelParentIds = [ ...new Set( currentTocLevelItems.map( item => item.tocParentId ) ) ];
+
+	                currentLevelParentIds.forEach( parentId => {
+	                    const tocList = document.createElement( 'ul' );
+	                    const currentLTocevelItemsWithSameIds = currentTocLevelItems.filter( item => item.tocParentId === parentId );
+
+	                    this._buildTocHtmlList( currentLTocevelItemsWithSameIds, tocList );
+
+	                    const tocParent = toc.querySelectorAll( '[tocId="' + parentId + '"]' )[ 0 ];
+	                    tocParent.appendChild( tocList );
+	                } );
+	            }
+
+	            currentTocLevel++;
+	        } while ( currentTocLevel <= this._maxTocLevel );
+
+	        return toc;
+	    },
+	    /**
+	     * Get Title of Current ToC Element
+	     *
+	     * @param {Element} el
+	     */
+	    _getTitle( el ) {
+	        let tocItemText;
+	        const labelEl = el.querySelector( '.question-label.active' );
+	        if ( labelEl ) {
+	            tocItemText = labelEl.textContent;
+	        } else {
+	            const hintEl = el.querySelector( '.or-hint.active' );
+	            if ( hintEl ) {
+	                tocItemText = hintEl.textContent;
+	            }
+	        }
+	        tocItemText = tocItemText && tocItemText.length > 20 ? `${tocItemText.substring(0,20)}...` : tocItemText;
+	        return tocItemText;
+	    },
+	    /**
+	     * Builds List of ToC Items
+	     *
+	     * @param {Array<Object>} items
+	     * @param {Element} appendTo
+	     */
+	    _buildTocHtmlList( items, appendTo ) {
+	        if ( items.length > 0 ) {
+	            items.forEach( item => {
+	                const tocListItem = document.createElement( 'li' );
+	                if ( item.element.classList.contains( 'or-group' ) ) {
+	                    const groupTocTitle = document.createElement( 'summary' );
+	                    groupTocTitle.textContent = this._getTitle( item.element ) || `[${item.tocId + 1}]`;
+
+	                    const groupToc = document.createElement( 'details' );
+	                    groupToc.setAttribute( 'tocId', item.tocId );
+	                    if ( item.tocParentId !== null ) {
+	                        groupToc.setAttribute( 'tocParentId', item.tocParentId );
+	                    }
+	                    groupToc.append( groupTocTitle );
+
+	                    tocListItem.append( groupToc );
+	                } else {
+	                    const a = document.createElement( 'a' );
+	                    a.textContent = this._getTitle( item.element ) || `[${item.tocId + 1}]`;
+
+	                    tocListItem.setAttribute( 'tocId', item.tocId );
+	                    tocListItem.setAttribute( 'role', 'pageLink' );
+	                    if ( item.tocParentId !== null ) {
+	                        tocListItem.setAttribute( 'tocParentId', item.tocParentId );
+	                    }
+	                    tocListItem.append( a );
+	                }
+	                appendTo.append( tocListItem );
+	            } );
+	        }
+	    }
+	};
+
 	var jquery_touchSwipe_min = createCommonjsModule(function (module) {
 	/*!
 	 * @fileOverview TouchSwipe - jQuery Plugin
@@ -24581,8 +24761,14 @@
 	        this.$toc
 	            .on( 'click', 'a', function() {
 	                if ( !that.form.pageNavigationBlocked ) {
-	                    const index = jquery( this.parentNode ).prevAll().length;
-	                    that.flipToPageContaining( jquery( that.tocItems[ index ].pageEl ) );
+	                    if ( this.parentElement && this.parentElement.getAttribute( 'tocId' ) ) {
+	                        const tocId = parseInt( this.parentElement.getAttribute( 'tocId' ), 10 );
+	                        const destItem = that.form.toc.tocItems.find( item => item.tocId === tocId );
+	                        if ( destItem && destItem.element ) {
+	                            const destEl = destItem.element;
+	                            that.form.goToTarget( destEl );
+	                        }
+	                    }
 	                }
 	                return false;
 	            } )
@@ -24816,43 +25002,9 @@
 	    _updateToc() {
 	        if ( this.$toc.length ) {
 	            // regenerate complete ToC from first enabled question/group label of each page
-	            this.tocItems = this.$activePages.get()
-	                .filter( pageEl => !pageEl.classList.contains( 'or-repeat-info' ) )
-	                .map( ( pageEl, index ) => {
-	                    let tocItemText = `[${index + 1}]`;
-	                    const labelEl = pageEl.querySelector( '.question-label.active' );
-	                    if ( labelEl ) {
-	                        tocItemText = labelEl.textContent;
-	                    } else {
-	                        const hintEl = pageEl.querySelector( '.or-hint.active' );
-	                        if ( hintEl ) {
-	                            tocItemText = hintEl.textContent;
-	                        }
-	                    }
-	                    tocItemText = tocItemText.length > 20 ? `${tocItemText.substring(0,20)}...` : tocItemText;
-	                    return { pageEl, tocItemText };
-	                } );
-	            this.$toc.empty()[ 0 ].append( this._getTocHtmlFragment( this.tocItems ) );
+	            this.$toc.empty()[ 0 ].append( this.form.toc.getHtmlFragment() );
 	            this.$toc.closest( '.pages-toc' ).removeClass( 'hide' );
 	        }
-	    },
-	    /**
-	     * Builds Table of Contents
-	     *
-	     * @param {Array<object>} tocItems
-	     * @return {Array<Element>}
-	     */
-	    _getTocHtmlFragment( tocItems ) {
-	        const items = document.createDocumentFragment();
-	        tocItems.forEach( item => {
-	            const li = document.createElement( 'li' );
-	            const a = document.createElement( 'a' );
-	            a.setAttribute( 'href', `#${item.pageEl.querySelector( '[name]' ).getAttribute( 'name' )}` );
-	            a.textContent = item.tocItemText;
-	            li.append( a );
-	            items.appendChild( li );
-	        } );
-	        return items;
 	    }
 	};
 
@@ -25734,6 +25886,7 @@
 	 **/
 
 	const ua = navigator.userAgent;
+	const pf = navigator.platform;
 
 	// We usually don't need to know which OS is running, but want to know
 	// whether a specific OS is runnning.
@@ -25746,7 +25899,10 @@
 	     * @type string
 	     **/
 	    get ios() {
-	        return /iPad|iPhone|iPod/i.test( ua );
+	        // in iOS13, the default Safari setting is 'Request Desktop Site' to be On. 
+	        // The platform and useragent no longer show iPad/iPhone/iPod
+	        // so we use a trick that will work for a while until MacOs gets touchscreen support.
+	        return /iPad|iPhone|iPod/i.test( pf ) || ( /Mac/i.test( pf ) && document.documentElement.ontouchstart !== undefined );
 	    },
 	    /**
 	     * @type string
@@ -25766,7 +25922,7 @@
 	let mobile = false;
 
 	// test input types
-	[ 'date', 'datetime', 'time', 'month' ].forEach( inputType => {
+	[ 'date', 'datetime-local', 'time', 'month' ].forEach( inputType => {
 	    const input = document.createElement( 'input' );
 	    input.setAttribute( 'type', inputType );
 	    inputTypes[ inputType ] = input.type !== 'text';
@@ -41817,14 +41973,12 @@
 
 	        // update the map if it is visible
 	        if ( !this.props.touch || this._inFullScreenMode() ) {
-	            if ( !this.map ) {
-	                this._addDynamicMap()
-	                    .then( () => {
-	                        that._updateDynamicMapView( latLng, zoom );
-	                    } );
-	            } else {
-	                that._updateDynamicMapView( latLng, zoom );
-	            }
+	            this.loadMap = this.loadMap || this._addDynamicMap();
+	            this.loadMap
+	                .then( () => {
+	                    that._updateDynamicMapView( latLng, zoom );
+	                } );
+
 	        }
 	    }
 
@@ -44728,20 +44882,7 @@
 	     * @type boolean
 	     */
 	    static condition() {
-	        const badSamsung = /GT-P31[0-9]{2}.+AppleWebKit\/534\.30/;
-
-	        /*
-	         * Samsung mobile browser (called "Internet") has a weird bug that appears sometimes (?) when an input field
-	         * already has a value and is edited. The new value YYYY-MM-DD prepends old or replaces the year of the old value and first hyphen. E.g.
-	         * existing: 2010-01-01, new value entered: 2012-12-12 => input field shows: 2012-12-1201-01.
-	         * This doesn't seem to effect the actual value of the input, just the way it is displayed. But if the incorrectly displayed date is then
-	         * attempted to be edited again, it does get the incorrect value and it's impossible to clear this and create a valid date.
-	         *
-	         * browser: "Mozilla/5.0 (Linux; U; Android 4.1.1; en-us; GT-P3113 Build/JRO03C) AppleWebKit/534.30 (KHTML, like Gecko) Version/4.0 Safari/534.30";
-	         * webview: "Mozilla/5.0 (Linux; U; Android 4.1.2; en-us; GT-P3100 Build/JZO54K) AppleWebKit/534.30 (KHTML, like Gecko) Version/4.0 Safari/534.30"
-	         */
-
-	        return !support.touch || !support.inputTypes.date || badSamsung.test( navigator.userAgent );
+	        return !support.touch || !support.inputTypes.date;
 	    }
 
 	    _init() {
@@ -44905,39 +45046,6 @@
 	}
 
 	/**
-	 * The whole purpose of this widget is to hide the placeholder text on native date inputs
-	 * and show a consistent date format between readonly and non-readonly questions. This widget
-	 * is only activated for READONLY questions on NON-MOBILE devices.
-	 *
-	 * The placeholder is considered particularly unhelpful for month-year and year appearances.
-	 * For consistency it's also removed from regular date inputs.
-	 *
-	 * @extends Widget
-	 */
-	class DatepickerNative extends Widget {
-	    /**
-	     * @type string
-	     */
-	    static get selector() {
-	        return '.question input[type="date"]';
-	    }
-
-	    /**
-	     * @param {Element} element
-	     * @return {boolean}
-	     */
-	    static condition( element ) {
-	        // Do not instantiate if DatepickerExtended was instantiated on element or if mobile device is used.
-	        return !elementDataStore.has( element, 'DatepickerExtended' ) && !support.touch;
-	    }
-
-	    _init() {
-	        this.element.type = 'text';
-	        this.element.classList.add( 'mask-date' );
-	    }
-	}
-
-	/**
 	 * For now, the whole purpose of this widget is to show a native month picker on
 	 * MOBILE devices with browsers that support it.
 	 *
@@ -44957,22 +45065,20 @@
 	     */
 	    static condition( element ) {
 	        // Do not instantiate if DatepickerExtended was instantiated on element or if non-mobile device is used.
-	        return !elementDataStore.has( element, 'DatepickerExtended' ) && support.touch;
+	        return !elementDataStore.has( element, 'DatepickerExtended' ) && support.touch && support.inputTypes.month;
 	    }
 
 	    _init() {
-	        if ( support.inputTypes.month ) {
-	            this.element.classList.add( 'hide' );
-	            const fragment = document.createRange().createContextualFragment( '<input class="ignore widget datepicker-mobile" type="month"/>' );
-	            this.element.after( fragment );
-	            this.widgetInput = this.question.querySelector( 'input.widget' );
-	            // set default value
-	            this.value = this.originalInputValue;
+	        this.element.classList.add( 'hide' );
+	        const fragment = document.createRange().createContextualFragment( '<input class="ignore widget datepicker-mobile" type="month"/>' );
+	        this.element.after( fragment );
+	        this.widgetInput = this.question.querySelector( 'input.widget' );
+	        // set default value
+	        this.value = this.originalInputValue;
 
-	            this.widgetInput.addEventListener( 'change', () => {
-	                this.originalInputValue = this.value;
-	            } );
-	        }
+	        this.widgetInput.addEventListener( 'change', () => {
+	            this.originalInputValue = this.value;
+	        } );
 	    }
 
 	    /**
@@ -45800,7 +45906,9 @@
 	                    }
 	                }
 	            } else {
-	                timeMode = ( ( /a/i ).test( time ) ? 1 : 0 ) + ( ( /p/i ).test( time ) ? 2 : 0 ); // 0 = none, 1 = AM, 2 = PM, 3 = BOTH.
+	                let am = this.showMeridian ? this.meridianNotation.am : 'am';
+	                let pm = this.showMeridian ? this.meridianNotation.pm : 'pm';
+	                timeMode = ( ( new RegExp( am, 'i' ) ).test( time ) ? 1 : 0 ) + ( ( new RegExp( pm, 'i' ) ).test( time ) ? 2 : 0 ); // 0 = none, 1 = AM, 2 = PM, 3 = BOTH.
 	                if ( timeMode > 2 ) { // If both are present, fail.
 	                    this.clear();
 	                    return;
@@ -45864,7 +45972,7 @@
 	                }
 
 	                if ( this.showMeridian ) {
-	                    if ( hour > 12 ) {
+	                    if ( hour >= 12 ) {
 	                        // Force PM.
 	                        timeMode = 2;
 	                        hour -= 12;
@@ -46272,26 +46380,13 @@
 	     * @type string
 	     */
 	    static get selector() {
-	        return '.question input[type="datetime"]:not([readonly])';
+	        return '.question input[type="datetime-local"]:not([readonly])';
 	    }
 	    /**
 	     * @return {boolean}
 	     */
 	    static condition() {
-	        const badSamsung = /GT-P31[0-9]{2}.+AppleWebKit\/534\.30/;
-
-	        /*
-	         * Samsung mobile browser (called "Internet") has a weird bug that appears sometimes (?) when an input field
-	         * already has a value and is edited. The new value YYYY-MM-DD prepends old or replaces the year of the old value and first hyphen. E.g.
-	         * existing: 2010-01-01, new value entered: 2012-12-12 => input field shows: 2012-12-1201-01.
-	         * This doesn't seem to effect the actual value of the input, just the way it is displayed. But if the incorrectly displayed date is then
-	         * attempted to be edited again, it does get the incorrect value and it's impossible to clear this and create a valid date.
-	         *
-	         * browser: "Mozilla/5.0 (Linux; U; Android 4.1.1; en-us; GT-P3113 Build/JRO03C) AppleWebKit/534.30 (KHTML, like Gecko) Version/4.0 Safari/534.30";
-	         * webview: "Mozilla/5.0 (Linux; U; Android 4.1.2; en-us; GT-P3100 Build/JZO54K) AppleWebKit/534.30 (KHTML, like Gecko) Version/4.0 Safari/534.30"
-	         */
-
-	        return !support.touch || !support.inputTypes.datetime || badSamsung.test( navigator.userAgent );
+	        return !support.touch || !support.inputTypes[ 'datetime-local' ];
 	    }
 
 	    _init() {
@@ -46423,9 +46518,49 @@
 	        const val = value ? new Date( value ).toISOLocalString() : '';
 	        const vals = val.split( 'T' );
 	        const dateVal = vals[ 0 ];
-	        const timeVal = ( vals[ 1 ] && vals[ 1 ].length > 4 ) ? vals[ 1 ].substring( 0, 5 ) : '';
+	        /**
+	         * seems the source of issue #649 is in the toISOLocalString function 
+	         * refer: https://github.com/enketo/enketo-xpathjs/blob/master/src/date-extensions.js#L16
+	         */
+	        const timeVal = ( vals[ 1 ] && vals[ 1 ].length > 4 ) ? vals[ 1 ].substring( 0, 5 ) : ( dateVal && !vals[ 1 ] ) ? '00:00' : '';
 	        this.$fakeDateI.datepicker( 'setDate', dateVal );
 	        this.$fakeTimeI.timepicker( 'setTime', timeVal );
+	    }
+	}
+
+	/**
+	 * The whole purpose of this widget is to hide the placeholder text on native date inputs
+	 * and show a consistent date format between readonly and non-readonly questions. This widget
+	 * is only activated for READONLY questions on NON-MOBILE devices.
+	 *
+	 * The placeholder is considered particularly unhelpful for month-year and year appearances.
+	 * For consistency it's also removed from regular date inputs.
+	 * 
+	 * TODO: it looks like empty date/datetime-local inputs are hidden, so not clear to me if this widget actually 
+	 * changes anything.
+	 *
+	 * @extends Widget
+	 */
+	class DatepickerNative extends Widget {
+	    /**
+	     * @type string
+	     */
+	    static get selector() {
+	        return '.question input[type="date"],.question input[type="datetime-local"]';
+	    }
+
+	    /**
+	     * @param {Element} element
+	     * @return {boolean}
+	     */
+	    static condition( element ) {
+	        // Do not instantiate if DatepickerExtended was instantiated on element or if mobile device is used.
+	        return !elementDataStore.has( element, 'DatepickerExtended' ) && !elementDataStore.has( element, 'DatetimepickerExtended' ) && !support.touch;
+	    }
+
+	    _init() {
+	        this.element.type = 'text';
+	        this.element.classList.add( 'mask-date' );
 	    }
 	}
 
@@ -48174,7 +48309,7 @@
 	     * @type string
 	     */
 	    static get selector() {
-	        return '.or-appearance-distress input[type="number"], .question:not(.or-appearance-analog-scale) > input[type="number"][min][max][step]';
+	        return '.or-appearance-distress input[type="number"], .question:not(.or-appearance-analog-scale):not(.or-appearance-rating) > input[type="number"][min][max][step]';
 	    }
 
 	    _init() {
@@ -50475,7 +50610,7 @@
 	     * @type string
 	     */
 	    static get selector() {
-	        return '.question input[type="date"]';
+	        return ' .question input[type="date"], .question input[type="datetime-local"], .question input[type="time"]';
 	    }
 
 	    /**
@@ -50484,7 +50619,7 @@
 	     */
 	    static condition( element ) {
 	        // Do not instantiate if DatepickerExtended was instantiated on element or if non-iOS browser is used.
-	        return !elementDataStore.has( element, 'DatepickerExtended' ) && os.ios;
+	        return !elementDataStore.has( element, 'DatepickerExtended' ) && !elementDataStore.has( element, 'DatetimepickerExtended' ) && !elementDataStore.has( element, 'TimepickerExtended' ) && os.ios;
 	    }
 
 	    _init() {
@@ -50492,7 +50627,7 @@
 	        /*
 	         * Bug 1.
 	         *
-	         * This bug deals with readonly date inputs on iOS browsers (e.g. Safari and Chrome).
+	         * This bug deals with readonly date, time, and datetime-local inputs on iOS browsers (e.g. Safari and Chrome).
 	         * See https://github.com/OpenClinica/enketo-express-oc/issues/219.
 	         * Once this bug is fixed in iOS, this code can be removed.
 	         *
@@ -50502,7 +50637,7 @@
 	         * This is a very ugly solution, but the bug is fairly obscure, and the workaround is hopefully
 	         * just temporary.
 	         */
-	        console.log( 'Adding iOS readonly datepicker workaround.' );
+	        console.log( 'Adding iOS readonly date/time/datetime picker workaround.' );
 	        this.element.addEventListener( 'focus', () => {
 	            // prepare for future where readonly state is dynamic
 	            if ( this.element.readOnly ) {
@@ -50513,13 +50648,142 @@
 	}
 
 	/**
+	 * @extends RangeWidget
+	 */
+	class RatingWidget extends Widget {
+	    /**
+	     * @type string
+	     */
+	    static get selector() {
+	        return '.or-appearance-rating input[type="number"]';
+	    }
+
+	    _init() {
+	        const fragment = document.createRange().createContextualFragment( this._getHtmlStr() );
+	        this.element.after( fragment );
+	        this.element.classList.add( 'hide' );
+	        this.widget = this.question.querySelector( '.widget' );
+
+	        let ratingStars = '',
+	            name = Math.random().toString( 36 ).substring( 2, 15 );
+	        for ( let i = this.props.min; i <= this.props.max; i += this.props.step ) {
+	            ratingStars += `<input type=radio name="rating-stars__${name}" class="rating-widget__rating__star ignore" value="${i}"/>`;
+	        }
+
+	        this.widget.querySelector( '.rating-widget__rating' )
+	            .append( document.createRange().createContextualFragment( ratingStars ) );
+
+	        this.rating = this.widget.querySelector( '.rating-widget__rating' );
+	        this.stars = this.rating.querySelectorAll( '.rating-widget__rating__star' );
+	        this.stars.forEach( el => {
+	            el.addEventListener( 'change', () => {
+	                const selected = this.rating.querySelector( 'input:checked' );
+	                // contains class 'empty' means first load
+	                if ( ( this.value != selected.value || this.rating.classList.contains( 'empty' ) ) ) {
+	                    this.value = selected.value;
+	                }
+	            } );
+	        } );
+
+	        // loads the default value if exists
+	        this.update();
+
+	        if ( this.props.readonly ) {
+	            this.disable();
+	        }
+	    }
+
+	    /**
+	     * This is separated so it can be extended (in the analog-scale widget)
+	     *
+	     * @return {string} HTML string
+	     */
+	    _getHtmlStr() {
+	        return `<div class="widget rating-widget">
+                	<div class="rating-widget__rating empty"></div>
+            	</div>`;
+	    }
+
+	    /**
+	     * Disables widget
+	     */
+	    disable() {
+	        this.stars.forEach( el => el.disabled = true );
+	    }
+
+	    /**
+	     * Enables widget
+	     */
+	    enable() {
+	        this.stars.forEach( el => el.disabled = false );
+	    }
+
+	    /**
+	     * Updates widget
+	     */
+	    update() {
+	        const value = this.element.value;
+	        if ( isNumber( value ) ) {
+	            this.stars.forEach( ( star ) => {
+	                if ( star.value === value ) {
+	                    star.checked = true;
+	                    star.dispatchEvent( events.Change() );
+	                }
+	            } );
+	        } else {
+	            this._reset();
+	        }
+	    }
+
+	    /**
+	     * Resets widget
+	     */
+	    _reset() {
+	        const selected = this.rating.querySelector( 'input:checked' );
+	        if ( selected ) {
+	            this.value = '';
+	            selected.checked = false;
+	        }
+	    }
+
+	    /**
+	     * @type object
+	     */
+	    get props() {
+	        const props = this._props;
+	        const min = isNumber( this.element.getAttribute( 'min' ) ) ? this.element.getAttribute( 'min' ) : 0;
+	        const max = isNumber( this.element.getAttribute( 'max' ) ) ? this.element.getAttribute( 'max' ) : 10;
+	        const step = isNumber( this.element.getAttribute( 'step' ) ) ? this.element.getAttribute( 'step' ) : 1;
+
+	        props.min = Number( min );
+	        props.max = Number( max );
+	        props.step = Number( step );
+
+	        return props;
+	    }
+
+	    /**
+	     * @type string
+	     */
+	    get value() {
+	        return this.originalInputValue;
+	    }
+
+	    set value( value ) {
+	        this.originalInputValue = value;
+	        this.rating.classList.toggle( 'empty', value === '' );
+	    }
+
+	}
+
+	/**
 	 * A collection of all available widgets
 	 *
 	 * @module widgets
 	 */
 	//import zz from '../widget/example/my-widget';
 
-	var _widgets = [ NoteWidget, DesktopSelectpicker, MobileSelectPicker, AutocompleteSelectpicker, Geopicker, TextareaWidget, TableWidget, Radiopicker, DatepickerExtended, DatepickerNative, DatepickerMobile, TimepickerExtended, DatetimepickerExtended, MediaPicker, Filepicker, DrawWidget, LikertItem, Columns, AnalogScaleWidget, ImageViewer, Comment, ImageMap, RangeWidget, RankWidget, UrlWidget, TextMaxWidget, DatepickerNativeIos ];
+	var _widgets = [ NoteWidget, DesktopSelectpicker, MobileSelectPicker, AutocompleteSelectpicker, Geopicker, TextareaWidget, TableWidget, Radiopicker, DatepickerExtended, DatepickerMobile, TimepickerExtended, DatetimepickerExtended, DatepickerNative, MediaPicker, Filepicker, DrawWidget, LikertItem, Columns, AnalogScaleWidget, ImageViewer, Comment, ImageMap, RangeWidget, RankWidget, UrlWidget, TextMaxWidget, DatepickerNativeIos, RatingWidget ];
 
 	/**
 	 * @module widgets-controller
@@ -51458,7 +51722,8 @@
 	                    delete this.dataset.loadedFileName;
 	                    /* falls through */
 	                case 'date':
-	                case 'datetime':
+	                case 'datetime-local':
+	                case 'month':
 	                case 'time':
 	                case 'number':
 	                case 'search':
@@ -51696,6 +51961,7 @@
 	        that.view.html.dispatchEvent( events.Removed( event.detail ) );
 	    } );
 
+	    this.toc = this.addModule( tocModule );
 	    this.pages = this.addModule( pageModule );
 	    this.langs = this.addModule( languageModule );
 	    this.progress = this.addModule( progressModule );
@@ -52198,7 +52464,7 @@
 	        this.progress.update( event.target );
 	    } );
 
-	    this.model.events.addEventListener( 'dataupdate', event => {
+	    this.model.events.addEventListener( events.DataUpdate().type, event => {
 	        that.evaluationCascade.forEach( fn => {
 	            fn.call( that, event.detail );
 	        }, true );
@@ -52547,7 +52813,7 @@
 	 * @type string
 	 * @default
 	 */
-	Form.requiredTransformerVersion = '1.34.0';
+	Form.requiredTransformerVersion = '1.35.0';
 
 	/**
 	 * @class FormModel

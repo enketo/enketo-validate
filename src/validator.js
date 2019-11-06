@@ -66,7 +66,7 @@ let validate = ( xformStr, options = {} ) => {
         errors = errors.concat( ers );
     }
 
-    if ( xform && errors.length === 0 ) {
+    if ( xform ) {
 
         // Find binds
         xform.binds.forEach( ( bind, index ) => {

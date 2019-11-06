@@ -15,9 +15,9 @@
                             <kids-name/>
                             <immunization-info jr:template="">
                                 <vaccine/>
-                                <immunizatoin-info-details jr:template="">
+                                <immunization-info-details jr:template="">
                                     <something/>
-                                </immunizatoin-info-details>
+                                </immunization-info-details>
                             </immunization-info>
                         </kids-details>
                         <group>

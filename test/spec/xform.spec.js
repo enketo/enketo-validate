@@ -97,7 +97,7 @@ describe( 'XForm', () => {
     describe( 'validated with custom OpenClinica rules', () => {
         const xf1 = loadXForm( 'openclinica.xml' );
         const result1 = validator.validate( xf1, { openclinica: true } );
-        const ERRORS = 9;
+        const ERRORS = 10;
 
         it( `outputs ${ERRORS} errors`, () => {
             expect( result1.errors.length ).to.equal( ERRORS );

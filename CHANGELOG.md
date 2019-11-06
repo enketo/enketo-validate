@@ -2,6 +2,12 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+[1.8.1] - 2019-11-06
+---------------------
+##### Changed
+- Updated Enketo-core engine and OpenClinica XPath extensions.
+- Always try to evaluate expressions even if XForm structure errors were found.
+
 [1.8.0] - 2019-09-12
 ---------------------
 ##### Added
