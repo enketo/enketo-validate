@@ -25,6 +25,12 @@
                         </group>
                     </kids>
                     <gps/>
+                    <repeat jr:template="">
+                        <b/>
+                    </repeat>
+                    <repeat-confusion jr:template="">
+                        <a/>
+                    </repeat-confusion>
                     <orx:meta>
                         <orx:instanceID/>
                     </orx:meta>
@@ -76,6 +82,21 @@
                     <label>4.4 A Nested Age</label>
                 </input>
             </group>
+        </group>
+        <group ref="/data/repeat">
+            <repeat nodeset="/data/repeat">
+                <input ref="/data/repeat/a">
+                    <label>a</label>
+                </input>
+            </repeat>
+        </group>
+        <!-- not a nested repeat, but in the past was identified as one -->
+        <group ref="/data/repeat-confusion">
+            <repeat nodeset="/data/repeat-confusion">
+                <input ref="/data/repeat-confusion/b">
+                    <label>a</label>
+                </input>
+            </repeat>
         </group>
     </h:body>
 </h:html>

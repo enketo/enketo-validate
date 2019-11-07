@@ -320,7 +320,7 @@ class XForm {
             this.repeats.reverse().forEach( repeat => {
                 const nodeset = repeat.getAttribute( 'nodeset' );
                 // This check will fail if relative nodesets are used (not supported in Enketo any more).
-                if ( repeatPaths.some( repeatPath => repeatPath.startsWith( nodeset ) ) ) {
+                if ( repeatPaths.some( repeatPath => repeatPath.startsWith( nodeset + '/' ) ) ) {
                     const name = nodeset.substring( nodeset.lastIndexOf( '/' ) + 1 );
                     warnings.push( `Repeat "${name}" contains a nested repeat. This not recommended.` );
                 }
