@@ -27,8 +27,8 @@
     "homepage": "https://github.com/enketo/enketo-validate#readme",
     "dependencies": {
         "commander": "^3.0.2",
+        "enketo-transformer": "^1.36.0",
         "enketo-xpath-extensions-oc": "git+https://github.com/OpenClinica/enketo-xpath-extensions-oc.git#efa9830",
-        "enketo-xslt": "^1.25.0",
         "jsdom": "15.1.x",
         "libxslt": "0.7.x"
     },

@@ -7,7 +7,7 @@ const fs = require( 'fs' );
 const path = require( 'path' );
 const libxslt = require( 'libxslt' );
 const libxmljs = libxslt.libxmljs;
-const sheets = require( 'enketo-xslt' );
+const sheets = require( 'enketo-transformer' ).sheets;
 const xslModelSheet = libxslt.parse( sheets.xslModel );
 const appearanceRules = require( './appearances' );
 
