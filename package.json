@@ -1,6 +1,6 @@
 {
     "name": "enketo-validate",
-    "version": "1.9.0",
+    "version": "1.9.1",
     "description": "An XForm validator around Enketo's form engine",
     "main": "src/validator.js",
     "bin": "./validate",
@@ -29,7 +29,7 @@
         "commander": "^5.1.0",
         "enketo-transformer": "^1.40.1",
         "enketo-xpath-extensions-oc": "git+https://github.com/OpenClinica/enketo-xpath-extensions-oc.git#efa9830",
-        "jsdom": "^16.2.2",
+        "jsdom": "^15.2.1",
         "libxslt": "0.9.x"
     },
     "devDependencies": {
