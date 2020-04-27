@@ -2,8 +2,11 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
-[Unreleased]
+[1.9.0] - 2020-04-27
 ---------------------
+##### Changed
+- Updated libxslt, enketo-core and other dependencies. **WARNING: NodeJS 12 is required now**
+
 ##### Fixed
 - Falsely detects nested repeats for sibling repeats where one repeat nodeName starts with the nodeName of another repeat.
 

@@ -881,7 +881,7 @@
 
 	var jquery = createCommonjsModule(function (module) {
 	/*!
-	 * jQuery JavaScript Library v3.4.1
+	 * jQuery JavaScript Library v3.5.0
 	 * https://jquery.com/
 	 *
 	 * Includes Sizzle.js
@@ -891,7 +891,7 @@
 	 * Released under the MIT license
 	 * https://jquery.org/license
 	 *
-	 * Date: 2019-05-01T21:04Z
+	 * Date: 2020-04-10T15:07Z
 	 */
 	( function( global, factory ) {
 
@@ -919,13 +919,16 @@
 
 	var arr = [];
 
-	var document = window.document;
-
 	var getProto = Object.getPrototypeOf;
 
 	var slice = arr.slice;
 
-	var concat = arr.concat;
+	var flat = arr.flat ? function( array ) {
+		return arr.flat.call( array );
+	} : function( array ) {
+		return arr.concat.apply( [], array );
+	};
+
 
 	var push = arr.push;
 
@@ -957,6 +960,8 @@
 			return obj != null && obj === obj.window;
 		};
 
+
+	var document = window.document;
 
 
 
@@ -1014,7 +1019,7 @@
 
 
 	var
-		version = "3.4.1",
+		version = "3.5.0",
 
 		// Define a local copy of jQuery
 		jQuery = function( selector, context ) {
@@ -1022,11 +1027,7 @@
 			// The jQuery object is actually just the init constructor 'enhanced'
 			// Need init if jQuery is called (just allow error to be thrown if not included)
 			return new jQuery.fn.init( selector, context );
-		},
-
-		// Support: Android <=4.0 only
-		// Make sure we trim BOM and NBSP
-		rtrim = /^[\s\uFEFF\xA0]+|[\s\uFEFF\xA0]+$/g;
+		};
 
 	jQuery.fn = jQuery.prototype = {
 
@@ -1090,6 +1091,18 @@
 
 		last: function() {
 			return this.eq( -1 );
+		},
+
+		even: function() {
+			return this.pushStack( jQuery.grep( this, function( _elem, i ) {
+				return ( i + 1 ) % 2;
+			} ) );
+		},
+
+		odd: function() {
+			return this.pushStack( jQuery.grep( this, function( _elem, i ) {
+				return i % 2;
+			} ) );
 		},
 
 		eq: function( i ) {
@@ -1225,9 +1238,10 @@
 			return true;
 		},
 
-		// Evaluates a script in a global context
-		globalEval: function( code, options ) {
-			DOMEval( code, { nonce: options && options.nonce } );
+		// Evaluates a script in a provided context; falls back to the global one
+		// if not specified.
+		globalEval: function( code, options, doc ) {
+			DOMEval( code, { nonce: options && options.nonce }, doc );
 		},
 
 		each: function( obj, callback ) {
@@ -1249,13 +1263,6 @@
 			}
 
 			return obj;
-		},
-
-		// Support: Android <=4.0 only
-		trim: function( text ) {
-			return text == null ?
-				"" :
-				( text + "" ).replace( rtrim, "" );
 		},
 
 		// results is for internal usage only
@@ -1344,7 +1351,7 @@
 			}
 
 			// Flatten any nested arrays
-			return concat.apply( [], ret );
+			return flat( ret );
 		},
 
 		// A global GUID counter for objects
@@ -1361,7 +1368,7 @@
 
 	// Populate the class2type map
 	jQuery.each( "Boolean Number String Function Array Date RegExp Object Error Symbol".split( " " ),
-	function( i, name ) {
+	function( _i, name ) {
 		class2type[ "[object " + name + "]" ] = name.toLowerCase();
 	} );
 
@@ -1383,17 +1390,16 @@
 	}
 	var Sizzle =
 	/*!
-	 * Sizzle CSS Selector Engine v2.3.4
+	 * Sizzle CSS Selector Engine v2.3.5
 	 * https://sizzlejs.com/
 	 *
 	 * Copyright JS Foundation and other contributors
 	 * Released under the MIT license
 	 * https://js.foundation/
 	 *
-	 * Date: 2019-04-08
+	 * Date: 2020-03-14
 	 */
-	(function( window ) {
-
+	( function( window ) {
 	var i,
 		support,
 		Expr,
@@ -1433,59 +1439,70 @@
 		},
 
 		// Instance methods
-		hasOwn = ({}).hasOwnProperty,
+		hasOwn = ( {} ).hasOwnProperty,
 		arr = [],
 		pop = arr.pop,
-		push_native = arr.push,
+		pushNative = arr.push,
 		push = arr.push,
 		slice = arr.slice,
+
 		// Use a stripped-down indexOf as it's faster than native
 		// https://jsperf.com/thor-indexof-vs-for/5
 		indexOf = function( list, elem ) {
 			var i = 0,
 				len = list.length;
 			for ( ; i < len; i++ ) {
-				if ( list[i] === elem ) {
+				if ( list[ i ] === elem ) {
 					return i;
 				}
 			}
 			return -1;
 		},
 
-		booleans = "checked|selected|async|autofocus|autoplay|controls|defer|disabled|hidden|ismap|loop|multiple|open|readonly|required|scoped",
+		booleans = "checked|selected|async|autofocus|autoplay|controls|defer|disabled|hidden|" +
+			"ismap|loop|multiple|open|readonly|required|scoped",
 
 		// Regular expressions
 
 		// http://www.w3.org/TR/css3-selectors/#whitespace
 		whitespace = "[\\x20\\t\\r\\n\\f]",
 
-		// http://www.w3.org/TR/CSS21/syndata.html#value-def-identifier
-		identifier = "(?:\\\\.|[\\w-]|[^\0-\\xa0])+",
+		// https://www.w3.org/TR/css-syntax-3/#ident-token-diagram
+		identifier = "(?:\\\\[\\da-fA-F]{1,6}" + whitespace +
+			"?|\\\\[^\\r\\n\\f]|[\\w-]|[^\0-\\x7f])+",
 
 		// Attribute selectors: http://www.w3.org/TR/selectors/#attribute-selectors
 		attributes = "\\[" + whitespace + "*(" + identifier + ")(?:" + whitespace +
+
 			// Operator (capture 2)
 			"*([*^$|!~]?=)" + whitespace +
-			// "Attribute values must be CSS identifiers [capture 5] or strings [capture 3 or capture 4]"
-			"*(?:'((?:\\\\.|[^\\\\'])*)'|\"((?:\\\\.|[^\\\\\"])*)\"|(" + identifier + "))|)" + whitespace +
-			"*\\]",
+
+			// "Attribute values must be CSS identifiers [capture 5]
+			// or strings [capture 3 or capture 4]"
+			"*(?:'((?:\\\\.|[^\\\\'])*)'|\"((?:\\\\.|[^\\\\\"])*)\"|(" + identifier + "))|)" +
+			whitespace + "*\\]",
 
 		pseudos = ":(" + identifier + ")(?:\\((" +
+
 			// To reduce the number of selectors needing tokenize in the preFilter, prefer arguments:
 			// 1. quoted (capture 3; capture 4 or capture 5)
 			"('((?:\\\\.|[^\\\\'])*)'|\"((?:\\\\.|[^\\\\\"])*)\")|" +
+
 			// 2. simple (capture 6)
 			"((?:\\\\.|[^\\\\()[\\]]|" + attributes + ")*)|" +
+
 			// 3. anything else (capture 2)
 			".*" +
 			")\\)|)",
 
 		// Leading and non-escaped trailing whitespace, capturing some non-whitespace characters preceding the latter
 		rwhitespace = new RegExp( whitespace + "+", "g" ),
-		rtrim = new RegExp( "^" + whitespace + "+|((?:^|[^\\\\])(?:\\\\.)*)" + whitespace + "+$", "g" ),
+		rtrim = new RegExp( "^" + whitespace + "+|((?:^|[^\\\\])(?:\\\\.)*)" +
+			whitespace + "+$", "g" ),
 
 		rcomma = new RegExp( "^" + whitespace + "*," + whitespace + "*" ),
-		rcombinators = new RegExp( "^" + whitespace + "*([>+~]|" + whitespace + ")" + whitespace + "*" ),
+		rcombinators = new RegExp( "^" + whitespace + "*([>+~]|" + whitespace + ")" + whitespace +
+			"*" ),
 		rdescend = new RegExp( whitespace + "|>" ),
 
 		rpseudo = new RegExp( pseudos ),
@@ -1497,14 +1514,16 @@
 			"TAG": new RegExp( "^(" + identifier + "|[*])" ),
 			"ATTR": new RegExp( "^" + attributes ),
 			"PSEUDO": new RegExp( "^" + pseudos ),
-			"CHILD": new RegExp( "^:(only|first|last|nth|nth-last)-(child|of-type)(?:\\(" + whitespace +
-				"*(even|odd|(([+-]|)(\\d*)n|)" + whitespace + "*(?:([+-]|)" + whitespace +
-				"*(\\d+)|))" + whitespace + "*\\)|)", "i" ),
+			"CHILD": new RegExp( "^:(only|first|last|nth|nth-last)-(child|of-type)(?:\\(" +
+				whitespace + "*(even|odd|(([+-]|)(\\d*)n|)" + whitespace + "*(?:([+-]|)" +
+				whitespace + "*(\\d+)|))" + whitespace + "*\\)|)", "i" ),
 			"bool": new RegExp( "^(?:" + booleans + ")$", "i" ),
+
 			// For use in libraries implementing .is()
 			// We use this for POS matching in `select`
-			"needsContext": new RegExp( "^" + whitespace + "*[>+~]|:(even|odd|eq|gt|lt|nth|first|last)(?:\\(" +
-				whitespace + "*((?:-\\d)?\\d*)" + whitespace + "*\\)|)(?=[^-]|$)", "i" )
+			"needsContext": new RegExp( "^" + whitespace +
+				"*[>+~]|:(even|odd|eq|gt|lt|nth|first|last)(?:\\(" + whitespace +
+				"*((?:-\\d)?\\d*)" + whitespace + "*\\)|)(?=[^-]|$)", "i" )
 		},
 
 		rhtml = /HTML$/i,
@@ -1520,18 +1539,21 @@
 
 		// CSS escapes
 		// http://www.w3.org/TR/CSS21/syndata.html#escaped-characters
-		runescape = new RegExp( "\\\\([\\da-f]{1,6}" + whitespace + "?|(" + whitespace + ")|.)", "ig" ),
-		funescape = function( _, escaped, escapedWhitespace ) {
-			var high = "0x" + escaped - 0x10000;
-			// NaN means non-codepoint
-			// Support: Firefox<24
-			// Workaround erroneous numeric interpretation of +"0x"
-			return high !== high || escapedWhitespace ?
-				escaped :
+		runescape = new RegExp( "\\\\[\\da-fA-F]{1,6}" + whitespace + "?|\\\\([^\\r\\n\\f])", "g" ),
+		funescape = function( escape, nonHex ) {
+			var high = "0x" + escape.slice( 1 ) - 0x10000;
+
+			return nonHex ?
+
+				// Strip the backslash prefix from a non-hex escape sequence
+				nonHex :
+
+				// Replace a hexadecimal escape sequence with the encoded Unicode code point
+				// Support: IE <=11+
+				// For values outside the Basic Multilingual Plane (BMP), manually construct a
+				// surrogate pair
 				high < 0 ?
-					// BMP codepoint
 					String.fromCharCode( high + 0x10000 ) :
-					// Supplemental Plane codepoint (surrogate pair)
 					String.fromCharCode( high >> 10 | 0xD800, high & 0x3FF | 0xDC00 );
 		},
 
@@ -1547,7 +1569,8 @@
 				}
 
 				// Control characters and (dependent upon position) numbers get escaped as code points
-				return ch.slice( 0, -1 ) + "\\" + ch.charCodeAt( ch.length - 1 ).toString( 16 ) + " ";
+				return ch.slice( 0, -1 ) + "\\" +
+					ch.charCodeAt( ch.length - 1 ).toString( 16 ) + " ";
 			}
 
 			// Other potentially-special ASCII characters get backslash-escaped
@@ -1572,18 +1595,20 @@
 	// Optimize for push.apply( _, NodeList )
 	try {
 		push.apply(
-			(arr = slice.call( preferredDoc.childNodes )),
+			( arr = slice.call( preferredDoc.childNodes ) ),
 			preferredDoc.childNodes
 		);
+
 		// Support: Android<4.0
 		// Detect silently failing push.apply
+		// eslint-disable-next-line no-unused-expressions
 		arr[ preferredDoc.childNodes.length ].nodeType;
 	} catch ( e ) {
 		push = { apply: arr.length ?
 
 			// Leverage slice if possible
 			function( target, els ) {
-				push_native.apply( target, slice.call(els) );
+				pushNative.apply( target, slice.call( els ) );
 			} :
 
 			// Support: IE<9
@@ -1591,8 +1616,9 @@
 			function( target, els ) {
 				var j = target.length,
 					i = 0;
+
 				// Can't trust NodeList.length
-				while ( (target[j++] = els[i++]) ) {}
+				while ( ( target[ j++ ] = els[ i++ ] ) ) {}
 				target.length = j - 1;
 			}
 		};
@@ -1616,24 +1642,21 @@
 
 		// Try to shortcut find operations (as opposed to filters) in HTML documents
 		if ( !seed ) {
-
-			if ( ( context ? context.ownerDocument || context : preferredDoc ) !== document ) {
-				setDocument( context );
-			}
+			setDocument( context );
 			context = context || document;
 
 			if ( documentIsHTML ) {
 
 				// If the selector is sufficiently simple, try using a "get*By*" DOM method
 				// (excepting DocumentFragment context, where the methods don't exist)
-				if ( nodeType !== 11 && (match = rquickExpr.exec( selector )) ) {
+				if ( nodeType !== 11 && ( match = rquickExpr.exec( selector ) ) ) {
 
 					// ID selector
-					if ( (m = match[1]) ) {
+					if ( ( m = match[ 1 ] ) ) {
 
 						// Document context
 						if ( nodeType === 9 ) {
-							if ( (elem = context.getElementById( m )) ) {
+							if ( ( elem = context.getElementById( m ) ) ) {
 
 								// Support: IE, Opera, Webkit
 								// TODO: identify versions
@@ -1652,7 +1675,7 @@
 							// Support: IE, Opera, Webkit
 							// TODO: identify versions
 							// getElementById can match elements by name instead of ID
-							if ( newContext && (elem = newContext.getElementById( m )) &&
+							if ( newContext && ( elem = newContext.getElementById( m ) ) &&
 								contains( context, elem ) &&
 								elem.id === m ) {
 
@@ -1662,12 +1685,12 @@
 						}
 
 					// Type selector
-					} else if ( match[2] ) {
+					} else if ( match[ 2 ] ) {
 						push.apply( results, context.getElementsByTagName( selector ) );
 						return results;
 
 					// Class selector
-					} else if ( (m = match[3]) && support.getElementsByClassName &&
+					} else if ( ( m = match[ 3 ] ) && support.getElementsByClassName &&
 						context.getElementsByClassName ) {
 
 						push.apply( results, context.getElementsByClassName( m ) );
@@ -1678,11 +1701,11 @@
 				// Take advantage of querySelectorAll
 				if ( support.qsa &&
 					!nonnativeSelectorCache[ selector + " " ] &&
-					(!rbuggyQSA || !rbuggyQSA.test( selector )) &&
+					( !rbuggyQSA || !rbuggyQSA.test( selector ) ) &&
 
 					// Support: IE 8 only
 					// Exclude object elements
-					(nodeType !== 1 || context.nodeName.toLowerCase() !== "object") ) {
+					( nodeType !== 1 || context.nodeName.toLowerCase() !== "object" ) ) {
 
 					newSelector = selector;
 					newContext = context;
@@ -1691,27 +1714,36 @@
 					// descendant combinators, which is not what we want.
 					// In such cases, we work around the behavior by prefixing every selector in the
 					// list with an ID selector referencing the scope context.
+					// The technique has to be used as well when a leading combinator is used
+					// as such selectors are not recognized by querySelectorAll.
 					// Thanks to Andrew Dupont for this technique.
-					if ( nodeType === 1 && rdescend.test( selector ) ) {
+					if ( nodeType === 1 &&
+						( rdescend.test( selector ) || rcombinators.test( selector ) ) ) {
 
-						// Capture the context ID, setting it first if necessary
-						if ( (nid = context.getAttribute( "id" )) ) {
-							nid = nid.replace( rcssescape, fcssescape );
-						} else {
-							context.setAttribute( "id", (nid = expando) );
+						// Expand context for sibling selectors
+						newContext = rsibling.test( selector ) && testContext( context.parentNode ) ||
+							context;
+
+						// We can use :scope instead of the ID hack if the browser
+						// supports it & if we're not changing the context.
+						if ( newContext !== context || !support.scope ) {
+
+							// Capture the context ID, setting it first if necessary
+							if ( ( nid = context.getAttribute( "id" ) ) ) {
+								nid = nid.replace( rcssescape, fcssescape );
+							} else {
+								context.setAttribute( "id", ( nid = expando ) );
+							}
 						}
 
 						// Prefix every selector in the list
 						groups = tokenize( selector );
 						i = groups.length;
 						while ( i-- ) {
-							groups[i] = "#" + nid + " " + toSelector( groups[i] );
+							groups[ i ] = ( nid ? "#" + nid : ":scope" ) + " " +
+								toSelector( groups[ i ] );
 						}
 						newSelector = groups.join( "," );
-
-						// Expand context for sibling selectors
-						newContext = rsibling.test( selector ) && testContext( context.parentNode ) ||
-							context;
 					}
 
 					try {
@@ -1744,12 +1776,14 @@
 		var keys = [];
 
 		function cache( key, value ) {
+
 			// Use (key + " ") to avoid collision with native prototype properties (see Issue #157)
 			if ( keys.push( key + " " ) > Expr.cacheLength ) {
+
 				// Only keep the most recent entries
 				delete cache[ keys.shift() ];
 			}
-			return (cache[ key + " " ] = value);
+			return ( cache[ key + " " ] = value );
 		}
 		return cache;
 	}
@@ -1768,17 +1802,19 @@
 	 * @param {Function} fn Passed the created element and returns a boolean result
 	 */
 	function assert( fn ) {
-		var el = document.createElement("fieldset");
+		var el = document.createElement( "fieldset" );
 
 		try {
 			return !!fn( el );
-		} catch (e) {
+		} catch ( e ) {
 			return false;
 		} finally {
+
 			// Remove from its parent by default
 			if ( el.parentNode ) {
 				el.parentNode.removeChild( el );
 			}
+
 			// release memory in IE
 			el = null;
 		}
@@ -1790,11 +1826,11 @@
 	 * @param {Function} handler The method that will be applied
 	 */
 	function addHandle( attrs, handler ) {
-		var arr = attrs.split("|"),
+		var arr = attrs.split( "|" ),
 			i = arr.length;
 
 		while ( i-- ) {
-			Expr.attrHandle[ arr[i] ] = handler;
+			Expr.attrHandle[ arr[ i ] ] = handler;
 		}
 	}
 
@@ -1816,7 +1852,7 @@
 
 		// Check if b follows a
 		if ( cur ) {
-			while ( (cur = cur.nextSibling) ) {
+			while ( ( cur = cur.nextSibling ) ) {
 				if ( cur === b ) {
 					return -1;
 				}
@@ -1844,7 +1880,7 @@
 	function createButtonPseudo( type ) {
 		return function( elem ) {
 			var name = elem.nodeName.toLowerCase();
-			return (name === "input" || name === "button") && elem.type === type;
+			return ( name === "input" || name === "button" ) && elem.type === type;
 		};
 	}
 
@@ -1887,7 +1923,7 @@
 						// Where there is no isDisabled, check manually
 						/* jshint -W018 */
 						elem.isDisabled !== !disabled &&
-							inDisabledFieldset( elem ) === disabled;
+						inDisabledFieldset( elem ) === disabled;
 				}
 
 				return elem.disabled === disabled;
@@ -1909,21 +1945,21 @@
 	 * @param {Function} fn
 	 */
 	function createPositionalPseudo( fn ) {
-		return markFunction(function( argument ) {
+		return markFunction( function( argument ) {
 			argument = +argument;
-			return markFunction(function( seed, matches ) {
+			return markFunction( function( seed, matches ) {
 				var j,
 					matchIndexes = fn( [], seed.length, argument ),
 					i = matchIndexes.length;
 
 				// Match elements found at the specified indexes
 				while ( i-- ) {
-					if ( seed[ (j = matchIndexes[i]) ] ) {
-						seed[j] = !(matches[j] = seed[j]);
+					if ( seed[ ( j = matchIndexes[ i ] ) ] ) {
+						seed[ j ] = !( matches[ j ] = seed[ j ] );
 					}
 				}
-			});
-		});
+			} );
+		} );
 	}
 
 	/**
@@ -1945,7 +1981,7 @@
 	 */
 	isXML = Sizzle.isXML = function( elem ) {
 		var namespace = elem.namespaceURI,
-			docElem = (elem.ownerDocument || elem).documentElement;
+			docElem = ( elem.ownerDocument || elem ).documentElement;
 
 		// Support: IE <=8
 		// Assume HTML when documentElement doesn't yet exist, such as inside loading iframes
@@ -1963,7 +1999,11 @@
 			doc = node ? node.ownerDocument || node : preferredDoc;
 
 		// Return early if doc is invalid or already selected
-		if ( doc === document || doc.nodeType !== 9 || !doc.documentElement ) {
+		// Support: IE 11+, Edge 17 - 18+
+		// IE/Edge sometimes throw a "Permission denied" error when strict-comparing
+		// two documents; shallow comparisons work.
+		// eslint-disable-next-line eqeqeq
+		if ( doc == document || doc.nodeType !== 9 || !doc.documentElement ) {
 			return document;
 		}
 
@@ -1972,10 +2012,14 @@
 		docElem = document.documentElement;
 		documentIsHTML = !isXML( document );
 
-		// Support: IE 9-11, Edge
+		// Support: IE 9 - 11+, Edge 12 - 18+
 		// Accessing iframe documents after unload throws "permission denied" errors (jQuery #13936)
-		if ( preferredDoc !== document &&
-			(subWindow = document.defaultView) && subWindow.top !== subWindow ) {
+		// Support: IE 11+, Edge 17 - 18+
+		// IE/Edge sometimes throw a "Permission denied" error when strict-comparing
+		// two documents; shallow comparisons work.
+		// eslint-disable-next-line eqeqeq
+		if ( preferredDoc != document &&
+			( subWindow = document.defaultView ) && subWindow.top !== subWindow ) {
 
 			// Support: IE 11, Edge
 			if ( subWindow.addEventListener ) {
@@ -1987,25 +2031,36 @@
 			}
 		}
 
+		// Support: IE 8 - 11+, Edge 12 - 18+, Chrome <=16 - 25 only, Firefox <=3.6 - 31 only,
+		// Safari 4 - 5 only, Opera <=11.6 - 12.x only
+		// IE/Edge & older browsers don't support the :scope pseudo-class.
+		// Support: Safari 6.0 only
+		// Safari 6.0 supports :scope but it's an alias of :root there.
+		support.scope = assert( function( el ) {
+			docElem.appendChild( el ).appendChild( document.createElement( "div" ) );
+			return typeof el.querySelectorAll !== "undefined" &&
+				!el.querySelectorAll( ":scope fieldset div" ).length;
+		} );
+
 		/* Attributes
 		---------------------------------------------------------------------- */
 
 		// Support: IE<8
 		// Verify that getAttribute really returns attributes and not properties
 		// (excepting IE8 booleans)
-		support.attributes = assert(function( el ) {
+		support.attributes = assert( function( el ) {
 			el.className = "i";
-			return !el.getAttribute("className");
-		});
+			return !el.getAttribute( "className" );
+		} );
 
 		/* getElement(s)By*
 		---------------------------------------------------------------------- */
 
 		// Check if getElementsByTagName("*") returns only elements
-		support.getElementsByTagName = assert(function( el ) {
-			el.appendChild( document.createComment("") );
-			return !el.getElementsByTagName("*").length;
-		});
+		support.getElementsByTagName = assert( function( el ) {
+			el.appendChild( document.createComment( "" ) );
+			return !el.getElementsByTagName( "*" ).length;
+		} );
 
 		// Support: IE<9
 		support.getElementsByClassName = rnative.test( document.getElementsByClassName );
@@ -2014,38 +2069,38 @@
 		// Check if getElementById returns elements by name
 		// The broken getElementById methods don't pick up programmatically-set names,
 		// so use a roundabout getElementsByName test
-		support.getById = assert(function( el ) {
+		support.getById = assert( function( el ) {
 			docElem.appendChild( el ).id = expando;
 			return !document.getElementsByName || !document.getElementsByName( expando ).length;
-		});
+		} );
 
 		// ID filter and find
 		if ( support.getById ) {
-			Expr.filter["ID"] = function( id ) {
+			Expr.filter[ "ID" ] = function( id ) {
 				var attrId = id.replace( runescape, funescape );
 				return function( elem ) {
-					return elem.getAttribute("id") === attrId;
+					return elem.getAttribute( "id" ) === attrId;
 				};
 			};
-			Expr.find["ID"] = function( id, context ) {
+			Expr.find[ "ID" ] = function( id, context ) {
 				if ( typeof context.getElementById !== "undefined" && documentIsHTML ) {
 					var elem = context.getElementById( id );
 					return elem ? [ elem ] : [];
 				}
 			};
 		} else {
-			Expr.filter["ID"] =  function( id ) {
+			Expr.filter[ "ID" ] =  function( id ) {
 				var attrId = id.replace( runescape, funescape );
 				return function( elem ) {
 					var node = typeof elem.getAttributeNode !== "undefined" &&
-						elem.getAttributeNode("id");
+						elem.getAttributeNode( "id" );
 					return node && node.value === attrId;
 				};
 			};
 
 			// Support: IE 6 - 7 only
 			// getElementById is not reliable as a find shortcut
-			Expr.find["ID"] = function( id, context ) {
+			Expr.find[ "ID" ] = function( id, context ) {
 				if ( typeof context.getElementById !== "undefined" && documentIsHTML ) {
 					var node, i, elems,
 						elem = context.getElementById( id );
@@ -2053,7 +2108,7 @@
 					if ( elem ) {
 
 						// Verify the id attribute
-						node = elem.getAttributeNode("id");
+						node = elem.getAttributeNode( "id" );
 						if ( node && node.value === id ) {
 							return [ elem ];
 						}
@@ -2061,8 +2116,8 @@
 						// Fall back on getElementsByName
 						elems = context.getElementsByName( id );
 						i = 0;
-						while ( (elem = elems[i++]) ) {
-							node = elem.getAttributeNode("id");
+						while ( ( elem = elems[ i++ ] ) ) {
+							node = elem.getAttributeNode( "id" );
 							if ( node && node.value === id ) {
 								return [ elem ];
 							}
@@ -2075,7 +2130,7 @@
 		}
 
 		// Tag
-		Expr.find["TAG"] = support.getElementsByTagName ?
+		Expr.find[ "TAG" ] = support.getElementsByTagName ?
 			function( tag, context ) {
 				if ( typeof context.getElementsByTagName !== "undefined" ) {
 					return context.getElementsByTagName( tag );
@@ -2090,12 +2145,13 @@
 				var elem,
 					tmp = [],
 					i = 0,
+
 					// By happy coincidence, a (broken) gEBTN appears on DocumentFragment nodes too
 					results = context.getElementsByTagName( tag );
 
 				// Filter out possible comments
 				if ( tag === "*" ) {
-					while ( (elem = results[i++]) ) {
+					while ( ( elem = results[ i++ ] ) ) {
 						if ( elem.nodeType === 1 ) {
 							tmp.push( elem );
 						}
@@ -2107,7 +2163,7 @@
 			};
 
 		// Class
-		Expr.find["CLASS"] = support.getElementsByClassName && function( className, context ) {
+		Expr.find[ "CLASS" ] = support.getElementsByClassName && function( className, context ) {
 			if ( typeof context.getElementsByClassName !== "undefined" && documentIsHTML ) {
 				return context.getElementsByClassName( className );
 			}
@@ -2128,10 +2184,14 @@
 		// See https://bugs.jquery.com/ticket/13378
 		rbuggyQSA = [];
 
-		if ( (support.qsa = rnative.test( document.querySelectorAll )) ) {
+		if ( ( support.qsa = rnative.test( document.querySelectorAll ) ) ) {
+
 			// Build QSA regex
 			// Regex strategy adopted from Diego Perini
-			assert(function( el ) {
+			assert( function( el ) {
+
+				var input;
+
 				// Select is set to empty string on purpose
 				// This is to test IE's treatment of not explicitly
 				// setting a boolean content attribute,
@@ -2145,78 +2205,98 @@
 				// Nothing should be selected when empty strings follow ^= or $= or *=
 				// The test attribute must be unknown in Opera but "safe" for WinRT
 				// https://msdn.microsoft.com/en-us/library/ie/hh465388.aspx#attribute_section
-				if ( el.querySelectorAll("[msallowcapture^='']").length ) {
+				if ( el.querySelectorAll( "[msallowcapture^='']" ).length ) {
 					rbuggyQSA.push( "[*^$]=" + whitespace + "*(?:''|\"\")" );
 				}
 
 				// Support: IE8
 				// Boolean attributes and "value" are not treated correctly
-				if ( !el.querySelectorAll("[selected]").length ) {
+				if ( !el.querySelectorAll( "[selected]" ).length ) {
 					rbuggyQSA.push( "\\[" + whitespace + "*(?:value|" + booleans + ")" );
 				}
 
 				// Support: Chrome<29, Android<4.4, Safari<7.0+, iOS<7.0+, PhantomJS<1.9.8+
 				if ( !el.querySelectorAll( "[id~=" + expando + "-]" ).length ) {
-					rbuggyQSA.push("~=");
+					rbuggyQSA.push( "~=" );
+				}
+
+				// Support: IE 11+, Edge 15 - 18+
+				// IE 11/Edge don't find elements on a `[name='']` query in some cases.
+				// Adding a temporary attribute to the document before the selection works
+				// around the issue.
+				// Interestingly, IE 10 & older don't seem to have the issue.
+				input = document.createElement( "input" );
+				input.setAttribute( "name", "" );
+				el.appendChild( input );
+				if ( !el.querySelectorAll( "[name='']" ).length ) {
+					rbuggyQSA.push( "\\[" + whitespace + "*name" + whitespace + "*=" +
+						whitespace + "*(?:''|\"\")" );
 				}
 
 				// Webkit/Opera - :checked should return selected option elements
 				// http://www.w3.org/TR/2011/REC-css3-selectors-20110929/#checked
 				// IE8 throws error here and will not see later tests
-				if ( !el.querySelectorAll(":checked").length ) {
-					rbuggyQSA.push(":checked");
+				if ( !el.querySelectorAll( ":checked" ).length ) {
+					rbuggyQSA.push( ":checked" );
 				}
 
 				// Support: Safari 8+, iOS 8+
 				// https://bugs.webkit.org/show_bug.cgi?id=136851
 				// In-page `selector#id sibling-combinator selector` fails
 				if ( !el.querySelectorAll( "a#" + expando + "+*" ).length ) {
-					rbuggyQSA.push(".#.+[+~]");
+					rbuggyQSA.push( ".#.+[+~]" );
 				}
-			});
 
-			assert(function( el ) {
+				// Support: Firefox <=3.6 - 5 only
+				// Old Firefox doesn't throw on a badly-escaped identifier.
+				el.querySelectorAll( "\\\f" );
+				rbuggyQSA.push( "[\\r\\n\\f]" );
+			} );
+
+			assert( function( el ) {
 				el.innerHTML = "<a href='' disabled='disabled'></a>" +
 					"<select disabled='disabled'><option/></select>";
 
 				// Support: Windows 8 Native Apps
 				// The type and name attributes are restricted during .innerHTML assignment
-				var input = document.createElement("input");
+				var input = document.createElement( "input" );
 				input.setAttribute( "type", "hidden" );
 				el.appendChild( input ).setAttribute( "name", "D" );
 
 				// Support: IE8
 				// Enforce case-sensitivity of name attribute
-				if ( el.querySelectorAll("[name=d]").length ) {
+				if ( el.querySelectorAll( "[name=d]" ).length ) {
 					rbuggyQSA.push( "name" + whitespace + "*[*^$|!~]?=" );
 				}
 
 				// FF 3.5 - :enabled/:disabled and hidden elements (hidden elements are still enabled)
 				// IE8 throws error here and will not see later tests
-				if ( el.querySelectorAll(":enabled").length !== 2 ) {
+				if ( el.querySelectorAll( ":enabled" ).length !== 2 ) {
 					rbuggyQSA.push( ":enabled", ":disabled" );
 				}
 
 				// Support: IE9-11+
 				// IE's :disabled selector does not pick up the children of disabled fieldsets
 				docElem.appendChild( el ).disabled = true;
-				if ( el.querySelectorAll(":disabled").length !== 2 ) {
+				if ( el.querySelectorAll( ":disabled" ).length !== 2 ) {
 					rbuggyQSA.push( ":enabled", ":disabled" );
 				}
 
+				// Support: Opera 10 - 11 only
 				// Opera 10-11 does not throw on post-comma invalid pseudos
-				el.querySelectorAll("*,:x");
-				rbuggyQSA.push(",.*:");
-			});
+				el.querySelectorAll( "*,:x" );
+				rbuggyQSA.push( ",.*:" );
+			} );
 		}
 
-		if ( (support.matchesSelector = rnative.test( (matches = docElem.matches ||
+		if ( ( support.matchesSelector = rnative.test( ( matches = docElem.matches ||
 			docElem.webkitMatchesSelector ||
 			docElem.mozMatchesSelector ||
 			docElem.oMatchesSelector ||
-			docElem.msMatchesSelector) )) ) {
+			docElem.msMatchesSelector ) ) ) ) {
 
-			assert(function( el ) {
+			assert( function( el ) {
+
 				// Check to see if it's possible to do matchesSelector
 				// on a disconnected node (IE 9)
 				support.disconnectedMatch = matches.call( el, "*" );
@@ -2225,11 +2305,11 @@
 				// Gecko does not error, returns false instead
 				matches.call( el, "[s!='']:x" );
 				rbuggyMatches.push( "!=", pseudos );
-			});
+			} );
 		}
 
-		rbuggyQSA = rbuggyQSA.length && new RegExp( rbuggyQSA.join("|") );
-		rbuggyMatches = rbuggyMatches.length && new RegExp( rbuggyMatches.join("|") );
+		rbuggyQSA = rbuggyQSA.length && new RegExp( rbuggyQSA.join( "|" ) );
+		rbuggyMatches = rbuggyMatches.length && new RegExp( rbuggyMatches.join( "|" ) );
 
 		/* Contains
 		---------------------------------------------------------------------- */
@@ -2246,11 +2326,11 @@
 					adown.contains ?
 						adown.contains( bup ) :
 						a.compareDocumentPosition && a.compareDocumentPosition( bup ) & 16
-				));
+				) );
 			} :
 			function( a, b ) {
 				if ( b ) {
-					while ( (b = b.parentNode) ) {
+					while ( ( b = b.parentNode ) ) {
 						if ( b === a ) {
 							return true;
 						}
@@ -2279,7 +2359,11 @@
 			}
 
 			// Calculate position if both inputs belong to the same document
-			compare = ( a.ownerDocument || a ) === ( b.ownerDocument || b ) ?
+			// Support: IE 11+, Edge 17 - 18+
+			// IE/Edge sometimes throw a "Permission denied" error when strict-comparing
+			// two documents; shallow comparisons work.
+			// eslint-disable-next-line eqeqeq
+			compare = ( a.ownerDocument || a ) == ( b.ownerDocument || b ) ?
 				a.compareDocumentPosition( b ) :
 
 				// Otherwise we know they are disconnected
@@ -2287,13 +2371,24 @@
 
 			// Disconnected nodes
 			if ( compare & 1 ||
-				(!support.sortDetached && b.compareDocumentPosition( a ) === compare) ) {
+				( !support.sortDetached && b.compareDocumentPosition( a ) === compare ) ) {
 
 				// Choose the first element that is related to our preferred document
-				if ( a === document || a.ownerDocument === preferredDoc && contains(preferredDoc, a) ) {
+				// Support: IE 11+, Edge 17 - 18+
+				// IE/Edge sometimes throw a "Permission denied" error when strict-comparing
+				// two documents; shallow comparisons work.
+				// eslint-disable-next-line eqeqeq
+				if ( a == document || a.ownerDocument == preferredDoc &&
+					contains( preferredDoc, a ) ) {
 					return -1;
 				}
-				if ( b === document || b.ownerDocument === preferredDoc && contains(preferredDoc, b) ) {
+
+				// Support: IE 11+, Edge 17 - 18+
+				// IE/Edge sometimes throw a "Permission denied" error when strict-comparing
+				// two documents; shallow comparisons work.
+				// eslint-disable-next-line eqeqeq
+				if ( b == document || b.ownerDocument == preferredDoc &&
+					contains( preferredDoc, b ) ) {
 					return 1;
 				}
 
@@ -2306,6 +2401,7 @@
 			return compare & 4 ? -1 : 1;
 		} :
 		function( a, b ) {
+
 			// Exit early if the nodes are identical
 			if ( a === b ) {
 				hasDuplicate = true;
@@ -2321,8 +2417,14 @@
 
 			// Parentless nodes are either documents or disconnected
 			if ( !aup || !bup ) {
-				return a === document ? -1 :
-					b === document ? 1 :
+
+				// Support: IE 11+, Edge 17 - 18+
+				// IE/Edge sometimes throw a "Permission denied" error when strict-comparing
+				// two documents; shallow comparisons work.
+				/* eslint-disable eqeqeq */
+				return a == document ? -1 :
+					b == document ? 1 :
+					/* eslint-enable eqeqeq */
 					aup ? -1 :
 					bup ? 1 :
 					sortInput ?
@@ -2336,26 +2438,32 @@
 
 			// Otherwise we need full lists of their ancestors for comparison
 			cur = a;
-			while ( (cur = cur.parentNode) ) {
+			while ( ( cur = cur.parentNode ) ) {
 				ap.unshift( cur );
 			}
 			cur = b;
-			while ( (cur = cur.parentNode) ) {
+			while ( ( cur = cur.parentNode ) ) {
 				bp.unshift( cur );
 			}
 
 			// Walk down the tree looking for a discrepancy
-			while ( ap[i] === bp[i] ) {
+			while ( ap[ i ] === bp[ i ] ) {
 				i++;
 			}
 
 			return i ?
+
 				// Do a sibling check if the nodes have a common ancestor
-				siblingCheck( ap[i], bp[i] ) :
+				siblingCheck( ap[ i ], bp[ i ] ) :
 
 				// Otherwise nodes in our document sort first
-				ap[i] === preferredDoc ? -1 :
-				bp[i] === preferredDoc ? 1 :
+				// Support: IE 11+, Edge 17 - 18+
+				// IE/Edge sometimes throw a "Permission denied" error when strict-comparing
+				// two documents; shallow comparisons work.
+				/* eslint-disable eqeqeq */
+				ap[ i ] == preferredDoc ? -1 :
+				bp[ i ] == preferredDoc ? 1 :
+				/* eslint-enable eqeqeq */
 				0;
 		};
 
@@ -2367,10 +2475,7 @@
 	};
 
 	Sizzle.matchesSelector = function( elem, expr ) {
-		// Set document vars if needed
-		if ( ( elem.ownerDocument || elem ) !== document ) {
-			setDocument( elem );
-		}
+		setDocument( elem );
 
 		if ( support.matchesSelector && documentIsHTML &&
 			!nonnativeSelectorCache[ expr + " " ] &&
@@ -2382,12 +2487,13 @@
 
 				// IE 9's matchesSelector returns false on disconnected nodes
 				if ( ret || support.disconnectedMatch ||
-						// As well, disconnected nodes are said to be in a document
-						// fragment in IE 9
-						elem.document && elem.document.nodeType !== 11 ) {
+
+					// As well, disconnected nodes are said to be in a document
+					// fragment in IE 9
+					elem.document && elem.document.nodeType !== 11 ) {
 					return ret;
 				}
-			} catch (e) {
+			} catch ( e ) {
 				nonnativeSelectorCache( expr, true );
 			}
 		}
@@ -2396,20 +2502,31 @@
 	};
 
 	Sizzle.contains = function( context, elem ) {
+
 		// Set document vars if needed
-		if ( ( context.ownerDocument || context ) !== document ) {
+		// Support: IE 11+, Edge 17 - 18+
+		// IE/Edge sometimes throw a "Permission denied" error when strict-comparing
+		// two documents; shallow comparisons work.
+		// eslint-disable-next-line eqeqeq
+		if ( ( context.ownerDocument || context ) != document ) {
 			setDocument( context );
 		}
 		return contains( context, elem );
 	};
 
 	Sizzle.attr = function( elem, name ) {
+
 		// Set document vars if needed
-		if ( ( elem.ownerDocument || elem ) !== document ) {
+		// Support: IE 11+, Edge 17 - 18+
+		// IE/Edge sometimes throw a "Permission denied" error when strict-comparing
+		// two documents; shallow comparisons work.
+		// eslint-disable-next-line eqeqeq
+		if ( ( elem.ownerDocument || elem ) != document ) {
 			setDocument( elem );
 		}
 
 		var fn = Expr.attrHandle[ name.toLowerCase() ],
+
 			// Don't get fooled by Object.prototype properties (jQuery #13807)
 			val = fn && hasOwn.call( Expr.attrHandle, name.toLowerCase() ) ?
 				fn( elem, name, !documentIsHTML ) :
@@ -2419,13 +2536,13 @@
 			val :
 			support.attributes || !documentIsHTML ?
 				elem.getAttribute( name ) :
-				(val = elem.getAttributeNode(name)) && val.specified ?
+				( val = elem.getAttributeNode( name ) ) && val.specified ?
 					val.value :
 					null;
 	};
 
 	Sizzle.escape = function( sel ) {
-		return (sel + "").replace( rcssescape, fcssescape );
+		return ( sel + "" ).replace( rcssescape, fcssescape );
 	};
 
 	Sizzle.error = function( msg ) {
@@ -2448,7 +2565,7 @@
 		results.sort( sortOrder );
 
 		if ( hasDuplicate ) {
-			while ( (elem = results[i++]) ) {
+			while ( ( elem = results[ i++ ] ) ) {
 				if ( elem === results[ i ] ) {
 					j = duplicates.push( i );
 				}
@@ -2476,17 +2593,21 @@
 			nodeType = elem.nodeType;
 
 		if ( !nodeType ) {
+
 			// If no nodeType, this is expected to be an array
-			while ( (node = elem[i++]) ) {
+			while ( ( node = elem[ i++ ] ) ) {
+
 				// Do not traverse comment nodes
 				ret += getText( node );
 			}
 		} else if ( nodeType === 1 || nodeType === 9 || nodeType === 11 ) {
+
 			// Use textContent for elements
 			// innerText usage removed for consistency of new lines (jQuery #11153)
 			if ( typeof elem.textContent === "string" ) {
 				return elem.textContent;
 			} else {
+
 				// Traverse its children
 				for ( elem = elem.firstChild; elem; elem = elem.nextSibling ) {
 					ret += getText( elem );
@@ -2495,6 +2616,7 @@
 		} else if ( nodeType === 3 || nodeType === 4 ) {
 			return elem.nodeValue;
 		}
+
 		// Do not include comment or processing instruction nodes
 
 		return ret;
@@ -2522,19 +2644,21 @@
 
 		preFilter: {
 			"ATTR": function( match ) {
-				match[1] = match[1].replace( runescape, funescape );
+				match[ 1 ] = match[ 1 ].replace( runescape, funescape );
 
 				// Move the given value to match[3] whether quoted or unquoted
-				match[3] = ( match[3] || match[4] || match[5] || "" ).replace( runescape, funescape );
+				match[ 3 ] = ( match[ 3 ] || match[ 4 ] ||
+					match[ 5 ] || "" ).replace( runescape, funescape );
 
-				if ( match[2] === "~=" ) {
-					match[3] = " " + match[3] + " ";
+				if ( match[ 2 ] === "~=" ) {
+					match[ 3 ] = " " + match[ 3 ] + " ";
 				}
 
 				return match.slice( 0, 4 );
 			},
 
 			"CHILD": function( match ) {
+
 				/* matches from matchExpr["CHILD"]
 					1 type (only|nth|...)
 					2 what (child|of-type)
@@ -2545,22 +2669,25 @@
 					7 sign of y-component
 					8 y of y-component
 				*/
-				match[1] = match[1].toLowerCase();
+				match[ 1 ] = match[ 1 ].toLowerCase();
 
-				if ( match[1].slice( 0, 3 ) === "nth" ) {
+				if ( match[ 1 ].slice( 0, 3 ) === "nth" ) {
+
 					// nth-* requires argument
-					if ( !match[3] ) {
-						Sizzle.error( match[0] );
+					if ( !match[ 3 ] ) {
+						Sizzle.error( match[ 0 ] );
 					}
 
 					// numeric x and y parameters for Expr.filter.CHILD
 					// remember that false/true cast respectively to 0/1
-					match[4] = +( match[4] ? match[5] + (match[6] || 1) : 2 * ( match[3] === "even" || match[3] === "odd" ) );
-					match[5] = +( ( match[7] + match[8] ) || match[3] === "odd" );
+					match[ 4 ] = +( match[ 4 ] ?
+						match[ 5 ] + ( match[ 6 ] || 1 ) :
+						2 * ( match[ 3 ] === "even" || match[ 3 ] === "odd" ) );
+					match[ 5 ] = +( ( match[ 7 ] + match[ 8 ] ) || match[ 3 ] === "odd" );
 
-				// other types prohibit arguments
-				} else if ( match[3] ) {
-					Sizzle.error( match[0] );
+					// other types prohibit arguments
+				} else if ( match[ 3 ] ) {
+					Sizzle.error( match[ 0 ] );
 				}
 
 				return match;
@@ -2568,26 +2695,28 @@
 
 			"PSEUDO": function( match ) {
 				var excess,
-					unquoted = !match[6] && match[2];
+					unquoted = !match[ 6 ] && match[ 2 ];
 
-				if ( matchExpr["CHILD"].test( match[0] ) ) {
+				if ( matchExpr[ "CHILD" ].test( match[ 0 ] ) ) {
 					return null;
 				}
 
 				// Accept quoted arguments as-is
-				if ( match[3] ) {
-					match[2] = match[4] || match[5] || "";
+				if ( match[ 3 ] ) {
+					match[ 2 ] = match[ 4 ] || match[ 5 ] || "";
 
 				// Strip excess characters from unquoted arguments
 				} else if ( unquoted && rpseudo.test( unquoted ) &&
+
 					// Get excess from tokenize (recursively)
-					(excess = tokenize( unquoted, true )) &&
+					( excess = tokenize( unquoted, true ) ) &&
+
 					// advance to the next closing parenthesis
-					(excess = unquoted.indexOf( ")", unquoted.length - excess ) - unquoted.length) ) {
+					( excess = unquoted.indexOf( ")", unquoted.length - excess ) - unquoted.length ) ) {
 
 					// excess is a negative index
-					match[0] = match[0].slice( 0, excess );
-					match[2] = unquoted.slice( 0, excess );
+					match[ 0 ] = match[ 0 ].slice( 0, excess );
+					match[ 2 ] = unquoted.slice( 0, excess );
 				}
 
 				// Return only captures needed by the pseudo filter method (type and argument)
@@ -2600,7 +2729,9 @@
 			"TAG": function( nodeNameSelector ) {
 				var nodeName = nodeNameSelector.replace( runescape, funescape ).toLowerCase();
 				return nodeNameSelector === "*" ?
-					function() { return true; } :
+					function() {
+						return true;
+					} :
 					function( elem ) {
 						return elem.nodeName && elem.nodeName.toLowerCase() === nodeName;
 					};
@@ -2610,10 +2741,16 @@
 				var pattern = classCache[ className + " " ];
 
 				return pattern ||
-					(pattern = new RegExp( "(^|" + whitespace + ")" + className + "(" + whitespace + "|$)" )) &&
-					classCache( className, function( elem ) {
-						return pattern.test( typeof elem.className === "string" && elem.className || typeof elem.getAttribute !== "undefined" && elem.getAttribute("class") || "" );
-					});
+					( pattern = new RegExp( "(^|" + whitespace +
+						")" + className + "(" + whitespace + "|$)" ) ) && classCache(
+							className, function( elem ) {
+								return pattern.test(
+									typeof elem.className === "string" && elem.className ||
+									typeof elem.getAttribute !== "undefined" &&
+										elem.getAttribute( "class" ) ||
+									""
+								);
+					} );
 			},
 
 			"ATTR": function( name, operator, check ) {
@@ -2629,6 +2766,8 @@
 
 					result += "";
 
+					/* eslint-disable max-len */
+
 					return operator === "=" ? result === check :
 						operator === "!=" ? result !== check :
 						operator === "^=" ? check && result.indexOf( check ) === 0 :
@@ -2637,10 +2776,12 @@
 						operator === "~=" ? ( " " + result.replace( rwhitespace, " " ) + " " ).indexOf( check ) > -1 :
 						operator === "|=" ? result === check || result.slice( 0, check.length + 1 ) === check + "-" :
 						false;
+					/* eslint-enable max-len */
+
 				};
 			},
 
-			"CHILD": function( type, what, argument, first, last ) {
+			"CHILD": function( type, what, _argument, first, last ) {
 				var simple = type.slice( 0, 3 ) !== "nth",
 					forward = type.slice( -4 ) !== "last",
 					ofType = what === "of-type";
@@ -2652,7 +2793,7 @@
 						return !!elem.parentNode;
 					} :
 
-					function( elem, context, xml ) {
+					function( elem, _context, xml ) {
 						var cache, uniqueCache, outerCache, node, nodeIndex, start,
 							dir = simple !== forward ? "nextSibling" : "previousSibling",
 							parent = elem.parentNode,
@@ -2666,7 +2807,7 @@
 							if ( simple ) {
 								while ( dir ) {
 									node = elem;
-									while ( (node = node[ dir ]) ) {
+									while ( ( node = node[ dir ] ) ) {
 										if ( ofType ?
 											node.nodeName.toLowerCase() === name :
 											node.nodeType === 1 ) {
@@ -2674,6 +2815,7 @@
 											return false;
 										}
 									}
+
 									// Reverse direction for :only-* (if we haven't yet done so)
 									start = dir = type === "only" && !start && "nextSibling";
 								}
@@ -2689,22 +2831,22 @@
 
 								// ...in a gzip-friendly way
 								node = parent;
-								outerCache = node[ expando ] || (node[ expando ] = {});
+								outerCache = node[ expando ] || ( node[ expando ] = {} );
 
 								// Support: IE <9 only
 								// Defend against cloned attroperties (jQuery gh-1709)
 								uniqueCache = outerCache[ node.uniqueID ] ||
-									(outerCache[ node.uniqueID ] = {});
+									( outerCache[ node.uniqueID ] = {} );
 
 								cache = uniqueCache[ type ] || [];
 								nodeIndex = cache[ 0 ] === dirruns && cache[ 1 ];
 								diff = nodeIndex && cache[ 2 ];
 								node = nodeIndex && parent.childNodes[ nodeIndex ];
 
-								while ( (node = ++nodeIndex && node && node[ dir ] ||
+								while ( ( node = ++nodeIndex && node && node[ dir ] ||
 
 									// Fallback to seeking `elem` from the start
-									(diff = nodeIndex = 0) || start.pop()) ) {
+									( diff = nodeIndex = 0 ) || start.pop() ) ) {
 
 									// When found, cache indexes on `parent` and break
 									if ( node.nodeType === 1 && ++diff && node === elem ) {
@@ -2714,16 +2856,18 @@
 								}
 
 							} else {
+
 								// Use previously-cached element index if available
 								if ( useCache ) {
+
 									// ...in a gzip-friendly way
 									node = elem;
-									outerCache = node[ expando ] || (node[ expando ] = {});
+									outerCache = node[ expando ] || ( node[ expando ] = {} );
 
 									// Support: IE <9 only
 									// Defend against cloned attroperties (jQuery gh-1709)
 									uniqueCache = outerCache[ node.uniqueID ] ||
-										(outerCache[ node.uniqueID ] = {});
+										( outerCache[ node.uniqueID ] = {} );
 
 									cache = uniqueCache[ type ] || [];
 									nodeIndex = cache[ 0 ] === dirruns && cache[ 1 ];
@@ -2733,9 +2877,10 @@
 								// xml :nth-child(...)
 								// or :nth-last-child(...) or :nth(-last)?-of-type(...)
 								if ( diff === false ) {
+
 									// Use the same loop as above to seek `elem` from the start
-									while ( (node = ++nodeIndex && node && node[ dir ] ||
-										(diff = nodeIndex = 0) || start.pop()) ) {
+									while ( ( node = ++nodeIndex && node && node[ dir ] ||
+										( diff = nodeIndex = 0 ) || start.pop() ) ) {
 
 										if ( ( ofType ?
 											node.nodeName.toLowerCase() === name :
@@ -2744,12 +2889,13 @@
 
 											// Cache the index of each encountered element
 											if ( useCache ) {
-												outerCache = node[ expando ] || (node[ expando ] = {});
+												outerCache = node[ expando ] ||
+													( node[ expando ] = {} );
 
 												// Support: IE <9 only
 												// Defend against cloned attroperties (jQuery gh-1709)
 												uniqueCache = outerCache[ node.uniqueID ] ||
-													(outerCache[ node.uniqueID ] = {});
+													( outerCache[ node.uniqueID ] = {} );
 
 												uniqueCache[ type ] = [ dirruns, diff ];
 											}
@@ -2770,6 +2916,7 @@
 			},
 
 			"PSEUDO": function( pseudo, argument ) {
+
 				// pseudo-class names are case-insensitive
 				// http://www.w3.org/TR/selectors/#pseudo-classes
 				// Prioritize by case sensitivity in case custom pseudos are added with uppercase letters
@@ -2789,15 +2936,15 @@
 				if ( fn.length > 1 ) {
 					args = [ pseudo, pseudo, "", argument ];
 					return Expr.setFilters.hasOwnProperty( pseudo.toLowerCase() ) ?
-						markFunction(function( seed, matches ) {
+						markFunction( function( seed, matches ) {
 							var idx,
 								matched = fn( seed, argument ),
 								i = matched.length;
 							while ( i-- ) {
-								idx = indexOf( seed, matched[i] );
-								seed[ idx ] = !( matches[ idx ] = matched[i] );
+								idx = indexOf( seed, matched[ i ] );
+								seed[ idx ] = !( matches[ idx ] = matched[ i ] );
 							}
-						}) :
+						} ) :
 						function( elem ) {
 							return fn( elem, 0, args );
 						};
@@ -2808,8 +2955,10 @@
 		},
 
 		pseudos: {
+
 			// Potentially complex pseudos
-			"not": markFunction(function( selector ) {
+			"not": markFunction( function( selector ) {
+
 				// Trim the selector passed to compile
 				// to avoid treating leading and trailing
 				// spaces as combinators
@@ -2818,39 +2967,40 @@
 					matcher = compile( selector.replace( rtrim, "$1" ) );
 
 				return matcher[ expando ] ?
-					markFunction(function( seed, matches, context, xml ) {
+					markFunction( function( seed, matches, _context, xml ) {
 						var elem,
 							unmatched = matcher( seed, null, xml, [] ),
 							i = seed.length;
 
 						// Match elements unmatched by `matcher`
 						while ( i-- ) {
-							if ( (elem = unmatched[i]) ) {
-								seed[i] = !(matches[i] = elem);
+							if ( ( elem = unmatched[ i ] ) ) {
+								seed[ i ] = !( matches[ i ] = elem );
 							}
 						}
-					}) :
-					function( elem, context, xml ) {
-						input[0] = elem;
+					} ) :
+					function( elem, _context, xml ) {
+						input[ 0 ] = elem;
 						matcher( input, null, xml, results );
+
 						// Don't keep the element (issue #299)
-						input[0] = null;
+						input[ 0 ] = null;
 						return !results.pop();
 					};
-			}),
+			} ),
 
-			"has": markFunction(function( selector ) {
+			"has": markFunction( function( selector ) {
 				return function( elem ) {
 					return Sizzle( selector, elem ).length > 0;
 				};
-			}),
+			} ),
 
-			"contains": markFunction(function( text ) {
+			"contains": markFunction( function( text ) {
 				text = text.replace( runescape, funescape );
 				return function( elem ) {
 					return ( elem.textContent || getText( elem ) ).indexOf( text ) > -1;
 				};
-			}),
+			} ),
 
 			// "Whether an element is represented by a :lang() selector
 			// is based solely on the element's language value
@@ -2860,25 +3010,26 @@
 			// The identifier C does not have to be a valid language name."
 			// http://www.w3.org/TR/selectors/#lang-pseudo
 			"lang": markFunction( function( lang ) {
+
 				// lang value must be a valid identifier
-				if ( !ridentifier.test(lang || "") ) {
+				if ( !ridentifier.test( lang || "" ) ) {
 					Sizzle.error( "unsupported lang: " + lang );
 				}
 				lang = lang.replace( runescape, funescape ).toLowerCase();
 				return function( elem ) {
 					var elemLang;
 					do {
-						if ( (elemLang = documentIsHTML ?
+						if ( ( elemLang = documentIsHTML ?
 							elem.lang :
-							elem.getAttribute("xml:lang") || elem.getAttribute("lang")) ) {
+							elem.getAttribute( "xml:lang" ) || elem.getAttribute( "lang" ) ) ) {
 
 							elemLang = elemLang.toLowerCase();
 							return elemLang === lang || elemLang.indexOf( lang + "-" ) === 0;
 						}
-					} while ( (elem = elem.parentNode) && elem.nodeType === 1 );
+					} while ( ( elem = elem.parentNode ) && elem.nodeType === 1 );
 					return false;
 				};
-			}),
+			} ),
 
 			// Miscellaneous
 			"target": function( elem ) {
@@ -2891,7 +3042,9 @@
 			},
 
 			"focus": function( elem ) {
-				return elem === document.activeElement && (!document.hasFocus || document.hasFocus()) && !!(elem.type || elem.href || ~elem.tabIndex);
+				return elem === document.activeElement &&
+					( !document.hasFocus || document.hasFocus() ) &&
+					!!( elem.type || elem.href || ~elem.tabIndex );
 			},
 
 			// Boolean properties
@@ -2899,16 +3052,20 @@
 			"disabled": createDisabledPseudo( true ),
 
 			"checked": function( elem ) {
+
 				// In CSS3, :checked should return both checked and selected elements
 				// http://www.w3.org/TR/2011/REC-css3-selectors-20110929/#checked
 				var nodeName = elem.nodeName.toLowerCase();
-				return (nodeName === "input" && !!elem.checked) || (nodeName === "option" && !!elem.selected);
+				return ( nodeName === "input" && !!elem.checked ) ||
+					( nodeName === "option" && !!elem.selected );
 			},
 
 			"selected": function( elem ) {
+
 				// Accessing this property makes selected-by-default
 				// options in Safari work properly
 				if ( elem.parentNode ) {
+					// eslint-disable-next-line no-unused-expressions
 					elem.parentNode.selectedIndex;
 				}
 
@@ -2917,6 +3074,7 @@
 
 			// Contents
 			"empty": function( elem ) {
+
 				// http://www.w3.org/TR/selectors/#empty-pseudo
 				// :empty is negated by element (1) or content nodes (text: 3; cdata: 4; entity ref: 5),
 				//   but not by others (comment: 8; processing instruction: 7; etc.)
@@ -2930,7 +3088,7 @@
 			},
 
 			"parent": function( elem ) {
-				return !Expr.pseudos["empty"]( elem );
+				return !Expr.pseudos[ "empty" ]( elem );
 			},
 
 			// Element/input types
@@ -2954,39 +3112,40 @@
 
 					// Support: IE<8
 					// New HTML5 attribute values (e.g., "search") appear with elem.type === "text"
-					( (attr = elem.getAttribute("type")) == null || attr.toLowerCase() === "text" );
+					( ( attr = elem.getAttribute( "type" ) ) == null ||
+						attr.toLowerCase() === "text" );
 			},
 
 			// Position-in-collection
-			"first": createPositionalPseudo(function() {
+			"first": createPositionalPseudo( function() {
 				return [ 0 ];
-			}),
+			} ),
 
-			"last": createPositionalPseudo(function( matchIndexes, length ) {
+			"last": createPositionalPseudo( function( _matchIndexes, length ) {
 				return [ length - 1 ];
-			}),
+			} ),
 
-			"eq": createPositionalPseudo(function( matchIndexes, length, argument ) {
+			"eq": createPositionalPseudo( function( _matchIndexes, length, argument ) {
 				return [ argument < 0 ? argument + length : argument ];
-			}),
+			} ),
 
-			"even": createPositionalPseudo(function( matchIndexes, length ) {
+			"even": createPositionalPseudo( function( matchIndexes, length ) {
 				var i = 0;
 				for ( ; i < length; i += 2 ) {
 					matchIndexes.push( i );
 				}
 				return matchIndexes;
-			}),
+			} ),
 
-			"odd": createPositionalPseudo(function( matchIndexes, length ) {
+			"odd": createPositionalPseudo( function( matchIndexes, length ) {
 				var i = 1;
 				for ( ; i < length; i += 2 ) {
 					matchIndexes.push( i );
 				}
 				return matchIndexes;
-			}),
+			} ),
 
-			"lt": createPositionalPseudo(function( matchIndexes, length, argument ) {
+			"lt": createPositionalPseudo( function( matchIndexes, length, argument ) {
 				var i = argument < 0 ?
 					argument + length :
 					argument > length ?
@@ -2996,19 +3155,19 @@
 					matchIndexes.push( i );
 				}
 				return matchIndexes;
-			}),
+			} ),
 
-			"gt": createPositionalPseudo(function( matchIndexes, length, argument ) {
+			"gt": createPositionalPseudo( function( matchIndexes, length, argument ) {
 				var i = argument < 0 ? argument + length : argument;
 				for ( ; ++i < length; ) {
 					matchIndexes.push( i );
 				}
 				return matchIndexes;
-			})
+			} )
 		}
 	};
 
-	Expr.pseudos["nth"] = Expr.pseudos["eq"];
+	Expr.pseudos[ "nth" ] = Expr.pseudos[ "eq" ];
 
 	// Add button/input type pseudos
 	for ( i in { radio: true, checkbox: true, file: true, password: true, image: true } ) {
@@ -3039,37 +3198,39 @@
 		while ( soFar ) {
 
 			// Comma and first run
-			if ( !matched || (match = rcomma.exec( soFar )) ) {
+			if ( !matched || ( match = rcomma.exec( soFar ) ) ) {
 				if ( match ) {
+
 					// Don't consume trailing commas as valid
-					soFar = soFar.slice( match[0].length ) || soFar;
+					soFar = soFar.slice( match[ 0 ].length ) || soFar;
 				}
-				groups.push( (tokens = []) );
+				groups.push( ( tokens = [] ) );
 			}
 
 			matched = false;
 
 			// Combinators
-			if ( (match = rcombinators.exec( soFar )) ) {
+			if ( ( match = rcombinators.exec( soFar ) ) ) {
 				matched = match.shift();
-				tokens.push({
+				tokens.push( {
 					value: matched,
+
 					// Cast descendant combinators to space
-					type: match[0].replace( rtrim, " " )
-				});
+					type: match[ 0 ].replace( rtrim, " " )
+				} );
 				soFar = soFar.slice( matched.length );
 			}
 
 			// Filters
 			for ( type in Expr.filter ) {
-				if ( (match = matchExpr[ type ].exec( soFar )) && (!preFilters[ type ] ||
-					(match = preFilters[ type ]( match ))) ) {
+				if ( ( match = matchExpr[ type ].exec( soFar ) ) && ( !preFilters[ type ] ||
+					( match = preFilters[ type ]( match ) ) ) ) {
 					matched = match.shift();
-					tokens.push({
+					tokens.push( {
 						value: matched,
 						type: type,
 						matches: match
-					});
+					} );
 					soFar = soFar.slice( matched.length );
 				}
 			}
@@ -3086,6 +3247,7 @@
 			soFar.length :
 			soFar ?
 				Sizzle.error( selector ) :
+
 				// Cache the tokens
 				tokenCache( selector, groups ).slice( 0 );
 	};
@@ -3095,7 +3257,7 @@
 			len = tokens.length,
 			selector = "";
 		for ( ; i < len; i++ ) {
-			selector += tokens[i].value;
+			selector += tokens[ i ].value;
 		}
 		return selector;
 	}
@@ -3108,9 +3270,10 @@
 			doneName = done++;
 
 		return combinator.first ?
+
 			// Check against closest ancestor/preceding element
 			function( elem, context, xml ) {
-				while ( (elem = elem[ dir ]) ) {
+				while ( ( elem = elem[ dir ] ) ) {
 					if ( elem.nodeType === 1 || checkNonElements ) {
 						return matcher( elem, context, xml );
 					}
@@ -3125,7 +3288,7 @@
 
 				// We can't set arbitrary data on XML nodes, so they don't benefit from combinator caching
 				if ( xml ) {
-					while ( (elem = elem[ dir ]) ) {
+					while ( ( elem = elem[ dir ] ) ) {
 						if ( elem.nodeType === 1 || checkNonElements ) {
 							if ( matcher( elem, context, xml ) ) {
 								return true;
@@ -3133,27 +3296,29 @@
 						}
 					}
 				} else {
-					while ( (elem = elem[ dir ]) ) {
+					while ( ( elem = elem[ dir ] ) ) {
 						if ( elem.nodeType === 1 || checkNonElements ) {
-							outerCache = elem[ expando ] || (elem[ expando ] = {});
+							outerCache = elem[ expando ] || ( elem[ expando ] = {} );
 
 							// Support: IE <9 only
 							// Defend against cloned attroperties (jQuery gh-1709)
-							uniqueCache = outerCache[ elem.uniqueID ] || (outerCache[ elem.uniqueID ] = {});
+							uniqueCache = outerCache[ elem.uniqueID ] ||
+								( outerCache[ elem.uniqueID ] = {} );
 
 							if ( skip && skip === elem.nodeName.toLowerCase() ) {
 								elem = elem[ dir ] || elem;
-							} else if ( (oldCache = uniqueCache[ key ]) &&
+							} else if ( ( oldCache = uniqueCache[ key ] ) &&
 								oldCache[ 0 ] === dirruns && oldCache[ 1 ] === doneName ) {
 
 								// Assign to newCache so results back-propagate to previous elements
-								return (newCache[ 2 ] = oldCache[ 2 ]);
+								return ( newCache[ 2 ] = oldCache[ 2 ] );
 							} else {
+
 								// Reuse newcache so results back-propagate to previous elements
 								uniqueCache[ key ] = newCache;
 
 								// A match means we're done; a fail means we have to keep checking
-								if ( (newCache[ 2 ] = matcher( elem, context, xml )) ) {
+								if ( ( newCache[ 2 ] = matcher( elem, context, xml ) ) ) {
 									return true;
 								}
 							}
@@ -3169,20 +3334,20 @@
 			function( elem, context, xml ) {
 				var i = matchers.length;
 				while ( i-- ) {
-					if ( !matchers[i]( elem, context, xml ) ) {
+					if ( !matchers[ i ]( elem, context, xml ) ) {
 						return false;
 					}
 				}
 				return true;
 			} :
-			matchers[0];
+			matchers[ 0 ];
 	}
 
 	function multipleContexts( selector, contexts, results ) {
 		var i = 0,
 			len = contexts.length;
 		for ( ; i < len; i++ ) {
-			Sizzle( selector, contexts[i], results );
+			Sizzle( selector, contexts[ i ], results );
 		}
 		return results;
 	}
@@ -3195,7 +3360,7 @@
 			mapped = map != null;
 
 		for ( ; i < len; i++ ) {
-			if ( (elem = unmatched[i]) ) {
+			if ( ( elem = unmatched[ i ] ) ) {
 				if ( !filter || filter( elem, context, xml ) ) {
 					newUnmatched.push( elem );
 					if ( mapped ) {
@@ -3215,14 +3380,18 @@
 		if ( postFinder && !postFinder[ expando ] ) {
 			postFinder = setMatcher( postFinder, postSelector );
 		}
-		return markFunction(function( seed, results, context, xml ) {
+		return markFunction( function( seed, results, context, xml ) {
 			var temp, i, elem,
 				preMap = [],
 				postMap = [],
 				preexisting = results.length,
 
 				// Get initial elements from seed or context
-				elems = seed || multipleContexts( selector || "*", context.nodeType ? [ context ] : context, [] ),
+				elems = seed || multipleContexts(
+					selector || "*",
+					context.nodeType ? [ context ] : context,
+					[]
+				),
 
 				// Prefilter to get matcher input, preserving a map for seed-results synchronization
 				matcherIn = preFilter && ( seed || !selector ) ?
@@ -3230,6 +3399,7 @@
 					elems,
 
 				matcherOut = matcher ?
+
 					// If we have a postFinder, or filtered seed, or non-seed postFilter or preexisting results,
 					postFinder || ( seed ? preFilter : preexisting || postFilter ) ?
 
@@ -3253,8 +3423,8 @@
 				// Un-match failing elements by moving them back to matcherIn
 				i = temp.length;
 				while ( i-- ) {
-					if ( (elem = temp[i]) ) {
-						matcherOut[ postMap[i] ] = !(matcherIn[ postMap[i] ] = elem);
+					if ( ( elem = temp[ i ] ) ) {
+						matcherOut[ postMap[ i ] ] = !( matcherIn[ postMap[ i ] ] = elem );
 					}
 				}
 			}
@@ -3262,25 +3432,27 @@
 			if ( seed ) {
 				if ( postFinder || preFilter ) {
 					if ( postFinder ) {
+
 						// Get the final matcherOut by condensing this intermediate into postFinder contexts
 						temp = [];
 						i = matcherOut.length;
 						while ( i-- ) {
-							if ( (elem = matcherOut[i]) ) {
+							if ( ( elem = matcherOut[ i ] ) ) {
+
 								// Restore matcherIn since elem is not yet a final match
-								temp.push( (matcherIn[i] = elem) );
+								temp.push( ( matcherIn[ i ] = elem ) );
 							}
 						}
-						postFinder( null, (matcherOut = []), temp, xml );
+						postFinder( null, ( matcherOut = [] ), temp, xml );
 					}
 
 					// Move matched elements from seed to results to keep them synchronized
 					i = matcherOut.length;
 					while ( i-- ) {
-						if ( (elem = matcherOut[i]) &&
-							(temp = postFinder ? indexOf( seed, elem ) : preMap[i]) > -1 ) {
+						if ( ( elem = matcherOut[ i ] ) &&
+							( temp = postFinder ? indexOf( seed, elem ) : preMap[ i ] ) > -1 ) {
 
-							seed[temp] = !(results[temp] = elem);
+							seed[ temp ] = !( results[ temp ] = elem );
 						}
 					}
 				}
@@ -3298,14 +3470,14 @@
 					push.apply( results, matcherOut );
 				}
 			}
-		});
+		} );
 	}
 
 	function matcherFromTokens( tokens ) {
 		var checkContext, matcher, j,
 			len = tokens.length,
-			leadingRelative = Expr.relative[ tokens[0].type ],
-			implicitRelative = leadingRelative || Expr.relative[" "],
+			leadingRelative = Expr.relative[ tokens[ 0 ].type ],
+			implicitRelative = leadingRelative || Expr.relative[ " " ],
 			i = leadingRelative ? 1 : 0,
 
 			// The foundational matcher ensures that elements are reachable from top-level context(s)
@@ -3317,38 +3489,43 @@
 			}, implicitRelative, true ),
 			matchers = [ function( elem, context, xml ) {
 				var ret = ( !leadingRelative && ( xml || context !== outermostContext ) ) || (
-					(checkContext = context).nodeType ?
+					( checkContext = context ).nodeType ?
 						matchContext( elem, context, xml ) :
 						matchAnyContext( elem, context, xml ) );
+
 				// Avoid hanging onto element (issue #299)
 				checkContext = null;
 				return ret;
 			} ];
 
 		for ( ; i < len; i++ ) {
-			if ( (matcher = Expr.relative[ tokens[i].type ]) ) {
-				matchers = [ addCombinator(elementMatcher( matchers ), matcher) ];
+			if ( ( matcher = Expr.relative[ tokens[ i ].type ] ) ) {
+				matchers = [ addCombinator( elementMatcher( matchers ), matcher ) ];
 			} else {
-				matcher = Expr.filter[ tokens[i].type ].apply( null, tokens[i].matches );
+				matcher = Expr.filter[ tokens[ i ].type ].apply( null, tokens[ i ].matches );
 
 				// Return special upon seeing a positional matcher
 				if ( matcher[ expando ] ) {
+
 					// Find the next relative operator (if any) for proper handling
 					j = ++i;
 					for ( ; j < len; j++ ) {
-						if ( Expr.relative[ tokens[j].type ] ) {
+						if ( Expr.relative[ tokens[ j ].type ] ) {
 							break;
 						}
 					}
 					return setMatcher(
 						i > 1 && elementMatcher( matchers ),
 						i > 1 && toSelector(
-							// If the preceding token was a descendant combinator, insert an implicit any-element `*`
-							tokens.slice( 0, i - 1 ).concat({ value: tokens[ i - 2 ].type === " " ? "*" : "" })
+
+						// If the preceding token was a descendant combinator, insert an implicit any-element `*`
+						tokens
+							.slice( 0, i - 1 )
+							.concat( { value: tokens[ i - 2 ].type === " " ? "*" : "" } )
 						).replace( rtrim, "$1" ),
 						matcher,
 						i < j && matcherFromTokens( tokens.slice( i, j ) ),
-						j < len && matcherFromTokens( (tokens = tokens.slice( j )) ),
+						j < len && matcherFromTokens( ( tokens = tokens.slice( j ) ) ),
 						j < len && toSelector( tokens )
 					);
 				}
@@ -3369,28 +3546,40 @@
 					unmatched = seed && [],
 					setMatched = [],
 					contextBackup = outermostContext,
+
 					// We must always have either seed elements or outermost context
-					elems = seed || byElement && Expr.find["TAG"]( "*", outermost ),
+					elems = seed || byElement && Expr.find[ "TAG" ]( "*", outermost ),
+
 					// Use integer dirruns iff this is the outermost matcher
-					dirrunsUnique = (dirruns += contextBackup == null ? 1 : Math.random() || 0.1),
+					dirrunsUnique = ( dirruns += contextBackup == null ? 1 : Math.random() || 0.1 ),
 					len = elems.length;
 
 				if ( outermost ) {
-					outermostContext = context === document || context || outermost;
+
+					// Support: IE 11+, Edge 17 - 18+
+					// IE/Edge sometimes throw a "Permission denied" error when strict-comparing
+					// two documents; shallow comparisons work.
+					// eslint-disable-next-line eqeqeq
+					outermostContext = context == document || context || outermost;
 				}
 
 				// Add elements passing elementMatchers directly to results
 				// Support: IE<9, Safari
 				// Tolerate NodeList properties (IE: "length"; Safari: <number>) matching elements by id
-				for ( ; i !== len && (elem = elems[i]) != null; i++ ) {
+				for ( ; i !== len && ( elem = elems[ i ] ) != null; i++ ) {
 					if ( byElement && elem ) {
 						j = 0;
-						if ( !context && elem.ownerDocument !== document ) {
+
+						// Support: IE 11+, Edge 17 - 18+
+						// IE/Edge sometimes throw a "Permission denied" error when strict-comparing
+						// two documents; shallow comparisons work.
+						// eslint-disable-next-line eqeqeq
+						if ( !context && elem.ownerDocument != document ) {
 							setDocument( elem );
 							xml = !documentIsHTML;
 						}
-						while ( (matcher = elementMatchers[j++]) ) {
-							if ( matcher( elem, context || document, xml) ) {
+						while ( ( matcher = elementMatchers[ j++ ] ) ) {
+							if ( matcher( elem, context || document, xml ) ) {
 								results.push( elem );
 								break;
 							}
@@ -3402,8 +3591,9 @@
 
 					// Track unmatched elements for set filters
 					if ( bySet ) {
+
 						// They will have gone through all possible matchers
-						if ( (elem = !matcher && elem) ) {
+						if ( ( elem = !matcher && elem ) ) {
 							matchedCount--;
 						}
 
@@ -3427,16 +3617,17 @@
 				// numerically zero.
 				if ( bySet && i !== matchedCount ) {
 					j = 0;
-					while ( (matcher = setMatchers[j++]) ) {
+					while ( ( matcher = setMatchers[ j++ ] ) ) {
 						matcher( unmatched, setMatched, context, xml );
 					}
 
 					if ( seed ) {
+
 						// Reintegrate element matches to eliminate the need for sorting
 						if ( matchedCount > 0 ) {
 							while ( i-- ) {
-								if ( !(unmatched[i] || setMatched[i]) ) {
-									setMatched[i] = pop.call( results );
+								if ( !( unmatched[ i ] || setMatched[ i ] ) ) {
+									setMatched[ i ] = pop.call( results );
 								}
 							}
 						}
@@ -3477,13 +3668,14 @@
 			cached = compilerCache[ selector + " " ];
 
 		if ( !cached ) {
+
 			// Generate a function of recursive functions that can be used to check each element
 			if ( !match ) {
 				match = tokenize( selector );
 			}
 			i = match.length;
 			while ( i-- ) {
-				cached = matcherFromTokens( match[i] );
+				cached = matcherFromTokens( match[ i ] );
 				if ( cached[ expando ] ) {
 					setMatchers.push( cached );
 				} else {
@@ -3492,7 +3684,10 @@
 			}
 
 			// Cache the compiled function
-			cached = compilerCache( selector, matcherFromGroupMatchers( elementMatchers, setMatchers ) );
+			cached = compilerCache(
+				selector,
+				matcherFromGroupMatchers( elementMatchers, setMatchers )
+			);
 
 			// Save selector and tokenization
 			cached.selector = selector;
@@ -3512,7 +3707,7 @@
 	select = Sizzle.select = function( selector, context, results, seed ) {
 		var i, tokens, token, type, find,
 			compiled = typeof selector === "function" && selector,
-			match = !seed && tokenize( (selector = compiled.selector || selector) );
+			match = !seed && tokenize( ( selector = compiled.selector || selector ) );
 
 		results = results || [];
 
@@ -3521,11 +3716,12 @@
 		if ( match.length === 1 ) {
 
 			// Reduce context if the leading compound selector is an ID
-			tokens = match[0] = match[0].slice( 0 );
-			if ( tokens.length > 2 && (token = tokens[0]).type === "ID" &&
-					context.nodeType === 9 && documentIsHTML && Expr.relative[ tokens[1].type ] ) {
+			tokens = match[ 0 ] = match[ 0 ].slice( 0 );
+			if ( tokens.length > 2 && ( token = tokens[ 0 ] ).type === "ID" &&
+				context.nodeType === 9 && documentIsHTML && Expr.relative[ tokens[ 1 ].type ] ) {
 
-				context = ( Expr.find["ID"]( token.matches[0].replace(runescape, funescape), context ) || [] )[0];
+				context = ( Expr.find[ "ID" ]( token.matches[ 0 ]
+					.replace( runescape, funescape ), context ) || [] )[ 0 ];
 				if ( !context ) {
 					return results;
 
@@ -3538,20 +3734,22 @@
 			}
 
 			// Fetch a seed set for right-to-left matching
-			i = matchExpr["needsContext"].test( selector ) ? 0 : tokens.length;
+			i = matchExpr[ "needsContext" ].test( selector ) ? 0 : tokens.length;
 			while ( i-- ) {
-				token = tokens[i];
+				token = tokens[ i ];
 
 				// Abort if we hit a combinator
-				if ( Expr.relative[ (type = token.type) ] ) {
+				if ( Expr.relative[ ( type = token.type ) ] ) {
 					break;
 				}
-				if ( (find = Expr.find[ type ]) ) {
+				if ( ( find = Expr.find[ type ] ) ) {
+
 					// Search, expanding context for leading sibling combinators
-					if ( (seed = find(
-						token.matches[0].replace( runescape, funescape ),
-						rsibling.test( tokens[0].type ) && testContext( context.parentNode ) || context
-					)) ) {
+					if ( ( seed = find(
+						token.matches[ 0 ].replace( runescape, funescape ),
+						rsibling.test( tokens[ 0 ].type ) && testContext( context.parentNode ) ||
+							context
+					) ) ) {
 
 						// If seed is empty or no tokens remain, we can return early
 						tokens.splice( i, 1 );
@@ -3582,7 +3780,7 @@
 	// One-time assignments
 
 	// Sort stability
-	support.sortStable = expando.split("").sort( sortOrder ).join("") === expando;
+	support.sortStable = expando.split( "" ).sort( sortOrder ).join( "" ) === expando;
 
 	// Support: Chrome 14-35+
 	// Always assume duplicates if they aren't passed to the comparison function
@@ -3593,58 +3791,59 @@
 
 	// Support: Webkit<537.32 - Safari 6.0.3/Chrome 25 (fixed in Chrome 27)
 	// Detached nodes confoundingly follow *each other*
-	support.sortDetached = assert(function( el ) {
+	support.sortDetached = assert( function( el ) {
+
 		// Should return 1, but returns 4 (following)
-		return el.compareDocumentPosition( document.createElement("fieldset") ) & 1;
-	});
+		return el.compareDocumentPosition( document.createElement( "fieldset" ) ) & 1;
+	} );
 
 	// Support: IE<8
 	// Prevent attribute/property "interpolation"
 	// https://msdn.microsoft.com/en-us/library/ms536429%28VS.85%29.aspx
-	if ( !assert(function( el ) {
+	if ( !assert( function( el ) {
 		el.innerHTML = "<a href='#'></a>";
-		return el.firstChild.getAttribute("href") === "#" ;
-	}) ) {
+		return el.firstChild.getAttribute( "href" ) === "#";
+	} ) ) {
 		addHandle( "type|href|height|width", function( elem, name, isXML ) {
 			if ( !isXML ) {
 				return elem.getAttribute( name, name.toLowerCase() === "type" ? 1 : 2 );
 			}
-		});
+		} );
 	}
 
 	// Support: IE<9
 	// Use defaultValue in place of getAttribute("value")
-	if ( !support.attributes || !assert(function( el ) {
+	if ( !support.attributes || !assert( function( el ) {
 		el.innerHTML = "<input/>";
 		el.firstChild.setAttribute( "value", "" );
 		return el.firstChild.getAttribute( "value" ) === "";
-	}) ) {
-		addHandle( "value", function( elem, name, isXML ) {
+	} ) ) {
+		addHandle( "value", function( elem, _name, isXML ) {
 			if ( !isXML && elem.nodeName.toLowerCase() === "input" ) {
 				return elem.defaultValue;
 			}
-		});
+		} );
 	}
 
 	// Support: IE<9
 	// Use getAttributeNode to fetch booleans when getAttribute lies
-	if ( !assert(function( el ) {
-		return el.getAttribute("disabled") == null;
-	}) ) {
+	if ( !assert( function( el ) {
+		return el.getAttribute( "disabled" ) == null;
+	} ) ) {
 		addHandle( booleans, function( elem, name, isXML ) {
 			var val;
 			if ( !isXML ) {
 				return elem[ name ] === true ? name.toLowerCase() :
-						(val = elem.getAttributeNode( name )) && val.specified ?
+					( val = elem.getAttributeNode( name ) ) && val.specified ?
 						val.value :
-					null;
+						null;
 			}
-		});
+		} );
 	}
 
 	return Sizzle;
 
-	})( window );
+	} )( window );
 
 
 
@@ -4012,7 +4211,7 @@
 		parents: function( elem ) {
 			return dir( elem, "parentNode" );
 		},
-		parentsUntil: function( elem, i, until ) {
+		parentsUntil: function( elem, _i, until ) {
 			return dir( elem, "parentNode", until );
 		},
 		next: function( elem ) {
@@ -4027,10 +4226,10 @@
 		prevAll: function( elem ) {
 			return dir( elem, "previousSibling" );
 		},
-		nextUntil: function( elem, i, until ) {
+		nextUntil: function( elem, _i, until ) {
 			return dir( elem, "nextSibling", until );
 		},
-		prevUntil: function( elem, i, until ) {
+		prevUntil: function( elem, _i, until ) {
 			return dir( elem, "previousSibling", until );
 		},
 		siblings: function( elem ) {
@@ -4040,7 +4239,13 @@
 			return siblings( elem.firstChild );
 		},
 		contents: function( elem ) {
-			if ( typeof elem.contentDocument !== "undefined" ) {
+			if ( elem.contentDocument != null &&
+
+				// Support: IE 11+
+				// <object> elements with no `data` attribute has an object
+				// `contentDocument` with a `null` prototype.
+				getProto( elem.contentDocument ) ) {
+
 				return elem.contentDocument;
 			}
 
@@ -4383,7 +4588,7 @@
 						var fns = arguments;
 
 						return jQuery.Deferred( function( newDefer ) {
-							jQuery.each( tuples, function( i, tuple ) {
+							jQuery.each( tuples, function( _i, tuple ) {
 
 								// Map tuples (progress, done, fail) to arguments (done, fail, progress)
 								var fn = isFunction( fns[ tuple[ 4 ] ] ) && fns[ tuple[ 4 ] ];
@@ -4836,7 +5041,7 @@
 				// ...except when executing function values
 				} else {
 					bulk = fn;
-					fn = function( elem, key, value ) {
+					fn = function( elem, _key, value ) {
 						return bulk.call( jQuery( elem ), value );
 					};
 				}
@@ -4871,7 +5076,7 @@
 		rdashAlpha = /-([a-z])/g;
 
 	// Used by camelCase as callback to replace()
-	function fcamelCase( all, letter ) {
+	function fcamelCase( _all, letter ) {
 		return letter.toUpperCase();
 	}
 
@@ -4910,7 +5115,7 @@
 
 			// If not, create one
 			if ( !value ) {
-				value = {};
+				value = Object.create( null );
 
 				// We can accept data for non-element nodes in modern browsers,
 				// but we should not, see #8335.
@@ -5399,27 +5604,6 @@
 				jQuery.css( elem, "display" ) === "none";
 		};
 
-	var swap = function( elem, options, callback, args ) {
-		var ret, name,
-			old = {};
-
-		// Remember the old values, and insert the new ones
-		for ( name in options ) {
-			old[ name ] = elem.style[ name ];
-			elem.style[ name ] = options[ name ];
-		}
-
-		ret = callback.apply( elem, args || [] );
-
-		// Revert the old values
-		for ( name in options ) {
-			elem.style[ name ] = old[ name ];
-		}
-
-		return ret;
-	};
-
-
 
 
 	function adjustCSS( elem, prop, valueParts, tween ) {
@@ -5590,11 +5774,40 @@
 
 
 
-	// We have to close these tags to support XHTML (#13200)
-	var wrapMap = {
+	( function() {
+		var fragment = document.createDocumentFragment(),
+			div = fragment.appendChild( document.createElement( "div" ) ),
+			input = document.createElement( "input" );
+
+		// Support: Android 4.0 - 4.3 only
+		// Check state lost if the name is set (#11217)
+		// Support: Windows Web Apps (WWA)
+		// `name` and `type` must use .setAttribute for WWA (#14901)
+		input.setAttribute( "type", "radio" );
+		input.setAttribute( "checked", "checked" );
+		input.setAttribute( "name", "t" );
+
+		div.appendChild( input );
+
+		// Support: Android <=4.1 only
+		// Older WebKit doesn't clone checked state correctly in fragments
+		support.checkClone = div.cloneNode( true ).cloneNode( true ).lastChild.checked;
+
+		// Support: IE <=11 only
+		// Make sure textarea (and checkbox) defaultValue is properly cloned
+		div.innerHTML = "<textarea>x</textarea>";
+		support.noCloneChecked = !!div.cloneNode( true ).lastChild.defaultValue;
 
 		// Support: IE <=9 only
-		option: [ 1, "<select multiple='multiple'>", "</select>" ],
+		// IE <=9 replaces <option> tags with their contents when inserted outside of
+		// the select element.
+		div.innerHTML = "<option></option>";
+		support.option = !!div.lastChild;
+	} )();
+
+
+	// We have to close these tags to support XHTML (#13200)
+	var wrapMap = {
 
 		// XHTML parsers do not magically insert elements in the
 		// same way that tag soup parsers do. So we cannot shorten
@@ -5607,11 +5820,13 @@
 		_default: [ 0, "", "" ]
 	};
 
-	// Support: IE <=9 only
-	wrapMap.optgroup = wrapMap.option;
-
 	wrapMap.tbody = wrapMap.tfoot = wrapMap.colgroup = wrapMap.caption = wrapMap.thead;
 	wrapMap.th = wrapMap.td;
+
+	// Support: IE <=9 only
+	if ( !support.option ) {
+		wrapMap.optgroup = wrapMap.option = [ 1, "<select multiple='multiple'>", "</select>" ];
+	}
 
 
 	function getAll( context, tag ) {
@@ -5745,32 +5960,6 @@
 	}
 
 
-	( function() {
-		var fragment = document.createDocumentFragment(),
-			div = fragment.appendChild( document.createElement( "div" ) ),
-			input = document.createElement( "input" );
-
-		// Support: Android 4.0 - 4.3 only
-		// Check state lost if the name is set (#11217)
-		// Support: Windows Web Apps (WWA)
-		// `name` and `type` must use .setAttribute for WWA (#14901)
-		input.setAttribute( "type", "radio" );
-		input.setAttribute( "checked", "checked" );
-		input.setAttribute( "name", "t" );
-
-		div.appendChild( input );
-
-		// Support: Android <=4.1 only
-		// Older WebKit doesn't clone checked state correctly in fragments
-		support.checkClone = div.cloneNode( true ).cloneNode( true ).lastChild.checked;
-
-		// Support: IE <=11 only
-		// Make sure textarea (and checkbox) defaultValue is properly cloned
-		div.innerHTML = "<textarea>x</textarea>";
-		support.noCloneChecked = !!div.cloneNode( true ).lastChild.defaultValue;
-	} )();
-
-
 	var
 		rkeyEvent = /^key/,
 		rmouseEvent = /^(?:mouse|pointer|contextmenu|drag|drop)|click/,
@@ -5879,8 +6068,8 @@
 				special, handlers, type, namespaces, origType,
 				elemData = dataPriv.get( elem );
 
-			// Don't attach events to noData or text/comment nodes (but allow plain objects)
-			if ( !elemData ) {
+			// Only attach events to objects that accept data
+			if ( !acceptData( elem ) ) {
 				return;
 			}
 
@@ -5904,7 +6093,7 @@
 
 			// Init the element's event structure and main handler, if this is the first
 			if ( !( events = elemData.events ) ) {
-				events = elemData.events = {};
+				events = elemData.events = Object.create( null );
 			}
 			if ( !( eventHandle = elemData.handle ) ) {
 				eventHandle = elemData.handle = function( e ) {
@@ -6062,12 +6251,15 @@
 
 		dispatch: function( nativeEvent ) {
 
-			// Make a writable jQuery.Event from the native event object
-			var event = jQuery.event.fix( nativeEvent );
-
 			var i, j, ret, matched, handleObj, handlerQueue,
 				args = new Array( arguments.length ),
-				handlers = ( dataPriv.get( this, "events" ) || {} )[ event.type ] || [],
+
+				// Make a writable jQuery.Event from the native event object
+				event = jQuery.event.fix( nativeEvent ),
+
+				handlers = (
+						dataPriv.get( this, "events" ) || Object.create( null )
+					)[ event.type ] || [],
 				special = jQuery.event.special[ event.type ] || {};
 
 			// Use the fix-ed jQuery.Event rather than the (read-only) native event
@@ -6642,13 +6834,6 @@
 
 	var
 
-		/* eslint-disable max-len */
-
-		// See https://github.com/eslint/eslint/issues/3229
-		rxhtmlTag = /<(?!area|br|col|embed|hr|img|input|link|meta|param)(([a-z][^\/\0>\x20\t\r\n\f]*)[^>]*)\/>/gi,
-
-		/* eslint-enable */
-
 		// Support: IE <=10 - 11, Edge 12 - 13 only
 		// In IE/Edge using regex groups here causes severe slowdowns.
 		// See https://connect.microsoft.com/IE/feedback/details/1736512/
@@ -6685,7 +6870,7 @@
 	}
 
 	function cloneCopyEvent( src, dest ) {
-		var i, l, type, pdataOld, pdataCur, udataOld, udataCur, events;
+		var i, l, type, pdataOld, udataOld, udataCur, events;
 
 		if ( dest.nodeType !== 1 ) {
 			return;
@@ -6693,13 +6878,11 @@
 
 		// 1. Copy private data: events, handlers, etc.
 		if ( dataPriv.hasData( src ) ) {
-			pdataOld = dataPriv.access( src );
-			pdataCur = dataPriv.set( dest, pdataOld );
+			pdataOld = dataPriv.get( src );
 			events = pdataOld.events;
 
 			if ( events ) {
-				delete pdataCur.handle;
-				pdataCur.events = {};
+				dataPriv.remove( dest, "handle events" );
 
 				for ( type in events ) {
 					for ( i = 0, l = events[ type ].length; i < l; i++ ) {
@@ -6735,7 +6918,7 @@
 	function domManip( collection, args, callback, ignored ) {
 
 		// Flatten any nested arrays
-		args = concat.apply( [], args );
+		args = flat( args );
 
 		var fragment, first, scripts, hasScripts, node, doc,
 			i = 0,
@@ -6810,7 +6993,7 @@
 								if ( jQuery._evalUrl && !node.noModule ) {
 									jQuery._evalUrl( node.src, {
 										nonce: node.nonce || node.getAttribute( "nonce" )
-									} );
+									}, doc );
 								}
 							} else {
 								DOMEval( node.textContent.replace( rcleanScript, "" ), node, doc );
@@ -6847,7 +7030,7 @@
 
 	jQuery.extend( {
 		htmlPrefilter: function( html ) {
-			return html.replace( rxhtmlTag, "<$1></$2>" );
+			return html;
 		},
 
 		clone: function( elem, dataAndEvents, deepDataAndEvents ) {
@@ -7109,6 +7292,27 @@
 			return view.getComputedStyle( elem );
 		};
 
+	var swap = function( elem, options, callback ) {
+		var ret, name,
+			old = {};
+
+		// Remember the old values, and insert the new ones
+		for ( name in options ) {
+			old[ name ] = elem.style[ name ];
+			elem.style[ name ] = options[ name ];
+		}
+
+		ret = callback.call( elem );
+
+		// Revert the old values
+		for ( name in options ) {
+			elem.style[ name ] = old[ name ];
+		}
+
+		return ret;
+	};
+
+
 	var rboxStyle = new RegExp( cssExpand.join( "|" ), "i" );
 
 
@@ -7166,7 +7370,7 @@
 		}
 
 		var pixelPositionVal, boxSizingReliableVal, scrollboxSizeVal, pixelBoxStylesVal,
-			reliableMarginLeftVal,
+			reliableTrDimensionsVal, reliableMarginLeftVal,
 			container = document.createElement( "div" ),
 			div = document.createElement( "div" );
 
@@ -7201,6 +7405,35 @@
 			scrollboxSize: function() {
 				computeStyleTests();
 				return scrollboxSizeVal;
+			},
+
+			// Support: IE 9 - 11+, Edge 15 - 18+
+			// IE/Edge misreport `getComputedStyle` of table rows with width/height
+			// set in CSS while `offset*` properties report correct values.
+			// Behavior in IE 9 is more subtle than in newer versions & it passes
+			// some versions of this test; make sure not to make it pass there!
+			reliableTrDimensions: function() {
+				var table, tr, trChild, trStyle;
+				if ( reliableTrDimensionsVal == null ) {
+					table = document.createElement( "table" );
+					tr = document.createElement( "tr" );
+					trChild = document.createElement( "div" );
+
+					table.style.cssText = "position:absolute;left:-11111px";
+					tr.style.height = "1px";
+					trChild.style.height = "9px";
+
+					documentElement
+						.appendChild( table )
+						.appendChild( tr )
+						.appendChild( trChild );
+
+					trStyle = window.getComputedStyle( tr );
+					reliableTrDimensionsVal = parseInt( trStyle.height ) > 3;
+
+					documentElement.removeChild( table );
+				}
+				return reliableTrDimensionsVal;
 			}
 		} );
 	} )();
@@ -7325,7 +7558,7 @@
 			fontWeight: "400"
 		};
 
-	function setPositiveNumber( elem, value, subtract ) {
+	function setPositiveNumber( _elem, value, subtract ) {
 
 		// Any relative (+/-) values have already been
 		// normalized at this point
@@ -7430,17 +7663,26 @@
 		}
 
 
-		// Fall back to offsetWidth/offsetHeight when value is "auto"
-		// This happens for inline elements with no explicit setting (gh-3571)
-		// Support: Android <=4.1 - 4.3 only
-		// Also use offsetWidth/offsetHeight for misreported inline dimensions (gh-3602)
-		// Support: IE 9-11 only
-		// Also use offsetWidth/offsetHeight for when box sizing is unreliable
-		// We use getClientRects() to check for hidden/disconnected.
-		// In those cases, the computed value can be trusted to be border-box
+		// Support: IE 9 - 11 only
+		// Use offsetWidth/offsetHeight for when box sizing is unreliable.
+		// In those cases, the computed value can be trusted to be border-box.
 		if ( ( !support.boxSizingReliable() && isBorderBox ||
+
+			// Support: IE 10 - 11+, Edge 15 - 18+
+			// IE/Edge misreport `getComputedStyle` of table rows with width/height
+			// set in CSS while `offset*` properties report correct values.
+			// Interestingly, in some cases IE 9 doesn't suffer from this issue.
+			!support.reliableTrDimensions() && nodeName( elem, "tr" ) ||
+
+			// Fall back to offsetWidth/offsetHeight when value is "auto"
+			// This happens for inline elements with no explicit setting (gh-3571)
 			val === "auto" ||
+
+			// Support: Android <=4.1 - 4.3 only
+			// Also use offsetWidth/offsetHeight for misreported inline dimensions (gh-3602)
 			!parseFloat( val ) && jQuery.css( elem, "display", false, styles ) === "inline" ) &&
+
+			// Make sure the element is visible & connected
 			elem.getClientRects().length ) {
 
 			isBorderBox = jQuery.css( elem, "boxSizing", false, styles ) === "border-box";
@@ -7635,7 +7877,7 @@
 		}
 	} );
 
-	jQuery.each( [ "height", "width" ], function( i, dimension ) {
+	jQuery.each( [ "height", "width" ], function( _i, dimension ) {
 		jQuery.cssHooks[ dimension ] = {
 			get: function( elem, computed, extra ) {
 				if ( computed ) {
@@ -8408,7 +8650,7 @@
 				clearQueue = type;
 				type = undefined;
 			}
-			if ( clearQueue && type !== false ) {
+			if ( clearQueue ) {
 				this.queue( type || "fx", [] );
 			}
 
@@ -8491,7 +8733,7 @@
 		}
 	} );
 
-	jQuery.each( [ "toggle", "show", "hide" ], function( i, name ) {
+	jQuery.each( [ "toggle", "show", "hide" ], function( _i, name ) {
 		var cssFn = jQuery.fn[ name ];
 		jQuery.fn[ name ] = function( speed, easing, callback ) {
 			return speed == null || typeof speed === "boolean" ?
@@ -8712,7 +8954,7 @@
 		}
 	};
 
-	jQuery.each( jQuery.expr.match.bool.source.match( /\w+/g ), function( i, name ) {
+	jQuery.each( jQuery.expr.match.bool.source.match( /\w+/g ), function( _i, name ) {
 		var getter = attrHandle[ name ] || jQuery.find.attr;
 
 		attrHandle[ name ] = function( elem, name, isXML ) {
@@ -9336,7 +9578,9 @@
 					special.bindType || type;
 
 				// jQuery handler
-				handle = ( dataPriv.get( cur, "events" ) || {} )[ event.type ] &&
+				handle = (
+						dataPriv.get( cur, "events" ) || Object.create( null )
+					)[ event.type ] &&
 					dataPriv.get( cur, "handle" );
 				if ( handle ) {
 					handle.apply( cur, data );
@@ -9447,7 +9691,10 @@
 
 			jQuery.event.special[ fix ] = {
 				setup: function() {
-					var doc = this.ownerDocument || this,
+
+					// Handle: regular nodes (via `this.ownerDocument`), window
+					// (via `this.document`) & document (via `this`).
+					var doc = this.ownerDocument || this.document || this,
 						attaches = dataPriv.access( doc, fix );
 
 					if ( !attaches ) {
@@ -9456,7 +9703,7 @@
 					dataPriv.access( doc, fix, ( attaches || 0 ) + 1 );
 				},
 				teardown: function() {
-					var doc = this.ownerDocument || this,
+					var doc = this.ownerDocument || this.document || this,
 						attaches = dataPriv.access( doc, fix ) - 1;
 
 					if ( !attaches ) {
@@ -9472,7 +9719,7 @@
 	}
 	var location = window.location;
 
-	var nonce = Date.now();
+	var nonce = { guid: Date.now() };
 
 	var rquery = ( /\?/ );
 
@@ -9604,7 +9851,7 @@
 					rsubmittable.test( this.nodeName ) && !rsubmitterTypes.test( type ) &&
 					( this.checked || !rcheckableType.test( type ) );
 			} )
-			.map( function( i, elem ) {
+			.map( function( _i, elem ) {
 				var val = jQuery( this ).val();
 
 				if ( val == null ) {
@@ -10217,7 +10464,8 @@
 				// Add or update anti-cache param if needed
 				if ( s.cache === false ) {
 					cacheURL = cacheURL.replace( rantiCache, "$1" );
-					uncached = ( rquery.test( cacheURL ) ? "&" : "?" ) + "_=" + ( nonce++ ) + uncached;
+					uncached = ( rquery.test( cacheURL ) ? "&" : "?" ) + "_=" + ( nonce.guid++ ) +
+						uncached;
 				}
 
 				// Put hash and anti-cache on the URL that will be requested (gh-1732)
@@ -10350,6 +10598,11 @@
 					response = ajaxHandleResponses( s, jqXHR, responses );
 				}
 
+				// Use a noop converter for missing script
+				if ( !isSuccess && jQuery.inArray( "script", s.dataTypes ) > -1 ) {
+					s.converters[ "text script" ] = function() {};
+				}
+
 				// Convert no matter what (that way responseXXX fields are always set)
 				response = ajaxConvert( s, response, jqXHR, isSuccess );
 
@@ -10440,7 +10693,7 @@
 		}
 	} );
 
-	jQuery.each( [ "get", "post" ], function( i, method ) {
+	jQuery.each( [ "get", "post" ], function( _i, method ) {
 		jQuery[ method ] = function( url, data, callback, type ) {
 
 			// Shift arguments if data argument was omitted
@@ -10461,8 +10714,17 @@
 		};
 	} );
 
+	jQuery.ajaxPrefilter( function( s ) {
+		var i;
+		for ( i in s.headers ) {
+			if ( i.toLowerCase() === "content-type" ) {
+				s.contentType = s.headers[ i ] || "";
+			}
+		}
+	} );
 
-	jQuery._evalUrl = function( url, options ) {
+
+	jQuery._evalUrl = function( url, options, doc ) {
 		return jQuery.ajax( {
 			url: url,
 
@@ -10480,7 +10742,7 @@
 				"text script": function() {}
 			},
 			dataFilter: function( response ) {
-				jQuery.globalEval( response, options );
+				jQuery.globalEval( response, options, doc );
 			}
 		} );
 	};
@@ -10802,7 +11064,7 @@
 	jQuery.ajaxSetup( {
 		jsonp: "callback",
 		jsonpCallback: function() {
-			var callback = oldCallbacks.pop() || ( jQuery.expando + "_" + ( nonce++ ) );
+			var callback = oldCallbacks.pop() || ( jQuery.expando + "_" + ( nonce.guid++ ) );
 			this[ callback ] = true;
 			return callback;
 		}
@@ -11019,23 +11281,6 @@
 
 
 
-	// Attach a bunch of functions for handling common AJAX events
-	jQuery.each( [
-		"ajaxStart",
-		"ajaxStop",
-		"ajaxComplete",
-		"ajaxError",
-		"ajaxSuccess",
-		"ajaxSend"
-	], function( i, type ) {
-		jQuery.fn[ type ] = function( fn ) {
-			return this.on( type, fn );
-		};
-	} );
-
-
-
-
 	jQuery.expr.pseudos.animated = function( elem ) {
 		return jQuery.grep( jQuery.timers, function( fn ) {
 			return elem === fn.elem;
@@ -11092,6 +11337,12 @@
 				options.using.call( elem, props );
 
 			} else {
+				if ( typeof props.top === "number" ) {
+					props.top += "px";
+				}
+				if ( typeof props.left === "number" ) {
+					props.left += "px";
+				}
 				curElem.css( props );
 			}
 		}
@@ -11242,7 +11493,7 @@
 	// Blink bug: https://bugs.chromium.org/p/chromium/issues/detail?id=589347
 	// getComputedStyle returns percent when specified for top/left/bottom/right;
 	// rather than make the css module depend on the offset module, just check for it here
-	jQuery.each( [ "top", "left" ], function( i, prop ) {
+	jQuery.each( [ "top", "left" ], function( _i, prop ) {
 		jQuery.cssHooks[ prop ] = addGetHookIf( support.pixelPosition,
 			function( elem, computed ) {
 				if ( computed ) {
@@ -11305,23 +11556,17 @@
 	} );
 
 
-	jQuery.each( ( "blur focus focusin focusout resize scroll click dblclick " +
-		"mousedown mouseup mousemove mouseover mouseout mouseenter mouseleave " +
-		"change select submit keydown keypress keyup contextmenu" ).split( " " ),
-		function( i, name ) {
-
-		// Handle event binding
-		jQuery.fn[ name ] = function( data, fn ) {
-			return arguments.length > 0 ?
-				this.on( name, null, data, fn ) :
-				this.trigger( name );
+	jQuery.each( [
+		"ajaxStart",
+		"ajaxStop",
+		"ajaxComplete",
+		"ajaxError",
+		"ajaxSuccess",
+		"ajaxSend"
+	], function( _i, type ) {
+		jQuery.fn[ type ] = function( fn ) {
+			return this.on( type, fn );
 		};
-	} );
-
-	jQuery.fn.extend( {
-		hover: function( fnOver, fnOut ) {
-			return this.mouseenter( fnOver ).mouseleave( fnOut || fnOver );
-		}
 	} );
 
 
@@ -11345,8 +11590,32 @@
 			return arguments.length === 1 ?
 				this.off( selector, "**" ) :
 				this.off( types, selector || "**", fn );
+		},
+
+		hover: function( fnOver, fnOut ) {
+			return this.mouseenter( fnOver ).mouseleave( fnOut || fnOver );
 		}
 	} );
+
+	jQuery.each( ( "blur focus focusin focusout resize scroll click dblclick " +
+		"mousedown mouseup mousemove mouseover mouseout mouseenter mouseleave " +
+		"change select submit keydown keypress keyup contextmenu" ).split( " " ),
+		function( _i, name ) {
+
+			// Handle event binding
+			jQuery.fn[ name ] = function( data, fn ) {
+				return arguments.length > 0 ?
+					this.on( name, null, data, fn ) :
+					this.trigger( name );
+			};
+		} );
+
+
+
+
+	// Support: Android <=4.0 only
+	// Make sure we trim BOM and NBSP
+	var rtrim = /^[\s\uFEFF\xA0]+|[\s\uFEFF\xA0]+$/g;
 
 	// Bind a function to a context, optionally partially applying any
 	// arguments.
@@ -11410,6 +11679,12 @@
 			!isNaN( obj - parseFloat( obj ) );
 	};
 
+	jQuery.trim = function( text ) {
+		return text == null ?
+			"" :
+			( text + "" ).replace( rtrim, "" );
+	};
+
 
 
 
@@ -11436,7 +11711,7 @@
 	// Expose jQuery and $ identifiers, even in AMD
 	// (#7102#comment:10, https://github.com/jquery/jquery/pull/557)
 	// and CommonJS for browser emulators (#13566)
-	if ( !noGlobal ) {
+	if ( typeof noGlobal === "undefined" ) {
 		window.jQuery = window.$ = jQuery;
 	}
 
@@ -11456,7 +11731,7 @@
 	 *
 	 * @static
 	 * @param {Node} element - Target element.
-	 * @param {string} selector - A CSS selector.
+	 * @param {string} [selector] - A CSS selector.
 	 * @return {Array<Node>} Array of sibling nodes plus target element.
 	 */
 	function getSiblingElementsAndSelf( element, selector ) {
@@ -11468,7 +11743,7 @@
 	 *
 	 * @static
 	 * @param {Node} element - Target element.
-	 * @param {string} selector - A CSS selector.
+	 * @param {string} [selector] - A CSS selector.
 	 * @return {Array<Node>} Array of sibling nodes.
 	 */
 	function getSiblingElements( element, selector ) {
@@ -11509,19 +11784,20 @@
 	 *
 	 * @static
 	 * @param {Node} element - Target element.
-	 * @param {string} [selector] - A CSS selector.
+	 * @param {string} [filterSelector] - A CSS selector.
+	 * @param {string} [endSelector] - A CSS selector indicating where to stop. It will include this element if matched by the filter.
 	 * @return {Array<Node>} Array of ancestors.
 	 */
-	function getAncestors( element, selector = '*' ) {
+	function getAncestors( element, filterSelector = '*', endSelector ) {
 	    const ancestors = [];
 	    let parent = element.parentElement;
 
 	    while ( parent ) {
-	        if ( parent.matches( selector ) ) {
+	        if ( parent.matches( filterSelector ) ) {
 	            // document order
 	            ancestors.unshift( parent );
 	        }
-	        parent = parent.parentElement;
+	        parent = endSelector && parent.matches( endSelector ) ? null : parent.parentElement;
 	    }
 
 	    return ancestors;
@@ -11533,10 +11809,10 @@
 	 * @static
 	 * @param {Node} element - Target element.
 	 * @param {string} filterSelector - A CSS selector.
-	 * @param {string} endSelector - A CSS selector.
+	 * @param {string} [endSelector] - A CSS selector indicating where to stop. It will include this element if matched by the filter.
 	 * @return {Node} Closest ancestor.
 	 */
-	function closestAncestorUntil( element, filterSelector, endSelector ) {
+	function closestAncestorUntil( element, filterSelector = '*', endSelector ) {
 	    let parent = element.parentElement;
 	    let found = null;
 
@@ -11548,6 +11824,11 @@
 	    }
 
 	    return found;
+	}
+
+	function getChildren( element, selector = '*' ) {
+	    return [ ...element.children ]
+	        .filter( el => el.matches( selector ) );
 	}
 
 	/**
@@ -11563,7 +11844,7 @@
 
 	/**
 	 * @param {Element} el - Target node
-	 * @return {boolean} Whether previous sibling has same name
+	 * @return {boolean} Whether previous sibling has same node name
 	 */
 	function hasPreviousSiblingElementSameName( el ) {
 	    let found = false;
@@ -11759,14 +12040,8 @@
 	    'repeatOrdinals': false,
 	    'validateContinuously': false,
 	    'validatePage': true,
+	    'clearIrrelevantImmediately': true,
 	    'swipePage': true,
-	    'arcGis': {
-	        'jsUrl': '',
-	        'cssUrl': '',
-	        'webMapId': '',
-	        'hasZ': true,
-	        'basemaps': [ 'streets' ]
-	    },
 	    'textMaxChars': 2000
 	};
 
@@ -12285,10 +12560,28 @@
 	}
 
 	/**
-	 * Add repeat event.
-	 *
-	 * @param {*} detail - Data to be passed with event
-	 * @return {CustomEvent} Custom "addrepeat" event (bubbling)
+	 * The odk-instance-first-load event as defined in the ODK XForms spec.
+	 * @see https://opendatakit.github.io/xforms-spec/#event:odk-instance-first-load
+	 *@return {CustomEvent} Custom "odk-instance-first-load" event (bubbling)
+	 */
+	function InstanceFirstLoad() {
+	    return new CustomEvent( 'odk-instance-first-load', { bubbles: true } );
+	}
+
+	/**
+	 * The odk-new-repeat event as defined in the ODK XForms spec.
+	 * @see https://opendatakit.github.io/xforms-spec/#event:odk-new-repeat
+	 * @param {{repeatPath: string, repeatIndex: number, trigger: string}} detail - Data to be passed with event.
+	 * @return {CustomEvent} Custom "odk-new-repeat" event (bubbling)
+	 */
+	function NewRepeat( detail ) {
+	    return new CustomEvent( 'odk-new-repeat', { detail, bubbles: true } );
+	}
+
+	/**
+	 * The addrepeat event is similar but fired under different circumstances.
+	 * @param {{repeatPath: string, repeatIndex: number, trigger: string}} detail - Data to be passed with event.
+	 * @return {CustomEvent} Custom "odk-new-repeat" event (bubbling)
 	 */
 	function AddRepeat( detail ) {
 	    return new CustomEvent( 'addrepeat', { detail, bubbles: true } );
@@ -12315,10 +12608,21 @@
 	/**
 	 * Change event.
 	 *
-	 * @return {Event} "change" event (bubbling)
+	 * @return {Event} The regular HTML "change" event (bubbling)
 	 */
 	function Change() {
 	    return new Event( 'change', { bubbles: true } );
+	}
+
+	/**
+	 * Xforms-value-changed event as defined in the ODK XForms spec.
+	 * @see https://opendatakit.github.io/xforms-spec/#event:xforms-value-changed
+	 *@return {CustomEvent} Custom "xforms-value-changed" event (bubbling)
+	 * @param {{repeatIndex: number}} detail - Data to be passed with event.
+	 * @return {Event} "change" event (bubbling)
+	 */
+	function XFormsValueChanged( detail ) {
+	    return new CustomEvent( 'xforms-value-changed', { detail, bubbles: true } );
 	}
 
 	/**
@@ -12348,13 +12652,23 @@
 	    return new CustomEvent( 'edited', { bubbles: true } );
 	}
 
+
+	/**
+	 * Before save event.
+	 *
+	 * @return {CustomEvent} Custom "edited" event (bubbling)
+	 */
+	function BeforeSave() {
+	    return new CustomEvent( 'before-save', { bubbles: true } );
+	}
+
 	/**
 	 * Validation complete event.
 	 *
 	 * @return {CustomEvent} Custom "validationcomplete" event (bubbling)
 	 */
 	function ValidationComplete() {
-	    return new CustomEvent( 'validationcomplete', { bubbles: true } );
+	    return new CustomEvent( 'validation-complete', { bubbles: true } );
 	}
 
 	/**
@@ -12373,17 +12687,32 @@
 	 * @return {CustomEvent} Custom "progressupdate" event (bubbling)
 	 */
 	function ProgressUpdate( detail ) {
-	    return new CustomEvent( 'progressupdate', { detail, bubbles: true } );
+	    return new CustomEvent( 'progress-update', { detail, bubbles: true } );
 	}
 
 	/**
-	 * Go to hidden event.
+	 * Go to hidden event fired when the goto target is not relevant.
 	 *
-	 * @return {CustomEvent} Custom "gotohidden" event (bubbling)
+	 * @return {CustomEvent} Custom "gotoirrelevant" event (bubbling)
 	 */
-	function GoToHidden() {
-	    return new CustomEvent( 'gotohidden', { bubbles: true } );
+	function GoToIrrelevant() {
+	    return new CustomEvent( 'goto-irrelevant', { bubbles: true } );
 	}
+
+	/**
+	 * Go to invisible event fired when the target has no form control.
+	 * This is event has prevalence of the "go to hidden" event.
+	 *
+	 * @return {CustomEvent} Custom "gotoinvisible" event (bubbling)
+	 */
+	function GoToInvisible() {
+	    return new CustomEvent( 'goto-invisible', { bubbles: true } );
+	}
+
+	function ChangeOption() {
+	    return new CustomEvent( 'change-option', { bubbles: true } );
+	}
+
 
 	var events = {
 	    DataUpdate,
@@ -12391,6 +12720,8 @@
 	    ApplyFocus,
 	    PageFlip,
 	    Removed,
+	    InstanceFirstLoad,
+	    NewRepeat,
 	    AddRepeat,
 	    RemoveRepeat,
 	    ChangeLanguage,
@@ -12398,10 +12729,14 @@
 	    Input,
 	    InputUpdate,
 	    Edited,
+	    BeforeSave,
 	    ValidationComplete,
 	    Invalidated,
 	    ProgressUpdate,
-	    GoToHidden
+	    GoToIrrelevant,
+	    GoToInvisible,
+	    XFormsValueChanged,
+	    ChangeOption
 	};
 
 	/**
@@ -20774,7 +21109,7 @@
 							if (arguments[i] instanceof NodeSetType){
 								values = values.concat(arguments[i].stringValues());
 							}
-							else{
+							else {
 								values.push(arguments[i].toString());
 							} 
 						}
@@ -21900,6 +22235,7 @@
 	const OPENROSA_XFORMS_NS = 'http://openrosa.org/xforms';
 	const JAVAROSA_XFORMS_NS = 'http://openrosa.org/javarosa';
 	const ENKETO_XFORMS_NS = 'http://enketo.org/xforms';
+	const ODK_XFORMS_NS = 'http://www.opendatakit.org/xforms';
 
 	const parser$1 = new DOMParser();
 	let FormModel;
@@ -21994,10 +22330,11 @@
 	    // Create the model
 	    try {
 	        id = 'model';
-	        // the default model
+	        // The default model
 	        this.xml = parser$1.parseFromString( this.data.modelStr, 'text/xml' );
 	        this.throwParserErrors( this.xml, this.data.modelStr );
-	        // add external data to model
+
+	        // Add external data to model
 	        this.data.external.forEach( instance => {
 	            id = `instance "${instance.id}"` || 'instance unknown';
 	            instanceDoc = that.getSecondaryInstance( instance.id );
@@ -22037,6 +22374,13 @@
 	            this.rootElement = this.xml.querySelector( 'instance > *' ) || this.xml.documentElement;
 	            this.setNamespaces();
 
+	            // Determine whether it is possible that this form uses incorrect absolute/path/to/repeat/node syntax when
+	            // it actually was supposed to use a relative ../node path (old issue with older pyxform-generated forms).
+	            // In the future, if there are more use cases for odk:xforms-version, we'll probably have to use a semver-parser
+	            // to do a comparison. In this case, the presence of the attribute is sufficient, as we know no older versions
+	            // than odk:xforms-version="1.0.0" exist. Previous versions had no number.
+	            this.noRepeatRefErrorExpected = this.evaluate( '/model/@odk:xforms-version', 'boolean', null, null, true );
+
 	            // Check if instanceID is present
 	            if ( !this.getMetaNode( 'instanceID' ).getElement() ) {
 	                that.loadErrors.push( 'Invalid primary instance. Missing instanceID node.' );
@@ -22058,6 +22402,9 @@
 	            id = 'record';
 	            if ( this.data.instanceStr ) {
 	                this.mergeXml( this.data.instanceStr );
+	            } else {
+	                // Only dispatch for newly created records
+	                this.events.dispatchEvent( events.InstanceFirstLoad() );
 	            }
 	            // Set the two most important meta fields before any field 'dataupdate' event fires.
 	            this.setInstanceIdAndDeprecatedId();
@@ -22161,29 +22508,28 @@
 	    let i;
 	    let il;
 	    switch ( node.nodeType ) {
-	        case document.ELEMENT_NODE:
-	            {
-	                const newNode = document.createElementNS( node.namespaceURI, node.nodeName );
-	                if ( node.attributes && node.attributes.length > 0 ) {
-	                    for ( i = 0, il = node.attributes.length; i < il; i++ ) {
-	                        const attr = node.attributes[ i ];
-	                        if ( attr.namespaceURI ) {
-	                            newNode.setAttributeNS( attr.namespaceURI, attr.nodeName, node.getAttributeNS( attr.namespaceURI, attr.localName ) );
-	                        } else {
-	                            newNode.setAttribute( attr.nodeName, node.getAttribute( attr.nodeName ) );
-	                        }
+	        case document.ELEMENT_NODE: {
+	            const newNode = document.createElementNS( node.namespaceURI, node.nodeName );
+	            if ( node.attributes && node.attributes.length > 0 ) {
+	                for ( i = 0, il = node.attributes.length; i < il; i++ ) {
+	                    const attr = node.attributes[ i ];
+	                    if ( attr.namespaceURI ) {
+	                        newNode.setAttributeNS( attr.namespaceURI, attr.nodeName, node.getAttributeNS( attr.namespaceURI, attr.localName ) );
+	                    } else {
+	                        newNode.setAttribute( attr.nodeName, node.getAttribute( attr.nodeName ) );
 	                    }
 	                }
-	                if ( allChildren && node.children.length ) {
-	                    for ( i = 0, il = node.children.length; i < il; i++ ) {
-	                        newNode.appendChild( this.importNode( node.children[ i ], allChildren ) );
-	                    }
-	                }
-	                if ( !node.children.length && node.textContent ) {
-	                    newNode.textContent = node.textContent;
-	                }
-	                return newNode;
 	            }
+	            if ( allChildren && node.children.length ) {
+	                for ( i = 0, il = node.children.length; i < il; i++ ) {
+	                    newNode.appendChild( this.importNode( node.children[ i ], allChildren ) );
+	                }
+	            }
+	            if ( !node.children.length && node.textContent ) {
+	                newNode.textContent = node.textContent;
+	            }
+	            return newNode;
+	        }
 	        case document.TEXT_NODE:
 	        case document.CDATA_SECTION_NODE:
 	        case document.COMMENT_NODE:
@@ -22734,6 +23080,10 @@
 	 * @param {number} index - Index of the instance node with that selector
 	 */
 	FormModel.prototype.makeBugCompliant = function( expr, selector, index ) {
+	    if ( this.noRepeatRefErrorExpected ) {
+	        return expr;
+	    }
+
 	    let target = this.node( selector, index ).getElement();
 
 	    // target is null for nested repeats if no repeats exist
@@ -22794,7 +23144,8 @@
 	        [
 	            [ 'orx', OPENROSA_XFORMS_NS, false ],
 	            [ 'jr', JAVAROSA_XFORMS_NS, false ],
-	            [ 'enk', ENKETO_XFORMS_NS, config.repeatOrdinals === true ]
+	            [ 'enk', ENKETO_XFORMS_NS, config.repeatOrdinals === true ],
+	            [ 'odk', ODK_XFORMS_NS, false ]
 	        ].forEach( arr => {
 	            if ( !that.getNamespacePrefix( arr[ 1 ] ) ) {
 	                prefix = ( !that.namespaces[ arr[ 0 ] ] ) ? arr[ 0 ] : `__${arr[ 0 ]}`;
@@ -22899,14 +23250,7 @@
 	 * @return {string} New expression
 	 */
 	FormModel.prototype.replaceCurrentFn = ( expr, contextSelector ) => {
-	    // relative paths
-	    if ( contextSelector ) {
-	        expr = expr.replace( /current\(\)\/\./g, `${contextSelector}/.` );
-	    }
-	    // absolute paths
-	    expr = expr.replace( /current\(\)\//g, '/' );
-
-	    return expr;
+	    return expr.replace( /current\(\)/g, `${contextSelector}` );
 	};
 
 	/**
@@ -23302,6 +23646,9 @@
 	        if ( xmlDataType === 'binary' ) {
 	            if ( newVal.length > 0 ) {
 	                target.setAttribute( 'type', 'file' );
+	                // The src attribute if for default binary values (added by enketo-transformer)
+	                // As soon as the value changes this attribute can be removed to clean up.
+	                target.removeAttribute( 'src' );
 	            } else {
 	                target.removeAttribute( 'type' );
 	            }
@@ -23642,7 +23989,7 @@
 	     * @return {Element} Wrap node
 	     */
 	    getWrapNode( control ) {
-	        return control.closest( '.question, .calculation' );
+	        return control.closest( '.question, .calculation, .setvalue' );
 	    },
 	    /**
 	     * @param {Array<Element>} controls
@@ -23754,7 +24101,7 @@
 	     * @return {string} element XML type
 	     */
 	    getXmlType( control ) {
-	        return control.dataset.typeXml.toLowerCase() || 'string';
+	        return ( control.dataset.typeXml || 'string' ).toLowerCase();
 	    },
 	    /**
 	     * @param {Element} control
@@ -23798,57 +24145,55 @@
 	        const name = this.getName( control );
 
 	        switch ( inputType ) {
-	            case 'radio':
-	                {
-	                    const checked = this.getWrapNode( control ).querySelector( `input[type="radio"][data-name="${name}"]:checked` );
-	                    value = checked ? checked.value : '';
-	                    break;
+	            case 'radio': {
+	                const checked = this.getWrapNode( control ).querySelector( `input[type="radio"][data-name="${name}"]:checked` );
+	                value = checked ? checked.value : '';
+	                break;
+	            }
+	            case 'checkbox': {
+	                value = [ ...this.getWrapNode( control ).querySelectorAll( `input[type="checkbox"][name="${name}"]:checked` ) ].map( input => input.value );
+	                break;
+	            }
+	            case 'select': {
+	                if ( this.isMultiple( control ) ) {
+	                    value = [ ...control.querySelectorAll( 'option:checked' ) ].map( option => option.value );
+	                } else {
+	                    const selected = control.querySelector( 'option:checked' );
+	                    value = selected ? selected.value : '';
 	                }
-	            case 'checkbox':
-	                {
-	                    value = [ ...this.getWrapNode( control ).querySelectorAll( `input[type="checkbox"][name="${name}"]:checked` ) ].map( input => input.value );
-	                    break;
+	                break;
+	            }
+	            case 'datetime-local': {
+	                if ( control.value ) {
+	                    const dt = control.value.split( 'T' )[ 1 ].length === 5 ? control.value + ':00' : control.value;
+	                    // Add local timezone offset
+	                    // do not use .toISOLocalString() because new Date("2019-10-17T16:34:23.048") works differently in iOS/Safari
+	                    // Take care to get DST offsets right for the date value.
+	                    value = dt + new Date( dt ).getTimezoneOffsetAsTime();
 	                }
-	            case 'select':
-	                {
-	                    if ( this.isMultiple( control ) ) {
-	                        value = [ ...control.querySelectorAll( 'option:checked' ) ].map( option => option.value );
-	                    } else {
-	                        const selected = control.querySelector( 'option:checked' );
-	                        value = selected ? selected.value : '';
-	                    }
-	                    break;
-	                }
-	            case 'datetime-local':
-	                {
-	                    if ( control.value ) {
-	                        const dt = control.value.split( 'T' )[ 1 ].length === 5 ? control.value + ':00' : control.value;
-	                        // Add local timezone offset
-	                        // do not use .toISOLocalString() because new Date("2019-10-17T16:34:23.048") works differently in iOS/Safari
-	                        // Take care to get DST offsets right for the date value.
-	                        value = dt + new Date( dt ).getTimezoneOffsetAsTime();
-	                    }
-	                    break;
-	                }
-	            default:
-	                {
-	                    value = control.value;
-	                }
+	                break;
+	            }
+	            default: {
+	                value = control.value;
+	            }
 	        }
 
 	        return value || '';
 	    },
 	    /**
+	     * Finds a form control that is not a nested setvalue/xforms-value-changed directive
+	     * 
 	     * @param {string} name
 	     * @param {number} index
 	     * @return {Element} found element
 	     */
-	    find( name, index ) {
+	    find( name, index = 0 ) {
 	        let attr = 'name';
 	        if ( this.form.view.html.querySelector( `input[type="radio"][data-name="${name}"]:not(.ignore)` ) ) {
 	            attr = 'data-name';
 	        }
-	        const question = this.getWrapNodes( this.form.view.html.querySelectorAll( `[${attr}="${name}"]` ) )[ index ];
+	        const selector = `[${attr}="${name}"]:not([data-event="xforms-value-changed"])`;
+	        const question = this.getWrapNodes( this.form.view.html.querySelectorAll( selector ) )[ index ];
 
 	        return question ? question.querySelector( `[${attr}="${name}"]:not(.ignore)` ) : null;
 	    },
@@ -23893,7 +24238,9 @@
 	                        value = new Date( value ).toISOLocalString();
 	                        // chop off local timezone offset to display properly in (native datetime-local) widget
 	                        const parts = value.split( 'T' );
-	                        value = `${parts[0]}T${parts[1].split(/[Z\-+]/)[0]}`;
+	                        const date = parts[ 0 ];
+	                        const time = ( parts && parts[ 1 ] ) ? parts[ 1 ].split( /[Z\-+]/ )[ 0 ] : '00:00';
+	                        value = `${date}T${time}`;
 	                    }
 	                }
 	            }
@@ -23927,46 +24274,39 @@
 	            value = [ value ];
 	        }
 
-	        // Trigger an 'inputupdate' event which can be used in widgets to update the widget when the value of its
-	        // original input element has changed **programmatically**.
 	        if ( inputs.length ) {
 	            const curVal = this.getVal( control );
 	            if ( curVal === undefined || curVal.toString() !== value.toString() ) {
 	                switch ( type ) {
-	                    case 'radio':
-	                        {
-	                            const input = this.getWrapNode( control ).querySelector( `input[type="radio"][data-name="${name}"][value="${value}"]` );
-	                            if ( input ) {
-	                                input.checked = true;
-	                            }
-	                            break;
+	                    case 'radio': {
+	                        const input = this.getWrapNode( control ).querySelector( `input[type="radio"][data-name="${name}"][value="${value}"]` );
+	                        if ( input ) {
+	                            input.checked = true;
 	                        }
-	                    case 'checkbox':
-	                        {
-	                            this.getWrapNode( control ).querySelectorAll( `input[type="checkbox"][name="${name}"]` )
+	                        break;
+	                    }
+	                    case 'checkbox': {
+	                        this.getWrapNode( control ).querySelectorAll( `input[type="checkbox"][name="${name}"]` )
 	                            .forEach( input => input.checked = value.includes( input.value ) );
-	                            break;
-	                        }
-	                    case 'select':
-	                        {
-	                            if ( this.isMultiple( control ) ) {
-	                                control.querySelectorAll( 'option' ).forEach( option => option.selected = value.includes( option.value ) );
+	                        break;
+	                    }
+	                    case 'select': {
+	                        if ( this.isMultiple( control ) ) {
+	                            control.querySelectorAll( 'option' ).forEach( option => option.selected = value.includes( option.value ) );
+	                        } else {
+	                            const option = control.querySelector( `option[value="${value}"]` );
+	                            if ( option ) {
+	                                option.selected = true;
 	                            } else {
-	                                const option = control.querySelector( `option[value="${value}"]` );
-	                                if ( option ) {
-	                                    option.selected = true;
-	                                } else {
-	                                    control.querySelectorAll( 'option' ).forEach( option => option.selected = false );
-	                                }
+	                                control.querySelectorAll( 'option' ).forEach( option => option.selected = false );
 	                            }
-	                            break;
 	                        }
-	                    default:
-	                        {
-	                            control.value = value;
-	                        }
+	                        break;
+	                    }
+	                    default: {
+	                        control.value = value;
+	                    }
 	                }
-
 
 	                // don't trigger on all radiobuttons/checkboxes
 	                if ( event ) {
@@ -24032,6 +24372,367 @@
 	};
 
 	/**
+	 * Updates itemsets.
+	 *
+	 * @module itemset
+	 */
+
+	/**
+	 * This function tries to determine whether an XPath expression for a nodeset from an external instance is static.
+	 * Hopefully in the future it can do this properly, but for now it considers any expression
+	 * with a non-numeric (position) predicate to be dynamic.
+	 * This function relies on external instances themselves to be static.
+	 * 
+	 * @static
+	 * @param {string} expr - XPath expression to analyze
+	 * @return {boolean} Whether expression contains a predicate
+	 */
+	function isStaticItemsetFromSecondaryInstance( expr ) {
+	    const refersToInstance = /^\s*instance\(.+\)/.test( expr );
+	    if ( !refersToInstance ) {
+	        return false;
+	    }
+	    const containsPredicate = /\[.+\]/.test( expr );
+	    if ( !containsPredicate ) {
+	        return true;
+	    }
+	    const containsNumericPredicate = /\[\d+\]/.test( expr );
+	    return containsNumericPredicate;
+	}
+
+	var itemsetModule = {
+	    /**
+	     * @param {UpdatedDataNodes} [updated] - The object containing info on updated data nodes.
+	     */
+	    update( updated = {} ) {
+	        const that = this;
+	        const fragmentsCache = {};
+	        let nodes;
+
+	        if ( !this.form ) {
+	            throw new Error( 'Output module not correctly instantiated with form property.' );
+	        }
+
+	        if ( updated.relevantPath ) {
+	            // Questions that are descendants of a group:
+	            nodes = this.form.getRelatedNodes( 'data-items-path', `[name^="${updated.relevantPath}/"]` )
+	                .add( this.form.getRelatedNodes( 'data-items-path', `[name^="${updated.relevantPath}/"] ~ datalist > .itemset-template` ) )
+	                // Individual questions (autocomplete)
+	                .add( this.form.getRelatedNodes( 'data-items-path', `[name="${updated.relevantPath}"]` ) )
+	                .add( this.form.getRelatedNodes( 'data-items-path', `[name="${updated.relevantPath}"] ~ datalist > .itemset-template` ) )
+	                // Individual radiobutton questions with an itemset...:
+	                .add( this.form.getRelatedNodes( 'data-items-path', `[data-name="${updated.relevantPath}"]` ) )
+	                .add( this.form.getRelatedNodes( 'data-items-path', `[data-name="${updated.relevantPath}"] ~ datalist > .itemset-template` ) )
+	                .get();
+	        } else {
+	            nodes = this.form.getRelatedNodes( 'data-items-path', '.itemset-template', updated )
+	                .get();
+	        }
+
+	        const clonedRepeatsPresent = this.form.repeatsPresent && this.form.view.html.querySelector( '.or-repeat.clone' );
+	        const alerts = [];
+
+	        nodes.forEach( template => {
+	            const shared = template.parentElement.parentElement.matches( '.or-repeat-info' );
+	            const inputAttributes = {};
+
+	            // Nodes are in document order, so we discard any nodes in questions/groups that have a disabled parent
+	            if ( closestAncestorUntil( template, '.disabled', '.or' ) ) {
+	                return;
+	            }
+
+	            const newItems = {};
+	            const prevItems = elementDataStore.get( template, 'items' ) || {};
+	            const templateNodeName = template.nodeName.toLowerCase();
+	            const list = template.parentElement.matches( 'select, datalist' ) ? template.parentElement : null;
+
+	            let input;
+	            if ( templateNodeName === 'label' ) {
+	                const optionInput = getChildren( template, 'input' )[ 0 ];
+	                [].slice.call( optionInput.attributes ).forEach( attr => {
+	                    inputAttributes[ attr.name ] = attr.value;
+	                } );
+	                // If this is a ranking widget:
+	                input = optionInput.classList.contains( 'ignore' ) ? getSiblingElements( optionInput.closest( '.option-wrapper' ), 'input.rank' )[ 0 ] : optionInput;
+	            } else if ( list && list.nodeName.toLowerCase() === 'select' ) {
+	                input = list;
+	            } else if ( list && list.nodeName.toLowerCase() === 'datalist' ) {
+	                if ( shared ) {
+	                    // only the first input, is that okay?
+	                    input = that.form.view.html.querySelector( `input[name="${list.dataset.name}"]` );
+	                } else {
+	                    input = getSiblingElements( list, 'input:not(.widget)' )[ 0 ];
+	                }
+	            }
+
+	            const labelsContainer = getSiblingElements( template.closest( 'label, select, datalist' ), '.itemset-labels' )[ 0 ];
+	            const itemsXpath = template.dataset.itemsPath;
+	            let labelType = labelsContainer.dataset.labelType;
+	            let labelRef = labelsContainer.dataset.labelRef;
+	            // TODO: if translate() becomes official, move determination of labelType to enketo-xslt
+	            // and set labelRef correct in enketo-xslt
+	            const matches = parseFunctionFromExpression( labelRef, 'translate' );
+	            if ( matches.length ) {
+	                labelRef = matches[ 0 ][ 1 ][ 0 ];
+	                labelType = 'langs';
+	            }
+
+	            const valueRef = labelsContainer.dataset.valueRef;
+
+	            /**
+	             * CommCare/ODK change the context to the *itemset* value (in the secondary instance), hence they need to use the current()
+	             * function to make sure that relative paths in the nodeset predicate refer to the correct primary instance node
+	             * Enketo does *not* change the context. It uses the context of the question, not the itemset. Hence it has no need for current().
+	             * I am not sure what is correct, but for now for XLSForm-style secondary instances with only one level underneath the <item>s that
+	             * the nodeset retrieves, Enketo's aproach works well.
+	             */
+	            // Shared datalists are under .or-repeat-info. Context is not relevant as these are static lists (without relative nodes).
+	            const context = that.form.input.getName( input );
+	            /*
+	             * Determining the index is expensive, so we only do this when the itemset is inside a cloned repeat and not shared.
+	             * It can be safely set to 0 for other branches.
+	             */
+	            const index = ( !shared && clonedRepeatsPresent && closestAncestorUntil( input, '.or-repeat.clone', '.or' ) ) ? that.form.input.getIndex( input ) : 0;
+	            const safeToTryNative = true;
+	            // Caching has no advantage here. This is a very quick query (natively).
+	            const instanceItems = this.form.model.evaluate( itemsXpath, 'nodes', context, index, safeToTryNative );
+
+	            // This property allows for more efficient 'itemschanged' detection
+	            newItems.length = instanceItems.length;
+	            // TODO: This may cause problems for large itemsets. Use md5 instead?
+	            newItems.text = instanceItems.map( item => item.textContent ).join( '' );
+
+	            if ( newItems.length === prevItems.length && newItems.text === prevItems.text ) {
+	                return;
+	            }
+
+	            elementDataStore.put( template, 'items', newItems );
+
+	            /**
+	             * Remove current items before rebuilding a new itemset from scratch.
+	             */
+	            // the current <option> and <input> elements
+	            // datalist will catch the shared datalists inside .or-repeat-info
+	            const question = template.closest( '.question, datalist' );
+	            [ ...question.querySelectorAll( templateNodeName ) ].filter( el => el !== template ).forEach( el => el.remove() );
+	            // labels for current <option> elements
+	            const next = question.nextElementSibling;
+	            // next is a somewhat fragile match for option-translations belonging to a shared datalist in
+	            // .or-repeat-info if there are multiple shared datalists.
+	            const optionsTranslations = next && next.matches( '.or-option-translations' ) ? next : question.querySelector( '.or-option-translations' );
+	            if ( optionsTranslations ) {
+	                [ ...optionsTranslations.children ].forEach( child => child.remove() );
+	            }
+	            let optionsFragment = document.createDocumentFragment();
+	            let optionsTranslationsFragment = document.createDocumentFragment();
+	            let translations = [];
+	            const cacheKey = `${context}:${itemsXpath}`;
+
+	            if ( fragmentsCache[ cacheKey ] ) {
+	                // important: leave cache intact by cloning
+	                optionsFragment = fragmentsCache[ cacheKey ].optionsFragment.cloneNode( true );
+	                optionsTranslationsFragment = fragmentsCache[ cacheKey ].optionsTranslationsFragment.cloneNode( true );
+	            } else {
+	                instanceItems.forEach( item => {
+	                    /*
+	                     * Note: $labelRefs could either be
+	                     * - a single itext reference
+	                     * - a collection of labels with different lang attributes
+	                     * - a single label
+	                     */
+	                    const labels = that.getNodesFromItem( labelRef, item );
+	                    if ( !labels || !labels.length ) {
+	                        translations = [ { language: '', label: 'error', active: true } ];
+	                    } else {
+	                        switch ( labelType ) {
+	                            case 'itext':
+	                                // Search in the special .itemset-labels created in enketo-transformer for labels with itext ref.
+	                                translations = [ ...labelsContainer.querySelectorAll( `[data-itext-id="${labels[ 0 ].textContent}"]` ) ].map( label => {
+	                                    const language = label.getAttribute( 'lang' );
+	                                    const type = label.nodeName;
+	                                    const src = label.src;
+	                                    const text = label.textContent;
+	                                    const active = label.classList.contains( 'active' );
+	                                    const alt = label.alt;
+	                                    return { language, type, text, active, src, alt };
+	                                } );
+	                                break;
+	                            case 'langs':
+	                                translations = labels.map( label => {
+	                                    const lang = label.getAttribute( 'lang' );
+	                                    // Two falsy values should set active to true.
+	                                    const active = ( !lang && !that.form.langs.currentLang ) || ( lang === that.form.langs.currentLang );
+	                                    return { language: lang, type: 'span', text: label.textContent, active };
+	                                } );
+	                                break;
+	                            default:
+	                                translations = [ { language: '', type: 'span', text: labels && labels.length ? labels[ 0 ].textContent : 'error', active: true } ];
+	                        }
+	                    }
+	                    // Obtain the value of the secondary instance item found.
+	                    const value = that.getNodeFromItem( valueRef, item ).textContent;
+	                    /**
+	                     * #510 Show warning if select_multiple value has spaces
+	                     */
+	                    const multiple = ( inputAttributes[ 'data-type-xml' ] == 'select' ) && ( inputAttributes[ 'type' ] == 'checkbox' ) || ( list && list.multiple );
+	                    if ( multiple && ( value.indexOf( ' ' ) > -1 ) ) {
+	                        alerts[ alerts.length ] = t( 'alert.valuehasspaces.multiple', { value: value } );
+	                    }
+	                    if ( templateNodeName === 'label' ) {
+	                        optionsFragment.appendChild( that.createInput( inputAttributes, translations, value ) );
+	                    } else if ( templateNodeName === 'option' ) {
+	                        let activeLabel = '';
+	                        if ( translations.length > 1 ) {
+	                            translations.forEach( translation => {
+	                                if ( translation.active ) {
+	                                    activeLabel = translation.text;
+	                                }
+	                                optionsTranslationsFragment.appendChild( that.createOptionTranslation( translation, value ) );
+	                            } );
+	                        } else {
+	                            activeLabel = translations[ 0 ].text;
+	                        }
+	                        optionsFragment.appendChild( that.createOption( activeLabel, value ) );
+	                    }
+
+	                } );
+	                if ( isStaticItemsetFromSecondaryInstance( itemsXpath ) ) {
+	                    fragmentsCache[ cacheKey ] = {
+	                        optionsFragment: optionsFragment.cloneNode( true ),
+	                        optionsTranslationsFragment: optionsTranslationsFragment.cloneNode( true )
+	                    };
+	                }
+	            }
+
+	            template.parentNode.appendChild( optionsFragment );
+	            if ( optionsTranslations ) {
+	                optionsTranslations.appendChild( optionsTranslationsFragment );
+	            }
+
+	            /**
+	             * Attempt to populate inputs with current value in model (except for ranking input)
+	             * Note that if the current value is not empty and the new itemset does not
+	             * include (an) item(s) with this/se value(s), this will clear/update the model and
+	             * this will trigger a dataupdate event. This may call this update function again.
+	             */
+	            // It is not necessary to do this for default values in static itemsets because setAllVals takes care of this.
+
+	            let currentValue = that.form.model.node( context, index ).getVal();
+	            if ( currentValue !== '' ) {
+
+	                if ( input.classList.contains( 'rank' ) ) {
+	                    currentValue = '';
+	                }
+	                that.form.input.setVal( input, currentValue, events.Change() );
+	            }
+
+	            if ( list || input.classList.contains( 'rank' ) ) {
+	                input.dispatchEvent( events.ChangeOption() );
+	            }
+
+	        } );
+	        if ( alerts.length > 0 ) {
+	            /**
+	             * We're assuming the enketo-core-consuming app has a dialog that supports some basic HTML rendering
+	             */
+	            dialog.alert( alerts.join( '<br>' ) );
+	        }
+	    },
+
+	    /**
+	     * Minimal XPath evaluation helper that queries from a single item context.
+	     *
+	     * @param {string} expr - The XPath expression
+	     * @param {string} context
+	     * @param {boolean} single
+	     * @return {Array<Element>} found nodes
+	     */
+	    getNodesFromItem( expr, context, single ) {
+	        if ( !expr ) {
+	            throw new Error( 'Error: could not query instance item, no expression provided' );
+	        }
+	        const type = single ? 9 : 7;
+	        const evaluateFnName = typeof this.form.model.xml.evaluate !== 'undefined' ? 'evaluate' : 'jsEvaluate';
+	        const result = this.form.model.xml[ evaluateFnName ]( expr, context, this.form.model.getNsResolver(), type, null );
+	        const response = [];
+	        if ( !single ) {
+	            for ( let j = 0; j < result.snapshotLength; j++ ) {
+	                response.push( result.snapshotItem( j ) );
+	            }
+	        } else {
+	            response.push( result.singleNodeValue );
+	        }
+	        return response;
+	    },
+
+	    /**
+	     * @param {string} expr - The XPath expression
+	     * @param {string} content
+	     * @return {Element|null} found nodes
+	     */
+	    getNodeFromItem( expr, content ) {
+	        const nodes = this.getNodesFromItem( expr, content, true );
+	        return nodes.length ? nodes[ 0 ] : null;
+	    },
+
+	    /**
+	     * @param {string} label
+	     * @param {string} value
+	     * @return {Element} created option
+	     */
+	    createOption( label, value ) {
+	        const option = document.createElement( 'option' );
+	        option.textContent = label;
+	        option.value = value;
+	        return option;
+	    },
+
+	    /**
+	     * @param {string} translation
+	     * @param {string} value
+	     * @return {Element} created element
+	     */
+	    createOptionTranslation( translation, value ) {
+	        const el = document.createElement( translation.type || 'span' );
+	        if ( translation.text ) {
+	            el.textContent = translation.text;
+	            el.classList.add( 'option-label' );
+	        }
+	        el.classList.toggle( 'active', translation.active );
+	        if ( translation.language ) {
+	            el.lang = translation.language;
+	        }
+	        el.dataset.optionValue = value;
+	        if ( translation.src ) {
+	            el.src = translation.src;
+	            el.alt = translation.alt;
+	        }
+	        return el;
+	    },
+
+	    /**
+	     * @param {Array<object>} attributes
+	     * @param {Array<object>} translations
+	     * @param {string} value
+	     * @return {Element} label element (wrapper)
+	     */
+	    createInput( attributes, translations, value ) {
+	        const that = this;
+	        const label = document.createElement( 'label' );
+	        const input = document.createElement( 'input' );
+	        Object.getOwnPropertyNames( attributes ).forEach( attr => {
+	            input.setAttribute( attr, attributes[ attr ] );
+	        } );
+	        input.value = value;
+	        label.appendChild( input );
+	        translations.forEach( translation => {
+	            label.appendChild( that.createOptionTranslation( translation, value ) );
+	        } );
+	        return label;
+	    }
+	};
+
+	/**
 	 * Repeat module.
 	 *
 	 * Two important concepts are used:
@@ -24053,6 +24754,8 @@
 	    init() {
 	        const that = this;
 	        let $repeatInfos;
+
+	        this.staticLists = [];
 
 	        if ( !this.form ) {
 	            throw new Error( 'Repeat module not correctly instantiated with form property.' );
@@ -24101,16 +24804,17 @@
 	            that.templates[ xPath ] = templateEl;
 	        } );
 
-	        $repeatInfos.filter( '*:not([data-repeat-count])' ).reverse()
+	        $repeatInfos.reverse()
 	            .each( function() {
 	                // don't do nested repeats here, they will be dealt with recursively
 	                if ( !jquery( this ).closest( '.or-repeat' ).length ) {
-	                    that.updateDefaultFirstRepeatInstance( null, this );
+	                    that.updateDefaultFirstRepeatInstance( this );
 	                }
 	            } )
 	            // If there is no repeat-count attribute, check how many repeat instances
 	            // are in the model, and update view if necessary.
-	            .each( that.updateViewInstancesFromModel.bind( this ) );
+	            .get()
+	            .forEach( that.updateViewInstancesFromModel.bind( this ) );
 
 	        // delegated handlers (strictly speaking not required, but checked for doubling of events -> OK)
 	        this.form.view.$.on( 'click', 'button.add-repeat-btn:enabled', function() {
@@ -24126,6 +24830,7 @@
 	        } );
 
 	        this.countUpdate();
+	        return true;
 	    },
 	    // Make this function overwritable
 	    confirmDelete( repeatEl ) {
@@ -24181,66 +24886,51 @@
 	    },
 	    /**
 	     * [updateViewInstancesFromModel description]
-	     * @param {number} idx - not used but part of jQuery.each
 	     * @param {Element} repeatInfo - repeatInfo element
 	     * @return {number}
 	     */
-	    updateViewInstancesFromModel( idx, repeatInfo ) {
-	        const that = this;
-	        const $repeatInfo = jquery( repeatInfo );
+	    updateViewInstancesFromModel( repeatInfo ) {
 	        const repeatPath = repeatInfo.dataset.name;
 	        // All we need is to find out in which series we are.
 	        const repeatSeriesIndex = this.getIndex( repeatInfo );
 	        const repInModelSeries = this.form.model.getRepeatSeries( repeatPath, repeatSeriesIndex );
-	        const repInViewSeries = $repeatInfo.siblings( '.or-repeat' );
+	        const repInViewSeries = getSiblingElements( repeatInfo, '.or-repeat' );
 	        // First rep is already included (by XSLT transformation)
 	        if ( repInModelSeries.length > repInViewSeries.length ) {
-	            this.add( repeatInfo, repInModelSeries.length - repInViewSeries.length );
+	            this.add( repeatInfo, repInModelSeries.length - repInViewSeries.length, 'model' );
 	            // Now check the repeat counts of all the descendants of this repeat and its new siblings
 	            // Note: not tested with triple-nested repeats, but probably taking the better safe-than-sorry approach,
 	            // so should be okay except for performance.
-	            $repeatInfo.siblings( '.or-repeat' )
-	                .find( '.or-repeat-info:not([data-repeat-count])' )
-	                .each( function() {
-	                    that.updateViewInstancesFromModel( null, this );
-	                } );
+	            getSiblingElements( repeatInfo, '.or-repeat' )
+	                .reduce( ( acc, current ) => acc.concat( [ ...current.querySelectorAll( '.or-repeat-info:not([data-repeat-count])' ) ] ), [] )
+	                .forEach( this.updateViewInstancesFromModel.bind( this ) );
 	        }
 	        return repInModelSeries.length;
 	    },
 	    /**
 	     * [updateDefaultFirstRepeatInstance description]
-	     * @param {number} idx - not used but part of jQuery.each
 	     * @param {Element} repeatInfo - repeatInfo element
 	     */
-	    updateDefaultFirstRepeatInstance( idx, repeatInfo ) {
-	        let repeatSeriesIndex;
-	        let repeatSeriesInModel;
-	        const that = this;
-	        const $repeatInfo = jquery( repeatInfo );
+	    updateDefaultFirstRepeatInstance( repeatInfo ) {
 	        const repeatPath = repeatInfo.dataset.name;
-	        if ( !that.form.model.data.instanceStr && !this.templates[ repeatPath ].classList.contains( 'or-appearance-minimal' ) ) {
-	            repeatSeriesIndex = this.getIndex( repeatInfo );
-	            repeatSeriesInModel = this.form.model.getRepeatSeries( repeatPath, repeatSeriesIndex );
+	        if ( !this.form.model.data.instanceStr && !this.templates[ repeatPath ].classList.contains( 'or-appearance-minimal' ) ) {
+	            const repeatSeriesIndex = this.getIndex( repeatInfo );
+	            const repeatSeriesInModel = this.form.model.getRepeatSeries( repeatPath, repeatSeriesIndex );
 	            if ( repeatSeriesInModel.length === 0 ) {
-	                // explicitly provide a count, so that byCountUpdate is passed to the addrepeat event
-	                this.add( repeatInfo, 1 );
+	                this.add( repeatInfo, 1, 'magic' );
 	            }
-	            $repeatInfo.siblings( '.or-repeat' )
-	                .find( '.or-repeat-info:not([data-repeat-count])' )
-	                .each( that.updateDefaultFirstRepeatInstance.bind( that ) );
+
+	            getSiblingElements( repeatInfo, '.or-repeat' )
+	                .reduce( ( acc, current ) => acc.concat( [ ...current.querySelectorAll( '.or-repeat-info:not([data-repeat-count])' ) ] ), [] )
+	                .forEach( this.updateDefaultFirstRepeatInstance.bind( this ) );
 	        }
 	    },
 	    /**
 	     * [updateRepeatInstancesFromCount description]
 	     *
-	     * @param {number} idx - not used but part of jQuery.each
 	     * @param {Element} repeatInfo - repeatInfo element
 	     */
-	    updateRepeatInstancesFromCount( idx, repeatInfo ) {
-	        const that = this;
-	        let $last;
-	        let numRepsInCount;
-	        const $repeatInfo = jquery( repeatInfo );
+	    updateRepeatInstancesFromCount( repeatInfo ) {
 	        const repCountPath = repeatInfo.dataset.repeatCount || '';
 
 	        if ( !repCountPath ) {
@@ -24253,33 +24943,26 @@
 	         * is determined in a node inside the parent repeat. To do so we use the repeat comment in model as context.
 	         */
 	        const repPath = repeatInfo.dataset.name;
-	        const repCountNode = this.form.model.evaluate( repCountPath, 'node', this.form.model.getRepeatCommentSelector( repPath ), this.getInfoIndex( repeatInfo ), true );
-
-	        if ( repCountNode ) {
-	            numRepsInCount = Number( repCountNode.textContent );
-	        } else {
-	            console.error( 'Unexpectedly, could not obtain repeat count node' );
-	        }
-
+	        let numRepsInCount = this.form.model.evaluate( repCountPath, 'number', this.form.model.getRepeatCommentSelector( repPath ), this.getInfoIndex( repeatInfo ), true );
 	        numRepsInCount = isNaN( numRepsInCount ) ? 0 : numRepsInCount;
-	        const numRepsInView = $repeatInfo.siblings( `.or-repeat[name="${repPath}"]` ).length;
+	        const numRepsInView = getSiblingElements( repeatInfo, `.or-repeat[name="${repPath}"]` ).length;
 	        let toCreate = numRepsInCount - numRepsInView;
 
 	        if ( toCreate > 0 ) {
-	            that.add( repeatInfo, toCreate );
+	            this.add( repeatInfo, toCreate, 'count' );
 	        } else if ( toCreate < 0 ) {
 	            toCreate = Math.abs( toCreate ) >= numRepsInView ? -numRepsInView + (  0 ) : toCreate;
 	            for ( ; toCreate < 0; toCreate++ ) {
-	                $last = $repeatInfo.siblings( '.or-repeat' ).last();
+	                const $last = jquery( repeatInfo ).siblings( '.or-repeat' ).last();
 	                this.remove( $last, 0 );
 	            }
 	        }
 	        // Now check the repeat counts of all the descendants of this repeat and its new siblings, level-by-level.
 	        // TODO: this does not find .or-repeat > .or-repeat (= unusual syntax)
-	        $repeatInfo.siblings( '.or-repeat' )
-	            .children( '.or-group, .or-group-data' )
-	            .children( '.or-repeat-info[data-repeat-count]' )
-	            .each( that.updateRepeatInstancesFromCount.bind( that ) );
+	        getSiblingElementsAndSelf( repeatInfo, '.or-repeat' )
+	            .reduce( ( acc, current ) => acc.concat( getChildren( current, '.or-group, .or-group-data' ) ), [] )
+	            .reduce( ( acc, current ) => acc.concat( getChildren( current, '.or-repeat-info[data-repeat-count]' ) ), [] )
+	            .forEach( this.updateRepeatInstancesFromCount.bind( this ) );
 	    },
 	    /**
 	     * Checks whether repeat count value has been updated and updates repeat instances
@@ -24287,105 +24970,97 @@
 	     *
 	     * @param {UpdatedDataNodes} updated - The object containing info on updated data nodes.
 	     */
-	    countUpdate( updated ) {
-	        let $repeatInfos;
-	        updated = updated || {};
-	        $repeatInfos = this.form.getRelatedNodes( 'data-repeat-count', '.or-repeat-info', updated );
-	        $repeatInfos.each( this.updateRepeatInstancesFromCount.bind( this ) );
+	    countUpdate( updated = {} ) {
+	        const repeatInfos = this.form.getRelatedNodes( 'data-repeat-count', '.or-repeat-info', updated ).get();
+	        repeatInfos.forEach( this.updateRepeatInstancesFromCount.bind( this ) );
 	    },
 	    /**
 	     * Clone a repeat group/node.
 	     *
 	     * @param {Element} repeatInfo - A repeatInfo element.
-	     * @param {number=} count - Number of clones to create.
+	     * @param {number=} toCreate - Number of clones to create.
+	     * @param {string=} trigger - The trigger ('magic', 'user', 'count', 'model')
 	     * @return {boolean} Cloning success/failure outcome.
 	     */
-	    add( repeatInfo, count ) {
-	        let $repeats;
-	        let $clone;
-	        let repeatIndex;
-	        let repeatSeriesIndex;
-	        let repeatPath;
-	        let i;
-	        const that = this;
-	        const $repeatInfo = jquery( repeatInfo );
-	        const byCountUpdate = !!count;
-	        let modelRepeatSeriesLength;
-
-	        count = count || 1;
-
+	    add( repeatInfo, toCreate = 1, trigger = 'user' ) {
 	        if ( !repeatInfo ) {
 	            console.error( 'Nothing to clone' );
 	            return false;
 	        }
 
-	        repeatPath = repeatInfo.dataset.name;
-	        $repeats = $repeatInfo.siblings( '.or-repeat' );
+	        let repeatIndex;
+	        const repeatPath = repeatInfo.dataset.name;
 
-	        $clone = jquery( this.templates[ repeatPath ] ).clone();
+	        let repeats = getSiblingElements( repeatInfo, '.or-repeat' );
+	        let clone = this.templates[ repeatPath ].cloneNode( true );
 
 	        // Determine the index of the repeat series.
-	        repeatSeriesIndex = this.getIndex( repeatInfo );
-	        modelRepeatSeriesLength = this.form.model.getRepeatSeries( repeatPath, repeatSeriesIndex ).length;
+	        let repeatSeriesIndex = this.getIndex( repeatInfo );
+	        let modelRepeatSeriesLength = this.form.model.getRepeatSeries( repeatPath, repeatSeriesIndex ).length;
 	        // Determine the index of the repeat inside its series
 	        const prevSibling = repeatInfo.previousElementSibling;
 	        let repeatIndexInSeries = prevSibling && prevSibling.classList.contains( 'or-repeat' ) ?
 	            Number( prevSibling.querySelector( '.repeat-number' ).textContent ) : 0;
 
 	        // Add required number of repeats
-	        for ( i = 0; i < count; i++ ) {
+	        for ( let i = 0; i < toCreate; i++ ) {
 	            // Fix names of radio button groups
-	            $clone.find( '.option-wrapper' ).each( this.fixRadioNames );
-	            $clone.find( 'datalist' ).each( this.fixDatalistIds );
+	            clone.querySelectorAll( '.option-wrapper' ).forEach( this.fixRadioName );
+	            this.processDatalists( clone.querySelectorAll( 'datalist' ), repeatInfo );
 
 	            // Insert the clone
-	            $clone.insertBefore( repeatInfo );
+	            repeatInfo.parentElement.insertBefore( clone, repeatInfo );
 
 	            if ( repeatIndexInSeries > 0 ) {
 	                // Also add the clone class for all 2+ numbers as this is
 	                // used for performance optimization in several places.
-	                $clone.addClass( 'clone' );
+	                clone.classList.add( 'clone' );
 	            }
 
 	            // Update the repeat number
-	            $clone[ 0 ].querySelector( '.repeat-number' ).textContent = repeatIndexInSeries + 1;
+	            clone.querySelector( '.repeat-number' ).textContent = repeatIndexInSeries + 1;
 
 	            // Update the variable containing the view repeats in the current series.
-	            $repeats = $repeats.add( $clone );
+	            repeats.push( clone );
 
 	            // Create a repeat in the model if it doesn't already exist
-	            if ( $repeats.length > modelRepeatSeriesLength ) {
+	            if ( repeats.length > modelRepeatSeriesLength ) {
 	                this.form.model.addRepeat( repeatPath, repeatSeriesIndex );
 	                modelRepeatSeriesLength++;
 	            }
+
 	            // This is the index of the new repeat in relation to all other repeats of the same name,
 	            // even if they are in different series.
-	            repeatIndex = repeatIndex || this.getIndex( $clone[ 0 ] );
+	            repeatIndex = repeatIndex || this.getIndex( clone );
+
+	            const updated = {
+	                repeatIndex,
+	                repeatPath,
+	                trigger,
+	                cloned: true
+	            };
+
+	            // The odk-new-repeat event (before the event that triggers re-calculations etc)
+	            if ( trigger === 'user' || trigger === 'count' ) {
+	                clone.dispatchEvent( events.NewRepeat( updated ) );
+	            }
 	            // This will trigger setting default values, calculations, readonly, relevancy, language updates, and automatic page flips.
-	            $clone[ 0 ].dispatchEvent( events.AddRepeat( [ repeatIndex, byCountUpdate ] ) );
+	            clone.dispatchEvent( events.AddRepeat( updated ) );
+
 	            // Initialize widgets in clone after default values have been set
 	            if ( this.form.widgetsInitialized ) {
-	                this.form.widgets.init( $clone, this.form.options );
-	            } else {
-	                // Upon inital formload the eventhandlers for calculated items have not yet been set.
-	                // Calculations have already been initialized before the repeat clone(s) were created.
-	                // Therefore, we manually trigger a calculation update for the cloned repeat.
-	                that.form.calc.update( {
-	                    repeatPath,
-	                    repeatIndex
-	                } );
+	                this.form.widgets.init( jquery( clone ), this.form.options );
 	            }
 	            // now create the first instance of any nested repeats if necessary
-	            $clone.find( '.or-repeat-info:not([data-repeat-count])' ).each( this.updateDefaultFirstRepeatInstance.bind( this ) );
+	            clone.querySelectorAll( '.or-repeat-info:not([data-repeat-count])' )
+	                .forEach( this.updateDefaultFirstRepeatInstance.bind( this ) );
 
-	            $clone = jquery( this.templates[ repeatPath ] ).clone();
+	            clone = this.templates[ repeatPath ].cloneNode( true );
 
 	            repeatIndex++;
 	            repeatIndexInSeries++;
 	        }
 
-	        // number the repeats
-	        //this.numberRepeats( repeatInfo );
 	        // enable or disable + and - buttons
 	        this.toggleButtons( repeatInfo );
 
@@ -24411,14 +25086,63 @@
 	            that.form.model.node( repeatPath, repeatIndex ).remove();
 	        } );
 	    },
-	    fixRadioNames( index, element ) {
-	        jquery( element ).find( 'input[type="radio"]' )
-	            .attr( 'name', Math.floor( ( Math.random() * 10000000 ) + 1 ) );
+	    fixRadioName( element ) {
+	        const random = Math.floor( ( Math.random() * 10000000 ) + 1 );
+	        element.querySelectorAll( 'input[type="radio"]' )
+	            .forEach( el => {
+	                el.setAttribute( 'name', random );
+	            } );
 	    },
-	    fixDatalistIds( index, element ) {
+	    fixDatalistId( element ) {
 	        const newId = element.id + Math.floor( ( Math.random() * 10000000 ) + 1 );
 	        element.parentNode.querySelector( `input[list="${element.id}"]` ).setAttribute( 'list', newId );
 	        element.id = newId;
+	    },
+	    processDatalists( datalists, repeatInfo ) {
+	        datalists.forEach( datalist => {
+	            const template = datalist.querySelector( '.itemset-template[data-items-path]' );
+	            const expr = template ? template.dataset.itemsPath : null;
+
+	            if ( !isStaticItemsetFromSecondaryInstance( expr ) ) {
+	                this.fixDatalistId( datalist );
+	            } else {
+	                const id = datalist.id;
+	                const inputs = getSiblingElements( datalist, 'input[list]' );
+	                const input = inputs.length ? inputs[ 0 ] : null;
+
+	                if ( input ) {
+	                    // For very long static datalists, a huge performance improvement can be achieved, by using the 
+	                    // same datalist for all repeat instances that use it.
+	                    if ( this.staticLists.includes( id ) ) {
+	                        datalist.remove();
+	                    } else {
+	                        // Let all identical input[list] questions amongst all repeat instances use the same
+	                        // datalist by moving it under repeatInfo. 
+	                        // It will survive removal of all repeat instances.
+	                        const parent = datalist.parentElement;
+	                        const name = input.name;
+
+	                        const dl = parent.querySelector( 'datalist' );
+	                        const detachedList = parent.removeChild( dl );
+	                        detachedList.setAttribute( 'data-name', name );
+	                        repeatInfo.appendChild( detachedList );
+
+	                        const translations = parent.querySelector( '.or-option-translations' );
+	                        const detachedTranslations = parent.removeChild( translations );
+	                        detachedTranslations.setAttribute( 'data-name', name );
+	                        repeatInfo.appendChild( detachedTranslations );
+
+	                        const labels = parent.querySelector( '.itemset-labels' );
+	                        const detachedLabels = parent.removeChild( labels );
+	                        detachedLabels.setAttribute( 'data-name', name );
+	                        repeatInfo.appendChild( detachedLabels );
+
+	                        this.staticLists.push( id );
+	                        //input.classList.add( 'shared' );
+	                    }
+	                }
+	            }
+	        } );
 	    },
 	    toggleButtons( repeatInfo ) {
 	        jquery( repeatInfo )
@@ -24598,7 +25322,7 @@
 	 * Dual licensed under the MIT or GPL Version 2 licenses.
 	 *
 	 */
-	!function(factory){factory(module.exports?jquery:jQuery);}(function($){function init(options){return !options||void 0!==options.allowPageScroll||void 0===options.swipe&&void 0===options.swipeStatus||(options.allowPageScroll=NONE),void 0!==options.click&&void 0===options.tap&&(options.tap=options.click),options||(options={}),options=$.extend({},$.fn.swipe.defaults,options),this.each(function(){var $this=$(this),plugin=$this.data(PLUGIN_NS);plugin||(plugin=new TouchSwipe(this,options),$this.data(PLUGIN_NS,plugin));})}function TouchSwipe(element,options){function touchStart(jqEvent){if(!(getTouchInProgress()||$(jqEvent.target).closest(options.excludedElements,$element).length>0)){var event=jqEvent.originalEvent?jqEvent.originalEvent:jqEvent;if(!event.pointerType||"mouse"!=event.pointerType||0!=options.fallbackToMouseEvents){var ret,touches=event.touches,evt=touches?touches[0]:event;return phase=PHASE_START,touches?fingerCount=touches.length:options.preventDefaultEvents!==!1&&jqEvent.preventDefault(),distance=0,direction=null,currentDirection=null,pinchDirection=null,duration=0,startTouchesDistance=0,endTouchesDistance=0,pinchZoom=1,pinchDistance=0,maximumsMap=createMaximumsData(),cancelMultiFingerRelease(),createFingerData(0,evt),!touches||fingerCount===options.fingers||options.fingers===ALL_FINGERS||hasPinches()?(startTime=getTimeStamp(),2==fingerCount&&(createFingerData(1,touches[1]),startTouchesDistance=endTouchesDistance=calculateTouchesDistance(fingerData[0].start,fingerData[1].start)),(options.swipeStatus||options.pinchStatus)&&(ret=triggerHandler(event,phase))):ret=!1,ret===!1?(phase=PHASE_CANCEL,triggerHandler(event,phase),ret):(options.hold&&(holdTimeout=setTimeout($.proxy(function(){$element.trigger("hold",[event.target]),options.hold&&(ret=options.hold.call($element,event,event.target));},this),options.longTapThreshold)),setTouchInProgress(!0),null)}}}function touchMove(jqEvent){var event=jqEvent.originalEvent?jqEvent.originalEvent:jqEvent;if(phase!==PHASE_END&&phase!==PHASE_CANCEL&&!inMultiFingerRelease()){var ret,touches=event.touches,evt=touches?touches[0]:event,currentFinger=updateFingerData(evt);if(endTime=getTimeStamp(),touches&&(fingerCount=touches.length),options.hold&&clearTimeout(holdTimeout),phase=PHASE_MOVE,2==fingerCount&&(0==startTouchesDistance?(createFingerData(1,touches[1]),startTouchesDistance=endTouchesDistance=calculateTouchesDistance(fingerData[0].start,fingerData[1].start)):(updateFingerData(touches[1]),endTouchesDistance=calculateTouchesDistance(fingerData[0].end,fingerData[1].end),pinchDirection=calculatePinchDirection(fingerData[0].end,fingerData[1].end)),pinchZoom=calculatePinchZoom(startTouchesDistance,endTouchesDistance),pinchDistance=Math.abs(startTouchesDistance-endTouchesDistance)),fingerCount===options.fingers||options.fingers===ALL_FINGERS||!touches||hasPinches()){if(direction=calculateDirection(currentFinger.start,currentFinger.end),currentDirection=calculateDirection(currentFinger.last,currentFinger.end),validateDefaultEvent(jqEvent,currentDirection),distance=calculateDistance(currentFinger.start,currentFinger.end),duration=calculateDuration(),setMaxDistance(direction,distance),ret=triggerHandler(event,phase),!options.triggerOnTouchEnd||options.triggerOnTouchLeave){var inBounds=!0;if(options.triggerOnTouchLeave){var bounds=getbounds(this);inBounds=isInBounds(currentFinger.end,bounds);}!options.triggerOnTouchEnd&&inBounds?phase=getNextPhase(PHASE_MOVE):options.triggerOnTouchLeave&&!inBounds&&(phase=getNextPhase(PHASE_END)),phase!=PHASE_CANCEL&&phase!=PHASE_END||triggerHandler(event,phase);}}else phase=PHASE_CANCEL,triggerHandler(event,phase);ret===!1&&(phase=PHASE_CANCEL,triggerHandler(event,phase));}}function touchEnd(jqEvent){var event=jqEvent.originalEvent?jqEvent.originalEvent:jqEvent,touches=event.touches;if(touches){if(touches.length&&!inMultiFingerRelease())return startMultiFingerRelease(event),!0;if(touches.length&&inMultiFingerRelease())return !0}return inMultiFingerRelease()&&(fingerCount=fingerCountAtRelease),endTime=getTimeStamp(),duration=calculateDuration(),didSwipeBackToCancel()||!validateSwipeDistance()?(phase=PHASE_CANCEL,triggerHandler(event,phase)):options.triggerOnTouchEnd||options.triggerOnTouchEnd===!1&&phase===PHASE_MOVE?(options.preventDefaultEvents!==!1&&jqEvent.cancelable!==!1&&jqEvent.preventDefault(),phase=PHASE_END,triggerHandler(event,phase)):!options.triggerOnTouchEnd&&hasTap()?(phase=PHASE_END,triggerHandlerForGesture(event,phase,TAP)):phase===PHASE_MOVE&&(phase=PHASE_CANCEL,triggerHandler(event,phase)),setTouchInProgress(!1),null}function touchCancel(){fingerCount=0,endTime=0,startTime=0,startTouchesDistance=0,endTouchesDistance=0,pinchZoom=1,cancelMultiFingerRelease(),setTouchInProgress(!1);}function touchLeave(jqEvent){var event=jqEvent.originalEvent?jqEvent.originalEvent:jqEvent;options.triggerOnTouchLeave&&(phase=getNextPhase(PHASE_END),triggerHandler(event,phase));}function removeListeners(){$element.off(START_EV,touchStart),$element.off(CANCEL_EV,touchCancel),$element.off(MOVE_EV,touchMove),$element.off(END_EV,touchEnd),LEAVE_EV&&$element.off(LEAVE_EV,touchLeave),setTouchInProgress(!1);}function getNextPhase(currentPhase){var nextPhase=currentPhase,validTime=validateSwipeTime(),validDistance=validateSwipeDistance(),didCancel=didSwipeBackToCancel();return !validTime||didCancel?nextPhase=PHASE_CANCEL:!validDistance||currentPhase!=PHASE_MOVE||options.triggerOnTouchEnd&&!options.triggerOnTouchLeave?!validDistance&&currentPhase==PHASE_END&&options.triggerOnTouchLeave&&(nextPhase=PHASE_CANCEL):nextPhase=PHASE_END,nextPhase}function triggerHandler(event,phase){var ret,touches=event.touches;return (didSwipe()||hasSwipes())&&(ret=triggerHandlerForGesture(event,phase,SWIPE)),(didPinch()||hasPinches())&&ret!==!1&&(ret=triggerHandlerForGesture(event,phase,PINCH)),didDoubleTap()&&ret!==!1?ret=triggerHandlerForGesture(event,phase,DOUBLE_TAP):didLongTap()&&ret!==!1?ret=triggerHandlerForGesture(event,phase,LONG_TAP):didTap()&&ret!==!1&&(ret=triggerHandlerForGesture(event,phase,TAP)),phase===PHASE_CANCEL&&touchCancel(),phase===PHASE_END&&(touches?touches.length||touchCancel():touchCancel()),ret}function triggerHandlerForGesture(event,phase,gesture){var ret;if(gesture==SWIPE){if($element.trigger("swipeStatus",[phase,direction||null,distance||0,duration||0,fingerCount,fingerData,currentDirection]),options.swipeStatus&&(ret=options.swipeStatus.call($element,event,phase,direction||null,distance||0,duration||0,fingerCount,fingerData,currentDirection),ret===!1))return !1;if(phase==PHASE_END&&validateSwipe()){if(clearTimeout(singleTapTimeout),clearTimeout(holdTimeout),$element.trigger("swipe",[direction,distance,duration,fingerCount,fingerData,currentDirection]),options.swipe&&(ret=options.swipe.call($element,event,direction,distance,duration,fingerCount,fingerData,currentDirection),ret===!1))return !1;switch(direction){case LEFT:$element.trigger("swipeLeft",[direction,distance,duration,fingerCount,fingerData,currentDirection]),options.swipeLeft&&(ret=options.swipeLeft.call($element,event,direction,distance,duration,fingerCount,fingerData,currentDirection));break;case RIGHT:$element.trigger("swipeRight",[direction,distance,duration,fingerCount,fingerData,currentDirection]),options.swipeRight&&(ret=options.swipeRight.call($element,event,direction,distance,duration,fingerCount,fingerData,currentDirection));break;case UP:$element.trigger("swipeUp",[direction,distance,duration,fingerCount,fingerData,currentDirection]),options.swipeUp&&(ret=options.swipeUp.call($element,event,direction,distance,duration,fingerCount,fingerData,currentDirection));break;case DOWN:$element.trigger("swipeDown",[direction,distance,duration,fingerCount,fingerData,currentDirection]),options.swipeDown&&(ret=options.swipeDown.call($element,event,direction,distance,duration,fingerCount,fingerData,currentDirection));}}}if(gesture==PINCH){if($element.trigger("pinchStatus",[phase,pinchDirection||null,pinchDistance||0,duration||0,fingerCount,pinchZoom,fingerData]),options.pinchStatus&&(ret=options.pinchStatus.call($element,event,phase,pinchDirection||null,pinchDistance||0,duration||0,fingerCount,pinchZoom,fingerData),ret===!1))return !1;if(phase==PHASE_END&&validatePinch())switch(pinchDirection){case IN:$element.trigger("pinchIn",[pinchDirection||null,pinchDistance||0,duration||0,fingerCount,pinchZoom,fingerData]),options.pinchIn&&(ret=options.pinchIn.call($element,event,pinchDirection||null,pinchDistance||0,duration||0,fingerCount,pinchZoom,fingerData));break;case OUT:$element.trigger("pinchOut",[pinchDirection||null,pinchDistance||0,duration||0,fingerCount,pinchZoom,fingerData]),options.pinchOut&&(ret=options.pinchOut.call($element,event,pinchDirection||null,pinchDistance||0,duration||0,fingerCount,pinchZoom,fingerData));}}return gesture==TAP?phase!==PHASE_CANCEL&&phase!==PHASE_END||(clearTimeout(singleTapTimeout),clearTimeout(holdTimeout),hasDoubleTap()&&!inDoubleTap()?(doubleTapStartTime=getTimeStamp(),singleTapTimeout=setTimeout($.proxy(function(){doubleTapStartTime=null,$element.trigger("tap",[event.target]),options.tap&&(ret=options.tap.call($element,event,event.target));},this),options.doubleTapThreshold)):(doubleTapStartTime=null,$element.trigger("tap",[event.target]),options.tap&&(ret=options.tap.call($element,event,event.target)))):gesture==DOUBLE_TAP?phase!==PHASE_CANCEL&&phase!==PHASE_END||(clearTimeout(singleTapTimeout),clearTimeout(holdTimeout),doubleTapStartTime=null,$element.trigger("doubletap",[event.target]),options.doubleTap&&(ret=options.doubleTap.call($element,event,event.target))):gesture==LONG_TAP&&(phase!==PHASE_CANCEL&&phase!==PHASE_END||(clearTimeout(singleTapTimeout),doubleTapStartTime=null,$element.trigger("longtap",[event.target]),options.longTap&&(ret=options.longTap.call($element,event,event.target)))),ret}function validateSwipeDistance(){var valid=!0;return null!==options.threshold&&(valid=distance>=options.threshold),valid}function didSwipeBackToCancel(){var cancelled=!1;return null!==options.cancelThreshold&&null!==direction&&(cancelled=getMaxDistance(direction)-distance>=options.cancelThreshold),cancelled}function validatePinchDistance(){return null!==options.pinchThreshold?pinchDistance>=options.pinchThreshold:!0}function validateSwipeTime(){var result;return result=options.maxTimeThreshold?!(duration>=options.maxTimeThreshold):!0}function validateDefaultEvent(jqEvent,direction){if(options.preventDefaultEvents!==!1)if(options.allowPageScroll===NONE)jqEvent.preventDefault();else{var auto=options.allowPageScroll===AUTO;switch(direction){case LEFT:(options.swipeLeft&&auto||!auto&&options.allowPageScroll!=HORIZONTAL)&&jqEvent.preventDefault();break;case RIGHT:(options.swipeRight&&auto||!auto&&options.allowPageScroll!=HORIZONTAL)&&jqEvent.preventDefault();break;case UP:(options.swipeUp&&auto||!auto&&options.allowPageScroll!=VERTICAL)&&jqEvent.preventDefault();break;case DOWN:(options.swipeDown&&auto||!auto&&options.allowPageScroll!=VERTICAL)&&jqEvent.preventDefault();break;}}}function validatePinch(){var hasCorrectFingerCount=validateFingers(),hasEndPoint=validateEndPoint(),hasCorrectDistance=validatePinchDistance();return hasCorrectFingerCount&&hasEndPoint&&hasCorrectDistance}function hasPinches(){return !!(options.pinchStatus||options.pinchIn||options.pinchOut)}function didPinch(){return !(!validatePinch()||!hasPinches())}function validateSwipe(){var hasValidTime=validateSwipeTime(),hasValidDistance=validateSwipeDistance(),hasCorrectFingerCount=validateFingers(),hasEndPoint=validateEndPoint(),didCancel=didSwipeBackToCancel(),valid=!didCancel&&hasEndPoint&&hasCorrectFingerCount&&hasValidDistance&&hasValidTime;return valid}function hasSwipes(){return !!(options.swipe||options.swipeStatus||options.swipeLeft||options.swipeRight||options.swipeUp||options.swipeDown)}function didSwipe(){return !(!validateSwipe()||!hasSwipes())}function validateFingers(){return fingerCount===options.fingers||options.fingers===ALL_FINGERS||!SUPPORTS_TOUCH}function validateEndPoint(){return 0!==fingerData[0].end.x}function hasTap(){return !!options.tap}function hasDoubleTap(){return !!options.doubleTap}function hasLongTap(){return !!options.longTap}function validateDoubleTap(){if(null==doubleTapStartTime)return !1;var now=getTimeStamp();return hasDoubleTap()&&now-doubleTapStartTime<=options.doubleTapThreshold}function inDoubleTap(){return validateDoubleTap()}function validateTap(){return (1===fingerCount||!SUPPORTS_TOUCH)&&(isNaN(distance)||distance<options.threshold)}function validateLongTap(){return duration>options.longTapThreshold&&DOUBLE_TAP_THRESHOLD>distance}function didTap(){return !(!validateTap()||!hasTap())}function didDoubleTap(){return !(!validateDoubleTap()||!hasDoubleTap())}function didLongTap(){return !(!validateLongTap()||!hasLongTap())}function startMultiFingerRelease(event){previousTouchEndTime=getTimeStamp(),fingerCountAtRelease=event.touches.length+1;}function cancelMultiFingerRelease(){previousTouchEndTime=0,fingerCountAtRelease=0;}function inMultiFingerRelease(){var withinThreshold=!1;if(previousTouchEndTime){var diff=getTimeStamp()-previousTouchEndTime;diff<=options.fingerReleaseThreshold&&(withinThreshold=!0);}return withinThreshold}function getTouchInProgress(){return !($element.data(PLUGIN_NS+"_intouch")!==!0)}function setTouchInProgress(val){$element&&(val===!0?($element.on(MOVE_EV,touchMove),$element.on(END_EV,touchEnd),LEAVE_EV&&$element.on(LEAVE_EV,touchLeave)):($element.off(MOVE_EV,touchMove,!1),$element.off(END_EV,touchEnd,!1),LEAVE_EV&&$element.off(LEAVE_EV,touchLeave,!1)),$element.data(PLUGIN_NS+"_intouch",val===!0));}function createFingerData(id,evt){var f={start:{x:0,y:0},last:{x:0,y:0},end:{x:0,y:0}};return f.start.x=f.last.x=f.end.x=evt.pageX||evt.clientX,f.start.y=f.last.y=f.end.y=evt.pageY||evt.clientY,fingerData[id]=f,f}function updateFingerData(evt){var id=void 0!==evt.identifier?evt.identifier:0,f=getFingerData(id);return null===f&&(f=createFingerData(id,evt)),f.last.x=f.end.x,f.last.y=f.end.y,f.end.x=evt.pageX||evt.clientX,f.end.y=evt.pageY||evt.clientY,f}function getFingerData(id){return fingerData[id]||null}function setMaxDistance(direction,distance){direction!=NONE&&(distance=Math.max(distance,getMaxDistance(direction)),maximumsMap[direction].distance=distance);}function getMaxDistance(direction){return maximumsMap[direction]?maximumsMap[direction].distance:void 0}function createMaximumsData(){var maxData={};return maxData[LEFT]=createMaximumVO(LEFT),maxData[RIGHT]=createMaximumVO(RIGHT),maxData[UP]=createMaximumVO(UP),maxData[DOWN]=createMaximumVO(DOWN),maxData}function createMaximumVO(dir){return {direction:dir,distance:0}}function calculateDuration(){return endTime-startTime}function calculateTouchesDistance(startPoint,endPoint){var diffX=Math.abs(startPoint.x-endPoint.x),diffY=Math.abs(startPoint.y-endPoint.y);return Math.round(Math.sqrt(diffX*diffX+diffY*diffY))}function calculatePinchZoom(startDistance,endDistance){var percent=endDistance/startDistance*1;return percent.toFixed(2)}function calculatePinchDirection(){return 1>pinchZoom?OUT:IN}function calculateDistance(startPoint,endPoint){return Math.round(Math.sqrt(Math.pow(endPoint.x-startPoint.x,2)+Math.pow(endPoint.y-startPoint.y,2)))}function calculateAngle(startPoint,endPoint){var x=startPoint.x-endPoint.x,y=endPoint.y-startPoint.y,r=Math.atan2(y,x),angle=Math.round(180*r/Math.PI);return 0>angle&&(angle=360-Math.abs(angle)),angle}function calculateDirection(startPoint,endPoint){if(comparePoints(startPoint,endPoint))return NONE;var angle=calculateAngle(startPoint,endPoint);return 45>=angle&&angle>=0?LEFT:360>=angle&&angle>=315?LEFT:angle>=135&&225>=angle?RIGHT:angle>45&&135>angle?DOWN:UP}function getTimeStamp(){var now=new Date;return now.getTime()}function getbounds(el){el=$(el);var offset=el.offset(),bounds={left:offset.left,right:offset.left+el.outerWidth(),top:offset.top,bottom:offset.top+el.outerHeight()};return bounds}function isInBounds(point,bounds){return point.x>bounds.left&&point.x<bounds.right&&point.y>bounds.top&&point.y<bounds.bottom}function comparePoints(pointA,pointB){return pointA.x==pointB.x&&pointA.y==pointB.y}var options=$.extend({},options),useTouchEvents=SUPPORTS_TOUCH||SUPPORTS_POINTER||!options.fallbackToMouseEvents,START_EV=useTouchEvents?SUPPORTS_POINTER?SUPPORTS_POINTER_IE10?"MSPointerDown":"pointerdown":"touchstart":"mousedown",MOVE_EV=useTouchEvents?SUPPORTS_POINTER?SUPPORTS_POINTER_IE10?"MSPointerMove":"pointermove":"touchmove":"mousemove",END_EV=useTouchEvents?SUPPORTS_POINTER?SUPPORTS_POINTER_IE10?"MSPointerUp":"pointerup":"touchend":"mouseup",LEAVE_EV=useTouchEvents?SUPPORTS_POINTER?"mouseleave":null:"mouseleave",CANCEL_EV=SUPPORTS_POINTER?SUPPORTS_POINTER_IE10?"MSPointerCancel":"pointercancel":"touchcancel",distance=0,direction=null,currentDirection=null,duration=0,startTouchesDistance=0,endTouchesDistance=0,pinchZoom=1,pinchDistance=0,pinchDirection=0,maximumsMap=null,$element=$(element),phase="start",fingerCount=0,fingerData={},startTime=0,endTime=0,previousTouchEndTime=0,fingerCountAtRelease=0,doubleTapStartTime=0,singleTapTimeout=null,holdTimeout=null;try{$element.on(START_EV,touchStart),$element.on(CANCEL_EV,touchCancel);}catch(e){$.error("events not supported "+START_EV+","+CANCEL_EV+" on jQuery.swipe");}this.enable=function(){return this.disable(),$element.on(START_EV,touchStart),$element.on(CANCEL_EV,touchCancel),$element},this.disable=function(){return removeListeners(),$element},this.destroy=function(){removeListeners(),$element.data(PLUGIN_NS,null),$element=null;},this.option=function(property,value){if("object"==typeof property)options=$.extend(options,property);else if(void 0!==options[property]){if(void 0===value)return options[property];options[property]=value;}else{if(!property)return options;$.error("Option "+property+" does not exist on jQuery.swipe.options");}return null};}var VERSION="1.6.18",LEFT="left",RIGHT="right",UP="up",DOWN="down",IN="in",OUT="out",NONE="none",AUTO="auto",SWIPE="swipe",PINCH="pinch",TAP="tap",DOUBLE_TAP="doubletap",LONG_TAP="longtap",HORIZONTAL="horizontal",VERTICAL="vertical",ALL_FINGERS="all",DOUBLE_TAP_THRESHOLD=10,PHASE_START="start",PHASE_MOVE="move",PHASE_END="end",PHASE_CANCEL="cancel",SUPPORTS_TOUCH="ontouchstart"in window,SUPPORTS_POINTER_IE10=window.navigator.msPointerEnabled&&!window.PointerEvent&&!SUPPORTS_TOUCH,SUPPORTS_POINTER=(window.PointerEvent||window.navigator.msPointerEnabled)&&!SUPPORTS_TOUCH,PLUGIN_NS="TouchSwipe",defaults={fingers:1,threshold:75,cancelThreshold:null,pinchThreshold:20,maxTimeThreshold:null,fingerReleaseThreshold:250,longTapThreshold:500,doubleTapThreshold:200,swipe:null,swipeLeft:null,swipeRight:null,swipeUp:null,swipeDown:null,swipeStatus:null,pinchIn:null,pinchOut:null,pinchStatus:null,click:null,tap:null,doubleTap:null,longTap:null,hold:null,triggerOnTouchEnd:!0,triggerOnTouchLeave:!1,allowPageScroll:"auto",fallbackToMouseEvents:!0,excludedElements:".noSwipe",preventDefaultEvents:!0};$.fn.swipe=function(method){var $this=$(this),plugin=$this.data(PLUGIN_NS);if(plugin&&"string"==typeof method){if(plugin[method])return plugin[method].apply(plugin,Array.prototype.slice.call(arguments,1));$.error("Method "+method+" does not exist on jQuery.swipe");}else if(plugin&&"object"==typeof method)plugin.option.apply(plugin,arguments);else if(!(plugin||"object"!=typeof method&&method))return init.apply(this,arguments);return $this},$.fn.swipe.version=VERSION,$.fn.swipe.defaults=defaults,$.fn.swipe.phases={PHASE_START:PHASE_START,PHASE_MOVE:PHASE_MOVE,PHASE_END:PHASE_END,PHASE_CANCEL:PHASE_CANCEL},$.fn.swipe.directions={LEFT:LEFT,RIGHT:RIGHT,UP:UP,DOWN:DOWN,IN:IN,OUT:OUT},$.fn.swipe.pageScroll={NONE:NONE,HORIZONTAL:HORIZONTAL,VERTICAL:VERTICAL,AUTO:AUTO},$.fn.swipe.fingers={ONE:1,TWO:2,THREE:3,FOUR:4,FIVE:5,ALL:ALL_FINGERS};});
+	!function(factory){factory(module.exports?jquery:jQuery);}(function($){function init(options){return !options||void 0!==options.allowPageScroll||void 0===options.swipe&&void 0===options.swipeStatus||(options.allowPageScroll=NONE),void 0!==options.click&&void 0===options.tap&&(options.tap=options.click),options||(options={}),options=$.extend({},$.fn.swipe.defaults,options),this.each(function(){var $this=$(this),plugin=$this.data(PLUGIN_NS);plugin||(plugin=new TouchSwipe(this,options),$this.data(PLUGIN_NS,plugin));})}function TouchSwipe(element,options){function touchStart(jqEvent){if(!(getTouchInProgress()||$(jqEvent.target).closest(options.excludedElements,$element).length>0)){var event=jqEvent.originalEvent?jqEvent.originalEvent:jqEvent;if(!event.pointerType||"mouse"!=event.pointerType||0!=options.fallbackToMouseEvents){var ret,touches=event.touches,evt=touches?touches[0]:event;return phase=PHASE_START,touches?fingerCount=touches.length:options.preventDefaultEvents!==!1&&jqEvent.preventDefault(),distance=0,direction=null,currentDirection=null,pinchDirection=null,duration=0,startTouchesDistance=0,endTouchesDistance=0,pinchZoom=1,pinchDistance=0,maximumsMap=createMaximumsData(),cancelMultiFingerRelease(),createFingerData(0,evt),!touches||fingerCount===options.fingers||options.fingers===ALL_FINGERS||hasPinches()?(startTime=getTimeStamp(),2==fingerCount&&(createFingerData(1,touches[1]),startTouchesDistance=endTouchesDistance=calculateTouchesDistance(fingerData[0].start,fingerData[1].start)),(options.swipeStatus||options.pinchStatus)&&(ret=triggerHandler(event,phase))):ret=!1,ret===!1?(phase=PHASE_CANCEL,triggerHandler(event,phase),ret):(options.hold&&(holdTimeout=setTimeout($.proxy(function(){$element.trigger("hold",[event.target]),options.hold&&(ret=options.hold.call($element,event,event.target));},this),options.longTapThreshold)),setTouchInProgress(!0),null)}}}function touchMove(jqEvent){var event=jqEvent.originalEvent?jqEvent.originalEvent:jqEvent;if(phase!==PHASE_END&&phase!==PHASE_CANCEL&&!inMultiFingerRelease()){var ret,touches=event.touches,evt=touches?touches[0]:event,currentFinger=updateFingerData(evt);if(endTime=getTimeStamp(),touches&&(fingerCount=touches.length),options.hold&&clearTimeout(holdTimeout),phase=PHASE_MOVE,2==fingerCount&&(0==startTouchesDistance?(createFingerData(1,touches[1]),startTouchesDistance=endTouchesDistance=calculateTouchesDistance(fingerData[0].start,fingerData[1].start)):(updateFingerData(touches[1]),endTouchesDistance=calculateTouchesDistance(fingerData[0].end,fingerData[1].end),pinchDirection=calculatePinchDirection(fingerData[0].end,fingerData[1].end)),pinchZoom=calculatePinchZoom(startTouchesDistance,endTouchesDistance),pinchDistance=Math.abs(startTouchesDistance-endTouchesDistance)),fingerCount===options.fingers||options.fingers===ALL_FINGERS||!touches||hasPinches()){if(direction=calculateDirection(currentFinger.start,currentFinger.end),currentDirection=calculateDirection(currentFinger.last,currentFinger.end),validateDefaultEvent(jqEvent,currentDirection),distance=calculateDistance(currentFinger.start,currentFinger.end),duration=calculateDuration(),setMaxDistance(direction,distance),ret=triggerHandler(event,phase),!options.triggerOnTouchEnd||options.triggerOnTouchLeave){var inBounds=!0;if(options.triggerOnTouchLeave){var bounds=getbounds(this);inBounds=isInBounds(currentFinger.end,bounds);}!options.triggerOnTouchEnd&&inBounds?phase=getNextPhase(PHASE_MOVE):options.triggerOnTouchLeave&&!inBounds&&(phase=getNextPhase(PHASE_END)),phase!=PHASE_CANCEL&&phase!=PHASE_END||triggerHandler(event,phase);}}else phase=PHASE_CANCEL,triggerHandler(event,phase);ret===!1&&(phase=PHASE_CANCEL,triggerHandler(event,phase));}}function touchEnd(jqEvent){var event=jqEvent.originalEvent?jqEvent.originalEvent:jqEvent,touches=event.touches;if(touches){if(touches.length&&!inMultiFingerRelease())return startMultiFingerRelease(event),!0;if(touches.length&&inMultiFingerRelease())return !0}return inMultiFingerRelease()&&(fingerCount=fingerCountAtRelease),endTime=getTimeStamp(),duration=calculateDuration(),didSwipeBackToCancel()||!validateSwipeDistance()?(phase=PHASE_CANCEL,triggerHandler(event,phase)):options.triggerOnTouchEnd||options.triggerOnTouchEnd===!1&&phase===PHASE_MOVE?(options.preventDefaultEvents!==!1&&jqEvent.cancelable!==!1&&jqEvent.preventDefault(),phase=PHASE_END,triggerHandler(event,phase)):!options.triggerOnTouchEnd&&hasTap()?(phase=PHASE_END,triggerHandlerForGesture(event,phase,TAP)):phase===PHASE_MOVE&&(phase=PHASE_CANCEL,triggerHandler(event,phase)),setTouchInProgress(!1),null}function touchCancel(){fingerCount=0,endTime=0,startTime=0,startTouchesDistance=0,endTouchesDistance=0,pinchZoom=1,cancelMultiFingerRelease(),setTouchInProgress(!1);}function touchLeave(jqEvent){var event=jqEvent.originalEvent?jqEvent.originalEvent:jqEvent;options.triggerOnTouchLeave&&(phase=getNextPhase(PHASE_END),triggerHandler(event,phase));}function removeListeners(){$element.off(START_EV,touchStart),$element.off(CANCEL_EV,touchCancel),$element.off(MOVE_EV,touchMove),$element.off(END_EV,touchEnd),LEAVE_EV&&$element.off(LEAVE_EV,touchLeave),setTouchInProgress(!1);}function getNextPhase(currentPhase){var nextPhase=currentPhase,validTime=validateSwipeTime(),validDistance=validateSwipeDistance(),didCancel=didSwipeBackToCancel();return !validTime||didCancel?nextPhase=PHASE_CANCEL:!validDistance||currentPhase!=PHASE_MOVE||options.triggerOnTouchEnd&&!options.triggerOnTouchLeave?!validDistance&&currentPhase==PHASE_END&&options.triggerOnTouchLeave&&(nextPhase=PHASE_CANCEL):nextPhase=PHASE_END,nextPhase}function triggerHandler(event,phase){var ret,touches=event.touches;return (didSwipe()||hasSwipes())&&(ret=triggerHandlerForGesture(event,phase,SWIPE)),(didPinch()||hasPinches())&&ret!==!1&&(ret=triggerHandlerForGesture(event,phase,PINCH)),didDoubleTap()&&ret!==!1?ret=triggerHandlerForGesture(event,phase,DOUBLE_TAP):didLongTap()&&ret!==!1?ret=triggerHandlerForGesture(event,phase,LONG_TAP):didTap()&&ret!==!1&&(ret=triggerHandlerForGesture(event,phase,TAP)),phase===PHASE_CANCEL&&touchCancel(),phase===PHASE_END&&(touches?touches.length||touchCancel():touchCancel()),ret}function triggerHandlerForGesture(event,phase,gesture){var ret;if(gesture==SWIPE){if($element.trigger("swipeStatus",[phase,direction||null,distance||0,duration||0,fingerCount,fingerData,currentDirection]),options.swipeStatus&&(ret=options.swipeStatus.call($element,event,phase,direction||null,distance||0,duration||0,fingerCount,fingerData,currentDirection),ret===!1))return !1;if(phase==PHASE_END&&validateSwipe()){if(clearTimeout(singleTapTimeout),clearTimeout(holdTimeout),$element.trigger("swipe",[direction,distance,duration,fingerCount,fingerData,currentDirection]),options.swipe&&(ret=options.swipe.call($element,event,direction,distance,duration,fingerCount,fingerData,currentDirection),ret===!1))return !1;switch(direction){case LEFT:$element.trigger("swipeLeft",[direction,distance,duration,fingerCount,fingerData,currentDirection]),options.swipeLeft&&(ret=options.swipeLeft.call($element,event,direction,distance,duration,fingerCount,fingerData,currentDirection));break;case RIGHT:$element.trigger("swipeRight",[direction,distance,duration,fingerCount,fingerData,currentDirection]),options.swipeRight&&(ret=options.swipeRight.call($element,event,direction,distance,duration,fingerCount,fingerData,currentDirection));break;case UP:$element.trigger("swipeUp",[direction,distance,duration,fingerCount,fingerData,currentDirection]),options.swipeUp&&(ret=options.swipeUp.call($element,event,direction,distance,duration,fingerCount,fingerData,currentDirection));break;case DOWN:$element.trigger("swipeDown",[direction,distance,duration,fingerCount,fingerData,currentDirection]),options.swipeDown&&(ret=options.swipeDown.call($element,event,direction,distance,duration,fingerCount,fingerData,currentDirection));}}}if(gesture==PINCH){if($element.trigger("pinchStatus",[phase,pinchDirection||null,pinchDistance||0,duration||0,fingerCount,pinchZoom,fingerData]),options.pinchStatus&&(ret=options.pinchStatus.call($element,event,phase,pinchDirection||null,pinchDistance||0,duration||0,fingerCount,pinchZoom,fingerData),ret===!1))return !1;if(phase==PHASE_END&&validatePinch())switch(pinchDirection){case IN:$element.trigger("pinchIn",[pinchDirection||null,pinchDistance||0,duration||0,fingerCount,pinchZoom,fingerData]),options.pinchIn&&(ret=options.pinchIn.call($element,event,pinchDirection||null,pinchDistance||0,duration||0,fingerCount,pinchZoom,fingerData));break;case OUT:$element.trigger("pinchOut",[pinchDirection||null,pinchDistance||0,duration||0,fingerCount,pinchZoom,fingerData]),options.pinchOut&&(ret=options.pinchOut.call($element,event,pinchDirection||null,pinchDistance||0,duration||0,fingerCount,pinchZoom,fingerData));}}return gesture==TAP?phase!==PHASE_CANCEL&&phase!==PHASE_END||(clearTimeout(singleTapTimeout),clearTimeout(holdTimeout),hasDoubleTap()&&!inDoubleTap()?(doubleTapStartTime=getTimeStamp(),singleTapTimeout=setTimeout($.proxy(function(){doubleTapStartTime=null,$element.trigger("tap",[event.target]),options.tap&&(ret=options.tap.call($element,event,event.target));},this),options.doubleTapThreshold)):(doubleTapStartTime=null,$element.trigger("tap",[event.target]),options.tap&&(ret=options.tap.call($element,event,event.target)))):gesture==DOUBLE_TAP?phase!==PHASE_CANCEL&&phase!==PHASE_END||(clearTimeout(singleTapTimeout),clearTimeout(holdTimeout),doubleTapStartTime=null,$element.trigger("doubletap",[event.target]),options.doubleTap&&(ret=options.doubleTap.call($element,event,event.target))):gesture==LONG_TAP&&(phase!==PHASE_CANCEL&&phase!==PHASE_END||(clearTimeout(singleTapTimeout),doubleTapStartTime=null,$element.trigger("longtap",[event.target]),options.longTap&&(ret=options.longTap.call($element,event,event.target)))),ret}function validateSwipeDistance(){var valid=!0;return null!==options.threshold&&(valid=distance>=options.threshold),valid}function didSwipeBackToCancel(){var cancelled=!1;return null!==options.cancelThreshold&&null!==direction&&(cancelled=getMaxDistance(direction)-distance>=options.cancelThreshold),cancelled}function validatePinchDistance(){return null!==options.pinchThreshold?pinchDistance>=options.pinchThreshold:!0}function validateSwipeTime(){var result;return result=options.maxTimeThreshold?!(duration>=options.maxTimeThreshold):!0}function validateDefaultEvent(jqEvent,direction){if(options.preventDefaultEvents!==!1)if(options.allowPageScroll===NONE)jqEvent.preventDefault();else {var auto=options.allowPageScroll===AUTO;switch(direction){case LEFT:(options.swipeLeft&&auto||!auto&&options.allowPageScroll!=HORIZONTAL)&&jqEvent.preventDefault();break;case RIGHT:(options.swipeRight&&auto||!auto&&options.allowPageScroll!=HORIZONTAL)&&jqEvent.preventDefault();break;case UP:(options.swipeUp&&auto||!auto&&options.allowPageScroll!=VERTICAL)&&jqEvent.preventDefault();break;case DOWN:(options.swipeDown&&auto||!auto&&options.allowPageScroll!=VERTICAL)&&jqEvent.preventDefault();break;}}}function validatePinch(){var hasCorrectFingerCount=validateFingers(),hasEndPoint=validateEndPoint(),hasCorrectDistance=validatePinchDistance();return hasCorrectFingerCount&&hasEndPoint&&hasCorrectDistance}function hasPinches(){return !!(options.pinchStatus||options.pinchIn||options.pinchOut)}function didPinch(){return !(!validatePinch()||!hasPinches())}function validateSwipe(){var hasValidTime=validateSwipeTime(),hasValidDistance=validateSwipeDistance(),hasCorrectFingerCount=validateFingers(),hasEndPoint=validateEndPoint(),didCancel=didSwipeBackToCancel(),valid=!didCancel&&hasEndPoint&&hasCorrectFingerCount&&hasValidDistance&&hasValidTime;return valid}function hasSwipes(){return !!(options.swipe||options.swipeStatus||options.swipeLeft||options.swipeRight||options.swipeUp||options.swipeDown)}function didSwipe(){return !(!validateSwipe()||!hasSwipes())}function validateFingers(){return fingerCount===options.fingers||options.fingers===ALL_FINGERS||!SUPPORTS_TOUCH}function validateEndPoint(){return 0!==fingerData[0].end.x}function hasTap(){return !!options.tap}function hasDoubleTap(){return !!options.doubleTap}function hasLongTap(){return !!options.longTap}function validateDoubleTap(){if(null==doubleTapStartTime)return !1;var now=getTimeStamp();return hasDoubleTap()&&now-doubleTapStartTime<=options.doubleTapThreshold}function inDoubleTap(){return validateDoubleTap()}function validateTap(){return (1===fingerCount||!SUPPORTS_TOUCH)&&(isNaN(distance)||distance<options.threshold)}function validateLongTap(){return duration>options.longTapThreshold&&DOUBLE_TAP_THRESHOLD>distance}function didTap(){return !(!validateTap()||!hasTap())}function didDoubleTap(){return !(!validateDoubleTap()||!hasDoubleTap())}function didLongTap(){return !(!validateLongTap()||!hasLongTap())}function startMultiFingerRelease(event){previousTouchEndTime=getTimeStamp(),fingerCountAtRelease=event.touches.length+1;}function cancelMultiFingerRelease(){previousTouchEndTime=0,fingerCountAtRelease=0;}function inMultiFingerRelease(){var withinThreshold=!1;if(previousTouchEndTime){var diff=getTimeStamp()-previousTouchEndTime;diff<=options.fingerReleaseThreshold&&(withinThreshold=!0);}return withinThreshold}function getTouchInProgress(){return !($element.data(PLUGIN_NS+"_intouch")!==!0)}function setTouchInProgress(val){$element&&(val===!0?($element.on(MOVE_EV,touchMove),$element.on(END_EV,touchEnd),LEAVE_EV&&$element.on(LEAVE_EV,touchLeave)):($element.off(MOVE_EV,touchMove,!1),$element.off(END_EV,touchEnd,!1),LEAVE_EV&&$element.off(LEAVE_EV,touchLeave,!1)),$element.data(PLUGIN_NS+"_intouch",val===!0));}function createFingerData(id,evt){var f={start:{x:0,y:0},last:{x:0,y:0},end:{x:0,y:0}};return f.start.x=f.last.x=f.end.x=evt.pageX||evt.clientX,f.start.y=f.last.y=f.end.y=evt.pageY||evt.clientY,fingerData[id]=f,f}function updateFingerData(evt){var id=void 0!==evt.identifier?evt.identifier:0,f=getFingerData(id);return null===f&&(f=createFingerData(id,evt)),f.last.x=f.end.x,f.last.y=f.end.y,f.end.x=evt.pageX||evt.clientX,f.end.y=evt.pageY||evt.clientY,f}function getFingerData(id){return fingerData[id]||null}function setMaxDistance(direction,distance){direction!=NONE&&(distance=Math.max(distance,getMaxDistance(direction)),maximumsMap[direction].distance=distance);}function getMaxDistance(direction){return maximumsMap[direction]?maximumsMap[direction].distance:void 0}function createMaximumsData(){var maxData={};return maxData[LEFT]=createMaximumVO(LEFT),maxData[RIGHT]=createMaximumVO(RIGHT),maxData[UP]=createMaximumVO(UP),maxData[DOWN]=createMaximumVO(DOWN),maxData}function createMaximumVO(dir){return {direction:dir,distance:0}}function calculateDuration(){return endTime-startTime}function calculateTouchesDistance(startPoint,endPoint){var diffX=Math.abs(startPoint.x-endPoint.x),diffY=Math.abs(startPoint.y-endPoint.y);return Math.round(Math.sqrt(diffX*diffX+diffY*diffY))}function calculatePinchZoom(startDistance,endDistance){var percent=endDistance/startDistance*1;return percent.toFixed(2)}function calculatePinchDirection(){return 1>pinchZoom?OUT:IN}function calculateDistance(startPoint,endPoint){return Math.round(Math.sqrt(Math.pow(endPoint.x-startPoint.x,2)+Math.pow(endPoint.y-startPoint.y,2)))}function calculateAngle(startPoint,endPoint){var x=startPoint.x-endPoint.x,y=endPoint.y-startPoint.y,r=Math.atan2(y,x),angle=Math.round(180*r/Math.PI);return 0>angle&&(angle=360-Math.abs(angle)),angle}function calculateDirection(startPoint,endPoint){if(comparePoints(startPoint,endPoint))return NONE;var angle=calculateAngle(startPoint,endPoint);return 45>=angle&&angle>=0?LEFT:360>=angle&&angle>=315?LEFT:angle>=135&&225>=angle?RIGHT:angle>45&&135>angle?DOWN:UP}function getTimeStamp(){var now=new Date;return now.getTime()}function getbounds(el){el=$(el);var offset=el.offset(),bounds={left:offset.left,right:offset.left+el.outerWidth(),top:offset.top,bottom:offset.top+el.outerHeight()};return bounds}function isInBounds(point,bounds){return point.x>bounds.left&&point.x<bounds.right&&point.y>bounds.top&&point.y<bounds.bottom}function comparePoints(pointA,pointB){return pointA.x==pointB.x&&pointA.y==pointB.y}var options=$.extend({},options),useTouchEvents=SUPPORTS_TOUCH||SUPPORTS_POINTER||!options.fallbackToMouseEvents,START_EV=useTouchEvents?SUPPORTS_POINTER?SUPPORTS_POINTER_IE10?"MSPointerDown":"pointerdown":"touchstart":"mousedown",MOVE_EV=useTouchEvents?SUPPORTS_POINTER?SUPPORTS_POINTER_IE10?"MSPointerMove":"pointermove":"touchmove":"mousemove",END_EV=useTouchEvents?SUPPORTS_POINTER?SUPPORTS_POINTER_IE10?"MSPointerUp":"pointerup":"touchend":"mouseup",LEAVE_EV=useTouchEvents?SUPPORTS_POINTER?"mouseleave":null:"mouseleave",CANCEL_EV=SUPPORTS_POINTER?SUPPORTS_POINTER_IE10?"MSPointerCancel":"pointercancel":"touchcancel",distance=0,direction=null,currentDirection=null,duration=0,startTouchesDistance=0,endTouchesDistance=0,pinchZoom=1,pinchDistance=0,pinchDirection=0,maximumsMap=null,$element=$(element),phase="start",fingerCount=0,fingerData={},startTime=0,endTime=0,previousTouchEndTime=0,fingerCountAtRelease=0,doubleTapStartTime=0,singleTapTimeout=null,holdTimeout=null;try{$element.on(START_EV,touchStart),$element.on(CANCEL_EV,touchCancel);}catch(e){$.error("events not supported "+START_EV+","+CANCEL_EV+" on jQuery.swipe");}this.enable=function(){return this.disable(),$element.on(START_EV,touchStart),$element.on(CANCEL_EV,touchCancel),$element},this.disable=function(){return removeListeners(),$element},this.destroy=function(){removeListeners(),$element.data(PLUGIN_NS,null),$element=null;},this.option=function(property,value){if("object"==typeof property)options=$.extend(options,property);else if(void 0!==options[property]){if(void 0===value)return options[property];options[property]=value;}else {if(!property)return options;$.error("Option "+property+" does not exist on jQuery.swipe.options");}return null};}var VERSION="1.6.18",LEFT="left",RIGHT="right",UP="up",DOWN="down",IN="in",OUT="out",NONE="none",AUTO="auto",SWIPE="swipe",PINCH="pinch",TAP="tap",DOUBLE_TAP="doubletap",LONG_TAP="longtap",HORIZONTAL="horizontal",VERTICAL="vertical",ALL_FINGERS="all",DOUBLE_TAP_THRESHOLD=10,PHASE_START="start",PHASE_MOVE="move",PHASE_END="end",PHASE_CANCEL="cancel",SUPPORTS_TOUCH="ontouchstart"in window,SUPPORTS_POINTER_IE10=window.navigator.msPointerEnabled&&!window.PointerEvent&&!SUPPORTS_TOUCH,SUPPORTS_POINTER=(window.PointerEvent||window.navigator.msPointerEnabled)&&!SUPPORTS_TOUCH,PLUGIN_NS="TouchSwipe",defaults={fingers:1,threshold:75,cancelThreshold:null,pinchThreshold:20,maxTimeThreshold:null,fingerReleaseThreshold:250,longTapThreshold:500,doubleTapThreshold:200,swipe:null,swipeLeft:null,swipeRight:null,swipeUp:null,swipeDown:null,swipeStatus:null,pinchIn:null,pinchOut:null,pinchStatus:null,click:null,tap:null,doubleTap:null,longTap:null,hold:null,triggerOnTouchEnd:!0,triggerOnTouchLeave:!1,allowPageScroll:"auto",fallbackToMouseEvents:!0,excludedElements:".noSwipe",preventDefaultEvents:!0};$.fn.swipe=function(method){var $this=$(this),plugin=$this.data(PLUGIN_NS);if(plugin&&"string"==typeof method){if(plugin[method])return plugin[method].apply(plugin,Array.prototype.slice.call(arguments,1));$.error("Method "+method+" does not exist on jQuery.swipe");}else if(plugin&&"object"==typeof method)plugin.option.apply(plugin,arguments);else if(!(plugin||"object"!=typeof method&&method))return init.apply(this,arguments);return $this},$.fn.swipe.version=VERSION,$.fn.swipe.defaults=defaults,$.fn.swipe.phases={PHASE_START:PHASE_START,PHASE_MOVE:PHASE_MOVE,PHASE_END:PHASE_END,PHASE_CANCEL:PHASE_CANCEL},$.fn.swipe.directions={LEFT:LEFT,RIGHT:RIGHT,UP:UP,DOWN:DOWN,IN:IN,OUT:OUT},$.fn.swipe.pageScroll={NONE:NONE,HORIZONTAL:HORIZONTAL,VERTICAL:VERTICAL,AUTO:AUTO},$.fn.swipe.fingers={ONE:1,TWO:2,THREE:3,FOUR:4,FIVE:5,ALL:ALL_FINGERS};});
 	});
 
 	/**
@@ -24617,11 +25341,11 @@
 	     * @type Array|jQuery
 	     * @default
 	     */
-	    $current: [],
+	    current: null,
 	    /**
 	     * @type jQuery
 	     */
-	    $activePages: jquery(),
+	    activePages: [],
 	    /**
 	     * @type function
 	     */
@@ -24629,17 +25353,20 @@
 	        if ( !this.form ) {
 	            throw new Error( 'Repeats module not correctly instantiated with form property.' );
 	        }
-	        if ( this.form.view.$.hasClass( 'pages' ) ) {
-	            const $allPages = this.form.view.$.find( ' .question:not([role="comment"]), .or-appearance-field-list' )
-	                .add( '.or-repeat.or-appearance-field-list + .or-repeat-info' )
-	                .filter( function() {
+	        if ( this.form.view.html.classList.contains( 'pages' ) ) {
+	            const allPages = [ ...this.form.view.html.querySelectorAll( '.question, .or-appearance-field-list' ) ]
+	                .concat( [ ...this.form.view.html.querySelectorAll( '.or-repeat.or-appearance-field-list + .or-repeat-info' ) ] )
+	                .filter( el => {
 	                    // something tells me there is a more efficient way to doing this
 	                    // e.g. by selecting the descendants of the .or-appearance-field-list and removing those
-	                    return jquery( this ).parent().closest( '.or-appearance-field-list' ).length === 0;
+	                    return !el.parentElement.closest( '.or-appearance-field-list' ) && !( el.matches( '.question' ) && el.querySelector( '[data-for]' ) );
 	                } )
-	                .attr( 'role', 'page' );
+	                .map( el => {
+	                    el.setAttribute( 'role', 'page' );
+	                    return el;
+	                } );
 
-	            if ( $allPages.length > 0 || $allPages.eq( 0 ).hasClass( 'or-repeat' ) ) {
+	            if ( allPages.length > 0 || allPages[ 0 ].classList.contains( 'or-repeat' ) ) {
 	                const formWrapper = this.form.view.html.parentNode;
 	                this.$formFooter = jquery( formWrapper.querySelector( '.form-footer' ) );
 	                this.$btnFirst = this.$formFooter.find( '.first-page' );
@@ -24647,7 +25374,7 @@
 	                this.$btnNext = this.$formFooter.find( '.next-page' );
 	                this.$btnLast = this.$formFooter.find( '.last-page' );
 	                this.$toc = jquery( formWrapper.querySelector( '.pages-toc__list' ) );
-	                this._updateAllActive( $allPages );
+	                this._updateAllActive( allPages );
 	                this._updateToc();
 	                this._toggleButtons( 0 );
 	                this._setButtonHandlers();
@@ -24744,7 +25471,10 @@
 	                     * set form.pageNavigationBlocked to true. The edge case will be very slow devices
 	                     * and/or amazingly complex constraint expressions.
 	                     */
-	                    that._getCurrent().find( ':focus' ).blur();
+	                    const focused = that._getCurrent() ? that._getCurrent().querySelector( ':focus' ) : null;
+	                    if ( focused ) {
+	                        focused.blur();
+	                    }
 	                }
 	            }
 	        } );
@@ -24778,19 +25508,20 @@
 	    _setRepeatHandlers() {
 	        // TODO: can be optimized by smartly updating the active pages
 	        this.form.view.html.addEventListener( events.AddRepeat().type, event => {
-	            const byCountUpdate = event.detail ? event.detail[ 1 ] : undefined;
 	            this._updateAllActive();
 	            // Don't flip if the user didn't create the repeat with the + button.
 	            // or if is the default first instance created during loading.
-	            // except if the new repeat is actually first page in the form.
-	            if ( !byCountUpdate || this.$activePages[ 0 ] === event.target ) {
+	            // except if the new repeat is actually the first page in the form, or contains the first page
+	            if ( event.detail.trigger === 'user' || this.activePages[ 0 ] === event.target || getAncestors( this.activePages[ 0 ], '.or-repeat' ).includes( event.target ) ) {
 	                this.flipToPageContaining( jquery( event.target ) );
+	            } else {
+	                this._toggleButtons();
 	            }
 	        } );
 	        this.form.view.html.addEventListener( events.RemoveRepeat().type, event => {
 	            // if the current page is removed
-	            // note that that.$current will have length 1 even if it was removed from DOM!
-	            if ( this.$current.closest( 'html' ).length === 0 ) {
+	            // note that that.current will have length 1 even if it was removed from DOM!
+	            if ( this.current && !this.current.closest( 'html' ) ) {
 	                this._updateAllActive();
 	                let $target = jquery( event.target ).prev();
 	                if ( $target.length === 0 ) {
@@ -24812,7 +25543,7 @@
 	            .on( 'changebranch.pagemode', () => {
 	                that._updateAllActive();
 	                // If the current page has become inactive (e.g. a form whose first page during load becomes irrelevant)
-	                if ( that.$activePages.get().indexOf( that.$current[ 0 ] ) === -1 ) {
+	                if ( !that.activePages.includes( that.current ) ) {
 	                    that._next();
 	                }
 	                that._toggleButtons();
@@ -24828,24 +25559,23 @@
 	            } );
 	    },
 	    /**
-	     * @return {jQuery} current page
+	     * @return {Element} current page
 	     */
 	    _getCurrent() {
-	        return this.$current;
+	        return this.current;
 	    },
 	    /**
-	     * @param {jQuery} $all
+	     * @param {Array<Node>} all
 	     */
-	    _updateAllActive( $all ) {
-	        $all = $all || this.form.view.$.find( '[role="page"]' );
-	        this.$activePages = $all.filter( function() {
-	            const $this = jquery( this );
-	            return $this.closest( '.disabled' ).length === 0 &&
-	                ( $this.is( '.question' ) || $this.find( '.question:not(.disabled)' ).length > 0 ||
+	    _updateAllActive( all ) {
+	        all = all || [ ...this.form.view.html.querySelectorAll( '[role="page"]' ) ];
+	        this.activePages = all.filter( el => {
+	            return !el.closest( '.disabled' ) &&
+	                ( el.matches( '.question' ) || el.querySelector( '.question:not(.disabled)' ) ||
 	                    // or-repeat-info is only considered a page by itself if it has no sibling repeats
 	                    // When there are siblings repeats, we use CSS trickery to show the + button underneath the last
 	                    // repeat.
-	                    ( $this.is( '.or-repeat-info' ) && $this.siblings( '.or-repeat' ).length === 0 ) );
+	                    ( el.matches( '.or-repeat-info' ) && getSiblingElements( el, '.or-repeat' ).length === 0 ) );
 	        } );
 	        this._updateToc();
 	    },
@@ -24854,26 +25584,26 @@
 	     * @return {jQuery} Previous page
 	     */
 	    _getPrev( currentIndex ) {
-	        return this.$activePages[ currentIndex - 1 ];
+	        return this.activePages[ currentIndex - 1 ];
 	    },
 	    /**
 	     * @param {number} currentIndex
 	     * @return {jQuery} Next page
 	     */
 	    _getNext( currentIndex ) {
-	        return this.$activePages[ currentIndex + 1 ];
+	        return this.activePages[ currentIndex + 1 ];
 	    },
 	    /**
 	     * @return {number} Current page index
 	     */
 	    _getCurrentIndex() {
-	        return this.$activePages.index( this.$current );
+	        return this.activePages.findIndex( el => el === this.current );
 	    },
 	    /**
 	     * Changes the `pages.next()` function to return a `Promise`, wrapping one of the following values:
 	     *
 	     * @return {Promise} wrapping {boolean} or {number}.  If a {number}, this is the index into
-	     *         `$activePages` of the new current page; if a {boolean}, {false} means that validation
+	     *         `activePages` of the new current page; if a {boolean}, {false} means that validation
 	     *         failed, and {true} that validation passed, but the page did not change.
 	     */
 	    _next() {
@@ -24882,7 +25612,7 @@
 	        let validate;
 
 	        currentIndex = this._getCurrentIndex();
-	        validate =  this.form.validateContent( this.$current );
+	        validate = (  !this.current ) ? Promise.resolve( true ) : this.form.validateContent( jquery( this.current ) );
 
 	        return validate
 	            .then( valid => {
@@ -24918,10 +25648,12 @@
 	     * @param {Element} pageEl
 	     */
 	    _setToCurrent( pageEl ) {
-	        const $n = jquery( pageEl );
-	        $n.addClass( 'current hidden' );
-	        this.$current = $n.removeClass( 'hidden' )
-	            .parentsUntil( '.or', '.or-group, .or-group-data, .or-repeat' ).addClass( 'contains-current' ).end();
+	        pageEl.classList.add( 'current', 'hidden' );
+	        // Was just added, for animation?        
+	        pageEl.classList.remove( 'hidden' );
+	        getAncestors( pageEl, '.or-group, .or-group-data, .or-repeat', '.or' )
+	            .forEach( el => el.classList.add( 'contains-current' ) );
+	        this.current = pageEl;
 	    },
 	    /**
 	     * Switches to a page
@@ -24930,17 +25662,19 @@
 	     * @param {number} newIndex
 	     */
 	    _flipTo( pageEl, newIndex ) {
-	        // if there is a current page
-	        if ( this.$current.length > 0 && this.$current.closest( 'html' ).length === 1 ) {
+	        // if there is a current page (note: if current page was removed it is not null, hence the .closest('html') check)
+	        if ( this.current && this.current.closest( 'html' ) ) {
 	            // if current page is not same as pageEl
-	            if ( this.$current[ 0 ] !== pageEl ) {
-	                this.$current.removeClass( 'current fade-out' ).parentsUntil( '.or', '.or-group, .or-group-data, .or-repeat' ).removeClass( 'contains-current' );
+	            if ( this.current !== pageEl ) {
+	                this.current.classList.remove( 'current', 'fade-out' );
+	                getAncestors( this.current, '.or-group, .or-group-data, .or-repeat', '.or' )
+	                    .forEach( el => el.classList.remove( 'contains-current' ) );
 	                this._setToCurrent( pageEl );
 	                this._focusOnFirstQuestion( pageEl );
 	                this._toggleButtons( newIndex );
 	                pageEl.dispatchEvent( events.PageFlip() );
 	            }
-	        } else {
+	        } else if ( pageEl ) {
 	            this._setToCurrent( pageEl );
 	            this._focusOnFirstQuestion( pageEl );
 	            this._toggleButtons( newIndex );
@@ -24951,13 +25685,13 @@
 	     * Switches to first page
 	     */
 	    _flipToFirst() {
-	        this._flipTo( this.$activePages[ 0 ] );
+	        this._flipTo( this.activePages[ 0 ] );
 	    },
 	    /**
 	     * Switches to last page
 	     */
 	    _flipToLast() {
-	        this._flipTo( this.$activePages.last()[ 0 ] );
+	        this._flipTo( this.activePages[ this.activePages.length - 1 ] );
 	    },
 	    /**
 	     * Focuses on first question and scrolls it into view
@@ -24982,12 +25716,11 @@
 	    /**
 	     * Updates status of navigation buttons
 	     *
-	     * @param {number} index
+	     * @param {number} [index]
 	     */
-	    _toggleButtons( index ) {
-	        const i = index || this._getCurrentIndex(),
-	            next = this._getNext( i ),
-	            prev = this._getPrev( i );
+	    _toggleButtons( index = this._getCurrentIndex() ) {
+	        const next = this._getNext( index );
+	        const prev = this._getPrev( index );
 	        this.$btnNext.add( this.$btnLast ).toggleClass( 'disabled', !next );
 	        this.$btnPrev.add( this.$btnFirst ).toggleClass( 'disabled', !prev );
 	        this.$formFooter.toggleClass( 'end', !next );
@@ -25303,325 +26036,6 @@
 	};
 
 	/**
-	 * Updates itemsets.
-	 *
-	 * @module itemset
-	 */
-
-	var itemsetModule = {
-	    /**
-	     * @param {UpdatedDataNodes} [updated] - The object containing info on updated data nodes.
-	     */
-	    update( updated = {} ) {
-	        const that = this;
-	        const itemsCache = {};
-	        let $nodes;
-
-	        if ( !this.form ) {
-	            throw new Error( 'Output module not correctly instantiated with form property.' );
-	        }
-
-	        if ( updated.relevantPath ) {
-	            // Questions that are descendants of a group:
-	            $nodes = this.form.getRelatedNodes( 'data-items-path', `[name^="${updated.relevantPath}/"]` )
-	                .add( this.form.getRelatedNodes( 'data-items-path', `[name^="${updated.relevantPath}/"] ~ datalist > .itemset-template` ) )
-	                // Individual questions (autocomplete)
-	                .add( this.form.getRelatedNodes( 'data-items-path', `[name="${updated.relevantPath}"]` ) )
-	                .add( this.form.getRelatedNodes( 'data-items-path', `[name="${updated.relevantPath}"] ~ datalist > .itemset-template` ) )
-	                // Individual radiobutton questions with an itemset...:
-	                .add( this.form.getRelatedNodes( 'data-items-path', `[data-name="${updated.relevantPath}"]` ) )
-	                .add( this.form.getRelatedNodes( 'data-items-path', `[data-name="${updated.relevantPath}"] ~ datalist > .itemset-template` ) );
-	        } else {
-	            $nodes = this.form.getRelatedNodes( 'data-items-path', '.itemset-template', updated );
-	        }
-
-	        const clonedRepeatsPresent = this.form.repeatsPresent && this.form.view.html.querySelector( '.or-repeat.clone' );
-	        const alerts = [];
-
-	        $nodes.each( function() {
-	            let $input;
-	            let $instanceItems;
-	            const template = this;
-	            const $template = jquery( this );
-	            const inputAttributes = {};
-
-	            // Nodes are in document order, so we discard any nodes in questions/groups that have a disabled parent
-	            if ( $template.parentsUntil( '.or', '.or-branch' ).parentsUntil( '.or', '.disabled' ).length ) {
-	                return;
-	            }
-
-	            const newItems = {};
-	            const prevItems = $template.data();
-	            const templateNodeName = $template.prop( 'nodeName' ).toLowerCase();
-	            const $list = $template.parent( 'select, datalist' );
-
-	            if ( templateNodeName === 'label' ) {
-	                const $optionInput = $template.children( 'input' ).eq( 0 );
-	                [].slice.call( $optionInput[ 0 ].attributes ).forEach( attr => {
-	                    inputAttributes[ attr.name ] = attr.value;
-	                } );
-	                // If this is a ranking widget:
-	                $input = $optionInput.hasClass( 'ignore' ) ? $optionInput.closest( '.option-wrapper' ).siblings( 'input.rank' ).eq( 0 ) : $optionInput;
-	            } else if ( $list.prop( 'nodeName' ).toLowerCase() === 'select' ) {
-	                $input = $list;
-	            } else if ( $list.prop( 'nodeName' ).toLowerCase() === 'datalist' ) {
-	                $input = $list.siblings( 'input:not(.widget)' );
-	            }
-	            const $labels = $template.closest( 'label, select, datalist' ).siblings( '.itemset-labels' );
-	            const itemsXpath = $template.attr( 'data-items-path' );
-	            let labelType = $labels.attr( 'data-label-type' );
-	            let labelRef = $labels.attr( 'data-label-ref' );
-	            // TODO: if translate() becomes official, move determination of labelType to enketo-xslt
-	            // and set labelRef correct in enketo-xslt
-	            const matches = parseFunctionFromExpression( labelRef, 'translate' );
-	            if ( matches.length ) {
-	                labelRef = matches[ 0 ][ 1 ][ 0 ];
-	                labelType = 'langs';
-	            }
-
-	            const valueRef = $labels.attr( 'data-value-ref' );
-
-	            /**
-	             * CommCare/ODK change the context to the *itemset* value (in the secondary instance), hence they need to use the current()
-	             * function to make sure that relative paths in the nodeset predicate refer to the correct primary instance node
-	             * Enketo does *not* change the context. It uses the context of the question, not the itemset. Hence it has no need for current().
-	             * I am not sure what is correct, but for now for XLSForm-style secondary instances with only one level underneath the <item>s that
-	             * the nodeset retrieves, Enketo's aproach works well.
-	             */
-	            const context = that.form.input.getName( $input[ 0 ] );
-
-	            /*
-	             * Determining the index is expensive, so we only do this when the itemset is inside a cloned repeat.
-	             * It can be safely set to 0 for other branches.
-	             */
-	            const insideRepeat = ( clonedRepeatsPresent && $input.parentsUntil( '.or', '.or-repeat' ).length > 0 ) ? true : false;
-	            const insideRepeatClone = ( clonedRepeatsPresent && $input.parentsUntil( '.or', '.or-repeat.clone' ).length > 0 ) ? true : false;
-	            const index = ( insideRepeatClone ) ? that.form.input.getIndex( $input[ 0 ] ) : 0;
-
-	            if ( typeof itemsCache[ itemsXpath ] !== 'undefined' ) {
-	                $instanceItems = itemsCache[ itemsXpath ];
-	            } else {
-	                const safeToTryNative = true;
-	                $instanceItems = jquery( that.form.model.evaluate( itemsXpath, 'nodes', context, index, safeToTryNative ) );
-	                if ( !insideRepeat ) {
-	                    itemsCache[ itemsXpath ] = $instanceItems;
-	                }
-	            }
-
-	            // This property allows for more efficient 'itemschanged' detection
-	            newItems.length = $instanceItems.length;
-	            // TODO: This may cause problems for large itemsets. Use md5 instead?
-	            newItems.text = $instanceItems.text();
-
-	            if ( newItems.length === prevItems.length && newItems.text === prevItems.text ) {
-	                return;
-	            }
-
-	            $template.data( newItems );
-
-	            /**
-	             * Remove current items before rebuilding a new itemset from scratch.
-	             */
-	            // the current <option> and <input> elements
-	            const $question = $template.closest( '.question' );
-	            $question.find( templateNodeName ).not( $template ).remove();
-	            // labels for current <option> elements
-	            const optionsTranslations = $question.find( '.or-option-translations' ).empty()[ 0 ];
-	            const optionsFragment = document.createDocumentFragment();
-	            const optionsTranslationsFragment = document.createDocumentFragment();
-	            let translations = [];
-
-	            $instanceItems.each( function() {
-	                const item = this;
-	                /*
-	                 * Note: $labelRefs could either be
-	                 * - a single itext reference
-	                 * - a collection of labels with different lang attributes
-	                 * - a single label
-	                 */
-	                const labels = that.getNodesFromItem( labelRef, item );
-	                if ( !labels || !labels.length ) {
-	                    translations = [ { language: '', label: 'error', active: true } ];
-	                } else {
-	                    switch ( labelType ) {
-	                        case 'itext':
-	                            // Search in the special .itemset-labels created in enketo-transformer for labels with itext ref.
-	                            translations = $labels.find( `[data-itext-id="${labels[ 0 ].textContent}"]` ).get().map( label => {
-	                                const language = label.getAttribute( 'lang' );
-	                                const type = label.nodeName;
-	                                const src = label.src;
-	                                const text = label.textContent;
-	                                const active = label.classList.contains( 'active' );
-	                                const alt = label.alt;
-	                                return { language, type, text, active, src, alt };
-	                            } );
-	                            break;
-	                        case 'langs':
-	                            translations = labels.map( label => {
-	                                const lang = label.getAttribute( 'lang' );
-	                                // Two falsy values should set active to true.
-	                                const active = ( !lang && !that.form.langs.currentLang ) || ( lang === that.form.langs.currentLang );
-	                                return { language: lang, type: 'span', text: label.textContent, active };
-	                            } );
-	                            break;
-	                        default:
-	                            translations = [ { language: '', type: 'span', text: labels && labels.length ? labels[ 0 ].textContent : 'error', active: true } ];
-	                    }
-	                }
-	                // Obtain the value of the secondary instance item found.
-	                const value = that.getNodeFromItem( valueRef, item ).textContent;
-	                /**
-	                 * #510 Show warning if select_multiple value has spaces
-	                 */
-	                const multiple = ( inputAttributes[ 'data-type-xml' ] == 'select' ) && ( inputAttributes[ 'type' ] == 'checkbox' ) || ( $list[ 0 ] && $list[ 0 ].multiple );
-	                if ( multiple && ( value.indexOf( ' ' ) > -1 ) ) {
-	                    alerts[ alerts.length ] = t( 'alert.valuehasspaces.multiple', { value: value } );
-	                }
-	                if ( templateNodeName === 'label' ) {
-	                    optionsFragment.appendChild( that.createInput( inputAttributes, translations, value ) );
-	                } else if ( templateNodeName === 'option' ) {
-	                    let activeLabel = '';
-	                    if ( translations.length > 1 ) {
-	                        translations.forEach( translation => {
-	                            if ( translation.active ) {
-	                                activeLabel = translation.text;
-	                            }
-	                            optionsTranslationsFragment.appendChild( that.createOptionTranslation( translation, value ) );
-	                        } );
-	                    } else {
-	                        activeLabel = translations[ 0 ].text;
-	                    }
-	                    optionsFragment.appendChild( that.createOption( activeLabel, value ) );
-	                }
-	            } );
-
-	            template.parentNode.appendChild( optionsFragment );
-	            if ( optionsTranslations ) {
-	                optionsTranslations.appendChild( optionsTranslationsFragment );
-	            }
-
-	            /**
-	             * Attempt to populate inputs with current value in model (except for ranking input)
-	             * Note that if the current value is not empty and the new itemset does not
-	             * include (an) item(s) with this/se value(s), this will clear/update the model and
-	             * this will trigger a dataupdate event. This may call this update function again.
-	             */
-	            let currentValue = that.form.model.node( context, index ).getVal();
-	            if ( currentValue !== '' ) {
-	                if ( $input.hasClass( 'rank' ) ) {
-	                    currentValue = '';
-	                }
-	                that.form.input.setVal( $input[ 0 ], currentValue );
-	                $input.trigger( 'change' );
-	            }
-
-	            if ( $list.length > 0 || $input.hasClass( 'rank' ) ) {
-	                $input.trigger( 'changeoption' );
-	            }
-
-	        } );
-	        if ( alerts.length > 0 ) {
-	            /**
-	             * We're assuming the enketo-core-consuming app has a dialog that supports some basic HTML rendering
-	             */
-	            dialog.alert( alerts.join( '<br>' ) );
-	        }
-	    },
-
-	    /**
-	     * Minimal XPath evaluation helper that queries from a single item context.
-	     *
-	     * @param {string} expr - The XPath expression
-	     * @param {string} context
-	     * @param {boolean} single
-	     * @return {Array<Element>} found nodes
-	     */
-	    getNodesFromItem( expr, context, single ) {
-	        if ( !expr || !context ) {
-	            throw new Error( 'Error: could not query instance item, no expression and/or context provided' );
-	        }
-	        const type = single ? 9 : 7;
-	        const evaluateFnName = typeof this.form.model.xml.evaluate !== 'undefined' ? 'evaluate' : 'jsEvaluate';
-	        const result = this.form.model.xml[ evaluateFnName ]( expr, context, this.form.model.getNsResolver(), type, null );
-	        const response = [];
-	        if ( !single ) {
-	            for ( let j = 0; j < result.snapshotLength; j++ ) {
-	                response.push( result.snapshotItem( j ) );
-	            }
-	        } else {
-	            response.push( result.singleNodeValue );
-	        }
-	        return response;
-	    },
-
-	    /**
-	     * @param {string} expr - The XPath expression
-	     * @param {string} content
-	     * @return {Element|null} found nodes
-	     */
-	    getNodeFromItem( expr, content ) {
-	        const nodes = this.getNodesFromItem( expr, content, true );
-	        return nodes.length ? nodes[ 0 ] : null;
-	    },
-
-	    /**
-	     * @param {string} label
-	     * @param {string} value
-	     * @return {Element} created option
-	     */
-	    createOption( label, value ) {
-	        const option = document.createElement( 'option' );
-	        option.textContent = label;
-	        option.value = value;
-	        return option;
-	    },
-
-	    /**
-	     * @param {string} translation
-	     * @param {string} value
-	     * @return {Element} created element
-	     */
-	    createOptionTranslation( translation, value ) {
-	        const el = document.createElement( translation.type || 'span' );
-	        if ( translation.text ) {
-	            el.textContent = translation.text;
-	            el.classList.add( 'option-label' );
-	        }
-	        el.classList.toggle( 'active', translation.active );
-	        if ( translation.language ) {
-	            el.lang = translation.language;
-	        }
-	        el.dataset.optionValue = value;
-	        if ( translation.src ) {
-	            el.src = translation.src;
-	            el.alt = translation.alt;
-	        }
-	        return el;
-	    },
-
-	    /**
-	     * @param {Array<object>} attributes
-	     * @param {Array<object>} translations
-	     * @param {string} value
-	     * @return {Element} label element (wrapper)
-	     */
-	    createInput( attributes, translations, value ) {
-	        const that = this;
-	        const label = document.createElement( 'label' );
-	        const input = document.createElement( 'input' );
-	        Object.getOwnPropertyNames( attributes ).forEach( attr => {
-	            input.setAttribute( attr, attributes[ attr ] );
-	        } );
-	        input.value = value;
-	        label.appendChild( input );
-	        translations.forEach( translation => {
-	            label.appendChild( that.createOptionTranslation( translation, value ) );
-	        } );
-	        return label;
-	    }
-	};
-
-	/**
 	 * Progress module.
 	 *
 	 * @module progress
@@ -25838,7 +26252,7 @@
 	    set originalInputValue( value ) {
 	        // Avoid unnecessary change events as they could have significant negative consequences!
 	        // However, to add a check for this.originalInputValue !== value here would affect performance too much,
-	        // so we rely on widget code to only this setter when the value changes.
+	        // so we rely on widget code to only use this setter when the value changes.
 	        inputHelper.setVal( this.element, value, null );
 	        this.element.dispatchEvent( events.Change() );
 	    }
@@ -26673,7 +27087,12 @@
 	    _init() {
 	        const listId = this.element.getAttribute( 'list' );
 
-	        this.options = [ ...this.question.querySelectorAll( `datalist#${listId} > option` ) ];
+	        if ( getSiblingElements( this.element, 'datalist' ).length === 0 ) {
+	            const infos = getSiblingElements( this.element.closest( '.or-repeat' ), '.or-repeat-info' );
+	            this.options = infos.length ? [ ...infos[ 0 ].querySelectorAll( `datalist#${listId} > option` ) ] : [];
+	        } else {
+	            this.options = [ ...this.question.querySelectorAll( `datalist#${listId} > option` ) ];
+	        }
 
 	        // This value -> data-value change is not slow, so no need to move to enketo-xslt as that would
 	        // increase itemset complexity even further.
@@ -26833,14 +27252,14 @@
 
 	var leafletSrc = createCommonjsModule(function (module, exports) {
 	/* @preserve
-	 * Leaflet 1.5.1+build.2e3e0ff, a JS library for interactive maps. http://leafletjs.com
-	 * (c) 2010-2018 Vladimir Agafonkin, (c) 2010-2011 CloudMade
+	 * Leaflet 1.6.0, a JS library for interactive maps. http://leafletjs.com
+	 * (c) 2010-2019 Vladimir Agafonkin, (c) 2010-2011 CloudMade
 	 */
 
 	(function (global, factory) {
 		 factory(exports) ;
 	}(commonjsGlobal, (function (exports) {
-	var version = "1.5.1+build.2e3e0ffb";
+	var version = "1.6.0";
 
 	/*
 	 * @namespace Util
@@ -26958,8 +27377,8 @@
 	// @function formatNum(num: Number, digits?: Number): Number
 	// Returns the number `num` rounded to `digits` decimals, or to 6 decimals by default.
 	function formatNum(num, digits) {
-		digits = (digits === undefined ? 6 : digits);
-		return +(Math.round(num + ('e+' + digits)) + ('e-' + digits));
+		var pow = Math.pow(10, (digits === undefined ? 6 : digits));
+		return Math.round(num * pow) / pow;
 	}
 
 	// @function trim(str: String): String
@@ -28737,7 +29156,7 @@
 
 	// @property pointer: Boolean
 	// `true` for all browsers supporting [pointer events](https://msdn.microsoft.com/en-us/library/dn433244%28v=vs.85%29.aspx).
-	var pointer = !!(window.PointerEvent || msPointer);
+	var pointer = !webkit && !!(window.PointerEvent || msPointer);
 
 	// @property touch: Boolean
 	// `true` for all browsers supporting [touch events](https://developer.mozilla.org/docs/Web/API/Touch_events).
@@ -28758,6 +29177,23 @@
 	// `true` for browsers on a high-resolution "retina" screen or on any screen when browser's display zoom is more than 100%.
 	var retina = (window.devicePixelRatio || (window.screen.deviceXDPI / window.screen.logicalXDPI)) > 1;
 
+	// @property passiveEvents: Boolean
+	// `true` for browsers that support passive events.
+	var passiveEvents = (function () {
+		var supportsPassiveOption = false;
+		try {
+			var opts = Object.defineProperty({}, 'passive', {
+				get: function () {
+					supportsPassiveOption = true;
+				}
+			});
+			window.addEventListener('testPassiveEventSupport', falseFn, opts);
+			window.removeEventListener('testPassiveEventSupport', falseFn, opts);
+		} catch (e) {
+			// Errors can safely be ignored since this is only a browser support test.
+		}
+		return supportsPassiveOption;
+	});
 
 	// @property canvas: Boolean
 	// `true` when the browser supports [`<canvas>`](https://developer.mozilla.org/docs/Web/API/Canvas_API).
@@ -28820,6 +29256,7 @@
 		mobileOpera: mobileOpera,
 		mobileGecko: mobileGecko,
 		retina: retina,
+		passiveEvents: passiveEvents,
 		canvas: canvas,
 		svg: svg,
 		vml: vml
@@ -29014,8 +29451,8 @@
 		obj[_pre + _touchend + id] = onTouchEnd;
 		obj[_pre + 'dblclick' + id] = handler;
 
-		obj.addEventListener(_touchstart, onTouchStart, false);
-		obj.addEventListener(_touchend, onTouchEnd, false);
+		obj.addEventListener(_touchstart, onTouchStart, passiveEvents ? {passive: false} : false);
+		obj.addEventListener(_touchend, onTouchEnd, passiveEvents ? {passive: false} : false);
 
 		// On some platforms (notably, chrome<55 on win10 + touchscreen + mouse),
 		// the browser doesn't fire touchend/pointerup events but does fire
@@ -29031,8 +29468,8 @@
 		    touchend = obj[_pre + _touchend + id],
 		    dblclick = obj[_pre + 'dblclick' + id];
 
-		obj.removeEventListener(_touchstart, touchstart, false);
-		obj.removeEventListener(_touchend, touchend, false);
+		obj.removeEventListener(_touchstart, touchstart, passiveEvents ? {passive: false} : false);
+		obj.removeEventListener(_touchend, touchend, passiveEvents ? {passive: false} : false);
 		if (!edge) {
 			obj.removeEventListener('dblclick', dblclick, false);
 		}
@@ -29507,7 +29944,7 @@
 		} else if ('addEventListener' in obj) {
 
 			if (type === 'mousewheel') {
-				obj.addEventListener('onwheel' in obj ? 'wheel' : 'mousewheel', handler, false);
+				obj.addEventListener('onwheel' in obj ? 'wheel' : 'mousewheel', handler, passiveEvents ? {passive: false} : false);
 
 			} else if ((type === 'mouseenter') || (type === 'mouseleave')) {
 				handler = function (e) {
@@ -29552,7 +29989,7 @@
 		} else if ('removeEventListener' in obj) {
 
 			if (type === 'mousewheel') {
-				obj.removeEventListener('onwheel' in obj ? 'wheel' : 'mousewheel', handler, false);
+				obj.removeEventListener('onwheel' in obj ? 'wheel' : 'mousewheel', handler, passiveEvents ? {passive: false} : false);
 
 			} else {
 				obj.removeEventListener(
@@ -31442,18 +31879,21 @@
 				}
 			}, this);
 
-			this.on('load moveend', function () {
-				var c = this.getCenter(),
-				    z = this.getZoom();
-				setTransform(this._proxy, this.project(c, z), this.getZoomScale(z, 1));
-			}, this);
+			this.on('load moveend', this._animMoveEnd, this);
 
 			this._on('unload', this._destroyAnimProxy, this);
 		},
 
 		_destroyAnimProxy: function () {
 			remove(this._proxy);
+			this.off('load moveend', this._animMoveEnd, this);
 			delete this._proxy;
+		},
+
+		_animMoveEnd: function () {
+			var c = this.getCenter(),
+			    z = this.getZoom();
+			setTransform(this._proxy, this.project(c, z), this.getZoomScale(z, 1));
 		},
 
 		_catchTransitionEnd: function (e) {
@@ -31505,6 +31945,7 @@
 				addClass(this._mapPane, 'leaflet-zoom-anim');
 			}
 
+			// @section Other Events
 			// @event zoomanim: ZoomAnimEvent
 			// Fired at least once per zoom animation. For continuous zoom, like pinch zooming, fired once per frame during zoom.
 			this.fire('zoomanim', {
@@ -32138,7 +32579,7 @@
 
 
 	// @factory L.control.layers(baselayers?: Object, overlays?: Object, options?: Control.Layers options)
-	// Creates an attribution control with the given layers. Base layers will be switched with radio buttons, while overlays will be switched with checkboxes. Note that all base layers should be passed in the base layers object, but only one should be added to the map during map instantiation.
+	// Creates a layers control with the given layers. Base layers will be switched with radio buttons, while overlays will be switched with checkboxes. Note that all base layers should be passed in the base layers object, but only one should be added to the map during map instantiation.
 	var layers = function (baseLayers, overlays, options) {
 		return new Layers(baseLayers, overlays, options);
 	};
@@ -34484,7 +34925,10 @@
 		},
 
 		_setPos: function (pos) {
-			setPosition(this._icon, pos);
+
+			if (this._icon) {
+				setPosition(this._icon, pos);
+			}
 
 			if (this._shadow) {
 				setPosition(this._shadow, pos);
@@ -34496,7 +34940,9 @@
 		},
 
 		_updateZIndex: function (offset) {
-			this._icon.style.zIndex = this._zIndex + offset;
+			if (this._icon) {
+				this._icon.style.zIndex = this._zIndex + offset;
+			}
 		},
 
 		_animateZoom: function (opt) {
@@ -34681,7 +35127,7 @@
 			setOptions(this, style);
 			if (this._renderer) {
 				this._renderer._updateStyle(this);
-				if (this.options.stroke && style.hasOwnProperty('weight')) {
+				if (this.options.stroke && style && style.hasOwnProperty('weight')) {
 					this._updateBounds();
 				}
 			}
@@ -34751,9 +35197,13 @@
 		// @method setLatLng(latLng: LatLng): this
 		// Sets the position of a circle marker to a new location.
 		setLatLng: function (latlng) {
+			var oldLatLng = this._latlng;
 			this._latlng = toLatLng(latlng);
 			this.redraw();
-			return this.fire('move', {latlng: this._latlng});
+
+			// @event move: Event
+			// Fired when the marker is moved via [`setLatLng`](#circlemarker-setlatlng). Old and new coordinates are included in event arguments as `oldLatLng`, `latlng`.
+			return this.fire('move', {oldLatLng: oldLatLng, latlng: this._latlng});
 		},
 
 		// @method getLatLng(): LatLng
@@ -35500,6 +35950,9 @@
 		 * @option coordsToLatLng: Function = *
 		 * A `Function` that will be used for converting GeoJSON coordinates to `LatLng`s.
 		 * The default is the `coordsToLatLng` static method.
+		 *
+		 * @option markersInheritOptions: Boolean = false
+		 * Whether default Markers for "Point" type Features inherit from group options.
 		 */
 
 		initialize: function (geojson, options) {
@@ -35549,9 +36002,13 @@
 			return this.addLayer(layer);
 		},
 
-		// @method resetStyle( <Path> layer ): this
+		// @method resetStyle( <Path> layer? ): this
 		// Resets the given vector layer's style to the original GeoJSON style, useful for resetting style after hover events.
+		// If `layer` is omitted, the style of all features in the current layer is reset.
 		resetStyle: function (layer) {
+			if (layer === undefined) {
+				return this.eachLayer(this.resetStyle, this);
+			}
 			// reset any custom styles
 			layer.options = extend({}, layer.defaultOptions);
 			this._setLayerStyle(layer, this.options.style);
@@ -35599,12 +36056,12 @@
 		switch (geometry.type) {
 		case 'Point':
 			latlng = _coordsToLatLng(coords);
-			return pointToLayer ? pointToLayer(geojson, latlng) : new Marker(latlng);
+			return _pointToLayer(pointToLayer, geojson, latlng, options);
 
 		case 'MultiPoint':
 			for (i = 0, len = coords.length; i < len; i++) {
 				latlng = _coordsToLatLng(coords[i]);
-				layers.push(pointToLayer ? pointToLayer(geojson, latlng) : new Marker(latlng));
+				layers.push(_pointToLayer(pointToLayer, geojson, latlng, options));
 			}
 			return new FeatureGroup(layers);
 
@@ -35635,6 +36092,12 @@
 		default:
 			throw new Error('Invalid GeoJSON object.');
 		}
+	}
+
+	function _pointToLayer(pointToLayerFn, geojson, latlng, options) {
+		return pointToLayerFn ?
+			pointToLayerFn(geojson, latlng) :
+			new Marker(latlng, options && options.markersInheritOptions && options);
 	}
 
 	// @function coordsToLatLng(coords: Array): LatLng
@@ -35720,6 +36183,7 @@
 	};
 
 	// @namespace Marker
+	// @section Other methods
 	// @method toGeoJSON(precision?: Number): Object
 	// `precision` is the number of decimal places for coordinates.
 	// The default value is 6 places.
@@ -36153,6 +36617,7 @@
 
 			addClass(vid, 'leaflet-image-layer');
 			if (this._zoomAnimated) { addClass(vid, 'leaflet-zoom-animated'); }
+			if (this.options.className) { addClass(vid, this.options.className); }
 
 			vid.onselectstart = falseFn;
 			vid.onmousemove = falseFn;
@@ -36210,9 +36675,12 @@
 	 * @example
 	 *
 	 * ```js
-	 * var element = '<svg width="200" height="200" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"><image xlink:href="https://mdn.mozillademos.org/files/6457/mdn_logo_only_color.png" height="200" width="200"/></svg>',
-	 * 		 elementBounds = [ [ 32, -130 ], [ 13, -100 ] ];
-	 * L.svgOverlay(element, elementBounds).addTo(map);
+	 * var svgElement = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+	 * svgElement.setAttribute('xmlns', "http://www.w3.org/2000/svg");
+	 * svgElement.setAttribute('viewBox', "0 0 200 200");
+	 * svgElement.innerHTML = '<rect width="200" height="200"/><rect x="75" y="23" width="50" height="50" style="fill:red"/><rect x="75" y="123" width="50" height="50" style="fill:#0013ff"/>';
+	 * var svgElementBounds = [ [ 32, -130 ], [ 13, -100 ] ];
+	 * L.svgOverlay(svgElement, svgElementBounds).addTo(map);
 	 * ```
 	 */
 
@@ -36222,6 +36690,7 @@
 
 			addClass(el, 'leaflet-image-layer');
 			if (this._zoomAnimated) { addClass(el, 'leaflet-zoom-animated'); }
+			if (this.options.className) { addClass(el, this.options.className); }
 
 			el.onselectstart = falseFn;
 			el.onmousemove = falseFn;
@@ -38943,7 +39412,7 @@
 		_initContainer: function () {
 			var container = this._container = document.createElement('canvas');
 
-			on(container, 'mousemove', throttle(this._onMouseMove, 32, this), this);
+			on(container, 'mousemove', this._onMouseMove, this);
 			on(container, 'click dblclick mousedown mouseup contextmenu', this._onClick, this);
 			on(container, 'mouseout', this._handleMouseOut, this);
 
@@ -39253,10 +39722,15 @@
 				removeClass(this._container, 'leaflet-interactive');
 				this._fireEvent([layer], e, 'mouseout');
 				this._hoveredLayer = null;
+				this._mouseHoverThrottled = false;
 			}
 		},
 
 		_handleMouseHover: function (e, point) {
+			if (this._mouseHoverThrottled) {
+				return;
+			}
+
 			var layer, candidateHoveredLayer;
 
 			for (var order = this._drawFirst; order; order = order.next) {
@@ -39279,6 +39753,11 @@
 			if (this._hoveredLayer) {
 				this._fireEvent([this._hoveredLayer], e);
 			}
+
+			this._mouseHoverThrottled = true;
+			setTimeout(L.bind(function () {
+				this._mouseHoverThrottled = false;
+			}, this), 32);
 		},
 
 		_fireEvent: function (layers, e, type) {
@@ -40858,8 +41337,8 @@
 	 https://github.com/Leaflet/Leaflet.draw
 	 http://leafletjs.com
 	 */
-	!function(t,e,i){function o(t,e){for(;(t=t.parentElement)&&!t.classList.contains(e););return t}L.drawVersion="1.0.4+838a63b",L.Draw={},L.drawLocal={draw:{toolbar:{actions:{title:"Cancel drawing",text:"Cancel"},finish:{title:"Finish drawing",text:"Finish"},undo:{title:"Delete last point drawn",text:"Delete last point"},buttons:{polyline:"Draw a polyline",polygon:"Draw a polygon",rectangle:"Draw a rectangle",circle:"Draw a circle",marker:"Draw a marker",circlemarker:"Draw a circlemarker"}},handlers:{circle:{tooltip:{start:"Click and drag to draw circle."},radius:"Radius"},circlemarker:{tooltip:{start:"Click map to place circle marker."}},marker:{tooltip:{start:"Click map to place marker."}},polygon:{tooltip:{start:"Click to start drawing shape.",cont:"Click to continue drawing shape.",end:"Click first point to close this shape."}},polyline:{error:"<strong>Error:</strong> shape edges cannot cross!",tooltip:{start:"Click to start drawing line.",cont:"Click to continue drawing line.",end:"Click last point to finish line."}},rectangle:{tooltip:{start:"Click and drag to draw rectangle."}},simpleshape:{tooltip:{end:"Release mouse to finish drawing."}}}},edit:{toolbar:{actions:{save:{title:"Save changes",text:"Save"},cancel:{title:"Cancel editing, discards all changes",text:"Cancel"},clearAll:{title:"Clear all layers",text:"Clear All"}},buttons:{edit:"Edit layers",editDisabled:"No layers to edit",remove:"Delete layers",removeDisabled:"No layers to delete"}},handlers:{edit:{tooltip:{text:"Drag handles or markers to edit features.",subtext:"Click cancel to undo changes."}},remove:{tooltip:{text:"Click on a feature to remove."}}}}},L.Draw.Event={},L.Draw.Event.CREATED="draw:created",L.Draw.Event.EDITED="draw:edited",L.Draw.Event.DELETED="draw:deleted",L.Draw.Event.DRAWSTART="draw:drawstart",L.Draw.Event.DRAWSTOP="draw:drawstop",L.Draw.Event.DRAWVERTEX="draw:drawvertex",L.Draw.Event.EDITSTART="draw:editstart",L.Draw.Event.EDITMOVE="draw:editmove",L.Draw.Event.EDITRESIZE="draw:editresize",L.Draw.Event.EDITVERTEX="draw:editvertex",L.Draw.Event.EDITSTOP="draw:editstop",L.Draw.Event.DELETESTART="draw:deletestart",L.Draw.Event.DELETESTOP="draw:deletestop",L.Draw.Event.TOOLBAROPENED="draw:toolbaropened",L.Draw.Event.TOOLBARCLOSED="draw:toolbarclosed",L.Draw.Event.MARKERCONTEXT="draw:markercontext",L.Draw=L.Draw||{},L.Draw.Feature=L.Handler.extend({initialize:function(t,e){this._map=t,this._container=t._container,this._overlayPane=t._panes.overlayPane,this._popupPane=t._panes.popupPane,e&&e.shapeOptions&&(e.shapeOptions=L.Util.extend({},this.options.shapeOptions,e.shapeOptions)),L.setOptions(this,e);var i=L.version.split(".");1===parseInt(i[0],10)&&parseInt(i[1],10)>=2?L.Draw.Feature.include(L.Evented.prototype):L.Draw.Feature.include(L.Mixin.Events);},enable:function(){this._enabled||(L.Handler.prototype.enable.call(this),this.fire("enabled",{handler:this.type}),this._map.fire(L.Draw.Event.DRAWSTART,{layerType:this.type}));},disable:function(){this._enabled&&(L.Handler.prototype.disable.call(this),this._map.fire(L.Draw.Event.DRAWSTOP,{layerType:this.type}),this.fire("disabled",{handler:this.type}));},addHooks:function(){var t=this._map;t&&(L.DomUtil.disableTextSelection(),t.getContainer().focus(),this._tooltip=new L.Draw.Tooltip(this._map),L.DomEvent.on(this._container,"keyup",this._cancelDrawing,this));},removeHooks:function(){this._map&&(L.DomUtil.enableTextSelection(),this._tooltip.dispose(),this._tooltip=null,L.DomEvent.off(this._container,"keyup",this._cancelDrawing,this));},setOptions:function(t){L.setOptions(this,t);},_fireCreatedEvent:function(t){this._map.fire(L.Draw.Event.CREATED,{layer:t,layerType:this.type});},_cancelDrawing:function(t){27===t.keyCode&&(this._map.fire("draw:canceled",{layerType:this.type}),this.disable());}}),L.Draw.Polyline=L.Draw.Feature.extend({statics:{TYPE:"polyline"},Poly:L.Polyline,options:{allowIntersection:!0,repeatMode:!1,drawError:{color:"#b00b00",timeout:2500},icon:new L.DivIcon({iconSize:new L.Point(8,8),className:"leaflet-div-icon leaflet-editing-icon"}),touchIcon:new L.DivIcon({iconSize:new L.Point(20,20),className:"leaflet-div-icon leaflet-editing-icon leaflet-touch-icon"}),guidelineDistance:20,maxGuideLineLength:4e3,shapeOptions:{stroke:!0,color:"#3388ff",weight:4,opacity:.5,fill:!1,clickable:!0},metric:!0,feet:!0,nautic:!1,showLength:!0,zIndexOffset:2e3,factor:1,maxPoints:0},initialize:function(t,e){L.Browser.touch&&(this.options.icon=this.options.touchIcon),this.options.drawError.message=L.drawLocal.draw.handlers.polyline.error,e&&e.drawError&&(e.drawError=L.Util.extend({},this.options.drawError,e.drawError)),this.type=L.Draw.Polyline.TYPE,L.Draw.Feature.prototype.initialize.call(this,t,e);},addHooks:function(){L.Draw.Feature.prototype.addHooks.call(this),this._map&&(this._markers=[],this._markerGroup=new L.LayerGroup,this._map.addLayer(this._markerGroup),this._poly=new L.Polyline([],this.options.shapeOptions),this._tooltip.updateContent(this._getTooltipText()),this._mouseMarker||(this._mouseMarker=L.marker(this._map.getCenter(),{icon:L.divIcon({className:"leaflet-mouse-marker",iconAnchor:[20,20],iconSize:[40,40]}),opacity:0,zIndexOffset:this.options.zIndexOffset})),this._mouseMarker.on("mouseout",this._onMouseOut,this).on("mousemove",this._onMouseMove,this).on("mousedown",this._onMouseDown,this).on("mouseup",this._onMouseUp,this).addTo(this._map),this._map.on("mouseup",this._onMouseUp,this).on("mousemove",this._onMouseMove,this).on("zoomlevelschange",this._onZoomEnd,this).on("touchstart",this._onTouch,this).on("zoomend",this._onZoomEnd,this));},removeHooks:function(){L.Draw.Feature.prototype.removeHooks.call(this),this._clearHideErrorTimeout(),this._cleanUpShape(),this._map.removeLayer(this._markerGroup),delete this._markerGroup,delete this._markers,this._map.removeLayer(this._poly),delete this._poly,this._mouseMarker.off("mousedown",this._onMouseDown,this).off("mouseout",this._onMouseOut,this).off("mouseup",this._onMouseUp,this).off("mousemove",this._onMouseMove,this),this._map.removeLayer(this._mouseMarker),delete this._mouseMarker,this._clearGuides(),this._map.off("mouseup",this._onMouseUp,this).off("mousemove",this._onMouseMove,this).off("zoomlevelschange",this._onZoomEnd,this).off("zoomend",this._onZoomEnd,this).off("touchstart",this._onTouch,this).off("click",this._onTouch,this);},deleteLastVertex:function(){if(!(this._markers.length<=1)){var t=this._markers.pop(),e=this._poly,i=e.getLatLngs(),o=i.splice(-1,1)[0];this._poly.setLatLngs(i),this._markerGroup.removeLayer(t),e.getLatLngs().length<2&&this._map.removeLayer(e),this._vertexChanged(o,!1);}},addVertex:function(t){if(this._markers.length>=2&&!this.options.allowIntersection&&this._poly.newLatLngIntersects(t))return void this._showErrorTooltip();this._errorShown&&this._hideErrorTooltip(),this._markers.push(this._createMarker(t)),this._poly.addLatLng(t),2===this._poly.getLatLngs().length&&this._map.addLayer(this._poly),this._vertexChanged(t,!0);},completeShape:function(){this._markers.length<=1||!this._shapeIsValid()||(this._fireCreatedEvent(),this.disable(),this.options.repeatMode&&this.enable());},_finishShape:function(){var t=this._poly._defaultShape?this._poly._defaultShape():this._poly.getLatLngs(),e=this._poly.newLatLngIntersects(t[t.length-1]);if(!this.options.allowIntersection&&e||!this._shapeIsValid())return void this._showErrorTooltip();this._fireCreatedEvent(),this.disable(),this.options.repeatMode&&this.enable();},_shapeIsValid:function(){return !0},_onZoomEnd:function(){null!==this._markers&&this._updateGuide();},_onMouseMove:function(t){var e=this._map.mouseEventToLayerPoint(t.originalEvent),i=this._map.layerPointToLatLng(e);this._currentLatLng=i,this._updateTooltip(i),this._updateGuide(e),this._mouseMarker.setLatLng(i),L.DomEvent.preventDefault(t.originalEvent);},_vertexChanged:function(t,e){this._map.fire(L.Draw.Event.DRAWVERTEX,{layers:this._markerGroup}),this._updateFinishHandler(),this._updateRunningMeasure(t,e),this._clearGuides(),this._updateTooltip();},_onMouseDown:function(t){if(!this._clickHandled&&!this._touchHandled&&!this._disableMarkers){this._onMouseMove(t),this._clickHandled=!0,this._disableNewMarkers();var e=t.originalEvent,i=e.clientX,o=e.clientY;this._startPoint.call(this,i,o);}},_startPoint:function(t,e){this._mouseDownOrigin=L.point(t,e);},_onMouseUp:function(t){var e=t.originalEvent,i=e.clientX,o=e.clientY;this._endPoint.call(this,i,o,t),this._clickHandled=null;},_endPoint:function(e,i,o){if(this._mouseDownOrigin){var a=L.point(e,i).distanceTo(this._mouseDownOrigin),n=this._calculateFinishDistance(o.latlng);this.options.maxPoints>1&&this.options.maxPoints==this._markers.length+1?(this.addVertex(o.latlng),this._finishShape()):n<10&&L.Browser.touch?this._finishShape():Math.abs(a)<9*(t.devicePixelRatio||1)&&this.addVertex(o.latlng),this._enableNewMarkers();}this._mouseDownOrigin=null;},_onTouch:function(t){var e,i,o=t.originalEvent;!o.touches||!o.touches[0]||this._clickHandled||this._touchHandled||this._disableMarkers||(e=o.touches[0].clientX,i=o.touches[0].clientY,this._disableNewMarkers(),this._touchHandled=!0,this._startPoint.call(this,e,i),this._endPoint.call(this,e,i,t),this._touchHandled=null),this._clickHandled=null;},_onMouseOut:function(){this._tooltip&&this._tooltip._onMouseOut.call(this._tooltip);},_calculateFinishDistance:function(t){var e;if(this._markers.length>0){var i;if(this.type===L.Draw.Polyline.TYPE)i=this._markers[this._markers.length-1];else{if(this.type!==L.Draw.Polygon.TYPE)return 1/0;i=this._markers[0];}var o=this._map.latLngToContainerPoint(i.getLatLng()),a=new L.Marker(t,{icon:this.options.icon,zIndexOffset:2*this.options.zIndexOffset}),n=this._map.latLngToContainerPoint(a.getLatLng());e=o.distanceTo(n);}else e=1/0;return e},_updateFinishHandler:function(){var t=this._markers.length;t>1&&this._markers[t-1].on("click",this._finishShape,this),t>2&&this._markers[t-2].off("click",this._finishShape,this);},_createMarker:function(t){var e=new L.Marker(t,{icon:this.options.icon,zIndexOffset:2*this.options.zIndexOffset});return this._markerGroup.addLayer(e),e},_updateGuide:function(t){var e=this._markers?this._markers.length:0;e>0&&(t=t||this._map.latLngToLayerPoint(this._currentLatLng),this._clearGuides(),this._drawGuide(this._map.latLngToLayerPoint(this._markers[e-1].getLatLng()),t));},_updateTooltip:function(t){var e=this._getTooltipText();t&&this._tooltip.updatePosition(t),this._errorShown||this._tooltip.updateContent(e);},_drawGuide:function(t,e){var i,o,a,n=Math.floor(Math.sqrt(Math.pow(e.x-t.x,2)+Math.pow(e.y-t.y,2))),s=this.options.guidelineDistance,r=this.options.maxGuideLineLength,l=n>r?n-r:s;for(this._guidesContainer||(this._guidesContainer=L.DomUtil.create("div","leaflet-draw-guides",this._overlayPane));l<n;l+=this.options.guidelineDistance)i=l/n,o={x:Math.floor(t.x*(1-i)+i*e.x),y:Math.floor(t.y*(1-i)+i*e.y)},a=L.DomUtil.create("div","leaflet-draw-guide-dash",this._guidesContainer),a.style.backgroundColor=this._errorShown?this.options.drawError.color:this.options.shapeOptions.color,L.DomUtil.setPosition(a,o);},_updateGuideColor:function(t){if(this._guidesContainer)for(var e=0,i=this._guidesContainer.childNodes.length;e<i;e++)this._guidesContainer.childNodes[e].style.backgroundColor=t;},_clearGuides:function(){if(this._guidesContainer)for(;this._guidesContainer.firstChild;)this._guidesContainer.removeChild(this._guidesContainer.firstChild);},_getTooltipText:function(){var t,e,i=this.options.showLength;return 0===this._markers.length?t={text:L.drawLocal.draw.handlers.polyline.tooltip.start}:(e=i?this._getMeasurementString():"",t=1===this._markers.length?{text:L.drawLocal.draw.handlers.polyline.tooltip.cont,subtext:e}:{text:L.drawLocal.draw.handlers.polyline.tooltip.end,subtext:e}),t},_updateRunningMeasure:function(t,e){var i,o,a=this._markers.length;1===this._markers.length?this._measurementRunningTotal=0:(i=a-(e?2:1),o=L.GeometryUtil.isVersion07x()?t.distanceTo(this._markers[i].getLatLng())*(this.options.factor||1):this._map.distance(t,this._markers[i].getLatLng())*(this.options.factor||1),this._measurementRunningTotal+=o*(e?1:-1));},_getMeasurementString:function(){var t,e=this._currentLatLng,i=this._markers[this._markers.length-1].getLatLng();return t=L.GeometryUtil.isVersion07x()?i&&e&&e.distanceTo?this._measurementRunningTotal+e.distanceTo(i)*(this.options.factor||1):this._measurementRunningTotal||0:i&&e?this._measurementRunningTotal+this._map.distance(e,i)*(this.options.factor||1):this._measurementRunningTotal||0,L.GeometryUtil.readableDistance(t,this.options.metric,this.options.feet,this.options.nautic,this.options.precision)},_showErrorTooltip:function(){this._errorShown=!0,this._tooltip.showAsError().updateContent({text:this.options.drawError.message}),this._updateGuideColor(this.options.drawError.color),this._poly.setStyle({color:this.options.drawError.color}),this._clearHideErrorTimeout(),this._hideErrorTimeout=setTimeout(L.Util.bind(this._hideErrorTooltip,this),this.options.drawError.timeout);},_hideErrorTooltip:function(){this._errorShown=!1,this._clearHideErrorTimeout(),this._tooltip.removeError().updateContent(this._getTooltipText()),this._updateGuideColor(this.options.shapeOptions.color),this._poly.setStyle({color:this.options.shapeOptions.color});},_clearHideErrorTimeout:function(){this._hideErrorTimeout&&(clearTimeout(this._hideErrorTimeout),this._hideErrorTimeout=null);},_disableNewMarkers:function(){this._disableMarkers=!0;},_enableNewMarkers:function(){setTimeout(function(){this._disableMarkers=!1;}.bind(this),50);},_cleanUpShape:function(){this._markers.length>1&&this._markers[this._markers.length-1].off("click",this._finishShape,this);},_fireCreatedEvent:function(){var t=new this.Poly(this._poly.getLatLngs(),this.options.shapeOptions);L.Draw.Feature.prototype._fireCreatedEvent.call(this,t);}}),L.Draw.Polygon=L.Draw.Polyline.extend({statics:{TYPE:"polygon"},Poly:L.Polygon,options:{showArea:!1,showLength:!1,shapeOptions:{stroke:!0,color:"#3388ff",weight:4,opacity:.5,fill:!0,fillColor:null,fillOpacity:.2,clickable:!0},metric:!0,feet:!0,nautic:!1,precision:{}},initialize:function(t,e){L.Draw.Polyline.prototype.initialize.call(this,t,e),this.type=L.Draw.Polygon.TYPE;},_updateFinishHandler:function(){var t=this._markers.length;1===t&&this._markers[0].on("click",this._finishShape,this),t>2&&(this._markers[t-1].on("dblclick",this._finishShape,this),t>3&&this._markers[t-2].off("dblclick",this._finishShape,this));},_getTooltipText:function(){var t,e;return 0===this._markers.length?t=L.drawLocal.draw.handlers.polygon.tooltip.start:this._markers.length<3?(t=L.drawLocal.draw.handlers.polygon.tooltip.cont,e=this._getMeasurementString()):(t=L.drawLocal.draw.handlers.polygon.tooltip.end,e=this._getMeasurementString()),{text:t,subtext:e}},_getMeasurementString:function(){var t=this._area,e="";return t||this.options.showLength?(this.options.showLength&&(e=L.Draw.Polyline.prototype._getMeasurementString.call(this)),t&&(e+="<br>"+L.GeometryUtil.readableArea(t,this.options.metric,this.options.precision)),e):null},_shapeIsValid:function(){return this._markers.length>=3},_vertexChanged:function(t,e){var i;!this.options.allowIntersection&&this.options.showArea&&(i=this._poly.getLatLngs(),this._area=L.GeometryUtil.geodesicArea(i)),L.Draw.Polyline.prototype._vertexChanged.call(this,t,e);},_cleanUpShape:function(){var t=this._markers.length;t>0&&(this._markers[0].off("click",this._finishShape,this),t>2&&this._markers[t-1].off("dblclick",this._finishShape,this));}}),L.SimpleShape={},L.Draw.SimpleShape=L.Draw.Feature.extend({options:{repeatMode:!1},initialize:function(t,e){this._endLabelText=L.drawLocal.draw.handlers.simpleshape.tooltip.end,L.Draw.Feature.prototype.initialize.call(this,t,e);},addHooks:function(){L.Draw.Feature.prototype.addHooks.call(this),this._map&&(this._mapDraggable=this._map.dragging.enabled(),this._mapDraggable&&this._map.dragging.disable(),this._container.style.cursor="crosshair",this._tooltip.updateContent({text:this._initialLabelText}),this._map.on("mousedown",this._onMouseDown,this).on("mousemove",this._onMouseMove,this).on("touchstart",this._onMouseDown,this).on("touchmove",this._onMouseMove,this),e.addEventListener("touchstart",L.DomEvent.preventDefault,{passive:!1}));},removeHooks:function(){L.Draw.Feature.prototype.removeHooks.call(this),this._map&&(this._mapDraggable&&this._map.dragging.enable(),this._container.style.cursor="",this._map.off("mousedown",this._onMouseDown,this).off("mousemove",this._onMouseMove,this).off("touchstart",this._onMouseDown,this).off("touchmove",this._onMouseMove,this),L.DomEvent.off(e,"mouseup",this._onMouseUp,this),L.DomEvent.off(e,"touchend",this._onMouseUp,this),e.removeEventListener("touchstart",L.DomEvent.preventDefault),this._shape&&(this._map.removeLayer(this._shape),delete this._shape)),this._isDrawing=!1;},_getTooltipText:function(){return {text:this._endLabelText}},_onMouseDown:function(t){this._isDrawing=!0,this._startLatLng=t.latlng,L.DomEvent.on(e,"mouseup",this._onMouseUp,this).on(e,"touchend",this._onMouseUp,this).preventDefault(t.originalEvent);},_onMouseMove:function(t){var e=t.latlng;this._tooltip.updatePosition(e),this._isDrawing&&(this._tooltip.updateContent(this._getTooltipText()),this._drawShape(e));},_onMouseUp:function(){this._shape&&this._fireCreatedEvent(),this.disable(),this.options.repeatMode&&this.enable();}}),L.Draw.Rectangle=L.Draw.SimpleShape.extend({statics:{TYPE:"rectangle"},options:{shapeOptions:{stroke:!0,color:"#3388ff",weight:4,opacity:.5,fill:!0,fillColor:null,fillOpacity:.2,clickable:!0},showArea:!0,metric:!0},initialize:function(t,e){this.type=L.Draw.Rectangle.TYPE,this._initialLabelText=L.drawLocal.draw.handlers.rectangle.tooltip.start,L.Draw.SimpleShape.prototype.initialize.call(this,t,e);},disable:function(){this._enabled&&(this._isCurrentlyTwoClickDrawing=!1,L.Draw.SimpleShape.prototype.disable.call(this));},_onMouseUp:function(t){if(!this._shape&&!this._isCurrentlyTwoClickDrawing)return void(this._isCurrentlyTwoClickDrawing=!0);this._isCurrentlyTwoClickDrawing&&!o(t.target,"leaflet-pane")||L.Draw.SimpleShape.prototype._onMouseUp.call(this);},_drawShape:function(t){this._shape?this._shape.setBounds(new L.LatLngBounds(this._startLatLng,t)):(this._shape=new L.Rectangle(new L.LatLngBounds(this._startLatLng,t),this.options.shapeOptions),this._map.addLayer(this._shape));},_fireCreatedEvent:function(){var t=new L.Rectangle(this._shape.getBounds(),this.options.shapeOptions);L.Draw.SimpleShape.prototype._fireCreatedEvent.call(this,t);},_getTooltipText:function(){var t,e,i,o=L.Draw.SimpleShape.prototype._getTooltipText.call(this),a=this._shape,n=this.options.showArea;return a&&(t=this._shape._defaultShape?this._shape._defaultShape():this._shape.getLatLngs(),e=L.GeometryUtil.geodesicArea(t),i=n?L.GeometryUtil.readableArea(e,this.options.metric):""),{text:o.text,subtext:i}}}),L.Draw.Marker=L.Draw.Feature.extend({statics:{TYPE:"marker"},options:{icon:new L.Icon.Default,repeatMode:!1,zIndexOffset:2e3},initialize:function(t,e){this.type=L.Draw.Marker.TYPE,this._initialLabelText=L.drawLocal.draw.handlers.marker.tooltip.start,L.Draw.Feature.prototype.initialize.call(this,t,e);},addHooks:function(){L.Draw.Feature.prototype.addHooks.call(this),this._map&&(this._tooltip.updateContent({text:this._initialLabelText}),this._mouseMarker||(this._mouseMarker=L.marker(this._map.getCenter(),{icon:L.divIcon({className:"leaflet-mouse-marker",iconAnchor:[20,20],iconSize:[40,40]}),opacity:0,zIndexOffset:this.options.zIndexOffset})),this._mouseMarker.on("click",this._onClick,this).addTo(this._map),this._map.on("mousemove",this._onMouseMove,this),this._map.on("click",this._onTouch,this));},removeHooks:function(){L.Draw.Feature.prototype.removeHooks.call(this),this._map&&(this._map.off("click",this._onClick,this).off("click",this._onTouch,this),this._marker&&(this._marker.off("click",this._onClick,this),this._map.removeLayer(this._marker),delete this._marker),this._mouseMarker.off("click",this._onClick,this),this._map.removeLayer(this._mouseMarker),delete this._mouseMarker,this._map.off("mousemove",this._onMouseMove,this));},_onMouseMove:function(t){var e=t.latlng;this._tooltip.updatePosition(e),this._mouseMarker.setLatLng(e),this._marker?(e=this._mouseMarker.getLatLng(),this._marker.setLatLng(e)):(this._marker=this._createMarker(e),this._marker.on("click",this._onClick,this),this._map.on("click",this._onClick,this).addLayer(this._marker));},_createMarker:function(t){return new L.Marker(t,{icon:this.options.icon,zIndexOffset:this.options.zIndexOffset})},_onClick:function(){this._fireCreatedEvent(),this.disable(),this.options.repeatMode&&this.enable();},_onTouch:function(t){this._onMouseMove(t),this._onClick();},_fireCreatedEvent:function(){var t=new L.Marker.Touch(this._marker.getLatLng(),{icon:this.options.icon});L.Draw.Feature.prototype._fireCreatedEvent.call(this,t);}}),L.Draw.CircleMarker=L.Draw.Marker.extend({statics:{TYPE:"circlemarker"},options:{stroke:!0,color:"#3388ff",weight:4,opacity:.5,fill:!0,fillColor:null,fillOpacity:.2,clickable:!0,zIndexOffset:2e3},initialize:function(t,e){this.type=L.Draw.CircleMarker.TYPE,this._initialLabelText=L.drawLocal.draw.handlers.circlemarker.tooltip.start,L.Draw.Feature.prototype.initialize.call(this,t,e);},_fireCreatedEvent:function(){var t=new L.CircleMarker(this._marker.getLatLng(),this.options);L.Draw.Feature.prototype._fireCreatedEvent.call(this,t);},_createMarker:function(t){return new L.CircleMarker(t,this.options)}}),L.Draw.Circle=L.Draw.SimpleShape.extend({statics:{TYPE:"circle"},options:{shapeOptions:{stroke:!0,color:"#3388ff",weight:4,opacity:.5,fill:!0,fillColor:null,fillOpacity:.2,clickable:!0},showRadius:!0,metric:!0,feet:!0,nautic:!1},initialize:function(t,e){this.type=L.Draw.Circle.TYPE,this._initialLabelText=L.drawLocal.draw.handlers.circle.tooltip.start,L.Draw.SimpleShape.prototype.initialize.call(this,t,e);},_drawShape:function(t){if(L.GeometryUtil.isVersion07x())var e=this._startLatLng.distanceTo(t);else var e=this._map.distance(this._startLatLng,t);this._shape?this._shape.setRadius(e):(this._shape=new L.Circle(this._startLatLng,e,this.options.shapeOptions),this._map.addLayer(this._shape));},_fireCreatedEvent:function(){var t=new L.Circle(this._startLatLng,this._shape.getRadius(),this.options.shapeOptions);L.Draw.SimpleShape.prototype._fireCreatedEvent.call(this,t);},_onMouseMove:function(t){var e,i=t.latlng,o=this.options.showRadius,a=this.options.metric;if(this._tooltip.updatePosition(i),this._isDrawing){this._drawShape(i),e=this._shape.getRadius().toFixed(1);var n="";o&&(n=L.drawLocal.draw.handlers.circle.radius+": "+L.GeometryUtil.readableDistance(e,a,this.options.feet,this.options.nautic)),this._tooltip.updateContent({text:this._endLabelText,subtext:n});}}}),L.Edit=L.Edit||{},L.Edit.Marker=L.Handler.extend({initialize:function(t,e){this._marker=t,L.setOptions(this,e);},addHooks:function(){var t=this._marker;t.dragging.enable(),t.on("dragend",this._onDragEnd,t),this._toggleMarkerHighlight();},removeHooks:function(){var t=this._marker;t.dragging.disable(),t.off("dragend",this._onDragEnd,t),this._toggleMarkerHighlight();},_onDragEnd:function(t){var e=t.target;e.edited=!0,this._map.fire(L.Draw.Event.EDITMOVE,{layer:e});},_toggleMarkerHighlight:function(){var t=this._marker._icon;t&&(t.style.display="none",L.DomUtil.hasClass(t,"leaflet-edit-marker-selected")?(L.DomUtil.removeClass(t,"leaflet-edit-marker-selected"),this._offsetMarker(t,-4)):(L.DomUtil.addClass(t,"leaflet-edit-marker-selected"),this._offsetMarker(t,4)),t.style.display="");},_offsetMarker:function(t,e){var i=parseInt(t.style.marginTop,10)-e,o=parseInt(t.style.marginLeft,10)-e;t.style.marginTop=i+"px",t.style.marginLeft=o+"px";}}),L.Marker.addInitHook(function(){L.Edit.Marker&&(this.editing=new L.Edit.Marker(this),this.options.editable&&this.editing.enable());}),L.Edit=L.Edit||{},L.Edit.Poly=L.Handler.extend({initialize:function(t){this.latlngs=[t._latlngs],t._holes&&(this.latlngs=this.latlngs.concat(t._holes)),this._poly=t,this._poly.on("revert-edited",this._updateLatLngs,this);},_defaultShape:function(){return L.Polyline._flat?L.Polyline._flat(this._poly._latlngs)?this._poly._latlngs:this._poly._latlngs[0]:this._poly._latlngs},_eachVertexHandler:function(t){for(var e=0;e<this._verticesHandlers.length;e++)t(this._verticesHandlers[e]);},addHooks:function(){this._initHandlers(),this._eachVertexHandler(function(t){t.addHooks();});},removeHooks:function(){this._eachVertexHandler(function(t){t.removeHooks();});},updateMarkers:function(){this._eachVertexHandler(function(t){t.updateMarkers();});},_initHandlers:function(){this._verticesHandlers=[];for(var t=0;t<this.latlngs.length;t++)this._verticesHandlers.push(new L.Edit.PolyVerticesEdit(this._poly,this.latlngs[t],this._poly.options.poly));},_updateLatLngs:function(t){this.latlngs=[t.layer._latlngs],t.layer._holes&&(this.latlngs=this.latlngs.concat(t.layer._holes));}}),L.Edit.PolyVerticesEdit=L.Handler.extend({options:{icon:new L.DivIcon({iconSize:new L.Point(8,8),className:"leaflet-div-icon leaflet-editing-icon"}),touchIcon:new L.DivIcon({iconSize:new L.Point(20,20),className:"leaflet-div-icon leaflet-editing-icon leaflet-touch-icon"}),drawError:{color:"#b00b00",timeout:1e3}},initialize:function(t,e,i){L.Browser.touch&&(this.options.icon=this.options.touchIcon),this._poly=t,i&&i.drawError&&(i.drawError=L.Util.extend({},this.options.drawError,i.drawError)),this._latlngs=e,L.setOptions(this,i);},_defaultShape:function(){return L.Polyline._flat?L.Polyline._flat(this._latlngs)?this._latlngs:this._latlngs[0]:this._latlngs},addHooks:function(){var t=this._poly,e=t._path;t instanceof L.Polygon||(t.options.fill=!1,t.options.editing&&(t.options.editing.fill=!1)),e&&t.options.editing&&t.options.editing.className&&(t.options.original.className&&t.options.original.className.split(" ").forEach(function(t){L.DomUtil.removeClass(e,t);}),t.options.editing.className.split(" ").forEach(function(t){L.DomUtil.addClass(e,t);})),t.setStyle(t.options.editing),this._poly._map&&(this._map=this._poly._map,this._markerGroup||this._initMarkers(),this._poly._map.addLayer(this._markerGroup));},removeHooks:function(){var t=this._poly,e=t._path;e&&t.options.editing&&t.options.editing.className&&(t.options.editing.className.split(" ").forEach(function(t){L.DomUtil.removeClass(e,t);}),t.options.original.className&&t.options.original.className.split(" ").forEach(function(t){L.DomUtil.addClass(e,t);})),t.setStyle(t.options.original),t._map&&(t._map.removeLayer(this._markerGroup),delete this._markerGroup,delete this._markers);},updateMarkers:function(){this._markerGroup.clearLayers(),this._initMarkers();},_initMarkers:function(){this._markerGroup||(this._markerGroup=new L.LayerGroup),this._markers=[];var t,e,i,o,a=this._defaultShape();for(t=0,i=a.length;t<i;t++)o=this._createMarker(a[t],t),o.on("click",this._onMarkerClick,this),o.on("contextmenu",this._onContextMenu,this),this._markers.push(o);var n,s;for(t=0,e=i-1;t<i;e=t++)(0!==t||L.Polygon&&this._poly instanceof L.Polygon)&&(n=this._markers[e],s=this._markers[t],this._createMiddleMarker(n,s),this._updatePrevNext(n,s));},_createMarker:function(t,e){var i=new L.Marker.Touch(t,{draggable:!0,icon:this.options.icon});return i._origLatLng=t,i._index=e,i.on("dragstart",this._onMarkerDragStart,this).on("drag",this._onMarkerDrag,this).on("dragend",this._fireEdit,this).on("touchmove",this._onTouchMove,this).on("touchend",this._fireEdit,this).on("MSPointerMove",this._onTouchMove,this).on("MSPointerUp",this._fireEdit,this),this._markerGroup.addLayer(i),i},_onMarkerDragStart:function(){this._poly.fire("editstart");},_spliceLatLngs:function(){var t=this._defaultShape(),e=[].splice.apply(t,arguments);return this._poly._convertLatLngs(t,!0),this._poly.redraw(),e},_removeMarker:function(t){var e=t._index;this._markerGroup.removeLayer(t),this._markers.splice(e,1),this._spliceLatLngs(e,1),this._updateIndexes(e,-1),t.off("dragstart",this._onMarkerDragStart,this).off("drag",this._onMarkerDrag,this).off("dragend",this._fireEdit,this).off("touchmove",this._onMarkerDrag,this).off("touchend",this._fireEdit,this).off("click",this._onMarkerClick,this).off("MSPointerMove",this._onTouchMove,this).off("MSPointerUp",this._fireEdit,this);},_fireEdit:function(){this._poly.edited=!0,this._poly.fire("edit"),this._poly._map.fire(L.Draw.Event.EDITVERTEX,{layers:this._markerGroup,poly:this._poly});},_onMarkerDrag:function(t){var e=t.target,i=this._poly,o=L.LatLngUtil.cloneLatLng(e._origLatLng);if(L.extend(e._origLatLng,e._latlng),i.options.poly){var a=i._map._editTooltip;if(!i.options.poly.allowIntersection&&i.intersects()){L.extend(e._origLatLng,o),e.setLatLng(o);var n=i.options.color;i.setStyle({color:this.options.drawError.color}),a&&a.updateContent({text:L.drawLocal.draw.handlers.polyline.error}),setTimeout(function(){i.setStyle({color:n}),a&&a.updateContent({text:L.drawLocal.edit.handlers.edit.tooltip.text,subtext:L.drawLocal.edit.handlers.edit.tooltip.subtext});},1e3);}}e._middleLeft&&e._middleLeft.setLatLng(this._getMiddleLatLng(e._prev,e)),e._middleRight&&e._middleRight.setLatLng(this._getMiddleLatLng(e,e._next)),this._poly._bounds._southWest=L.latLng(1/0,1/0),this._poly._bounds._northEast=L.latLng(-1/0,-1/0);var s=this._poly.getLatLngs();this._poly._convertLatLngs(s,!0),this._poly.redraw(),this._poly.fire("editdrag");},_onMarkerClick:function(t){var e=L.Polygon&&this._poly instanceof L.Polygon?4:3,i=t.target;this._defaultShape().length<e||(this._removeMarker(i),this._updatePrevNext(i._prev,i._next),i._middleLeft&&this._markerGroup.removeLayer(i._middleLeft),i._middleRight&&this._markerGroup.removeLayer(i._middleRight),i._prev&&i._next?this._createMiddleMarker(i._prev,i._next):i._prev?i._next||(i._prev._middleRight=null):i._next._middleLeft=null,this._fireEdit());},_onContextMenu:function(t){var e=t.target;this._poly;this._poly._map.fire(L.Draw.Event.MARKERCONTEXT,{marker:e,layers:this._markerGroup,poly:this._poly}),L.DomEvent.stopPropagation;},_onTouchMove:function(t){var e=this._map.mouseEventToLayerPoint(t.originalEvent.touches[0]),i=this._map.layerPointToLatLng(e),o=t.target;L.extend(o._origLatLng,i),o._middleLeft&&o._middleLeft.setLatLng(this._getMiddleLatLng(o._prev,o)),o._middleRight&&o._middleRight.setLatLng(this._getMiddleLatLng(o,o._next)),this._poly.redraw(),this.updateMarkers();},_updateIndexes:function(t,e){this._markerGroup.eachLayer(function(i){i._index>t&&(i._index+=e);});},_createMiddleMarker:function(t,e){var i,o,a,n=this._getMiddleLatLng(t,e),s=this._createMarker(n);s.setOpacity(.6),t._middleRight=e._middleLeft=s,o=function(){s.off("touchmove",o,this);var a=e._index;s._index=a,s.off("click",i,this).on("click",this._onMarkerClick,this),n.lat=s.getLatLng().lat,n.lng=s.getLatLng().lng,this._spliceLatLngs(a,0,n),this._markers.splice(a,0,s),s.setOpacity(1),this._updateIndexes(a,1),e._index++,this._updatePrevNext(t,s),this._updatePrevNext(s,e),this._poly.fire("editstart");},a=function(){s.off("dragstart",o,this),s.off("dragend",a,this),s.off("touchmove",o,this),this._createMiddleMarker(t,s),this._createMiddleMarker(s,e);},i=function(){o.call(this),a.call(this),this._fireEdit();},s.on("click",i,this).on("dragstart",o,this).on("dragend",a,this).on("touchmove",o,this),this._markerGroup.addLayer(s);},_updatePrevNext:function(t,e){t&&(t._next=e),e&&(e._prev=t);},_getMiddleLatLng:function(t,e){var i=this._poly._map,o=i.project(t.getLatLng()),a=i.project(e.getLatLng());return i.unproject(o._add(a)._divideBy(2))}}),L.Polyline.addInitHook(function(){this.editing||(L.Edit.Poly&&(this.editing=new L.Edit.Poly(this),this.options.editable&&this.editing.enable()),this.on("add",function(){this.editing&&this.editing.enabled()&&this.editing.addHooks();}),this.on("remove",function(){this.editing&&this.editing.enabled()&&this.editing.removeHooks();}));}),L.Edit=L.Edit||{},L.Edit.SimpleShape=L.Handler.extend({options:{moveIcon:new L.DivIcon({iconSize:new L.Point(8,8),className:"leaflet-div-icon leaflet-editing-icon leaflet-edit-move"}),resizeIcon:new L.DivIcon({iconSize:new L.Point(8,8),
-	className:"leaflet-div-icon leaflet-editing-icon leaflet-edit-resize"}),touchMoveIcon:new L.DivIcon({iconSize:new L.Point(20,20),className:"leaflet-div-icon leaflet-editing-icon leaflet-edit-move leaflet-touch-icon"}),touchResizeIcon:new L.DivIcon({iconSize:new L.Point(20,20),className:"leaflet-div-icon leaflet-editing-icon leaflet-edit-resize leaflet-touch-icon"})},initialize:function(t,e){L.Browser.touch&&(this.options.moveIcon=this.options.touchMoveIcon,this.options.resizeIcon=this.options.touchResizeIcon),this._shape=t,L.Util.setOptions(this,e);},addHooks:function(){var t=this._shape;this._shape._map&&(this._map=this._shape._map,t.setStyle(t.options.editing),t._map&&(this._map=t._map,this._markerGroup||this._initMarkers(),this._map.addLayer(this._markerGroup)));},removeHooks:function(){var t=this._shape;if(t.setStyle(t.options.original),t._map){this._unbindMarker(this._moveMarker);for(var e=0,i=this._resizeMarkers.length;e<i;e++)this._unbindMarker(this._resizeMarkers[e]);this._resizeMarkers=null,this._map.removeLayer(this._markerGroup),delete this._markerGroup;}this._map=null;},updateMarkers:function(){this._markerGroup.clearLayers(),this._initMarkers();},_initMarkers:function(){this._markerGroup||(this._markerGroup=new L.LayerGroup),this._createMoveMarker(),this._createResizeMarker();},_createMoveMarker:function(){},_createResizeMarker:function(){},_createMarker:function(t,e){var i=new L.Marker.Touch(t,{draggable:!0,icon:e,zIndexOffset:10});return this._bindMarker(i),this._markerGroup.addLayer(i),i},_bindMarker:function(t){t.on("dragstart",this._onMarkerDragStart,this).on("drag",this._onMarkerDrag,this).on("dragend",this._onMarkerDragEnd,this).on("touchstart",this._onTouchStart,this).on("touchmove",this._onTouchMove,this).on("MSPointerMove",this._onTouchMove,this).on("touchend",this._onTouchEnd,this).on("MSPointerUp",this._onTouchEnd,this);},_unbindMarker:function(t){t.off("dragstart",this._onMarkerDragStart,this).off("drag",this._onMarkerDrag,this).off("dragend",this._onMarkerDragEnd,this).off("touchstart",this._onTouchStart,this).off("touchmove",this._onTouchMove,this).off("MSPointerMove",this._onTouchMove,this).off("touchend",this._onTouchEnd,this).off("MSPointerUp",this._onTouchEnd,this);},_onMarkerDragStart:function(t){t.target.setOpacity(0),this._shape.fire("editstart");},_fireEdit:function(){this._shape.edited=!0,this._shape.fire("edit");},_onMarkerDrag:function(t){var e=t.target,i=e.getLatLng();e===this._moveMarker?this._move(i):this._resize(i),this._shape.redraw(),this._shape.fire("editdrag");},_onMarkerDragEnd:function(t){t.target.setOpacity(1),this._fireEdit();},_onTouchStart:function(t){if(L.Edit.SimpleShape.prototype._onMarkerDragStart.call(this,t),"function"==typeof this._getCorners){var e=this._getCorners(),i=t.target,o=i._cornerIndex;i.setOpacity(0),this._oppositeCorner=e[(o+2)%4],this._toggleCornerMarkers(0,o);}this._shape.fire("editstart");},_onTouchMove:function(t){var e=this._map.mouseEventToLayerPoint(t.originalEvent.touches[0]),i=this._map.layerPointToLatLng(e);return t.target===this._moveMarker?this._move(i):this._resize(i),this._shape.redraw(),!1},_onTouchEnd:function(t){t.target.setOpacity(1),this.updateMarkers(),this._fireEdit();},_move:function(){},_resize:function(){}}),L.Edit=L.Edit||{},L.Edit.Rectangle=L.Edit.SimpleShape.extend({_createMoveMarker:function(){var t=this._shape.getBounds(),e=t.getCenter();this._moveMarker=this._createMarker(e,this.options.moveIcon);},_createResizeMarker:function(){var t=this._getCorners();this._resizeMarkers=[];for(var e=0,i=t.length;e<i;e++)this._resizeMarkers.push(this._createMarker(t[e],this.options.resizeIcon)),this._resizeMarkers[e]._cornerIndex=e;},_onMarkerDragStart:function(t){L.Edit.SimpleShape.prototype._onMarkerDragStart.call(this,t);var e=this._getCorners(),i=t.target,o=i._cornerIndex;this._oppositeCorner=e[(o+2)%4],this._toggleCornerMarkers(0,o);},_onMarkerDragEnd:function(t){var e,i,o=t.target;o===this._moveMarker&&(e=this._shape.getBounds(),i=e.getCenter(),o.setLatLng(i)),this._toggleCornerMarkers(1),this._repositionCornerMarkers(),L.Edit.SimpleShape.prototype._onMarkerDragEnd.call(this,t);},_move:function(t){for(var e,i=this._shape._defaultShape?this._shape._defaultShape():this._shape.getLatLngs(),o=this._shape.getBounds(),a=o.getCenter(),n=[],s=0,r=i.length;s<r;s++)e=[i[s].lat-a.lat,i[s].lng-a.lng],n.push([t.lat+e[0],t.lng+e[1]]);this._shape.setLatLngs(n),this._repositionCornerMarkers(),this._map.fire(L.Draw.Event.EDITMOVE,{layer:this._shape});},_resize:function(t){var e;this._shape.setBounds(L.latLngBounds(t,this._oppositeCorner)),e=this._shape.getBounds(),this._moveMarker.setLatLng(e.getCenter()),this._map.fire(L.Draw.Event.EDITRESIZE,{layer:this._shape});},_getCorners:function(){var t=this._shape.getBounds();return [t.getNorthWest(),t.getNorthEast(),t.getSouthEast(),t.getSouthWest()]},_toggleCornerMarkers:function(t){for(var e=0,i=this._resizeMarkers.length;e<i;e++)this._resizeMarkers[e].setOpacity(t);},_repositionCornerMarkers:function(){for(var t=this._getCorners(),e=0,i=this._resizeMarkers.length;e<i;e++)this._resizeMarkers[e].setLatLng(t[e]);}}),L.Rectangle.addInitHook(function(){L.Edit.Rectangle&&(this.editing=new L.Edit.Rectangle(this),this.options.editable&&this.editing.enable());}),L.Edit=L.Edit||{},L.Edit.CircleMarker=L.Edit.SimpleShape.extend({_createMoveMarker:function(){var t=this._shape.getLatLng();this._moveMarker=this._createMarker(t,this.options.moveIcon);},_createResizeMarker:function(){this._resizeMarkers=[];},_move:function(t){if(this._resizeMarkers.length){var e=this._getResizeMarkerPoint(t);this._resizeMarkers[0].setLatLng(e);}this._shape.setLatLng(t),this._map.fire(L.Draw.Event.EDITMOVE,{layer:this._shape});}}),L.CircleMarker.addInitHook(function(){L.Edit.CircleMarker&&(this.editing=new L.Edit.CircleMarker(this),this.options.editable&&this.editing.enable()),this.on("add",function(){this.editing&&this.editing.enabled()&&this.editing.addHooks();}),this.on("remove",function(){this.editing&&this.editing.enabled()&&this.editing.removeHooks();});}),L.Edit=L.Edit||{},L.Edit.Circle=L.Edit.CircleMarker.extend({_createResizeMarker:function(){var t=this._shape.getLatLng(),e=this._getResizeMarkerPoint(t);this._resizeMarkers=[],this._resizeMarkers.push(this._createMarker(e,this.options.resizeIcon));},_getResizeMarkerPoint:function(t){var e=this._shape._radius*Math.cos(Math.PI/4),i=this._map.project(t);return this._map.unproject([i.x+e,i.y-e])},_resize:function(t){var e=this._moveMarker.getLatLng();L.GeometryUtil.isVersion07x()?radius=e.distanceTo(t):radius=this._map.distance(e,t),this._shape.setRadius(radius),this._map.editTooltip&&this._map._editTooltip.updateContent({text:L.drawLocal.edit.handlers.edit.tooltip.subtext+"<br />"+L.drawLocal.edit.handlers.edit.tooltip.text,subtext:L.drawLocal.draw.handlers.circle.radius+": "+L.GeometryUtil.readableDistance(radius,!0,this.options.feet,this.options.nautic)}),this._shape.setRadius(radius),this._map.fire(L.Draw.Event.EDITRESIZE,{layer:this._shape});}}),L.Circle.addInitHook(function(){L.Edit.Circle&&(this.editing=new L.Edit.Circle(this),this.options.editable&&this.editing.enable());}),L.Map.mergeOptions({touchExtend:!0}),L.Map.TouchExtend=L.Handler.extend({initialize:function(t){this._map=t,this._container=t._container,this._pane=t._panes.overlayPane;},addHooks:function(){L.DomEvent.on(this._container,"touchstart",this._onTouchStart,this),L.DomEvent.on(this._container,"touchend",this._onTouchEnd,this),L.DomEvent.on(this._container,"touchmove",this._onTouchMove,this),this._detectIE()?(L.DomEvent.on(this._container,"MSPointerDown",this._onTouchStart,this),L.DomEvent.on(this._container,"MSPointerUp",this._onTouchEnd,this),L.DomEvent.on(this._container,"MSPointerMove",this._onTouchMove,this),L.DomEvent.on(this._container,"MSPointerCancel",this._onTouchCancel,this)):(L.DomEvent.on(this._container,"touchcancel",this._onTouchCancel,this),L.DomEvent.on(this._container,"touchleave",this._onTouchLeave,this));},removeHooks:function(){L.DomEvent.off(this._container,"touchstart",this._onTouchStart,this),L.DomEvent.off(this._container,"touchend",this._onTouchEnd,this),L.DomEvent.off(this._container,"touchmove",this._onTouchMove,this),this._detectIE()?(L.DomEvent.off(this._container,"MSPointerDown",this._onTouchStart,this),L.DomEvent.off(this._container,"MSPointerUp",this._onTouchEnd,this),L.DomEvent.off(this._container,"MSPointerMove",this._onTouchMove,this),L.DomEvent.off(this._container,"MSPointerCancel",this._onTouchCancel,this)):(L.DomEvent.off(this._container,"touchcancel",this._onTouchCancel,this),L.DomEvent.off(this._container,"touchleave",this._onTouchLeave,this));},_touchEvent:function(t,e){var i={};if(void 0!==t.touches){if(!t.touches.length)return;i=t.touches[0];}else{if("touch"!==t.pointerType)return;if(i=t,!this._filterClick(t))return}var o=this._map.mouseEventToContainerPoint(i),a=this._map.mouseEventToLayerPoint(i),n=this._map.layerPointToLatLng(a);this._map.fire(e,{latlng:n,layerPoint:a,containerPoint:o,pageX:i.pageX,pageY:i.pageY,originalEvent:t});},_filterClick:function(t){var e=t.timeStamp||t.originalEvent.timeStamp,i=L.DomEvent._lastClick&&e-L.DomEvent._lastClick;return i&&i>100&&i<500||t.target._simulatedClick&&!t._simulated?(L.DomEvent.stop(t),!1):(L.DomEvent._lastClick=e,!0)},_onTouchStart:function(t){if(this._map._loaded){this._touchEvent(t,"touchstart");}},_onTouchEnd:function(t){if(this._map._loaded){this._touchEvent(t,"touchend");}},_onTouchCancel:function(t){if(this._map._loaded){var e="touchcancel";this._detectIE()&&(e="pointercancel"),this._touchEvent(t,e);}},_onTouchLeave:function(t){if(this._map._loaded){this._touchEvent(t,"touchleave");}},_onTouchMove:function(t){if(this._map._loaded){this._touchEvent(t,"touchmove");}},_detectIE:function(){var e=t.navigator.userAgent,i=e.indexOf("MSIE ");if(i>0)return parseInt(e.substring(i+5,e.indexOf(".",i)),10);if(e.indexOf("Trident/")>0){var o=e.indexOf("rv:");return parseInt(e.substring(o+3,e.indexOf(".",o)),10)}var a=e.indexOf("Edge/");return a>0&&parseInt(e.substring(a+5,e.indexOf(".",a)),10)}}),L.Map.addInitHook("addHandler","touchExtend",L.Map.TouchExtend),L.Marker.Touch=L.Marker.extend({_initInteraction:function(){return this.addInteractiveTarget?L.Marker.prototype._initInteraction.apply(this):this._initInteractionLegacy()},_initInteractionLegacy:function(){if(this.options.clickable){var t=this._icon,e=["dblclick","mousedown","mouseover","mouseout","contextmenu","touchstart","touchend","touchmove"];this._detectIE?e.concat(["MSPointerDown","MSPointerUp","MSPointerMove","MSPointerCancel"]):e.concat(["touchcancel"]),L.DomUtil.addClass(t,"leaflet-clickable"),L.DomEvent.on(t,"click",this._onMouseClick,this),L.DomEvent.on(t,"keypress",this._onKeyPress,this);for(var i=0;i<e.length;i++)L.DomEvent.on(t,e[i],this._fireMouseEvent,this);L.Handler.MarkerDrag&&(this.dragging=new L.Handler.MarkerDrag(this),this.options.draggable&&this.dragging.enable());}},_detectIE:function(){var e=t.navigator.userAgent,i=e.indexOf("MSIE ");if(i>0)return parseInt(e.substring(i+5,e.indexOf(".",i)),10);if(e.indexOf("Trident/")>0){var o=e.indexOf("rv:");return parseInt(e.substring(o+3,e.indexOf(".",o)),10)}var a=e.indexOf("Edge/");return a>0&&parseInt(e.substring(a+5,e.indexOf(".",a)),10)}}),L.LatLngUtil={cloneLatLngs:function(t){for(var e=[],i=0,o=t.length;i<o;i++)Array.isArray(t[i])?e.push(L.LatLngUtil.cloneLatLngs(t[i])):e.push(this.cloneLatLng(t[i]));return e},cloneLatLng:function(t){return L.latLng(t.lat,t.lng)}},function(){var t={km:2,ha:2,m:0,mi:2,ac:2,yd:0,ft:0,nm:2};L.GeometryUtil=L.extend(L.GeometryUtil||{},{geodesicArea:function(t){var e,i,o=t.length,a=0,n=Math.PI/180;if(o>2){for(var s=0;s<o;s++)e=t[s],i=t[(s+1)%o],a+=(i.lng-e.lng)*n*(2+Math.sin(e.lat*n)+Math.sin(i.lat*n));a=6378137*a*6378137/2;}return Math.abs(a)},formattedNumber:function(t,e){var i=parseFloat(t).toFixed(e),o=L.drawLocal.format&&L.drawLocal.format.numeric,a=o&&o.delimiters,n=a&&a.thousands,s=a&&a.decimal;if(n||s){var r=i.split(".");i=n?r[0].replace(/(\d)(?=(\d{3})+(?!\d))/g,"$1"+n):r[0],s=s||".",r.length>1&&(i=i+s+r[1]);}return i},readableArea:function(e,i,o){var a,n,s,o=L.Util.extend({},t,o);return i?(n=["ha","m"],s=typeof i,"string"===s?n=[i]:"boolean"!==s&&(n=i),a=e>=1e6&&-1!==n.indexOf("km")?L.GeometryUtil.formattedNumber(1e-6*e,o.km)+" km²":e>=1e4&&-1!==n.indexOf("ha")?L.GeometryUtil.formattedNumber(1e-4*e,o.ha)+" ha":L.GeometryUtil.formattedNumber(e,o.m)+" m²"):(e/=.836127,a=e>=3097600?L.GeometryUtil.formattedNumber(e/3097600,o.mi)+" mi²":e>=4840?L.GeometryUtil.formattedNumber(e/4840,o.ac)+" acres":L.GeometryUtil.formattedNumber(e,o.yd)+" yd²"),a},readableDistance:function(e,i,o,a,n){var s,n=L.Util.extend({},t,n);switch(i?"string"==typeof i?i:"metric":o?"feet":a?"nauticalMile":"yards"){case"metric":s=e>1e3?L.GeometryUtil.formattedNumber(e/1e3,n.km)+" km":L.GeometryUtil.formattedNumber(e,n.m)+" m";break;case"feet":e*=3.28083,s=L.GeometryUtil.formattedNumber(e,n.ft)+" ft";break;case"nauticalMile":e*=.53996,s=L.GeometryUtil.formattedNumber(e/1e3,n.nm)+" nm";break;case"yards":default:e*=1.09361,s=e>1760?L.GeometryUtil.formattedNumber(e/1760,n.mi)+" miles":L.GeometryUtil.formattedNumber(e,n.yd)+" yd";}return s},isVersion07x:function(){var t=L.version.split(".");return 0===parseInt(t[0],10)&&7===parseInt(t[1],10)}});}(),L.Util.extend(L.LineUtil,{segmentsIntersect:function(t,e,i,o){return this._checkCounterclockwise(t,i,o)!==this._checkCounterclockwise(e,i,o)&&this._checkCounterclockwise(t,e,i)!==this._checkCounterclockwise(t,e,o)},_checkCounterclockwise:function(t,e,i){return (i.y-t.y)*(e.x-t.x)>(e.y-t.y)*(i.x-t.x)}}),L.Polyline.include({intersects:function(){var t,e,i,o=this._getProjectedPoints(),a=o?o.length:0;if(this._tooFewPointsForIntersection())return !1;for(t=a-1;t>=3;t--)if(e=o[t-1],i=o[t],this._lineSegmentsIntersectsRange(e,i,t-2))return !0;return !1},newLatLngIntersects:function(t,e){return !!this._map&&this.newPointIntersects(this._map.latLngToLayerPoint(t),e)},newPointIntersects:function(t,e){var i=this._getProjectedPoints(),o=i?i.length:0,a=i?i[o-1]:null,n=o-2;return !this._tooFewPointsForIntersection(1)&&this._lineSegmentsIntersectsRange(a,t,n,e?1:0)},_tooFewPointsForIntersection:function(t){var e=this._getProjectedPoints(),i=e?e.length:0;return i+=t||0,!e||i<=3},_lineSegmentsIntersectsRange:function(t,e,i,o){var a,n,s=this._getProjectedPoints();o=o||0;for(var r=i;r>o;r--)if(a=s[r-1],n=s[r],L.LineUtil.segmentsIntersect(t,e,a,n))return !0;return !1},_getProjectedPoints:function(){if(!this._defaultShape)return this._originalPoints;for(var t=[],e=this._defaultShape(),i=0;i<e.length;i++)t.push(this._map.latLngToLayerPoint(e[i]));return t}}),L.Polygon.include({intersects:function(){var t,e,i,o,a=this._getProjectedPoints();return !this._tooFewPointsForIntersection()&&(!!L.Polyline.prototype.intersects.call(this)||(t=a.length,e=a[0],i=a[t-1],o=t-2,this._lineSegmentsIntersectsRange(i,e,o,1)))}}),L.Control.Draw=L.Control.extend({options:{position:"topleft",draw:{},edit:!1},initialize:function(t){if(L.version<"0.7")throw new Error("Leaflet.draw 0.2.3+ requires Leaflet 0.7.0+. Download latest from https://github.com/Leaflet/Leaflet/");L.Control.prototype.initialize.call(this,t);var e;this._toolbars={},L.DrawToolbar&&this.options.draw&&(e=new L.DrawToolbar(this.options.draw),this._toolbars[L.DrawToolbar.TYPE]=e,this._toolbars[L.DrawToolbar.TYPE].on("enable",this._toolbarEnabled,this)),L.EditToolbar&&this.options.edit&&(e=new L.EditToolbar(this.options.edit),this._toolbars[L.EditToolbar.TYPE]=e,this._toolbars[L.EditToolbar.TYPE].on("enable",this._toolbarEnabled,this)),L.toolbar=this;},onAdd:function(t){var e,i=L.DomUtil.create("div","leaflet-draw"),o=!1;for(var a in this._toolbars)this._toolbars.hasOwnProperty(a)&&(e=this._toolbars[a].addToolbar(t))&&(o||(L.DomUtil.hasClass(e,"leaflet-draw-toolbar-top")||L.DomUtil.addClass(e.childNodes[0],"leaflet-draw-toolbar-top"),o=!0),i.appendChild(e));return i},onRemove:function(){for(var t in this._toolbars)this._toolbars.hasOwnProperty(t)&&this._toolbars[t].removeToolbar();},setDrawingOptions:function(t){for(var e in this._toolbars)this._toolbars[e]instanceof L.DrawToolbar&&this._toolbars[e].setOptions(t);},_toolbarEnabled:function(t){var e=t.target;for(var i in this._toolbars)this._toolbars[i]!==e&&this._toolbars[i].disable();}}),L.Map.mergeOptions({drawControlTooltips:!0,drawControl:!1}),L.Map.addInitHook(function(){this.options.drawControl&&(this.drawControl=new L.Control.Draw,this.addControl(this.drawControl));}),L.Toolbar=L.Class.extend({initialize:function(t){L.setOptions(this,t),this._modes={},this._actionButtons=[],this._activeMode=null;var e=L.version.split(".");1===parseInt(e[0],10)&&parseInt(e[1],10)>=2?L.Toolbar.include(L.Evented.prototype):L.Toolbar.include(L.Mixin.Events);},enabled:function(){return null!==this._activeMode},disable:function(){this.enabled()&&this._activeMode.handler.disable();},addToolbar:function(t){var e,i=L.DomUtil.create("div","leaflet-draw-section"),o=0,a=this._toolbarClass||"",n=this.getModeHandlers(t);for(this._toolbarContainer=L.DomUtil.create("div","leaflet-draw-toolbar leaflet-bar"),this._map=t,e=0;e<n.length;e++)n[e].enabled&&this._initModeHandler(n[e].handler,this._toolbarContainer,o++,a,n[e].title);if(o)return this._lastButtonIndex=--o,this._actionsContainer=L.DomUtil.create("ul","leaflet-draw-actions"),i.appendChild(this._toolbarContainer),i.appendChild(this._actionsContainer),i},removeToolbar:function(){for(var t in this._modes)this._modes.hasOwnProperty(t)&&(this._disposeButton(this._modes[t].button,this._modes[t].handler.enable,this._modes[t].handler),this._modes[t].handler.disable(),this._modes[t].handler.off("enabled",this._handlerActivated,this).off("disabled",this._handlerDeactivated,this));this._modes={};for(var e=0,i=this._actionButtons.length;e<i;e++)this._disposeButton(this._actionButtons[e].button,this._actionButtons[e].callback,this);this._actionButtons=[],this._actionsContainer=null;},_initModeHandler:function(t,e,i,o,a){var n=t.type;this._modes[n]={},this._modes[n].handler=t,this._modes[n].button=this._createButton({type:n,title:a,className:o+"-"+n,container:e,callback:this._modes[n].handler.enable,context:this._modes[n].handler}),this._modes[n].buttonIndex=i,this._modes[n].handler.on("enabled",this._handlerActivated,this).on("disabled",this._handlerDeactivated,this);},_detectIOS:function(){return /iPad|iPhone|iPod/.test(navigator.userAgent)&&!t.MSStream},_createButton:function(t){var e=L.DomUtil.create("a",t.className||"",t.container),i=L.DomUtil.create("span","sr-only",t.container);e.href="#",e.appendChild(i),t.title&&(e.title=t.title,i.innerHTML=t.title),t.text&&(e.innerHTML=t.text,i.innerHTML=t.text);var o=this._detectIOS()?"touchstart":"click";return L.DomEvent.on(e,"click",L.DomEvent.stopPropagation).on(e,"mousedown",L.DomEvent.stopPropagation).on(e,"dblclick",L.DomEvent.stopPropagation).on(e,"touchstart",L.DomEvent.stopPropagation).on(e,"click",L.DomEvent.preventDefault).on(e,o,t.callback,t.context),e},_disposeButton:function(t,e){var i=this._detectIOS()?"touchstart":"click";L.DomEvent.off(t,"click",L.DomEvent.stopPropagation).off(t,"mousedown",L.DomEvent.stopPropagation).off(t,"dblclick",L.DomEvent.stopPropagation).off(t,"touchstart",L.DomEvent.stopPropagation).off(t,"click",L.DomEvent.preventDefault).off(t,i,e);},_handlerActivated:function(t){this.disable(),this._activeMode=this._modes[t.handler],L.DomUtil.addClass(this._activeMode.button,"leaflet-draw-toolbar-button-enabled"),this._showActionsToolbar(),this.fire("enable");},_handlerDeactivated:function(){this._hideActionsToolbar(),L.DomUtil.removeClass(this._activeMode.button,"leaflet-draw-toolbar-button-enabled"),this._activeMode=null,this.fire("disable");},_createActions:function(t){var e,i,o,a,n=this._actionsContainer,s=this.getActions(t),r=s.length;for(i=0,o=this._actionButtons.length;i<o;i++)this._disposeButton(this._actionButtons[i].button,this._actionButtons[i].callback);for(this._actionButtons=[];n.firstChild;)n.removeChild(n.firstChild);for(var l=0;l<r;l++)"enabled"in s[l]&&!s[l].enabled||(e=L.DomUtil.create("li","",n),a=this._createButton({title:s[l].title,text:s[l].text,container:e,callback:s[l].callback,context:s[l].context}),this._actionButtons.push({button:a,callback:s[l].callback}));},_showActionsToolbar:function(){var t=this._activeMode.buttonIndex,e=this._lastButtonIndex,i=this._activeMode.button.offsetTop-1;this._createActions(this._activeMode.handler),this._actionsContainer.style.top=i+"px",0===t&&(L.DomUtil.addClass(this._toolbarContainer,"leaflet-draw-toolbar-notop"),L.DomUtil.addClass(this._actionsContainer,"leaflet-draw-actions-top")),t===e&&(L.DomUtil.addClass(this._toolbarContainer,"leaflet-draw-toolbar-nobottom"),L.DomUtil.addClass(this._actionsContainer,"leaflet-draw-actions-bottom")),this._actionsContainer.style.display="block",this._map.fire(L.Draw.Event.TOOLBAROPENED);},_hideActionsToolbar:function(){this._actionsContainer.style.display="none",L.DomUtil.removeClass(this._toolbarContainer,"leaflet-draw-toolbar-notop"),L.DomUtil.removeClass(this._toolbarContainer,"leaflet-draw-toolbar-nobottom"),L.DomUtil.removeClass(this._actionsContainer,"leaflet-draw-actions-top"),L.DomUtil.removeClass(this._actionsContainer,"leaflet-draw-actions-bottom"),this._map.fire(L.Draw.Event.TOOLBARCLOSED);}}),L.Draw=L.Draw||{},L.Draw.Tooltip=L.Class.extend({initialize:function(t){this._map=t,this._popupPane=t._panes.popupPane,this._visible=!1,this._container=t.options.drawControlTooltips?L.DomUtil.create("div","leaflet-draw-tooltip",this._popupPane):null,this._singleLineLabel=!1,this._map.on("mouseout",this._onMouseOut,this);},dispose:function(){this._map.off("mouseout",this._onMouseOut,this),this._container&&(this._popupPane.removeChild(this._container),this._container=null);},updateContent:function(t){return this._container?(t.subtext=t.subtext||"",0!==t.subtext.length||this._singleLineLabel?t.subtext.length>0&&this._singleLineLabel&&(L.DomUtil.removeClass(this._container,"leaflet-draw-tooltip-single"),this._singleLineLabel=!1):(L.DomUtil.addClass(this._container,"leaflet-draw-tooltip-single"),this._singleLineLabel=!0),this._container.innerHTML=(t.subtext.length>0?'<span class="leaflet-draw-tooltip-subtext">'+t.subtext+"</span><br />":"")+"<span>"+t.text+"</span>",t.text||t.subtext?(this._visible=!0,this._container.style.visibility="inherit"):(this._visible=!1,this._container.style.visibility="hidden"),this):this},updatePosition:function(t){var e=this._map.latLngToLayerPoint(t),i=this._container;return this._container&&(this._visible&&(i.style.visibility="inherit"),L.DomUtil.setPosition(i,e)),this},showAsError:function(){return this._container&&L.DomUtil.addClass(this._container,"leaflet-error-draw-tooltip"),this},removeError:function(){return this._container&&L.DomUtil.removeClass(this._container,"leaflet-error-draw-tooltip"),this},_onMouseOut:function(){this._container&&(this._container.style.visibility="hidden");}}),L.DrawToolbar=L.Toolbar.extend({statics:{TYPE:"draw"},options:{polyline:{},polygon:{},rectangle:{},circle:{},marker:{},circlemarker:{}},initialize:function(t){for(var e in this.options)this.options.hasOwnProperty(e)&&t[e]&&(t[e]=L.extend({},this.options[e],t[e]));this._toolbarClass="leaflet-draw-draw",L.Toolbar.prototype.initialize.call(this,t);},getModeHandlers:function(t){return [{enabled:this.options.polyline,handler:new L.Draw.Polyline(t,this.options.polyline),title:L.drawLocal.draw.toolbar.buttons.polyline},{enabled:this.options.polygon,handler:new L.Draw.Polygon(t,this.options.polygon),title:L.drawLocal.draw.toolbar.buttons.polygon},{enabled:this.options.rectangle,handler:new L.Draw.Rectangle(t,this.options.rectangle),title:L.drawLocal.draw.toolbar.buttons.rectangle},{enabled:this.options.circle,handler:new L.Draw.Circle(t,this.options.circle),title:L.drawLocal.draw.toolbar.buttons.circle},{enabled:this.options.marker,handler:new L.Draw.Marker(t,this.options.marker),title:L.drawLocal.draw.toolbar.buttons.marker},{enabled:this.options.circlemarker,handler:new L.Draw.CircleMarker(t,this.options.circlemarker),title:L.drawLocal.draw.toolbar.buttons.circlemarker}]},getActions:function(t){return [{enabled:t.completeShape,title:L.drawLocal.draw.toolbar.finish.title,text:L.drawLocal.draw.toolbar.finish.text,callback:t.completeShape,context:t},{enabled:t.deleteLastVertex,title:L.drawLocal.draw.toolbar.undo.title,text:L.drawLocal.draw.toolbar.undo.text,callback:t.deleteLastVertex,context:t},{title:L.drawLocal.draw.toolbar.actions.title,text:L.drawLocal.draw.toolbar.actions.text,callback:this.disable,context:this}]},setOptions:function(t){L.setOptions(this,t);for(var e in this._modes)this._modes.hasOwnProperty(e)&&t.hasOwnProperty(e)&&this._modes[e].handler.setOptions(t[e]);}}),L.EditToolbar=L.Toolbar.extend({statics:{TYPE:"edit"},options:{edit:{selectedPathOptions:{dashArray:"10, 10",fill:!0,fillColor:"#fe57a1",fillOpacity:.1,maintainColor:!1}},remove:{},poly:null,featureGroup:null},initialize:function(t){t.edit&&(void 0===t.edit.selectedPathOptions&&(t.edit.selectedPathOptions=this.options.edit.selectedPathOptions),t.edit.selectedPathOptions=L.extend({},this.options.edit.selectedPathOptions,t.edit.selectedPathOptions)),t.remove&&(t.remove=L.extend({},this.options.remove,t.remove)),t.poly&&(t.poly=L.extend({},this.options.poly,t.poly)),this._toolbarClass="leaflet-draw-edit",L.Toolbar.prototype.initialize.call(this,t),this._selectedFeatureCount=0;},getModeHandlers:function(t){var e=this.options.featureGroup;return [{enabled:this.options.edit,handler:new L.EditToolbar.Edit(t,{featureGroup:e,selectedPathOptions:this.options.edit.selectedPathOptions,poly:this.options.poly}),title:L.drawLocal.edit.toolbar.buttons.edit},{enabled:this.options.remove,handler:new L.EditToolbar.Delete(t,{featureGroup:e}),title:L.drawLocal.edit.toolbar.buttons.remove}]},getActions:function(t){var e=[{title:L.drawLocal.edit.toolbar.actions.save.title,text:L.drawLocal.edit.toolbar.actions.save.text,callback:this._save,context:this},{title:L.drawLocal.edit.toolbar.actions.cancel.title,text:L.drawLocal.edit.toolbar.actions.cancel.text,callback:this.disable,context:this}];return t.removeAllLayers&&e.push({title:L.drawLocal.edit.toolbar.actions.clearAll.title,text:L.drawLocal.edit.toolbar.actions.clearAll.text,callback:this._clearAllLayers,context:this}),e},addToolbar:function(t){var e=L.Toolbar.prototype.addToolbar.call(this,t);return this._checkDisabled(),this.options.featureGroup.on("layeradd layerremove",this._checkDisabled,this),e},removeToolbar:function(){this.options.featureGroup.off("layeradd layerremove",this._checkDisabled,this),L.Toolbar.prototype.removeToolbar.call(this);},disable:function(){this.enabled()&&(this._activeMode.handler.revertLayers(),L.Toolbar.prototype.disable.call(this));},_save:function(){this._activeMode.handler.save(),this._activeMode&&this._activeMode.handler.disable();},_clearAllLayers:function(){this._activeMode.handler.removeAllLayers(),this._activeMode&&this._activeMode.handler.disable();},_checkDisabled:function(){var t,e=this.options.featureGroup,i=0!==e.getLayers().length;this.options.edit&&(t=this._modes[L.EditToolbar.Edit.TYPE].button,i?L.DomUtil.removeClass(t,"leaflet-disabled"):L.DomUtil.addClass(t,"leaflet-disabled"),t.setAttribute("title",i?L.drawLocal.edit.toolbar.buttons.edit:L.drawLocal.edit.toolbar.buttons.editDisabled)),this.options.remove&&(t=this._modes[L.EditToolbar.Delete.TYPE].button,i?L.DomUtil.removeClass(t,"leaflet-disabled"):L.DomUtil.addClass(t,"leaflet-disabled"),t.setAttribute("title",i?L.drawLocal.edit.toolbar.buttons.remove:L.drawLocal.edit.toolbar.buttons.removeDisabled));}}),L.EditToolbar.Edit=L.Handler.extend({statics:{TYPE:"edit"},initialize:function(t,e){if(L.Handler.prototype.initialize.call(this,t),L.setOptions(this,e),this._featureGroup=e.featureGroup,!(this._featureGroup instanceof L.FeatureGroup))throw new Error("options.featureGroup must be a L.FeatureGroup");this._uneditedLayerProps={},this.type=L.EditToolbar.Edit.TYPE;var i=L.version.split(".");1===parseInt(i[0],10)&&parseInt(i[1],10)>=2?L.EditToolbar.Edit.include(L.Evented.prototype):L.EditToolbar.Edit.include(L.Mixin.Events);},enable:function(){!this._enabled&&this._hasAvailableLayers()&&(this.fire("enabled",{handler:this.type}),this._map.fire(L.Draw.Event.EDITSTART,{handler:this.type}),L.Handler.prototype.enable.call(this),this._featureGroup.on("layeradd",this._enableLayerEdit,this).on("layerremove",this._disableLayerEdit,this));},disable:function(){this._enabled&&(this._featureGroup.off("layeradd",this._enableLayerEdit,this).off("layerremove",this._disableLayerEdit,this),L.Handler.prototype.disable.call(this),this._map.fire(L.Draw.Event.EDITSTOP,{handler:this.type}),this.fire("disabled",{handler:this.type}));},addHooks:function(){var t=this._map;t&&(t.getContainer().focus(),this._featureGroup.eachLayer(this._enableLayerEdit,this),this._tooltip=new L.Draw.Tooltip(this._map),this._tooltip.updateContent({text:L.drawLocal.edit.handlers.edit.tooltip.text,subtext:L.drawLocal.edit.handlers.edit.tooltip.subtext}),t._editTooltip=this._tooltip,this._updateTooltip(),this._map.on("mousemove",this._onMouseMove,this).on("touchmove",this._onMouseMove,this).on("MSPointerMove",this._onMouseMove,this).on(L.Draw.Event.EDITVERTEX,this._updateTooltip,this));},removeHooks:function(){this._map&&(this._featureGroup.eachLayer(this._disableLayerEdit,this),this._uneditedLayerProps={},this._tooltip.dispose(),this._tooltip=null,this._map.off("mousemove",this._onMouseMove,this).off("touchmove",this._onMouseMove,this).off("MSPointerMove",this._onMouseMove,this).off(L.Draw.Event.EDITVERTEX,this._updateTooltip,this));},revertLayers:function(){this._featureGroup.eachLayer(function(t){this._revertLayer(t);},this);},save:function(){var t=new L.LayerGroup;this._featureGroup.eachLayer(function(e){e.edited&&(t.addLayer(e),e.edited=!1);}),this._map.fire(L.Draw.Event.EDITED,{layers:t});},_backupLayer:function(t){var e=L.Util.stamp(t);this._uneditedLayerProps[e]||(t instanceof L.Polyline||t instanceof L.Polygon||t instanceof L.Rectangle?this._uneditedLayerProps[e]={latlngs:L.LatLngUtil.cloneLatLngs(t.getLatLngs())}:t instanceof L.Circle?this._uneditedLayerProps[e]={latlng:L.LatLngUtil.cloneLatLng(t.getLatLng()),radius:t.getRadius()}:(t instanceof L.Marker||t instanceof L.CircleMarker)&&(this._uneditedLayerProps[e]={latlng:L.LatLngUtil.cloneLatLng(t.getLatLng())}));},_getTooltipText:function(){return {text:L.drawLocal.edit.handlers.edit.tooltip.text,subtext:L.drawLocal.edit.handlers.edit.tooltip.subtext}},_updateTooltip:function(){this._tooltip.updateContent(this._getTooltipText());},_revertLayer:function(t){var e=L.Util.stamp(t);t.edited=!1,this._uneditedLayerProps.hasOwnProperty(e)&&(t instanceof L.Polyline||t instanceof L.Polygon||t instanceof L.Rectangle?t.setLatLngs(this._uneditedLayerProps[e].latlngs):t instanceof L.Circle?(t.setLatLng(this._uneditedLayerProps[e].latlng),t.setRadius(this._uneditedLayerProps[e].radius)):(t instanceof L.Marker||t instanceof L.CircleMarker)&&t.setLatLng(this._uneditedLayerProps[e].latlng),t.fire("revert-edited",{layer:t}));},_enableLayerEdit:function(t){var e,i,o=t.layer||t.target||t;this._backupLayer(o),this.options.poly&&(i=L.Util.extend({},this.options.poly),o.options.poly=i),this.options.selectedPathOptions&&(e=L.Util.extend({},this.options.selectedPathOptions),e.maintainColor&&(e.color=o.options.color,e.fillColor=o.options.fillColor),o.options.original=L.extend({},o.options),o.options.editing=e),o instanceof L.Marker?(o.editing&&o.editing.enable(),o.dragging.enable(),o.on("dragend",this._onMarkerDragEnd).on("touchmove",this._onTouchMove,this).on("MSPointerMove",this._onTouchMove,this).on("touchend",this._onMarkerDragEnd,this).on("MSPointerUp",this._onMarkerDragEnd,this)):o.editing.enable();},_disableLayerEdit:function(t){var e=t.layer||t.target||t;e.edited=!1,e.editing&&e.editing.disable(),delete e.options.editing,delete e.options.original,this._selectedPathOptions&&(e instanceof L.Marker?this._toggleMarkerHighlight(e):(e.setStyle(e.options.previousOptions),
+	!function(t,e,i){function o(t,e){for(;(t=t.parentElement)&&!t.classList.contains(e););return t}L.drawVersion="1.0.4+838a63b",L.Draw={},L.drawLocal={draw:{toolbar:{actions:{title:"Cancel drawing",text:"Cancel"},finish:{title:"Finish drawing",text:"Finish"},undo:{title:"Delete last point drawn",text:"Delete last point"},buttons:{polyline:"Draw a polyline",polygon:"Draw a polygon",rectangle:"Draw a rectangle",circle:"Draw a circle",marker:"Draw a marker",circlemarker:"Draw a circlemarker"}},handlers:{circle:{tooltip:{start:"Click and drag to draw circle."},radius:"Radius"},circlemarker:{tooltip:{start:"Click map to place circle marker."}},marker:{tooltip:{start:"Click map to place marker."}},polygon:{tooltip:{start:"Click to start drawing shape.",cont:"Click to continue drawing shape.",end:"Click first point to close this shape."}},polyline:{error:"<strong>Error:</strong> shape edges cannot cross!",tooltip:{start:"Click to start drawing line.",cont:"Click to continue drawing line.",end:"Click last point to finish line."}},rectangle:{tooltip:{start:"Click and drag to draw rectangle."}},simpleshape:{tooltip:{end:"Release mouse to finish drawing."}}}},edit:{toolbar:{actions:{save:{title:"Save changes",text:"Save"},cancel:{title:"Cancel editing, discards all changes",text:"Cancel"},clearAll:{title:"Clear all layers",text:"Clear All"}},buttons:{edit:"Edit layers",editDisabled:"No layers to edit",remove:"Delete layers",removeDisabled:"No layers to delete"}},handlers:{edit:{tooltip:{text:"Drag handles or markers to edit features.",subtext:"Click cancel to undo changes."}},remove:{tooltip:{text:"Click on a feature to remove."}}}}},L.Draw.Event={},L.Draw.Event.CREATED="draw:created",L.Draw.Event.EDITED="draw:edited",L.Draw.Event.DELETED="draw:deleted",L.Draw.Event.DRAWSTART="draw:drawstart",L.Draw.Event.DRAWSTOP="draw:drawstop",L.Draw.Event.DRAWVERTEX="draw:drawvertex",L.Draw.Event.EDITSTART="draw:editstart",L.Draw.Event.EDITMOVE="draw:editmove",L.Draw.Event.EDITRESIZE="draw:editresize",L.Draw.Event.EDITVERTEX="draw:editvertex",L.Draw.Event.EDITSTOP="draw:editstop",L.Draw.Event.DELETESTART="draw:deletestart",L.Draw.Event.DELETESTOP="draw:deletestop",L.Draw.Event.TOOLBAROPENED="draw:toolbaropened",L.Draw.Event.TOOLBARCLOSED="draw:toolbarclosed",L.Draw.Event.MARKERCONTEXT="draw:markercontext",L.Draw=L.Draw||{},L.Draw.Feature=L.Handler.extend({initialize:function(t,e){this._map=t,this._container=t._container,this._overlayPane=t._panes.overlayPane,this._popupPane=t._panes.popupPane,e&&e.shapeOptions&&(e.shapeOptions=L.Util.extend({},this.options.shapeOptions,e.shapeOptions)),L.setOptions(this,e);var i=L.version.split(".");1===parseInt(i[0],10)&&parseInt(i[1],10)>=2?L.Draw.Feature.include(L.Evented.prototype):L.Draw.Feature.include(L.Mixin.Events);},enable:function(){this._enabled||(L.Handler.prototype.enable.call(this),this.fire("enabled",{handler:this.type}),this._map.fire(L.Draw.Event.DRAWSTART,{layerType:this.type}));},disable:function(){this._enabled&&(L.Handler.prototype.disable.call(this),this._map.fire(L.Draw.Event.DRAWSTOP,{layerType:this.type}),this.fire("disabled",{handler:this.type}));},addHooks:function(){var t=this._map;t&&(L.DomUtil.disableTextSelection(),t.getContainer().focus(),this._tooltip=new L.Draw.Tooltip(this._map),L.DomEvent.on(this._container,"keyup",this._cancelDrawing,this));},removeHooks:function(){this._map&&(L.DomUtil.enableTextSelection(),this._tooltip.dispose(),this._tooltip=null,L.DomEvent.off(this._container,"keyup",this._cancelDrawing,this));},setOptions:function(t){L.setOptions(this,t);},_fireCreatedEvent:function(t){this._map.fire(L.Draw.Event.CREATED,{layer:t,layerType:this.type});},_cancelDrawing:function(t){27===t.keyCode&&(this._map.fire("draw:canceled",{layerType:this.type}),this.disable());}}),L.Draw.Polyline=L.Draw.Feature.extend({statics:{TYPE:"polyline"},Poly:L.Polyline,options:{allowIntersection:!0,repeatMode:!1,drawError:{color:"#b00b00",timeout:2500},icon:new L.DivIcon({iconSize:new L.Point(8,8),className:"leaflet-div-icon leaflet-editing-icon"}),touchIcon:new L.DivIcon({iconSize:new L.Point(20,20),className:"leaflet-div-icon leaflet-editing-icon leaflet-touch-icon"}),guidelineDistance:20,maxGuideLineLength:4e3,shapeOptions:{stroke:!0,color:"#3388ff",weight:4,opacity:.5,fill:!1,clickable:!0},metric:!0,feet:!0,nautic:!1,showLength:!0,zIndexOffset:2e3,factor:1,maxPoints:0},initialize:function(t,e){L.Browser.touch&&(this.options.icon=this.options.touchIcon),this.options.drawError.message=L.drawLocal.draw.handlers.polyline.error,e&&e.drawError&&(e.drawError=L.Util.extend({},this.options.drawError,e.drawError)),this.type=L.Draw.Polyline.TYPE,L.Draw.Feature.prototype.initialize.call(this,t,e);},addHooks:function(){L.Draw.Feature.prototype.addHooks.call(this),this._map&&(this._markers=[],this._markerGroup=new L.LayerGroup,this._map.addLayer(this._markerGroup),this._poly=new L.Polyline([],this.options.shapeOptions),this._tooltip.updateContent(this._getTooltipText()),this._mouseMarker||(this._mouseMarker=L.marker(this._map.getCenter(),{icon:L.divIcon({className:"leaflet-mouse-marker",iconAnchor:[20,20],iconSize:[40,40]}),opacity:0,zIndexOffset:this.options.zIndexOffset})),this._mouseMarker.on("mouseout",this._onMouseOut,this).on("mousemove",this._onMouseMove,this).on("mousedown",this._onMouseDown,this).on("mouseup",this._onMouseUp,this).addTo(this._map),this._map.on("mouseup",this._onMouseUp,this).on("mousemove",this._onMouseMove,this).on("zoomlevelschange",this._onZoomEnd,this).on("touchstart",this._onTouch,this).on("zoomend",this._onZoomEnd,this));},removeHooks:function(){L.Draw.Feature.prototype.removeHooks.call(this),this._clearHideErrorTimeout(),this._cleanUpShape(),this._map.removeLayer(this._markerGroup),delete this._markerGroup,delete this._markers,this._map.removeLayer(this._poly),delete this._poly,this._mouseMarker.off("mousedown",this._onMouseDown,this).off("mouseout",this._onMouseOut,this).off("mouseup",this._onMouseUp,this).off("mousemove",this._onMouseMove,this),this._map.removeLayer(this._mouseMarker),delete this._mouseMarker,this._clearGuides(),this._map.off("mouseup",this._onMouseUp,this).off("mousemove",this._onMouseMove,this).off("zoomlevelschange",this._onZoomEnd,this).off("zoomend",this._onZoomEnd,this).off("touchstart",this._onTouch,this).off("click",this._onTouch,this);},deleteLastVertex:function(){if(!(this._markers.length<=1)){var t=this._markers.pop(),e=this._poly,i=e.getLatLngs(),o=i.splice(-1,1)[0];this._poly.setLatLngs(i),this._markerGroup.removeLayer(t),e.getLatLngs().length<2&&this._map.removeLayer(e),this._vertexChanged(o,!1);}},addVertex:function(t){if(this._markers.length>=2&&!this.options.allowIntersection&&this._poly.newLatLngIntersects(t))return void this._showErrorTooltip();this._errorShown&&this._hideErrorTooltip(),this._markers.push(this._createMarker(t)),this._poly.addLatLng(t),2===this._poly.getLatLngs().length&&this._map.addLayer(this._poly),this._vertexChanged(t,!0);},completeShape:function(){this._markers.length<=1||!this._shapeIsValid()||(this._fireCreatedEvent(),this.disable(),this.options.repeatMode&&this.enable());},_finishShape:function(){var t=this._poly._defaultShape?this._poly._defaultShape():this._poly.getLatLngs(),e=this._poly.newLatLngIntersects(t[t.length-1]);if(!this.options.allowIntersection&&e||!this._shapeIsValid())return void this._showErrorTooltip();this._fireCreatedEvent(),this.disable(),this.options.repeatMode&&this.enable();},_shapeIsValid:function(){return !0},_onZoomEnd:function(){null!==this._markers&&this._updateGuide();},_onMouseMove:function(t){var e=this._map.mouseEventToLayerPoint(t.originalEvent),i=this._map.layerPointToLatLng(e);this._currentLatLng=i,this._updateTooltip(i),this._updateGuide(e),this._mouseMarker.setLatLng(i),L.DomEvent.preventDefault(t.originalEvent);},_vertexChanged:function(t,e){this._map.fire(L.Draw.Event.DRAWVERTEX,{layers:this._markerGroup}),this._updateFinishHandler(),this._updateRunningMeasure(t,e),this._clearGuides(),this._updateTooltip();},_onMouseDown:function(t){if(!this._clickHandled&&!this._touchHandled&&!this._disableMarkers){this._onMouseMove(t),this._clickHandled=!0,this._disableNewMarkers();var e=t.originalEvent,i=e.clientX,o=e.clientY;this._startPoint.call(this,i,o);}},_startPoint:function(t,e){this._mouseDownOrigin=L.point(t,e);},_onMouseUp:function(t){var e=t.originalEvent,i=e.clientX,o=e.clientY;this._endPoint.call(this,i,o,t),this._clickHandled=null;},_endPoint:function(e,i,o){if(this._mouseDownOrigin){var a=L.point(e,i).distanceTo(this._mouseDownOrigin),n=this._calculateFinishDistance(o.latlng);this.options.maxPoints>1&&this.options.maxPoints==this._markers.length+1?(this.addVertex(o.latlng),this._finishShape()):n<10&&L.Browser.touch?this._finishShape():Math.abs(a)<9*(t.devicePixelRatio||1)&&this.addVertex(o.latlng),this._enableNewMarkers();}this._mouseDownOrigin=null;},_onTouch:function(t){var e,i,o=t.originalEvent;!o.touches||!o.touches[0]||this._clickHandled||this._touchHandled||this._disableMarkers||(e=o.touches[0].clientX,i=o.touches[0].clientY,this._disableNewMarkers(),this._touchHandled=!0,this._startPoint.call(this,e,i),this._endPoint.call(this,e,i,t),this._touchHandled=null),this._clickHandled=null;},_onMouseOut:function(){this._tooltip&&this._tooltip._onMouseOut.call(this._tooltip);},_calculateFinishDistance:function(t){var e;if(this._markers.length>0){var i;if(this.type===L.Draw.Polyline.TYPE)i=this._markers[this._markers.length-1];else {if(this.type!==L.Draw.Polygon.TYPE)return 1/0;i=this._markers[0];}var o=this._map.latLngToContainerPoint(i.getLatLng()),a=new L.Marker(t,{icon:this.options.icon,zIndexOffset:2*this.options.zIndexOffset}),n=this._map.latLngToContainerPoint(a.getLatLng());e=o.distanceTo(n);}else e=1/0;return e},_updateFinishHandler:function(){var t=this._markers.length;t>1&&this._markers[t-1].on("click",this._finishShape,this),t>2&&this._markers[t-2].off("click",this._finishShape,this);},_createMarker:function(t){var e=new L.Marker(t,{icon:this.options.icon,zIndexOffset:2*this.options.zIndexOffset});return this._markerGroup.addLayer(e),e},_updateGuide:function(t){var e=this._markers?this._markers.length:0;e>0&&(t=t||this._map.latLngToLayerPoint(this._currentLatLng),this._clearGuides(),this._drawGuide(this._map.latLngToLayerPoint(this._markers[e-1].getLatLng()),t));},_updateTooltip:function(t){var e=this._getTooltipText();t&&this._tooltip.updatePosition(t),this._errorShown||this._tooltip.updateContent(e);},_drawGuide:function(t,e){var i,o,a,n=Math.floor(Math.sqrt(Math.pow(e.x-t.x,2)+Math.pow(e.y-t.y,2))),s=this.options.guidelineDistance,r=this.options.maxGuideLineLength,l=n>r?n-r:s;for(this._guidesContainer||(this._guidesContainer=L.DomUtil.create("div","leaflet-draw-guides",this._overlayPane));l<n;l+=this.options.guidelineDistance)i=l/n,o={x:Math.floor(t.x*(1-i)+i*e.x),y:Math.floor(t.y*(1-i)+i*e.y)},a=L.DomUtil.create("div","leaflet-draw-guide-dash",this._guidesContainer),a.style.backgroundColor=this._errorShown?this.options.drawError.color:this.options.shapeOptions.color,L.DomUtil.setPosition(a,o);},_updateGuideColor:function(t){if(this._guidesContainer)for(var e=0,i=this._guidesContainer.childNodes.length;e<i;e++)this._guidesContainer.childNodes[e].style.backgroundColor=t;},_clearGuides:function(){if(this._guidesContainer)for(;this._guidesContainer.firstChild;)this._guidesContainer.removeChild(this._guidesContainer.firstChild);},_getTooltipText:function(){var t,e,i=this.options.showLength;return 0===this._markers.length?t={text:L.drawLocal.draw.handlers.polyline.tooltip.start}:(e=i?this._getMeasurementString():"",t=1===this._markers.length?{text:L.drawLocal.draw.handlers.polyline.tooltip.cont,subtext:e}:{text:L.drawLocal.draw.handlers.polyline.tooltip.end,subtext:e}),t},_updateRunningMeasure:function(t,e){var i,o,a=this._markers.length;1===this._markers.length?this._measurementRunningTotal=0:(i=a-(e?2:1),o=L.GeometryUtil.isVersion07x()?t.distanceTo(this._markers[i].getLatLng())*(this.options.factor||1):this._map.distance(t,this._markers[i].getLatLng())*(this.options.factor||1),this._measurementRunningTotal+=o*(e?1:-1));},_getMeasurementString:function(){var t,e=this._currentLatLng,i=this._markers[this._markers.length-1].getLatLng();return t=L.GeometryUtil.isVersion07x()?i&&e&&e.distanceTo?this._measurementRunningTotal+e.distanceTo(i)*(this.options.factor||1):this._measurementRunningTotal||0:i&&e?this._measurementRunningTotal+this._map.distance(e,i)*(this.options.factor||1):this._measurementRunningTotal||0,L.GeometryUtil.readableDistance(t,this.options.metric,this.options.feet,this.options.nautic,this.options.precision)},_showErrorTooltip:function(){this._errorShown=!0,this._tooltip.showAsError().updateContent({text:this.options.drawError.message}),this._updateGuideColor(this.options.drawError.color),this._poly.setStyle({color:this.options.drawError.color}),this._clearHideErrorTimeout(),this._hideErrorTimeout=setTimeout(L.Util.bind(this._hideErrorTooltip,this),this.options.drawError.timeout);},_hideErrorTooltip:function(){this._errorShown=!1,this._clearHideErrorTimeout(),this._tooltip.removeError().updateContent(this._getTooltipText()),this._updateGuideColor(this.options.shapeOptions.color),this._poly.setStyle({color:this.options.shapeOptions.color});},_clearHideErrorTimeout:function(){this._hideErrorTimeout&&(clearTimeout(this._hideErrorTimeout),this._hideErrorTimeout=null);},_disableNewMarkers:function(){this._disableMarkers=!0;},_enableNewMarkers:function(){setTimeout(function(){this._disableMarkers=!1;}.bind(this),50);},_cleanUpShape:function(){this._markers.length>1&&this._markers[this._markers.length-1].off("click",this._finishShape,this);},_fireCreatedEvent:function(){var t=new this.Poly(this._poly.getLatLngs(),this.options.shapeOptions);L.Draw.Feature.prototype._fireCreatedEvent.call(this,t);}}),L.Draw.Polygon=L.Draw.Polyline.extend({statics:{TYPE:"polygon"},Poly:L.Polygon,options:{showArea:!1,showLength:!1,shapeOptions:{stroke:!0,color:"#3388ff",weight:4,opacity:.5,fill:!0,fillColor:null,fillOpacity:.2,clickable:!0},metric:!0,feet:!0,nautic:!1,precision:{}},initialize:function(t,e){L.Draw.Polyline.prototype.initialize.call(this,t,e),this.type=L.Draw.Polygon.TYPE;},_updateFinishHandler:function(){var t=this._markers.length;1===t&&this._markers[0].on("click",this._finishShape,this),t>2&&(this._markers[t-1].on("dblclick",this._finishShape,this),t>3&&this._markers[t-2].off("dblclick",this._finishShape,this));},_getTooltipText:function(){var t,e;return 0===this._markers.length?t=L.drawLocal.draw.handlers.polygon.tooltip.start:this._markers.length<3?(t=L.drawLocal.draw.handlers.polygon.tooltip.cont,e=this._getMeasurementString()):(t=L.drawLocal.draw.handlers.polygon.tooltip.end,e=this._getMeasurementString()),{text:t,subtext:e}},_getMeasurementString:function(){var t=this._area,e="";return t||this.options.showLength?(this.options.showLength&&(e=L.Draw.Polyline.prototype._getMeasurementString.call(this)),t&&(e+="<br>"+L.GeometryUtil.readableArea(t,this.options.metric,this.options.precision)),e):null},_shapeIsValid:function(){return this._markers.length>=3},_vertexChanged:function(t,e){var i;!this.options.allowIntersection&&this.options.showArea&&(i=this._poly.getLatLngs(),this._area=L.GeometryUtil.geodesicArea(i)),L.Draw.Polyline.prototype._vertexChanged.call(this,t,e);},_cleanUpShape:function(){var t=this._markers.length;t>0&&(this._markers[0].off("click",this._finishShape,this),t>2&&this._markers[t-1].off("dblclick",this._finishShape,this));}}),L.SimpleShape={},L.Draw.SimpleShape=L.Draw.Feature.extend({options:{repeatMode:!1},initialize:function(t,e){this._endLabelText=L.drawLocal.draw.handlers.simpleshape.tooltip.end,L.Draw.Feature.prototype.initialize.call(this,t,e);},addHooks:function(){L.Draw.Feature.prototype.addHooks.call(this),this._map&&(this._mapDraggable=this._map.dragging.enabled(),this._mapDraggable&&this._map.dragging.disable(),this._container.style.cursor="crosshair",this._tooltip.updateContent({text:this._initialLabelText}),this._map.on("mousedown",this._onMouseDown,this).on("mousemove",this._onMouseMove,this).on("touchstart",this._onMouseDown,this).on("touchmove",this._onMouseMove,this),e.addEventListener("touchstart",L.DomEvent.preventDefault,{passive:!1}));},removeHooks:function(){L.Draw.Feature.prototype.removeHooks.call(this),this._map&&(this._mapDraggable&&this._map.dragging.enable(),this._container.style.cursor="",this._map.off("mousedown",this._onMouseDown,this).off("mousemove",this._onMouseMove,this).off("touchstart",this._onMouseDown,this).off("touchmove",this._onMouseMove,this),L.DomEvent.off(e,"mouseup",this._onMouseUp,this),L.DomEvent.off(e,"touchend",this._onMouseUp,this),e.removeEventListener("touchstart",L.DomEvent.preventDefault),this._shape&&(this._map.removeLayer(this._shape),delete this._shape)),this._isDrawing=!1;},_getTooltipText:function(){return {text:this._endLabelText}},_onMouseDown:function(t){this._isDrawing=!0,this._startLatLng=t.latlng,L.DomEvent.on(e,"mouseup",this._onMouseUp,this).on(e,"touchend",this._onMouseUp,this).preventDefault(t.originalEvent);},_onMouseMove:function(t){var e=t.latlng;this._tooltip.updatePosition(e),this._isDrawing&&(this._tooltip.updateContent(this._getTooltipText()),this._drawShape(e));},_onMouseUp:function(){this._shape&&this._fireCreatedEvent(),this.disable(),this.options.repeatMode&&this.enable();}}),L.Draw.Rectangle=L.Draw.SimpleShape.extend({statics:{TYPE:"rectangle"},options:{shapeOptions:{stroke:!0,color:"#3388ff",weight:4,opacity:.5,fill:!0,fillColor:null,fillOpacity:.2,clickable:!0},showArea:!0,metric:!0},initialize:function(t,e){this.type=L.Draw.Rectangle.TYPE,this._initialLabelText=L.drawLocal.draw.handlers.rectangle.tooltip.start,L.Draw.SimpleShape.prototype.initialize.call(this,t,e);},disable:function(){this._enabled&&(this._isCurrentlyTwoClickDrawing=!1,L.Draw.SimpleShape.prototype.disable.call(this));},_onMouseUp:function(t){if(!this._shape&&!this._isCurrentlyTwoClickDrawing)return void(this._isCurrentlyTwoClickDrawing=!0);this._isCurrentlyTwoClickDrawing&&!o(t.target,"leaflet-pane")||L.Draw.SimpleShape.prototype._onMouseUp.call(this);},_drawShape:function(t){this._shape?this._shape.setBounds(new L.LatLngBounds(this._startLatLng,t)):(this._shape=new L.Rectangle(new L.LatLngBounds(this._startLatLng,t),this.options.shapeOptions),this._map.addLayer(this._shape));},_fireCreatedEvent:function(){var t=new L.Rectangle(this._shape.getBounds(),this.options.shapeOptions);L.Draw.SimpleShape.prototype._fireCreatedEvent.call(this,t);},_getTooltipText:function(){var t,e,i,o=L.Draw.SimpleShape.prototype._getTooltipText.call(this),a=this._shape,n=this.options.showArea;return a&&(t=this._shape._defaultShape?this._shape._defaultShape():this._shape.getLatLngs(),e=L.GeometryUtil.geodesicArea(t),i=n?L.GeometryUtil.readableArea(e,this.options.metric):""),{text:o.text,subtext:i}}}),L.Draw.Marker=L.Draw.Feature.extend({statics:{TYPE:"marker"},options:{icon:new L.Icon.Default,repeatMode:!1,zIndexOffset:2e3},initialize:function(t,e){this.type=L.Draw.Marker.TYPE,this._initialLabelText=L.drawLocal.draw.handlers.marker.tooltip.start,L.Draw.Feature.prototype.initialize.call(this,t,e);},addHooks:function(){L.Draw.Feature.prototype.addHooks.call(this),this._map&&(this._tooltip.updateContent({text:this._initialLabelText}),this._mouseMarker||(this._mouseMarker=L.marker(this._map.getCenter(),{icon:L.divIcon({className:"leaflet-mouse-marker",iconAnchor:[20,20],iconSize:[40,40]}),opacity:0,zIndexOffset:this.options.zIndexOffset})),this._mouseMarker.on("click",this._onClick,this).addTo(this._map),this._map.on("mousemove",this._onMouseMove,this),this._map.on("click",this._onTouch,this));},removeHooks:function(){L.Draw.Feature.prototype.removeHooks.call(this),this._map&&(this._map.off("click",this._onClick,this).off("click",this._onTouch,this),this._marker&&(this._marker.off("click",this._onClick,this),this._map.removeLayer(this._marker),delete this._marker),this._mouseMarker.off("click",this._onClick,this),this._map.removeLayer(this._mouseMarker),delete this._mouseMarker,this._map.off("mousemove",this._onMouseMove,this));},_onMouseMove:function(t){var e=t.latlng;this._tooltip.updatePosition(e),this._mouseMarker.setLatLng(e),this._marker?(e=this._mouseMarker.getLatLng(),this._marker.setLatLng(e)):(this._marker=this._createMarker(e),this._marker.on("click",this._onClick,this),this._map.on("click",this._onClick,this).addLayer(this._marker));},_createMarker:function(t){return new L.Marker(t,{icon:this.options.icon,zIndexOffset:this.options.zIndexOffset})},_onClick:function(){this._fireCreatedEvent(),this.disable(),this.options.repeatMode&&this.enable();},_onTouch:function(t){this._onMouseMove(t),this._onClick();},_fireCreatedEvent:function(){var t=new L.Marker.Touch(this._marker.getLatLng(),{icon:this.options.icon});L.Draw.Feature.prototype._fireCreatedEvent.call(this,t);}}),L.Draw.CircleMarker=L.Draw.Marker.extend({statics:{TYPE:"circlemarker"},options:{stroke:!0,color:"#3388ff",weight:4,opacity:.5,fill:!0,fillColor:null,fillOpacity:.2,clickable:!0,zIndexOffset:2e3},initialize:function(t,e){this.type=L.Draw.CircleMarker.TYPE,this._initialLabelText=L.drawLocal.draw.handlers.circlemarker.tooltip.start,L.Draw.Feature.prototype.initialize.call(this,t,e);},_fireCreatedEvent:function(){var t=new L.CircleMarker(this._marker.getLatLng(),this.options);L.Draw.Feature.prototype._fireCreatedEvent.call(this,t);},_createMarker:function(t){return new L.CircleMarker(t,this.options)}}),L.Draw.Circle=L.Draw.SimpleShape.extend({statics:{TYPE:"circle"},options:{shapeOptions:{stroke:!0,color:"#3388ff",weight:4,opacity:.5,fill:!0,fillColor:null,fillOpacity:.2,clickable:!0},showRadius:!0,metric:!0,feet:!0,nautic:!1},initialize:function(t,e){this.type=L.Draw.Circle.TYPE,this._initialLabelText=L.drawLocal.draw.handlers.circle.tooltip.start,L.Draw.SimpleShape.prototype.initialize.call(this,t,e);},_drawShape:function(t){if(L.GeometryUtil.isVersion07x())var e=this._startLatLng.distanceTo(t);else var e=this._map.distance(this._startLatLng,t);this._shape?this._shape.setRadius(e):(this._shape=new L.Circle(this._startLatLng,e,this.options.shapeOptions),this._map.addLayer(this._shape));},_fireCreatedEvent:function(){var t=new L.Circle(this._startLatLng,this._shape.getRadius(),this.options.shapeOptions);L.Draw.SimpleShape.prototype._fireCreatedEvent.call(this,t);},_onMouseMove:function(t){var e,i=t.latlng,o=this.options.showRadius,a=this.options.metric;if(this._tooltip.updatePosition(i),this._isDrawing){this._drawShape(i),e=this._shape.getRadius().toFixed(1);var n="";o&&(n=L.drawLocal.draw.handlers.circle.radius+": "+L.GeometryUtil.readableDistance(e,a,this.options.feet,this.options.nautic)),this._tooltip.updateContent({text:this._endLabelText,subtext:n});}}}),L.Edit=L.Edit||{},L.Edit.Marker=L.Handler.extend({initialize:function(t,e){this._marker=t,L.setOptions(this,e);},addHooks:function(){var t=this._marker;t.dragging.enable(),t.on("dragend",this._onDragEnd,t),this._toggleMarkerHighlight();},removeHooks:function(){var t=this._marker;t.dragging.disable(),t.off("dragend",this._onDragEnd,t),this._toggleMarkerHighlight();},_onDragEnd:function(t){var e=t.target;e.edited=!0,this._map.fire(L.Draw.Event.EDITMOVE,{layer:e});},_toggleMarkerHighlight:function(){var t=this._marker._icon;t&&(t.style.display="none",L.DomUtil.hasClass(t,"leaflet-edit-marker-selected")?(L.DomUtil.removeClass(t,"leaflet-edit-marker-selected"),this._offsetMarker(t,-4)):(L.DomUtil.addClass(t,"leaflet-edit-marker-selected"),this._offsetMarker(t,4)),t.style.display="");},_offsetMarker:function(t,e){var i=parseInt(t.style.marginTop,10)-e,o=parseInt(t.style.marginLeft,10)-e;t.style.marginTop=i+"px",t.style.marginLeft=o+"px";}}),L.Marker.addInitHook(function(){L.Edit.Marker&&(this.editing=new L.Edit.Marker(this),this.options.editable&&this.editing.enable());}),L.Edit=L.Edit||{},L.Edit.Poly=L.Handler.extend({initialize:function(t){this.latlngs=[t._latlngs],t._holes&&(this.latlngs=this.latlngs.concat(t._holes)),this._poly=t,this._poly.on("revert-edited",this._updateLatLngs,this);},_defaultShape:function(){return L.Polyline._flat?L.Polyline._flat(this._poly._latlngs)?this._poly._latlngs:this._poly._latlngs[0]:this._poly._latlngs},_eachVertexHandler:function(t){for(var e=0;e<this._verticesHandlers.length;e++)t(this._verticesHandlers[e]);},addHooks:function(){this._initHandlers(),this._eachVertexHandler(function(t){t.addHooks();});},removeHooks:function(){this._eachVertexHandler(function(t){t.removeHooks();});},updateMarkers:function(){this._eachVertexHandler(function(t){t.updateMarkers();});},_initHandlers:function(){this._verticesHandlers=[];for(var t=0;t<this.latlngs.length;t++)this._verticesHandlers.push(new L.Edit.PolyVerticesEdit(this._poly,this.latlngs[t],this._poly.options.poly));},_updateLatLngs:function(t){this.latlngs=[t.layer._latlngs],t.layer._holes&&(this.latlngs=this.latlngs.concat(t.layer._holes));}}),L.Edit.PolyVerticesEdit=L.Handler.extend({options:{icon:new L.DivIcon({iconSize:new L.Point(8,8),className:"leaflet-div-icon leaflet-editing-icon"}),touchIcon:new L.DivIcon({iconSize:new L.Point(20,20),className:"leaflet-div-icon leaflet-editing-icon leaflet-touch-icon"}),drawError:{color:"#b00b00",timeout:1e3}},initialize:function(t,e,i){L.Browser.touch&&(this.options.icon=this.options.touchIcon),this._poly=t,i&&i.drawError&&(i.drawError=L.Util.extend({},this.options.drawError,i.drawError)),this._latlngs=e,L.setOptions(this,i);},_defaultShape:function(){return L.Polyline._flat?L.Polyline._flat(this._latlngs)?this._latlngs:this._latlngs[0]:this._latlngs},addHooks:function(){var t=this._poly,e=t._path;t instanceof L.Polygon||(t.options.fill=!1,t.options.editing&&(t.options.editing.fill=!1)),e&&t.options.editing&&t.options.editing.className&&(t.options.original.className&&t.options.original.className.split(" ").forEach(function(t){L.DomUtil.removeClass(e,t);}),t.options.editing.className.split(" ").forEach(function(t){L.DomUtil.addClass(e,t);})),t.setStyle(t.options.editing),this._poly._map&&(this._map=this._poly._map,this._markerGroup||this._initMarkers(),this._poly._map.addLayer(this._markerGroup));},removeHooks:function(){var t=this._poly,e=t._path;e&&t.options.editing&&t.options.editing.className&&(t.options.editing.className.split(" ").forEach(function(t){L.DomUtil.removeClass(e,t);}),t.options.original.className&&t.options.original.className.split(" ").forEach(function(t){L.DomUtil.addClass(e,t);})),t.setStyle(t.options.original),t._map&&(t._map.removeLayer(this._markerGroup),delete this._markerGroup,delete this._markers);},updateMarkers:function(){this._markerGroup.clearLayers(),this._initMarkers();},_initMarkers:function(){this._markerGroup||(this._markerGroup=new L.LayerGroup),this._markers=[];var t,e,i,o,a=this._defaultShape();for(t=0,i=a.length;t<i;t++)o=this._createMarker(a[t],t),o.on("click",this._onMarkerClick,this),o.on("contextmenu",this._onContextMenu,this),this._markers.push(o);var n,s;for(t=0,e=i-1;t<i;e=t++)(0!==t||L.Polygon&&this._poly instanceof L.Polygon)&&(n=this._markers[e],s=this._markers[t],this._createMiddleMarker(n,s),this._updatePrevNext(n,s));},_createMarker:function(t,e){var i=new L.Marker.Touch(t,{draggable:!0,icon:this.options.icon});return i._origLatLng=t,i._index=e,i.on("dragstart",this._onMarkerDragStart,this).on("drag",this._onMarkerDrag,this).on("dragend",this._fireEdit,this).on("touchmove",this._onTouchMove,this).on("touchend",this._fireEdit,this).on("MSPointerMove",this._onTouchMove,this).on("MSPointerUp",this._fireEdit,this),this._markerGroup.addLayer(i),i},_onMarkerDragStart:function(){this._poly.fire("editstart");},_spliceLatLngs:function(){var t=this._defaultShape(),e=[].splice.apply(t,arguments);return this._poly._convertLatLngs(t,!0),this._poly.redraw(),e},_removeMarker:function(t){var e=t._index;this._markerGroup.removeLayer(t),this._markers.splice(e,1),this._spliceLatLngs(e,1),this._updateIndexes(e,-1),t.off("dragstart",this._onMarkerDragStart,this).off("drag",this._onMarkerDrag,this).off("dragend",this._fireEdit,this).off("touchmove",this._onMarkerDrag,this).off("touchend",this._fireEdit,this).off("click",this._onMarkerClick,this).off("MSPointerMove",this._onTouchMove,this).off("MSPointerUp",this._fireEdit,this);},_fireEdit:function(){this._poly.edited=!0,this._poly.fire("edit"),this._poly._map.fire(L.Draw.Event.EDITVERTEX,{layers:this._markerGroup,poly:this._poly});},_onMarkerDrag:function(t){var e=t.target,i=this._poly,o=L.LatLngUtil.cloneLatLng(e._origLatLng);if(L.extend(e._origLatLng,e._latlng),i.options.poly){var a=i._map._editTooltip;if(!i.options.poly.allowIntersection&&i.intersects()){L.extend(e._origLatLng,o),e.setLatLng(o);var n=i.options.color;i.setStyle({color:this.options.drawError.color}),a&&a.updateContent({text:L.drawLocal.draw.handlers.polyline.error}),setTimeout(function(){i.setStyle({color:n}),a&&a.updateContent({text:L.drawLocal.edit.handlers.edit.tooltip.text,subtext:L.drawLocal.edit.handlers.edit.tooltip.subtext});},1e3);}}e._middleLeft&&e._middleLeft.setLatLng(this._getMiddleLatLng(e._prev,e)),e._middleRight&&e._middleRight.setLatLng(this._getMiddleLatLng(e,e._next)),this._poly._bounds._southWest=L.latLng(1/0,1/0),this._poly._bounds._northEast=L.latLng(-1/0,-1/0);var s=this._poly.getLatLngs();this._poly._convertLatLngs(s,!0),this._poly.redraw(),this._poly.fire("editdrag");},_onMarkerClick:function(t){var e=L.Polygon&&this._poly instanceof L.Polygon?4:3,i=t.target;this._defaultShape().length<e||(this._removeMarker(i),this._updatePrevNext(i._prev,i._next),i._middleLeft&&this._markerGroup.removeLayer(i._middleLeft),i._middleRight&&this._markerGroup.removeLayer(i._middleRight),i._prev&&i._next?this._createMiddleMarker(i._prev,i._next):i._prev?i._next||(i._prev._middleRight=null):i._next._middleLeft=null,this._fireEdit());},_onContextMenu:function(t){var e=t.target;this._poly;this._poly._map.fire(L.Draw.Event.MARKERCONTEXT,{marker:e,layers:this._markerGroup,poly:this._poly}),L.DomEvent.stopPropagation;},_onTouchMove:function(t){var e=this._map.mouseEventToLayerPoint(t.originalEvent.touches[0]),i=this._map.layerPointToLatLng(e),o=t.target;L.extend(o._origLatLng,i),o._middleLeft&&o._middleLeft.setLatLng(this._getMiddleLatLng(o._prev,o)),o._middleRight&&o._middleRight.setLatLng(this._getMiddleLatLng(o,o._next)),this._poly.redraw(),this.updateMarkers();},_updateIndexes:function(t,e){this._markerGroup.eachLayer(function(i){i._index>t&&(i._index+=e);});},_createMiddleMarker:function(t,e){var i,o,a,n=this._getMiddleLatLng(t,e),s=this._createMarker(n);s.setOpacity(.6),t._middleRight=e._middleLeft=s,o=function(){s.off("touchmove",o,this);var a=e._index;s._index=a,s.off("click",i,this).on("click",this._onMarkerClick,this),n.lat=s.getLatLng().lat,n.lng=s.getLatLng().lng,this._spliceLatLngs(a,0,n),this._markers.splice(a,0,s),s.setOpacity(1),this._updateIndexes(a,1),e._index++,this._updatePrevNext(t,s),this._updatePrevNext(s,e),this._poly.fire("editstart");},a=function(){s.off("dragstart",o,this),s.off("dragend",a,this),s.off("touchmove",o,this),this._createMiddleMarker(t,s),this._createMiddleMarker(s,e);},i=function(){o.call(this),a.call(this),this._fireEdit();},s.on("click",i,this).on("dragstart",o,this).on("dragend",a,this).on("touchmove",o,this),this._markerGroup.addLayer(s);},_updatePrevNext:function(t,e){t&&(t._next=e),e&&(e._prev=t);},_getMiddleLatLng:function(t,e){var i=this._poly._map,o=i.project(t.getLatLng()),a=i.project(e.getLatLng());return i.unproject(o._add(a)._divideBy(2))}}),L.Polyline.addInitHook(function(){this.editing||(L.Edit.Poly&&(this.editing=new L.Edit.Poly(this),this.options.editable&&this.editing.enable()),this.on("add",function(){this.editing&&this.editing.enabled()&&this.editing.addHooks();}),this.on("remove",function(){this.editing&&this.editing.enabled()&&this.editing.removeHooks();}));}),L.Edit=L.Edit||{},L.Edit.SimpleShape=L.Handler.extend({options:{moveIcon:new L.DivIcon({iconSize:new L.Point(8,8),className:"leaflet-div-icon leaflet-editing-icon leaflet-edit-move"}),resizeIcon:new L.DivIcon({iconSize:new L.Point(8,8),
+	className:"leaflet-div-icon leaflet-editing-icon leaflet-edit-resize"}),touchMoveIcon:new L.DivIcon({iconSize:new L.Point(20,20),className:"leaflet-div-icon leaflet-editing-icon leaflet-edit-move leaflet-touch-icon"}),touchResizeIcon:new L.DivIcon({iconSize:new L.Point(20,20),className:"leaflet-div-icon leaflet-editing-icon leaflet-edit-resize leaflet-touch-icon"})},initialize:function(t,e){L.Browser.touch&&(this.options.moveIcon=this.options.touchMoveIcon,this.options.resizeIcon=this.options.touchResizeIcon),this._shape=t,L.Util.setOptions(this,e);},addHooks:function(){var t=this._shape;this._shape._map&&(this._map=this._shape._map,t.setStyle(t.options.editing),t._map&&(this._map=t._map,this._markerGroup||this._initMarkers(),this._map.addLayer(this._markerGroup)));},removeHooks:function(){var t=this._shape;if(t.setStyle(t.options.original),t._map){this._unbindMarker(this._moveMarker);for(var e=0,i=this._resizeMarkers.length;e<i;e++)this._unbindMarker(this._resizeMarkers[e]);this._resizeMarkers=null,this._map.removeLayer(this._markerGroup),delete this._markerGroup;}this._map=null;},updateMarkers:function(){this._markerGroup.clearLayers(),this._initMarkers();},_initMarkers:function(){this._markerGroup||(this._markerGroup=new L.LayerGroup),this._createMoveMarker(),this._createResizeMarker();},_createMoveMarker:function(){},_createResizeMarker:function(){},_createMarker:function(t,e){var i=new L.Marker.Touch(t,{draggable:!0,icon:e,zIndexOffset:10});return this._bindMarker(i),this._markerGroup.addLayer(i),i},_bindMarker:function(t){t.on("dragstart",this._onMarkerDragStart,this).on("drag",this._onMarkerDrag,this).on("dragend",this._onMarkerDragEnd,this).on("touchstart",this._onTouchStart,this).on("touchmove",this._onTouchMove,this).on("MSPointerMove",this._onTouchMove,this).on("touchend",this._onTouchEnd,this).on("MSPointerUp",this._onTouchEnd,this);},_unbindMarker:function(t){t.off("dragstart",this._onMarkerDragStart,this).off("drag",this._onMarkerDrag,this).off("dragend",this._onMarkerDragEnd,this).off("touchstart",this._onTouchStart,this).off("touchmove",this._onTouchMove,this).off("MSPointerMove",this._onTouchMove,this).off("touchend",this._onTouchEnd,this).off("MSPointerUp",this._onTouchEnd,this);},_onMarkerDragStart:function(t){t.target.setOpacity(0),this._shape.fire("editstart");},_fireEdit:function(){this._shape.edited=!0,this._shape.fire("edit");},_onMarkerDrag:function(t){var e=t.target,i=e.getLatLng();e===this._moveMarker?this._move(i):this._resize(i),this._shape.redraw(),this._shape.fire("editdrag");},_onMarkerDragEnd:function(t){t.target.setOpacity(1),this._fireEdit();},_onTouchStart:function(t){if(L.Edit.SimpleShape.prototype._onMarkerDragStart.call(this,t),"function"==typeof this._getCorners){var e=this._getCorners(),i=t.target,o=i._cornerIndex;i.setOpacity(0),this._oppositeCorner=e[(o+2)%4],this._toggleCornerMarkers(0,o);}this._shape.fire("editstart");},_onTouchMove:function(t){var e=this._map.mouseEventToLayerPoint(t.originalEvent.touches[0]),i=this._map.layerPointToLatLng(e);return t.target===this._moveMarker?this._move(i):this._resize(i),this._shape.redraw(),!1},_onTouchEnd:function(t){t.target.setOpacity(1),this.updateMarkers(),this._fireEdit();},_move:function(){},_resize:function(){}}),L.Edit=L.Edit||{},L.Edit.Rectangle=L.Edit.SimpleShape.extend({_createMoveMarker:function(){var t=this._shape.getBounds(),e=t.getCenter();this._moveMarker=this._createMarker(e,this.options.moveIcon);},_createResizeMarker:function(){var t=this._getCorners();this._resizeMarkers=[];for(var e=0,i=t.length;e<i;e++)this._resizeMarkers.push(this._createMarker(t[e],this.options.resizeIcon)),this._resizeMarkers[e]._cornerIndex=e;},_onMarkerDragStart:function(t){L.Edit.SimpleShape.prototype._onMarkerDragStart.call(this,t);var e=this._getCorners(),i=t.target,o=i._cornerIndex;this._oppositeCorner=e[(o+2)%4],this._toggleCornerMarkers(0,o);},_onMarkerDragEnd:function(t){var e,i,o=t.target;o===this._moveMarker&&(e=this._shape.getBounds(),i=e.getCenter(),o.setLatLng(i)),this._toggleCornerMarkers(1),this._repositionCornerMarkers(),L.Edit.SimpleShape.prototype._onMarkerDragEnd.call(this,t);},_move:function(t){for(var e,i=this._shape._defaultShape?this._shape._defaultShape():this._shape.getLatLngs(),o=this._shape.getBounds(),a=o.getCenter(),n=[],s=0,r=i.length;s<r;s++)e=[i[s].lat-a.lat,i[s].lng-a.lng],n.push([t.lat+e[0],t.lng+e[1]]);this._shape.setLatLngs(n),this._repositionCornerMarkers(),this._map.fire(L.Draw.Event.EDITMOVE,{layer:this._shape});},_resize:function(t){var e;this._shape.setBounds(L.latLngBounds(t,this._oppositeCorner)),e=this._shape.getBounds(),this._moveMarker.setLatLng(e.getCenter()),this._map.fire(L.Draw.Event.EDITRESIZE,{layer:this._shape});},_getCorners:function(){var t=this._shape.getBounds();return [t.getNorthWest(),t.getNorthEast(),t.getSouthEast(),t.getSouthWest()]},_toggleCornerMarkers:function(t){for(var e=0,i=this._resizeMarkers.length;e<i;e++)this._resizeMarkers[e].setOpacity(t);},_repositionCornerMarkers:function(){for(var t=this._getCorners(),e=0,i=this._resizeMarkers.length;e<i;e++)this._resizeMarkers[e].setLatLng(t[e]);}}),L.Rectangle.addInitHook(function(){L.Edit.Rectangle&&(this.editing=new L.Edit.Rectangle(this),this.options.editable&&this.editing.enable());}),L.Edit=L.Edit||{},L.Edit.CircleMarker=L.Edit.SimpleShape.extend({_createMoveMarker:function(){var t=this._shape.getLatLng();this._moveMarker=this._createMarker(t,this.options.moveIcon);},_createResizeMarker:function(){this._resizeMarkers=[];},_move:function(t){if(this._resizeMarkers.length){var e=this._getResizeMarkerPoint(t);this._resizeMarkers[0].setLatLng(e);}this._shape.setLatLng(t),this._map.fire(L.Draw.Event.EDITMOVE,{layer:this._shape});}}),L.CircleMarker.addInitHook(function(){L.Edit.CircleMarker&&(this.editing=new L.Edit.CircleMarker(this),this.options.editable&&this.editing.enable()),this.on("add",function(){this.editing&&this.editing.enabled()&&this.editing.addHooks();}),this.on("remove",function(){this.editing&&this.editing.enabled()&&this.editing.removeHooks();});}),L.Edit=L.Edit||{},L.Edit.Circle=L.Edit.CircleMarker.extend({_createResizeMarker:function(){var t=this._shape.getLatLng(),e=this._getResizeMarkerPoint(t);this._resizeMarkers=[],this._resizeMarkers.push(this._createMarker(e,this.options.resizeIcon));},_getResizeMarkerPoint:function(t){var e=this._shape._radius*Math.cos(Math.PI/4),i=this._map.project(t);return this._map.unproject([i.x+e,i.y-e])},_resize:function(t){var e=this._moveMarker.getLatLng();L.GeometryUtil.isVersion07x()?radius=e.distanceTo(t):radius=this._map.distance(e,t),this._shape.setRadius(radius),this._map.editTooltip&&this._map._editTooltip.updateContent({text:L.drawLocal.edit.handlers.edit.tooltip.subtext+"<br />"+L.drawLocal.edit.handlers.edit.tooltip.text,subtext:L.drawLocal.draw.handlers.circle.radius+": "+L.GeometryUtil.readableDistance(radius,!0,this.options.feet,this.options.nautic)}),this._shape.setRadius(radius),this._map.fire(L.Draw.Event.EDITRESIZE,{layer:this._shape});}}),L.Circle.addInitHook(function(){L.Edit.Circle&&(this.editing=new L.Edit.Circle(this),this.options.editable&&this.editing.enable());}),L.Map.mergeOptions({touchExtend:!0}),L.Map.TouchExtend=L.Handler.extend({initialize:function(t){this._map=t,this._container=t._container,this._pane=t._panes.overlayPane;},addHooks:function(){L.DomEvent.on(this._container,"touchstart",this._onTouchStart,this),L.DomEvent.on(this._container,"touchend",this._onTouchEnd,this),L.DomEvent.on(this._container,"touchmove",this._onTouchMove,this),this._detectIE()?(L.DomEvent.on(this._container,"MSPointerDown",this._onTouchStart,this),L.DomEvent.on(this._container,"MSPointerUp",this._onTouchEnd,this),L.DomEvent.on(this._container,"MSPointerMove",this._onTouchMove,this),L.DomEvent.on(this._container,"MSPointerCancel",this._onTouchCancel,this)):(L.DomEvent.on(this._container,"touchcancel",this._onTouchCancel,this),L.DomEvent.on(this._container,"touchleave",this._onTouchLeave,this));},removeHooks:function(){L.DomEvent.off(this._container,"touchstart",this._onTouchStart,this),L.DomEvent.off(this._container,"touchend",this._onTouchEnd,this),L.DomEvent.off(this._container,"touchmove",this._onTouchMove,this),this._detectIE()?(L.DomEvent.off(this._container,"MSPointerDown",this._onTouchStart,this),L.DomEvent.off(this._container,"MSPointerUp",this._onTouchEnd,this),L.DomEvent.off(this._container,"MSPointerMove",this._onTouchMove,this),L.DomEvent.off(this._container,"MSPointerCancel",this._onTouchCancel,this)):(L.DomEvent.off(this._container,"touchcancel",this._onTouchCancel,this),L.DomEvent.off(this._container,"touchleave",this._onTouchLeave,this));},_touchEvent:function(t,e){var i={};if(void 0!==t.touches){if(!t.touches.length)return;i=t.touches[0];}else {if("touch"!==t.pointerType)return;if(i=t,!this._filterClick(t))return}var o=this._map.mouseEventToContainerPoint(i),a=this._map.mouseEventToLayerPoint(i),n=this._map.layerPointToLatLng(a);this._map.fire(e,{latlng:n,layerPoint:a,containerPoint:o,pageX:i.pageX,pageY:i.pageY,originalEvent:t});},_filterClick:function(t){var e=t.timeStamp||t.originalEvent.timeStamp,i=L.DomEvent._lastClick&&e-L.DomEvent._lastClick;return i&&i>100&&i<500||t.target._simulatedClick&&!t._simulated?(L.DomEvent.stop(t),!1):(L.DomEvent._lastClick=e,!0)},_onTouchStart:function(t){if(this._map._loaded){this._touchEvent(t,"touchstart");}},_onTouchEnd:function(t){if(this._map._loaded){this._touchEvent(t,"touchend");}},_onTouchCancel:function(t){if(this._map._loaded){var e="touchcancel";this._detectIE()&&(e="pointercancel"),this._touchEvent(t,e);}},_onTouchLeave:function(t){if(this._map._loaded){this._touchEvent(t,"touchleave");}},_onTouchMove:function(t){if(this._map._loaded){this._touchEvent(t,"touchmove");}},_detectIE:function(){var e=t.navigator.userAgent,i=e.indexOf("MSIE ");if(i>0)return parseInt(e.substring(i+5,e.indexOf(".",i)),10);if(e.indexOf("Trident/")>0){var o=e.indexOf("rv:");return parseInt(e.substring(o+3,e.indexOf(".",o)),10)}var a=e.indexOf("Edge/");return a>0&&parseInt(e.substring(a+5,e.indexOf(".",a)),10)}}),L.Map.addInitHook("addHandler","touchExtend",L.Map.TouchExtend),L.Marker.Touch=L.Marker.extend({_initInteraction:function(){return this.addInteractiveTarget?L.Marker.prototype._initInteraction.apply(this):this._initInteractionLegacy()},_initInteractionLegacy:function(){if(this.options.clickable){var t=this._icon,e=["dblclick","mousedown","mouseover","mouseout","contextmenu","touchstart","touchend","touchmove"];this._detectIE?e.concat(["MSPointerDown","MSPointerUp","MSPointerMove","MSPointerCancel"]):e.concat(["touchcancel"]),L.DomUtil.addClass(t,"leaflet-clickable"),L.DomEvent.on(t,"click",this._onMouseClick,this),L.DomEvent.on(t,"keypress",this._onKeyPress,this);for(var i=0;i<e.length;i++)L.DomEvent.on(t,e[i],this._fireMouseEvent,this);L.Handler.MarkerDrag&&(this.dragging=new L.Handler.MarkerDrag(this),this.options.draggable&&this.dragging.enable());}},_detectIE:function(){var e=t.navigator.userAgent,i=e.indexOf("MSIE ");if(i>0)return parseInt(e.substring(i+5,e.indexOf(".",i)),10);if(e.indexOf("Trident/")>0){var o=e.indexOf("rv:");return parseInt(e.substring(o+3,e.indexOf(".",o)),10)}var a=e.indexOf("Edge/");return a>0&&parseInt(e.substring(a+5,e.indexOf(".",a)),10)}}),L.LatLngUtil={cloneLatLngs:function(t){for(var e=[],i=0,o=t.length;i<o;i++)Array.isArray(t[i])?e.push(L.LatLngUtil.cloneLatLngs(t[i])):e.push(this.cloneLatLng(t[i]));return e},cloneLatLng:function(t){return L.latLng(t.lat,t.lng)}},function(){var t={km:2,ha:2,m:0,mi:2,ac:2,yd:0,ft:0,nm:2};L.GeometryUtil=L.extend(L.GeometryUtil||{},{geodesicArea:function(t){var e,i,o=t.length,a=0,n=Math.PI/180;if(o>2){for(var s=0;s<o;s++)e=t[s],i=t[(s+1)%o],a+=(i.lng-e.lng)*n*(2+Math.sin(e.lat*n)+Math.sin(i.lat*n));a=6378137*a*6378137/2;}return Math.abs(a)},formattedNumber:function(t,e){var i=parseFloat(t).toFixed(e),o=L.drawLocal.format&&L.drawLocal.format.numeric,a=o&&o.delimiters,n=a&&a.thousands,s=a&&a.decimal;if(n||s){var r=i.split(".");i=n?r[0].replace(/(\d)(?=(\d{3})+(?!\d))/g,"$1"+n):r[0],s=s||".",r.length>1&&(i=i+s+r[1]);}return i},readableArea:function(e,i,o){var a,n,s,o=L.Util.extend({},t,o);return i?(n=["ha","m"],s=typeof i,"string"===s?n=[i]:"boolean"!==s&&(n=i),a=e>=1e6&&-1!==n.indexOf("km")?L.GeometryUtil.formattedNumber(1e-6*e,o.km)+" km²":e>=1e4&&-1!==n.indexOf("ha")?L.GeometryUtil.formattedNumber(1e-4*e,o.ha)+" ha":L.GeometryUtil.formattedNumber(e,o.m)+" m²"):(e/=.836127,a=e>=3097600?L.GeometryUtil.formattedNumber(e/3097600,o.mi)+" mi²":e>=4840?L.GeometryUtil.formattedNumber(e/4840,o.ac)+" acres":L.GeometryUtil.formattedNumber(e,o.yd)+" yd²"),a},readableDistance:function(e,i,o,a,n){var s,n=L.Util.extend({},t,n);switch(i?"string"==typeof i?i:"metric":o?"feet":a?"nauticalMile":"yards"){case"metric":s=e>1e3?L.GeometryUtil.formattedNumber(e/1e3,n.km)+" km":L.GeometryUtil.formattedNumber(e,n.m)+" m";break;case"feet":e*=3.28083,s=L.GeometryUtil.formattedNumber(e,n.ft)+" ft";break;case"nauticalMile":e*=.53996,s=L.GeometryUtil.formattedNumber(e/1e3,n.nm)+" nm";break;case"yards":default:e*=1.09361,s=e>1760?L.GeometryUtil.formattedNumber(e/1760,n.mi)+" miles":L.GeometryUtil.formattedNumber(e,n.yd)+" yd";}return s},isVersion07x:function(){var t=L.version.split(".");return 0===parseInt(t[0],10)&&7===parseInt(t[1],10)}});}(),L.Util.extend(L.LineUtil,{segmentsIntersect:function(t,e,i,o){return this._checkCounterclockwise(t,i,o)!==this._checkCounterclockwise(e,i,o)&&this._checkCounterclockwise(t,e,i)!==this._checkCounterclockwise(t,e,o)},_checkCounterclockwise:function(t,e,i){return (i.y-t.y)*(e.x-t.x)>(e.y-t.y)*(i.x-t.x)}}),L.Polyline.include({intersects:function(){var t,e,i,o=this._getProjectedPoints(),a=o?o.length:0;if(this._tooFewPointsForIntersection())return !1;for(t=a-1;t>=3;t--)if(e=o[t-1],i=o[t],this._lineSegmentsIntersectsRange(e,i,t-2))return !0;return !1},newLatLngIntersects:function(t,e){return !!this._map&&this.newPointIntersects(this._map.latLngToLayerPoint(t),e)},newPointIntersects:function(t,e){var i=this._getProjectedPoints(),o=i?i.length:0,a=i?i[o-1]:null,n=o-2;return !this._tooFewPointsForIntersection(1)&&this._lineSegmentsIntersectsRange(a,t,n,e?1:0)},_tooFewPointsForIntersection:function(t){var e=this._getProjectedPoints(),i=e?e.length:0;return i+=t||0,!e||i<=3},_lineSegmentsIntersectsRange:function(t,e,i,o){var a,n,s=this._getProjectedPoints();o=o||0;for(var r=i;r>o;r--)if(a=s[r-1],n=s[r],L.LineUtil.segmentsIntersect(t,e,a,n))return !0;return !1},_getProjectedPoints:function(){if(!this._defaultShape)return this._originalPoints;for(var t=[],e=this._defaultShape(),i=0;i<e.length;i++)t.push(this._map.latLngToLayerPoint(e[i]));return t}}),L.Polygon.include({intersects:function(){var t,e,i,o,a=this._getProjectedPoints();return !this._tooFewPointsForIntersection()&&(!!L.Polyline.prototype.intersects.call(this)||(t=a.length,e=a[0],i=a[t-1],o=t-2,this._lineSegmentsIntersectsRange(i,e,o,1)))}}),L.Control.Draw=L.Control.extend({options:{position:"topleft",draw:{},edit:!1},initialize:function(t){if(L.version<"0.7")throw new Error("Leaflet.draw 0.2.3+ requires Leaflet 0.7.0+. Download latest from https://github.com/Leaflet/Leaflet/");L.Control.prototype.initialize.call(this,t);var e;this._toolbars={},L.DrawToolbar&&this.options.draw&&(e=new L.DrawToolbar(this.options.draw),this._toolbars[L.DrawToolbar.TYPE]=e,this._toolbars[L.DrawToolbar.TYPE].on("enable",this._toolbarEnabled,this)),L.EditToolbar&&this.options.edit&&(e=new L.EditToolbar(this.options.edit),this._toolbars[L.EditToolbar.TYPE]=e,this._toolbars[L.EditToolbar.TYPE].on("enable",this._toolbarEnabled,this)),L.toolbar=this;},onAdd:function(t){var e,i=L.DomUtil.create("div","leaflet-draw"),o=!1;for(var a in this._toolbars)this._toolbars.hasOwnProperty(a)&&(e=this._toolbars[a].addToolbar(t))&&(o||(L.DomUtil.hasClass(e,"leaflet-draw-toolbar-top")||L.DomUtil.addClass(e.childNodes[0],"leaflet-draw-toolbar-top"),o=!0),i.appendChild(e));return i},onRemove:function(){for(var t in this._toolbars)this._toolbars.hasOwnProperty(t)&&this._toolbars[t].removeToolbar();},setDrawingOptions:function(t){for(var e in this._toolbars)this._toolbars[e]instanceof L.DrawToolbar&&this._toolbars[e].setOptions(t);},_toolbarEnabled:function(t){var e=t.target;for(var i in this._toolbars)this._toolbars[i]!==e&&this._toolbars[i].disable();}}),L.Map.mergeOptions({drawControlTooltips:!0,drawControl:!1}),L.Map.addInitHook(function(){this.options.drawControl&&(this.drawControl=new L.Control.Draw,this.addControl(this.drawControl));}),L.Toolbar=L.Class.extend({initialize:function(t){L.setOptions(this,t),this._modes={},this._actionButtons=[],this._activeMode=null;var e=L.version.split(".");1===parseInt(e[0],10)&&parseInt(e[1],10)>=2?L.Toolbar.include(L.Evented.prototype):L.Toolbar.include(L.Mixin.Events);},enabled:function(){return null!==this._activeMode},disable:function(){this.enabled()&&this._activeMode.handler.disable();},addToolbar:function(t){var e,i=L.DomUtil.create("div","leaflet-draw-section"),o=0,a=this._toolbarClass||"",n=this.getModeHandlers(t);for(this._toolbarContainer=L.DomUtil.create("div","leaflet-draw-toolbar leaflet-bar"),this._map=t,e=0;e<n.length;e++)n[e].enabled&&this._initModeHandler(n[e].handler,this._toolbarContainer,o++,a,n[e].title);if(o)return this._lastButtonIndex=--o,this._actionsContainer=L.DomUtil.create("ul","leaflet-draw-actions"),i.appendChild(this._toolbarContainer),i.appendChild(this._actionsContainer),i},removeToolbar:function(){for(var t in this._modes)this._modes.hasOwnProperty(t)&&(this._disposeButton(this._modes[t].button,this._modes[t].handler.enable,this._modes[t].handler),this._modes[t].handler.disable(),this._modes[t].handler.off("enabled",this._handlerActivated,this).off("disabled",this._handlerDeactivated,this));this._modes={};for(var e=0,i=this._actionButtons.length;e<i;e++)this._disposeButton(this._actionButtons[e].button,this._actionButtons[e].callback,this);this._actionButtons=[],this._actionsContainer=null;},_initModeHandler:function(t,e,i,o,a){var n=t.type;this._modes[n]={},this._modes[n].handler=t,this._modes[n].button=this._createButton({type:n,title:a,className:o+"-"+n,container:e,callback:this._modes[n].handler.enable,context:this._modes[n].handler}),this._modes[n].buttonIndex=i,this._modes[n].handler.on("enabled",this._handlerActivated,this).on("disabled",this._handlerDeactivated,this);},_detectIOS:function(){return /iPad|iPhone|iPod/.test(navigator.userAgent)&&!t.MSStream},_createButton:function(t){var e=L.DomUtil.create("a",t.className||"",t.container),i=L.DomUtil.create("span","sr-only",t.container);e.href="#",e.appendChild(i),t.title&&(e.title=t.title,i.innerHTML=t.title),t.text&&(e.innerHTML=t.text,i.innerHTML=t.text);var o=this._detectIOS()?"touchstart":"click";return L.DomEvent.on(e,"click",L.DomEvent.stopPropagation).on(e,"mousedown",L.DomEvent.stopPropagation).on(e,"dblclick",L.DomEvent.stopPropagation).on(e,"touchstart",L.DomEvent.stopPropagation).on(e,"click",L.DomEvent.preventDefault).on(e,o,t.callback,t.context),e},_disposeButton:function(t,e){var i=this._detectIOS()?"touchstart":"click";L.DomEvent.off(t,"click",L.DomEvent.stopPropagation).off(t,"mousedown",L.DomEvent.stopPropagation).off(t,"dblclick",L.DomEvent.stopPropagation).off(t,"touchstart",L.DomEvent.stopPropagation).off(t,"click",L.DomEvent.preventDefault).off(t,i,e);},_handlerActivated:function(t){this.disable(),this._activeMode=this._modes[t.handler],L.DomUtil.addClass(this._activeMode.button,"leaflet-draw-toolbar-button-enabled"),this._showActionsToolbar(),this.fire("enable");},_handlerDeactivated:function(){this._hideActionsToolbar(),L.DomUtil.removeClass(this._activeMode.button,"leaflet-draw-toolbar-button-enabled"),this._activeMode=null,this.fire("disable");},_createActions:function(t){var e,i,o,a,n=this._actionsContainer,s=this.getActions(t),r=s.length;for(i=0,o=this._actionButtons.length;i<o;i++)this._disposeButton(this._actionButtons[i].button,this._actionButtons[i].callback);for(this._actionButtons=[];n.firstChild;)n.removeChild(n.firstChild);for(var l=0;l<r;l++)"enabled"in s[l]&&!s[l].enabled||(e=L.DomUtil.create("li","",n),a=this._createButton({title:s[l].title,text:s[l].text,container:e,callback:s[l].callback,context:s[l].context}),this._actionButtons.push({button:a,callback:s[l].callback}));},_showActionsToolbar:function(){var t=this._activeMode.buttonIndex,e=this._lastButtonIndex,i=this._activeMode.button.offsetTop-1;this._createActions(this._activeMode.handler),this._actionsContainer.style.top=i+"px",0===t&&(L.DomUtil.addClass(this._toolbarContainer,"leaflet-draw-toolbar-notop"),L.DomUtil.addClass(this._actionsContainer,"leaflet-draw-actions-top")),t===e&&(L.DomUtil.addClass(this._toolbarContainer,"leaflet-draw-toolbar-nobottom"),L.DomUtil.addClass(this._actionsContainer,"leaflet-draw-actions-bottom")),this._actionsContainer.style.display="block",this._map.fire(L.Draw.Event.TOOLBAROPENED);},_hideActionsToolbar:function(){this._actionsContainer.style.display="none",L.DomUtil.removeClass(this._toolbarContainer,"leaflet-draw-toolbar-notop"),L.DomUtil.removeClass(this._toolbarContainer,"leaflet-draw-toolbar-nobottom"),L.DomUtil.removeClass(this._actionsContainer,"leaflet-draw-actions-top"),L.DomUtil.removeClass(this._actionsContainer,"leaflet-draw-actions-bottom"),this._map.fire(L.Draw.Event.TOOLBARCLOSED);}}),L.Draw=L.Draw||{},L.Draw.Tooltip=L.Class.extend({initialize:function(t){this._map=t,this._popupPane=t._panes.popupPane,this._visible=!1,this._container=t.options.drawControlTooltips?L.DomUtil.create("div","leaflet-draw-tooltip",this._popupPane):null,this._singleLineLabel=!1,this._map.on("mouseout",this._onMouseOut,this);},dispose:function(){this._map.off("mouseout",this._onMouseOut,this),this._container&&(this._popupPane.removeChild(this._container),this._container=null);},updateContent:function(t){return this._container?(t.subtext=t.subtext||"",0!==t.subtext.length||this._singleLineLabel?t.subtext.length>0&&this._singleLineLabel&&(L.DomUtil.removeClass(this._container,"leaflet-draw-tooltip-single"),this._singleLineLabel=!1):(L.DomUtil.addClass(this._container,"leaflet-draw-tooltip-single"),this._singleLineLabel=!0),this._container.innerHTML=(t.subtext.length>0?'<span class="leaflet-draw-tooltip-subtext">'+t.subtext+"</span><br />":"")+"<span>"+t.text+"</span>",t.text||t.subtext?(this._visible=!0,this._container.style.visibility="inherit"):(this._visible=!1,this._container.style.visibility="hidden"),this):this},updatePosition:function(t){var e=this._map.latLngToLayerPoint(t),i=this._container;return this._container&&(this._visible&&(i.style.visibility="inherit"),L.DomUtil.setPosition(i,e)),this},showAsError:function(){return this._container&&L.DomUtil.addClass(this._container,"leaflet-error-draw-tooltip"),this},removeError:function(){return this._container&&L.DomUtil.removeClass(this._container,"leaflet-error-draw-tooltip"),this},_onMouseOut:function(){this._container&&(this._container.style.visibility="hidden");}}),L.DrawToolbar=L.Toolbar.extend({statics:{TYPE:"draw"},options:{polyline:{},polygon:{},rectangle:{},circle:{},marker:{},circlemarker:{}},initialize:function(t){for(var e in this.options)this.options.hasOwnProperty(e)&&t[e]&&(t[e]=L.extend({},this.options[e],t[e]));this._toolbarClass="leaflet-draw-draw",L.Toolbar.prototype.initialize.call(this,t);},getModeHandlers:function(t){return [{enabled:this.options.polyline,handler:new L.Draw.Polyline(t,this.options.polyline),title:L.drawLocal.draw.toolbar.buttons.polyline},{enabled:this.options.polygon,handler:new L.Draw.Polygon(t,this.options.polygon),title:L.drawLocal.draw.toolbar.buttons.polygon},{enabled:this.options.rectangle,handler:new L.Draw.Rectangle(t,this.options.rectangle),title:L.drawLocal.draw.toolbar.buttons.rectangle},{enabled:this.options.circle,handler:new L.Draw.Circle(t,this.options.circle),title:L.drawLocal.draw.toolbar.buttons.circle},{enabled:this.options.marker,handler:new L.Draw.Marker(t,this.options.marker),title:L.drawLocal.draw.toolbar.buttons.marker},{enabled:this.options.circlemarker,handler:new L.Draw.CircleMarker(t,this.options.circlemarker),title:L.drawLocal.draw.toolbar.buttons.circlemarker}]},getActions:function(t){return [{enabled:t.completeShape,title:L.drawLocal.draw.toolbar.finish.title,text:L.drawLocal.draw.toolbar.finish.text,callback:t.completeShape,context:t},{enabled:t.deleteLastVertex,title:L.drawLocal.draw.toolbar.undo.title,text:L.drawLocal.draw.toolbar.undo.text,callback:t.deleteLastVertex,context:t},{title:L.drawLocal.draw.toolbar.actions.title,text:L.drawLocal.draw.toolbar.actions.text,callback:this.disable,context:this}]},setOptions:function(t){L.setOptions(this,t);for(var e in this._modes)this._modes.hasOwnProperty(e)&&t.hasOwnProperty(e)&&this._modes[e].handler.setOptions(t[e]);}}),L.EditToolbar=L.Toolbar.extend({statics:{TYPE:"edit"},options:{edit:{selectedPathOptions:{dashArray:"10, 10",fill:!0,fillColor:"#fe57a1",fillOpacity:.1,maintainColor:!1}},remove:{},poly:null,featureGroup:null},initialize:function(t){t.edit&&(void 0===t.edit.selectedPathOptions&&(t.edit.selectedPathOptions=this.options.edit.selectedPathOptions),t.edit.selectedPathOptions=L.extend({},this.options.edit.selectedPathOptions,t.edit.selectedPathOptions)),t.remove&&(t.remove=L.extend({},this.options.remove,t.remove)),t.poly&&(t.poly=L.extend({},this.options.poly,t.poly)),this._toolbarClass="leaflet-draw-edit",L.Toolbar.prototype.initialize.call(this,t),this._selectedFeatureCount=0;},getModeHandlers:function(t){var e=this.options.featureGroup;return [{enabled:this.options.edit,handler:new L.EditToolbar.Edit(t,{featureGroup:e,selectedPathOptions:this.options.edit.selectedPathOptions,poly:this.options.poly}),title:L.drawLocal.edit.toolbar.buttons.edit},{enabled:this.options.remove,handler:new L.EditToolbar.Delete(t,{featureGroup:e}),title:L.drawLocal.edit.toolbar.buttons.remove}]},getActions:function(t){var e=[{title:L.drawLocal.edit.toolbar.actions.save.title,text:L.drawLocal.edit.toolbar.actions.save.text,callback:this._save,context:this},{title:L.drawLocal.edit.toolbar.actions.cancel.title,text:L.drawLocal.edit.toolbar.actions.cancel.text,callback:this.disable,context:this}];return t.removeAllLayers&&e.push({title:L.drawLocal.edit.toolbar.actions.clearAll.title,text:L.drawLocal.edit.toolbar.actions.clearAll.text,callback:this._clearAllLayers,context:this}),e},addToolbar:function(t){var e=L.Toolbar.prototype.addToolbar.call(this,t);return this._checkDisabled(),this.options.featureGroup.on("layeradd layerremove",this._checkDisabled,this),e},removeToolbar:function(){this.options.featureGroup.off("layeradd layerremove",this._checkDisabled,this),L.Toolbar.prototype.removeToolbar.call(this);},disable:function(){this.enabled()&&(this._activeMode.handler.revertLayers(),L.Toolbar.prototype.disable.call(this));},_save:function(){this._activeMode.handler.save(),this._activeMode&&this._activeMode.handler.disable();},_clearAllLayers:function(){this._activeMode.handler.removeAllLayers(),this._activeMode&&this._activeMode.handler.disable();},_checkDisabled:function(){var t,e=this.options.featureGroup,i=0!==e.getLayers().length;this.options.edit&&(t=this._modes[L.EditToolbar.Edit.TYPE].button,i?L.DomUtil.removeClass(t,"leaflet-disabled"):L.DomUtil.addClass(t,"leaflet-disabled"),t.setAttribute("title",i?L.drawLocal.edit.toolbar.buttons.edit:L.drawLocal.edit.toolbar.buttons.editDisabled)),this.options.remove&&(t=this._modes[L.EditToolbar.Delete.TYPE].button,i?L.DomUtil.removeClass(t,"leaflet-disabled"):L.DomUtil.addClass(t,"leaflet-disabled"),t.setAttribute("title",i?L.drawLocal.edit.toolbar.buttons.remove:L.drawLocal.edit.toolbar.buttons.removeDisabled));}}),L.EditToolbar.Edit=L.Handler.extend({statics:{TYPE:"edit"},initialize:function(t,e){if(L.Handler.prototype.initialize.call(this,t),L.setOptions(this,e),this._featureGroup=e.featureGroup,!(this._featureGroup instanceof L.FeatureGroup))throw new Error("options.featureGroup must be a L.FeatureGroup");this._uneditedLayerProps={},this.type=L.EditToolbar.Edit.TYPE;var i=L.version.split(".");1===parseInt(i[0],10)&&parseInt(i[1],10)>=2?L.EditToolbar.Edit.include(L.Evented.prototype):L.EditToolbar.Edit.include(L.Mixin.Events);},enable:function(){!this._enabled&&this._hasAvailableLayers()&&(this.fire("enabled",{handler:this.type}),this._map.fire(L.Draw.Event.EDITSTART,{handler:this.type}),L.Handler.prototype.enable.call(this),this._featureGroup.on("layeradd",this._enableLayerEdit,this).on("layerremove",this._disableLayerEdit,this));},disable:function(){this._enabled&&(this._featureGroup.off("layeradd",this._enableLayerEdit,this).off("layerremove",this._disableLayerEdit,this),L.Handler.prototype.disable.call(this),this._map.fire(L.Draw.Event.EDITSTOP,{handler:this.type}),this.fire("disabled",{handler:this.type}));},addHooks:function(){var t=this._map;t&&(t.getContainer().focus(),this._featureGroup.eachLayer(this._enableLayerEdit,this),this._tooltip=new L.Draw.Tooltip(this._map),this._tooltip.updateContent({text:L.drawLocal.edit.handlers.edit.tooltip.text,subtext:L.drawLocal.edit.handlers.edit.tooltip.subtext}),t._editTooltip=this._tooltip,this._updateTooltip(),this._map.on("mousemove",this._onMouseMove,this).on("touchmove",this._onMouseMove,this).on("MSPointerMove",this._onMouseMove,this).on(L.Draw.Event.EDITVERTEX,this._updateTooltip,this));},removeHooks:function(){this._map&&(this._featureGroup.eachLayer(this._disableLayerEdit,this),this._uneditedLayerProps={},this._tooltip.dispose(),this._tooltip=null,this._map.off("mousemove",this._onMouseMove,this).off("touchmove",this._onMouseMove,this).off("MSPointerMove",this._onMouseMove,this).off(L.Draw.Event.EDITVERTEX,this._updateTooltip,this));},revertLayers:function(){this._featureGroup.eachLayer(function(t){this._revertLayer(t);},this);},save:function(){var t=new L.LayerGroup;this._featureGroup.eachLayer(function(e){e.edited&&(t.addLayer(e),e.edited=!1);}),this._map.fire(L.Draw.Event.EDITED,{layers:t});},_backupLayer:function(t){var e=L.Util.stamp(t);this._uneditedLayerProps[e]||(t instanceof L.Polyline||t instanceof L.Polygon||t instanceof L.Rectangle?this._uneditedLayerProps[e]={latlngs:L.LatLngUtil.cloneLatLngs(t.getLatLngs())}:t instanceof L.Circle?this._uneditedLayerProps[e]={latlng:L.LatLngUtil.cloneLatLng(t.getLatLng()),radius:t.getRadius()}:(t instanceof L.Marker||t instanceof L.CircleMarker)&&(this._uneditedLayerProps[e]={latlng:L.LatLngUtil.cloneLatLng(t.getLatLng())}));},_getTooltipText:function(){return {text:L.drawLocal.edit.handlers.edit.tooltip.text,subtext:L.drawLocal.edit.handlers.edit.tooltip.subtext}},_updateTooltip:function(){this._tooltip.updateContent(this._getTooltipText());},_revertLayer:function(t){var e=L.Util.stamp(t);t.edited=!1,this._uneditedLayerProps.hasOwnProperty(e)&&(t instanceof L.Polyline||t instanceof L.Polygon||t instanceof L.Rectangle?t.setLatLngs(this._uneditedLayerProps[e].latlngs):t instanceof L.Circle?(t.setLatLng(this._uneditedLayerProps[e].latlng),t.setRadius(this._uneditedLayerProps[e].radius)):(t instanceof L.Marker||t instanceof L.CircleMarker)&&t.setLatLng(this._uneditedLayerProps[e].latlng),t.fire("revert-edited",{layer:t}));},_enableLayerEdit:function(t){var e,i,o=t.layer||t.target||t;this._backupLayer(o),this.options.poly&&(i=L.Util.extend({},this.options.poly),o.options.poly=i),this.options.selectedPathOptions&&(e=L.Util.extend({},this.options.selectedPathOptions),e.maintainColor&&(e.color=o.options.color,e.fillColor=o.options.fillColor),o.options.original=L.extend({},o.options),o.options.editing=e),o instanceof L.Marker?(o.editing&&o.editing.enable(),o.dragging.enable(),o.on("dragend",this._onMarkerDragEnd).on("touchmove",this._onTouchMove,this).on("MSPointerMove",this._onTouchMove,this).on("touchend",this._onMarkerDragEnd,this).on("MSPointerUp",this._onMarkerDragEnd,this)):o.editing.enable();},_disableLayerEdit:function(t){var e=t.layer||t.target||t;e.edited=!1,e.editing&&e.editing.disable(),delete e.options.editing,delete e.options.original,this._selectedPathOptions&&(e instanceof L.Marker?this._toggleMarkerHighlight(e):(e.setStyle(e.options.previousOptions),
 	delete e.options.previousOptions)),e instanceof L.Marker?(e.dragging.disable(),e.off("dragend",this._onMarkerDragEnd,this).off("touchmove",this._onTouchMove,this).off("MSPointerMove",this._onTouchMove,this).off("touchend",this._onMarkerDragEnd,this).off("MSPointerUp",this._onMarkerDragEnd,this)):e.editing.disable();},_onMouseMove:function(t){this._tooltip.updatePosition(t.latlng);},_onMarkerDragEnd:function(t){var e=t.target;e.edited=!0,this._map.fire(L.Draw.Event.EDITMOVE,{layer:e});},_onTouchMove:function(t){var e=t.originalEvent.changedTouches[0],i=this._map.mouseEventToLayerPoint(e),o=this._map.layerPointToLatLng(i);t.target.setLatLng(o);},_hasAvailableLayers:function(){return 0!==this._featureGroup.getLayers().length}}),L.EditToolbar.Delete=L.Handler.extend({statics:{TYPE:"remove"},initialize:function(t,e){if(L.Handler.prototype.initialize.call(this,t),L.Util.setOptions(this,e),this._deletableLayers=this.options.featureGroup,!(this._deletableLayers instanceof L.FeatureGroup))throw new Error("options.featureGroup must be a L.FeatureGroup");this.type=L.EditToolbar.Delete.TYPE;var i=L.version.split(".");1===parseInt(i[0],10)&&parseInt(i[1],10)>=2?L.EditToolbar.Delete.include(L.Evented.prototype):L.EditToolbar.Delete.include(L.Mixin.Events);},enable:function(){!this._enabled&&this._hasAvailableLayers()&&(this.fire("enabled",{handler:this.type}),this._map.fire(L.Draw.Event.DELETESTART,{handler:this.type}),L.Handler.prototype.enable.call(this),this._deletableLayers.on("layeradd",this._enableLayerDelete,this).on("layerremove",this._disableLayerDelete,this));},disable:function(){this._enabled&&(this._deletableLayers.off("layeradd",this._enableLayerDelete,this).off("layerremove",this._disableLayerDelete,this),L.Handler.prototype.disable.call(this),this._map.fire(L.Draw.Event.DELETESTOP,{handler:this.type}),this.fire("disabled",{handler:this.type}));},addHooks:function(){var t=this._map;t&&(t.getContainer().focus(),this._deletableLayers.eachLayer(this._enableLayerDelete,this),this._deletedLayers=new L.LayerGroup,this._tooltip=new L.Draw.Tooltip(this._map),this._tooltip.updateContent({text:L.drawLocal.edit.handlers.remove.tooltip.text}),this._map.on("mousemove",this._onMouseMove,this));},removeHooks:function(){this._map&&(this._deletableLayers.eachLayer(this._disableLayerDelete,this),this._deletedLayers=null,this._tooltip.dispose(),this._tooltip=null,this._map.off("mousemove",this._onMouseMove,this));},revertLayers:function(){this._deletedLayers.eachLayer(function(t){this._deletableLayers.addLayer(t),t.fire("revert-deleted",{layer:t});},this);},save:function(){this._map.fire(L.Draw.Event.DELETED,{layers:this._deletedLayers});},removeAllLayers:function(){this._deletableLayers.eachLayer(function(t){this._removeLayer({layer:t});},this),this.save();},_enableLayerDelete:function(t){(t.layer||t.target||t).on("click",this._removeLayer,this);},_disableLayerDelete:function(t){var e=t.layer||t.target||t;e.off("click",this._removeLayer,this),this._deletedLayers.removeLayer(e);},_removeLayer:function(t){var e=t.layer||t.target||t;this._deletableLayers.removeLayer(e),this._deletedLayers.addLayer(e),e.fire("deleted");},_onMouseMove:function(t){this._tooltip.updatePosition(t.latlng);},_hasAvailableLayers:function(){return 0!==this._deletableLayers.getLayers().length}});}(window,document);
 
 	// Based on https://github.com/shramov/leaflet-plugins
@@ -41302,6 +41781,14 @@
 
 			this._mutant.setCenter(_center);
 			this._mutant.setZoom(Math.round(this._map.getZoom()));
+			const gZoom = this._mutant.getZoom();
+
+			for (let key of Object.keys(this._freshTiles)) {
+				const tileZoom = key.split(':')[2];
+				if (gZoom != tileZoom) {
+					delete this._freshTiles[key]; 
+				}
+			}
 		},
 
 		// Agressively prune _freshtiles when a tile with the same key is removed,
@@ -41318,21 +41805,30 @@
 			return L.GridLayer.prototype._removeTile.call(this, key);
 		},
 
+		_getLargeGMapBound: function (googleBounds) {
+			const sw = googleBounds.getSouthWest();
+			const ne = googleBounds.getNorthEast();
+			const swLat = sw.lat();
+			const swLng = sw.lng();
+			const neLat = ne.lat();
+			const neLng = ne.lng();
+			const latDelta = Math.abs(neLat - swLat);
+			const lngDelta = Math.abs(neLng - swLng);
+			return L.latLngBounds([[swLat - latDelta, swLng - lngDelta], [neLat + latDelta, neLng + lngDelta]]);
+		},
+
 		_pruneTile: function (key) {
 			var gZoom = this._mutant.getZoom();
 			var tileZoom = key.split(':')[2];
-			var googleBounds = this._mutant.getBounds();
-			var sw = googleBounds.getSouthWest();
-			var ne = googleBounds.getNorthEast();
-			var gMapBounds = L.latLngBounds([[sw.lat(), sw.lng()], [ne.lat(), ne.lng()]]);
-
+			const googleBounds = this._mutant.getBounds();
+			const gMapBounds = this._getLargeGMapBound(googleBounds);
 			for (var i=0; i<this._imagesPerTile; i++) {
 				var key2 = key + '/' + i;
 				if (key2 in this._freshTiles) { 
 					var tileBounds = this._map && this._keyToBounds(key);
 					var stillVisible = this._map && tileBounds.overlaps(gMapBounds) && (tileZoom == gZoom);
 
-					if (!stillVisible) delete this._freshTiles[key2]; 
+					if (!stillVisible) delete this._freshTiles[key2];
 	//				console.log('Prunning of ', key, (!stillVisible))
 				}
 			}
@@ -42711,19 +43207,28 @@
 	    }
 
 	    _init() {
-	        const textarea = this.element.querySelector( 'textarea' );
-	        const defaultHeight = textarea ? textarea.clientHeight : 20;
+	        const textareas = this.element.querySelectorAll( 'textarea' );
+	        this.defaultHeight = textareas[ 0 ] ? textareas[ 0 ].clientHeight : 20;
 	        this.element.addEventListener( 'input', event => {
 	            const el = event.target;
 	            if ( el.nodeName.toLowerCase() === 'textarea' ) {
-	                if ( el.scrollHeight > el.clientHeight && el.scrollHeight > defaultHeight ) {
-	                    // using height instead of min-height to allow user to resize smaller manually
-	                    el.style[ 'height' ] = `${el.scrollHeight}px`;
-	                    // for the Grid theme:
-	                    el.style[ 'flex' ] = 'auto';
-	                }
+	                this._resize( el );
 	            }
 	        } );
+	        textareas.forEach( this._resize.bind( this ) );
+	        this.element.addEventListener( 'pageflip', event => {
+	            const els = event.target.querySelectorAll( 'textarea' );
+	            els.forEach( this._resize.bind( this ) );
+	        } );
+	    }
+
+	    _resize( el ) {
+	        if ( el.scrollHeight > el.clientHeight && el.scrollHeight > this.defaultHeight ) {
+	            // using height instead of min-height to allow user to resize smaller manually
+	            el.style[ 'height' ] = `${el.scrollHeight}px`;
+	            // for the Grid theme:
+	            el.style[ 'flex' ] = 'auto';
+	        }
 	    }
 	}
 
@@ -44871,7 +45376,7 @@
 	     * @type string
 	     */
 	    static get selector() {
-	        return '.question input[type="date"]:not([readonly])';
+	        return '.question input[type="date"]';
 	    }
 
 	    /**
@@ -44902,16 +45407,14 @@
 	        this._setFocusHandler( this.$fakeDateI );
 	        this._setResetHandler( this.$fakeDateI );
 
-	        this.$fakeDateI.datepicker( {
-	            format: this.settings.format,
-	            autoclose: true,
-	            todayHighlight: true,
-	            startView: this.settings.startView,
-	            minViewMode: this.settings.minViewMode,
-	            forceParse: false
-	        } );
-
+	        this.enable();
 	        this.value = this.element.value;
+
+	        // It is much easier to first enable and disable, and not as bad it seems, since readonly will become dynamic eventually.
+	        if ( this.props.readonly ) {
+	            console.log( 'disabling datepicker' );
+	            this.disable();
+	        }
 	    }
 
 	    /**
@@ -45017,6 +45520,25 @@
 	        return date && this.settings.format === 'yyyy' ? date.substring( 0, 4 ) : ( this.settings.format === 'yyyy-mm' ? date.substring( 0, 7 ) : date );
 	    }
 
+	    disable() {
+	        this.$fakeDateI.datepicker( 'destroy' );
+	        this.$fakeDateI.prop( 'disabled', true );
+	        this.$fakeDateI.next( '.btn-reset' ).prop( 'disabled', true );
+	    }
+
+	    enable() {
+	        this.$fakeDateI.datepicker( {
+	            format: this.settings.format,
+	            autoclose: true,
+	            todayHighlight: true,
+	            startView: this.settings.startView,
+	            minViewMode: this.settings.minViewMode,
+	            forceParse: false
+	        } );
+	        this.$fakeDateI.prop( 'disabled', false );
+	        this.$fakeDateI.next( '.btn-reset' ).prop( 'disabled', false );
+	    }
+
 	    update() {
 	        this.value = this.element.value;
 	    }
@@ -45036,7 +45558,11 @@
 	    }
 
 	    set value( date ) {
-	        this.$fakeDateI.datepicker( 'setDate', this._toDisplayDate( date ) );
+	        if ( this.$fakeDateI[ 0 ].disabled ) {
+	            this.$fakeDateI[ 0 ].value = this._toDisplayDate( date );
+	        } else {
+	            this.$fakeDateI.datepicker( 'setDate', this._toDisplayDate( date ) );
+	        }
 	    }
 
 	}
@@ -45970,7 +46496,9 @@
 	                if ( this.showMeridian ) {
 	                    if ( hour >= 12 ) {
 	                        // Force PM.
-	                        timeMode = 2;
+	                        if ( !timeMode ) {
+	                            timeMode = 2;
+	                        }
 	                        hour -= 12;
 	                    }
 	                    if ( !timeMode ) {
@@ -46594,6 +47122,7 @@
 	 * types.
 	 */
 	const fileManager = {};
+	const URL_RE = /[a-zA-Z0-9+-.]+?:\/\//;
 
 	/**
 	 * @static
@@ -46635,7 +47164,15 @@
 	            resolve( null );
 	        } else if ( typeof subject === 'string' ) {
 	            // TODO obtain from storage as http URL or objectURL
-	            reject( 'no!' );
+	            // or from model for default binary files
+
+	            // Very crude URL checker which is fine for now,
+	            // because at this point we don't expect anything other than jr://
+	            if ( URL_RE.test( subject ) ) {
+	                resolve( subject );
+	            } else {
+	                reject( 'no!' );
+	            }
 	        } else if ( typeof subject === 'object' ) {
 	            if ( fileManager.isTooLarge( subject ) ) {
 	                error = new Error( t( 'filepicker.toolargeerror', { maxSize: fileManager.getMaxSizeReadable() } ) );
@@ -46708,7 +47245,7 @@
 	            file = this.files[ 0 ]; // Why doesn't this fail for empty file inputs?
 	        } else if ( this.value ) {
 	            canvas = jquery( this ).closest( '.question' )[ 0 ].querySelector( '.draw-widget canvas' );
-	            if ( canvas ) {
+	            if ( canvas && !URL_RE.test( this.value ) ) {
 	                // TODO: In the future, we could simply do canvas.toBlob() instead
 	                file = dataUriToBlobSync( canvas.toDataURL() );
 	                file.name = this.value;
@@ -47900,7 +48437,7 @@
 	                    .on( 'canvasreload', () => {
 	                        if ( that.cache ) {
 	                            that.pad.fromObjectURL( that.cache )
-	                                .then( that._updateValue.bind( that ) );
+	                                .then( that._updateValue.bind( that, false ) );
 	                        }
 	                    } );
 	                that.enable();
@@ -48056,12 +48593,16 @@
 	    /**
 	     * Updates value
 	     */
-	    _updateValue() {
+	    _updateValue( changed = true ) {
 	        const now = new Date();
 	        const postfix = `-${now.getHours()}_${now.getMinutes()}_${now.getSeconds()}`;
 	        this.element.dataset.filenamePostfix = postfix;
 	        // Note that this.element has become a text input.
-	        this.originalInputValue = this.props.filename;
+	        // When a default file is loaded this function is called by the canvasreload handler, but the user hasn't changed anything.
+	        // We want to make sure the model remains unchanged in that case. 
+	        if ( changed ) {
+	            this.originalInputValue = this.props.filename;
+	        }
 	        // pad.toData() doesn't seem to work when redrawing on a smaller canvas. Doesn't scale.
 	        // pad.toDataURL() is crude and memory-heavy but the advantage is that it will also work for appearance=annotate
 	        this.value = this.pad.toDataURL();
@@ -48088,6 +48629,7 @@
 	                    // Only upon reset is loadedFileName removed, so that "undo" will work
 	                    // for drawings loaded from storage.
 	                    delete that.element.dataset.loadedFileName;
+	                    delete that.element.dataset.loadedUrl;
 	                    that.element.dataset.filenamePostfix = '';
 	                    jquery( that.element ).val( '' ).trigger( 'change' );
 	                    // Annotate file input
@@ -48107,6 +48649,9 @@
 	        const that = this;
 	        if ( !file ) {
 	            return Promise.resolve( '' );
+	        }
+	        if ( typeof file === 'string' && file.startsWith( 'jr://' ) && this.element.dataset.loadedUrl ) {
+	            file = this.element.dataset.loadedUrl;
 	        }
 	        return fileManager.getObjectUrl( file )
 	            .then( that.pad.fromObjectURL.bind( that.pad ) )
@@ -48939,15 +49484,17 @@
 	     * @param {object} widget
 	     */
 	    _addFunctionality( widget ) {
-	        this.svg = widget.querySelector( 'svg' );
-	        this.tooltip = widget.querySelector( '.image-map__ui__tooltip' );
-	        if ( this.props.readonly ) {
-	            this.disable();
+	        if ( widget ) {
+	            this.svg = widget.querySelector( 'svg' );
+	            this.tooltip = widget.querySelector( '.image-map__ui__tooltip' );
+	            if ( this.props.readonly ) {
+	                this.disable();
+	            }
+	            this._setSvgClickHandler();
+	            this._setChangeHandler();
+	            this._setHoverHandler();
+	            this._updateImage();
 	        }
-	        this._setSvgClickHandler();
-	        this._setChangeHandler();
-	        this._setHoverHandler();
-	        this._updateImage();
 	    }
 
 	    /**
@@ -49305,7 +49852,7 @@
 	     */
 	    Store.prototype.setData = function (key, value) {
 	        if (typeof key !== 'string') {
-	            throw new Error("The key must be a string.");
+	            throw new Error('The key must be a string.');
 	        }
 	        this._data.set(key, value);
 	    };
@@ -49317,7 +49864,7 @@
 	     */
 	    Store.prototype.getData = function (key) {
 	        if (typeof key !== 'string') {
-	            throw new Error("The key must be a string.");
+	            throw new Error('The key must be a string.');
 	        }
 	        return this._data.get(key);
 	    };
@@ -49329,7 +49876,7 @@
 	     */
 	    Store.prototype.deleteData = function (key) {
 	        if (typeof key !== 'string') {
-	            throw new Error("The key must be a string.");
+	            throw new Error('The key must be a string.');
 	        }
 	        return this._data.delete(key);
 	    };
@@ -49602,6 +50149,26 @@
 
 	/* eslint-env browser */
 	/**
+	 * Get width of an element including padding
+	 * @param {HTMLElement} element an dom element
+	 */
+	var _getElementWidth = (function (element) {
+	    if (!(element instanceof HTMLElement)) {
+	        throw new Error('You must provide a valid dom element');
+	    }
+	    // get calculated style of element
+	    var style = window.getComputedStyle(element);
+	    // pick applicable properties, convert to int and reduce by adding
+	    return ['width', 'padding-left', 'padding-right']
+	        .map(function (key) {
+	        var int = parseInt(style.getPropertyValue(key), 10);
+	        return isNaN(int) ? 0 : int;
+	    })
+	        .reduce(function (sum, value) { return sum + value; });
+	});
+
+	/* eslint-env browser */
+	/**
 	 * get handle or return item
 	 * @param {Array<HTMLElement>} items
 	 * @param {string} selector
@@ -49737,7 +50304,8 @@
 	    maxItems: 0,
 	    itemSerializer: undefined,
 	    containerSerializer: undefined,
-	    customDragImage: null
+	    customDragImage: null,
+	    orientation: 'vertical'
 	};
 
 	/**
@@ -49819,6 +50387,7 @@
 	 */
 	var dragging;
 	var draggingHeight;
+	var draggingWidth;
 	/*
 	 * Keeps track of the initialy selected list, where 'dragstart' event was triggered
 	 * It allows us to move the data in between individual Sortable List instances
@@ -49922,6 +50491,8 @@
 	    // remove event handlers & data from sortable
 	    removeEventListener(sortableElement, 'dragover');
 	    removeEventListener(sortableElement, 'dragenter');
+	    removeEventListener(sortableElement, 'dragstart');
+	    removeEventListener(sortableElement, 'dragend');
 	    removeEventListener(sortableElement, 'drop');
 	    // remove event data from sortable
 	    _removeSortableData(sortableElement);
@@ -49929,6 +50500,8 @@
 	    removeEventListener(handles, 'mousedown');
 	    _removeItemEvents(items);
 	    _removeItemData(items);
+	    // clear sortable flag
+	    sortableElement.isSortable = false;
 	};
 	/**
 	 * Enable the sortable
@@ -50024,7 +50597,7 @@
 	        }
 	        // log deprecation
 	        ['connectWith', 'disableIEFix'].forEach(function (configKey) {
-	            if (options.hasOwnProperty(configKey) && options[configKey] !== null) {
+	            if (Object.prototype.hasOwnProperty.call(options, configKey) && options[configKey] !== null) {
 	                console.warn("HTML5Sortable: You are using the deprecated configuration \"" + configKey + "\". This will be removed in an upcoming version, make sure to migrate to the new options when updating.");
 	            }
 	        });
@@ -50092,6 +50665,7 @@
 	            setDragImage(e, dragItem, options.customDragImage);
 	            // cache selsection & add attr for dragging
 	            draggingHeight = _getElementHeight(dragItem);
+	            draggingWidth = _getElementWidth(dragItem);
 	            dragItem.classList.add(options.draggingClass);
 	            dragging = _getDragging(dragItem, sortableContainer);
 	            addAttribute(dragging, 'aria-grabbed', 'true');
@@ -50171,6 +50745,7 @@
 	            previousContainer = null;
 	            dragging = null;
 	            draggingHeight = null;
+	            draggingWidth = null;
 	        });
 	        /*
 	         * Drop Event - https://developer.mozilla.org/en-US/docs/Web/Events/drop
@@ -50243,30 +50818,37 @@
 	                }));
 	            }
 	        });
-	        var debouncedDragOverEnter = _debounce(function (sortableElement, element, pageY) {
+	        var debouncedDragOverEnter = _debounce(function (sortableElement, element, pageX, pageY) {
 	            if (!dragging) {
 	                return;
 	            }
 	            // set placeholder height if forcePlaceholderSize option is set
 	            if (options.forcePlaceholderSize) {
 	                store(sortableElement).placeholder.style.height = draggingHeight + 'px';
+	                store(sortableElement).placeholder.style.width = draggingWidth + 'px';
 	            }
 	            // if element the draggedItem is dragged onto is within the array of all elements in list
 	            // (not only items, but also disabled, etc.)
 	            if (Array.from(sortableElement.children).indexOf(element) > -1) {
 	                var thisHeight = _getElementHeight(element);
+	                var thisWidth = _getElementWidth(element);
 	                var placeholderIndex = _index(store(sortableElement).placeholder, element.parentElement.children);
 	                var thisIndex = _index(element, element.parentElement.children);
 	                // Check if `element` is bigger than the draggable. If it is, we have to define a dead zone to prevent flickering
-	                if (thisHeight > draggingHeight) {
+	                if (thisHeight > draggingHeight || thisWidth > draggingWidth) {
 	                    // Dead zone?
-	                    var deadZone = thisHeight - draggingHeight;
+	                    var deadZoneVertical = thisHeight - draggingHeight;
+	                    var deadZoneHorizontal = thisWidth - draggingWidth;
 	                    var offsetTop = _offset(element).top;
-	                    if (placeholderIndex < thisIndex && pageY < offsetTop) {
+	                    var offsetLeft = _offset(element).left;
+	                    if (placeholderIndex < thisIndex &&
+	                        ((options.orientation === 'vertical' && pageY < offsetTop) ||
+	                            (options.orientation === 'horizontal' && pageX < offsetLeft))) {
 	                        return;
 	                    }
 	                    if (placeholderIndex > thisIndex &&
-	                        pageY > offsetTop + thisHeight - deadZone) {
+	                        ((options.orientation === 'vertical' && pageY > offsetTop + thisHeight - deadZoneVertical) ||
+	                            (options.orientation === 'horizontal' && pageX > offsetLeft + thisWidth - deadZoneHorizontal))) {
 	                        return;
 	                    }
 	                }
@@ -50281,8 +50863,10 @@
 	                // vertical center.
 	                var placeAfter = false;
 	                try {
-	                    var elementMiddle = _offset(element).top + element.offsetHeight / 2;
-	                    placeAfter = pageY >= elementMiddle;
+	                    var elementMiddleVertical = _offset(element).top + element.offsetHeight / 2;
+	                    var elementMiddleHorizontal = _offset(element).left + element.offsetWidth / 2;
+	                    placeAfter = (options.orientation === 'vertical' && (pageY >= elementMiddleVertical)) ||
+	                        (options.orientation === 'horizontal' && (pageX >= elementMiddleHorizontal));
 	                }
 	                catch (e) {
 	                    placeAfter = placeholderIndex < thisIndex;
@@ -50333,7 +50917,7 @@
 	            e.preventDefault();
 	            e.stopPropagation();
 	            e.dataTransfer.dropEffect = store(sortableElement).getConfig('copy') === true ? 'copy' : 'move';
-	            debouncedDragOverEnter(sortableElement, element, e.pageY);
+	            debouncedDragOverEnter(sortableElement, element, e.pageX, e.pageY);
 	        };
 	        addEventListener(listItems.concat(sortableElement), 'dragover', onDragOverEnter);
 	        addEventListener(listItems.concat(sortableElement), 'dragenter', onDragOverEnter);
@@ -50381,7 +50965,7 @@
 	    _init() {
 	        const that = this;
 	        const loadedValue = this.originalInputValue;
-	        const startText = support.touch ? t( 'rankwidget.tapstart' ) : t( 'rankwidget.clickstart' );
+	        const startTextKey = support.touch ? 'rankwidget.tapstart' : 'rankwidget.clickstart';
 
 	        this.itemSelector = 'label:not(.itemset-template)';
 	        this.list = jquery( this.element ).next( '.option-wrapper' ).addClass( 'widget rank-widget' )[ 0 ];
@@ -50389,7 +50973,7 @@
 	        jquery( this.list )
 	            .toggleClass( 'rank-widget--empty', !loadedValue )
 	            .append( this.resetButtonHtml )
-	            .append( `<div class="rank-widget__overlay"><span class="rank-widget__overlay__content" data-i18n="rankwidget.clickstart">${startText}</span></div>` )
+	            .append( `<div class="rank-widget__overlay"><span class="rank-widget__overlay__content" data-i18n="${startTextKey}">${support.touch ? t('rankwidget.tapstart') : t('rankwidget.clickstart')}</span></div>` )
 	            .on( 'click', function() {
 	                if ( !that.element.disabled ) {
 	                    this.classList.remove( 'rank-widget--empty' );
@@ -50773,13 +51357,112 @@
 	}
 
 	/**
+	 * Clone text input fields value into new print-only element.
+	 * This is an unusual way to implement a feature, because it is not an actual widget,
+	 * but this is the easiest way to do it.
+	 */
+	class TextPrintWidget extends Widget {
+	    /**
+	     * @type string
+	     */
+	    static get selector() {
+	        // The [data-for] exclusion prevents "comment" widgets from being included.
+	        // It is not quite correct to do this but atm the "for" attribute in XForms is only used for comment widgets.
+	        return '.question:not(.or-appearance-autocomplete):not(.or-appearance-url) > input[type=text]:not(.ignore):not([data-for])';
+	    }
+
+	    _init() {
+	        this.question.classList.add( 'or-text-print-initialized' );
+
+	        const className = 'print-input-text';
+	        const printElement = document.createElement( 'div' );
+	        printElement.classList.add( className, 'widget', 'print-only' );
+
+	        this.element.after( printElement );
+
+	        this.widget = this.element.parentElement.querySelector( `.${className}` );
+	        this._copyValue();
+
+	        this.element.addEventListener( 'input', () => {
+	            this._copyValue();
+	        } );
+	    }
+
+	    _copyValue() {
+	        this.widget.innerHTML = this.element.value.replace( /\n/g, '<br>' );
+	    }
+
+	    update() {
+	        this._copyValue();
+	    }
+	}
+
+	/**
+	 * Thousands separator widget.
+	 * Deviates from ODK XForms spec by not supporting text fields.
+	 */
+	class ThousandsSeparatorWidget extends Widget {
+
+	    static get selector() {
+	        return '.or-appearance-thousands-sep input[type="number"]';
+	    }
+
+	    /**
+	     * Initialize 
+	     */
+	    _init() {
+	        const fragment = document.createRange().createContextualFragment( '<div class="widget "></div>' );
+
+	        this.element.after( fragment );
+	        this.widget = this.element.parentElement.querySelector( '.widget' );
+
+	        // Set the current loaded value into the widget
+	        this.update();
+
+	        this.element.addEventListener( 'change', this.update.bind( this ) );
+	    }
+
+	    /**
+	     * Update the value of the widget.
+	     */
+	    update() {
+	        this.value = this.originalInputValue;
+	    }
+
+	    /**
+	     * Obtain the current value from the widget. 
+	     *
+	     * @type *
+	     */
+	    get value() {
+	        return this.widget.textContent;
+	    }
+
+	    /**
+	     * Set a value in the widget.
+	     *
+	     * @param {*} value
+	     */
+	    set value( value ) {
+	        let displayValue = '';
+
+	        if ( isNumber( value ) ) {
+	            displayValue = Number( value ).toLocaleString( undefined, { maximumFractionDigits: 20 } );
+	        }
+
+	        this.widget.textContent = displayValue;
+	    }
+
+	}
+
+	/**
 	 * A collection of all available widgets
 	 *
 	 * @module widgets
 	 */
 	//import zz from '../widget/example/my-widget';
 
-	var _widgets = [ NoteWidget, DesktopSelectpicker, MobileSelectPicker, AutocompleteSelectpicker, Geopicker, TextareaWidget, TableWidget, Radiopicker, DatepickerExtended, DatepickerMobile, TimepickerExtended, DatetimepickerExtended, DatepickerNative, MediaPicker, Filepicker, DrawWidget, LikertItem, Columns, AnalogScaleWidget, ImageViewer, Comment, ImageMap, RangeWidget, RankWidget, UrlWidget, TextMaxWidget, DatepickerNativeIos, RatingWidget ];
+	var _widgets = [ NoteWidget, DesktopSelectpicker, MobileSelectPicker, AutocompleteSelectpicker, Geopicker, TextareaWidget, TableWidget, Radiopicker, DatepickerExtended, DatepickerMobile, TimepickerExtended, DatetimepickerExtended, DatepickerNative, MediaPicker, Filepicker, DrawWidget, LikertItem, Columns, AnalogScaleWidget, ImageViewer, Comment, ImageMap, RangeWidget, RankWidget, UrlWidget, TextMaxWidget, DatepickerNativeIos, RatingWidget, TextPrintWidget, ThousandsSeparatorWidget ];
 
 	/**
 	 * @module widgets-controller
@@ -50931,7 +51614,7 @@
 	 */
 	function _setOptionChangeListener( Widget, els ) {
 	    if ( els.length > 0 && Widget.list ) {
-	        jquery( els ).on( 'changeoption', function() {
+	        jquery( els ).on( events.ChangeOption().type, function() {
 	            // update (itemselect) picker on which event was triggered because the options changed
 	            new Collection( this ).update( Widget );
 	        } );
@@ -51054,21 +51737,21 @@
 	            return;
 	        }
 
-	        const languages = [ ...formLanguages.querySelectorAll( 'option' ) ].map( option => option.value );
+	        this.languages = [ ...formLanguages.querySelectorAll( 'option' ) ].map( option => option.value );
 	        if ( langSelector ) {
 	            langSelector
 	                .append( formLanguages );
-	            if ( languages.length > 1 ) {
+	            if ( this.languages.length > 1 ) {
 	                langSelector.classList.remove( 'hide' );
 	            }
 	        }
 	        this.formLanguages = root.querySelector( '#form-languages' );
 
-	        if ( overrideLang && languages.includes( overrideLang ) ) {
+	        if ( overrideLang && this.languages.includes( overrideLang ) && this.languages.length > 1 ) {
 	            this._currentLang = overrideLang;
-	            this.setUi( this._currentLang );
+	            this.setFormUi( this._currentLang );
 	        } else {
-	            this._currentLang = this.formLanguages.dataset.defaultLang || languages[ 0 ] || '';
+	            this._currentLang = this.formLanguages.dataset.defaultLang || this.languages[ 0 ] || '';
 	        }
 
 	        const langOption = this.formLanguages.querySelector( `[value="${this._currentLang}"]` );
@@ -51078,17 +51761,17 @@
 
 	        this.form.view.html.setAttribute( 'dir', currentDirectionality );
 
-	        if ( languages.length < 2 ) {
+	        if ( this.languages.length < 2 ) {
 	            return;
 	        }
 
 	        this.formLanguages.addEventListener( events.Change().type, event => {
 	            event.preventDefault();
 	            this._currentLang = event.target.value;
-	            this.setUi( this._currentLang );
+	            this.setFormUi( this._currentLang );
 	        } );
 
-	        this.form.view.html.addEventListener( events.AddRepeat().type, event => this.setUi( this._currentLang, event.target ) );
+	        this.form.view.html.addEventListener( events.AddRepeat().type, event => this.setFormUi( this._currentLang, event.target ) );
 	    },
 	    /**
 	     * @type string
@@ -51104,10 +51787,12 @@
 	        return langOption ? langOption.textContent : null;
 	    },
 	    /**
-	     * @param {string} lang
-	     * @param {Element} [group]
+	     * @type array
 	     */
-	    setUi( lang, group = this.form.view.html ) {
+	    get languagesUsed() {
+	        return this.languages || [];
+	    },
+	    setFormUi( lang, group = this.form.view.html ) {
 	        const dir = this.formLanguages.querySelector( `[value="${lang}"]` ).dataset.dir || 'ltr';
 	        const translations = [ ...group.querySelectorAll( '[lang]' ) ];
 
@@ -51134,7 +51819,7 @@
 	     */
 	    setSelect( select ) {
 	        const type = select.nodeName.toLowerCase();
-	        const question = select.closest( '.question' );
+	        const question = select.closest( '.question, .or-repeat-info' );
 	        const translations = question ? question.querySelector( '.or-option-translations' ) : null;
 
 	        if ( !translations ) {
@@ -51144,14 +51829,17 @@
 	        [ ...select.children ].filter( el => el.matches( 'option' ) && !el.matches( '[value=""], [data-value=""]' ) )
 	            .forEach( option => {
 	                const curLabel = type === 'datalist' ? option.value : option.textContent;
-	                const value = type === 'datalist' ? option.dataset.value : option.value;
+	                // Datalist will not have initialized when init function is called upon form load, so it is option.value until it has initialized. That is not great.
+	                const value = type === 'datalist' ? option.dataset.value || option.value : option.value;
 	                const translatedOption = translations.querySelector( `.active[data-option-value="${value}"]` );
-	                let newLabel = curLabel;
-	                if ( translatedOption && translatedOption.textContent ) {
-	                    newLabel = translatedOption.textContent;
+	                if ( translatedOption ) {
+	                    let newLabel = curLabel;
+	                    if ( translatedOption && translatedOption.textContent ) {
+	                        newLabel = translatedOption.textContent;
+	                    }
+	                    option.value = value;
+	                    option.textContent = newLabel;
 	                }
-	                option.value = value;
-	                option.textContent = newLabel;
 	            } );
 	    }
 	};
@@ -51166,27 +51854,23 @@
 	     * Initializes preloader
 	     */
 	    init() {
-	        const that = this;
-
 	        if ( !this.form ) {
 	            throw new Error( 'Preload module not correctly instantiated with form property.' );
 	        }
 
 	        //these initialize actual preload items
-	        this.form.view.$.find( 'input[data-preload], select[data-preload], textarea[data-preload]' ).each( function() {
-	            const $preload = jquery( this );
-	            const preload = this;
-	            const props = that.form.input.getProps( preload );
-	            const item = $preload.attr( 'data-preload' ).toLowerCase();
-	            const param = $preload.attr( 'data-preload-params' ).toLowerCase();
+	        this.form.view.html.querySelectorAll( 'input[data-preload], select[data-preload], textarea[data-preload]' ).forEach( preloadEl => {
+	            const props = this.form.input.getProps( preloadEl );
+	            const item = preloadEl.dataset && preloadEl.dataset.preload ? preloadEl.dataset.preload.toLowerCase() : undefined;
+	            const param = preloadEl.dataset && preloadEl.dataset.preloadParams ? preloadEl.dataset.preloadParams.toLowerCase() : undefined;
 
-	            if ( typeof that[ item ] !== 'undefined' ) {
-	                const dataNode = that.form.model.node( props.path, props.index );
+	            if ( typeof this[ item ] !== 'undefined' ) {
+	                const dataNode = this.form.model.node( props.path, props.index );
 	                // If a preload item is placed inside a repeat with repeat-count 0, the node
 	                // doesn't exist and will never get a value (which is correct behavior)
 	                if ( dataNode.getElements().length ) {
 	                    const curVal = dataNode.getVal();
-	                    const newVal = that[ item ]( {
+	                    const newVal = this[ item ]( {
 	                        param,
 	                        curVal,
 	                        dataNode
@@ -51212,7 +51896,7 @@
 	        }
 	        if ( o.param === 'end' ) {
 	            //set event handler for each save event (needs to be triggered!)
-	            this.form.view.$.on( 'beforesave', () => {
+	            this.form.view.html.addEventListener( events.BeforeSave().type, () => {
 	                value = that.form.model.evaluate( 'now()', 'string' );
 	                o.dataNode.setVal( value, 'datetime' );
 	            } );
@@ -51391,8 +52075,7 @@
 	     * @param {string} [filter] - CSS selector filter.
 	     */
 	    update( updated = {}, filter = '' ) {
-	        let $nodes;
-	        const that = this;
+	        let nodes;
 
 	        if ( !this.form ) {
 	            throw new Error( 'Calculation module not correctly instantiated with form property.' );
@@ -51401,26 +52084,30 @@
 	        // Filter is used in custom applications that make a distinction between types of calculations.
 	        if ( updated.relevantPath ) {
 	            // Questions that are descendants of a group:
-	            $nodes = this.form.getRelatedNodes( 'data-calculate', `[name^="${updated.relevantPath}/"]${filter}` )
+	            nodes = this.form.getRelatedNodes( 'data-calculate', `[name^="${updated.relevantPath}/"]${filter}` )
 	                // Individual questions:
 	                .add( this.form.getRelatedNodes( 'data-calculate', `[name="${updated.relevantPath}"]${filter}` ) )
 	                // Individual radiobutton questions with a calculate....:
-	                .add( this.form.getRelatedNodes( 'data-calculate', `[data-name="${updated.relevantPath}"]${filter}` ) );
+	                .add( this.form.getRelatedNodes( 'data-calculate', `[data-name="${updated.relevantPath}"]${filter}` ) )
+	                .get();
 	        } else {
-	            $nodes = this.form.getRelatedNodes( 'data-calculate', filter, updated );
+	            nodes = this.form.getRelatedNodes( 'data-calculate', filter, updated )
+	                .get();
 	        }
 
-	        $nodes.each( function() {
-	            let index;
-	            const $control = jquery( this );
-	            const control = this;
-	            const name = that.form.input.getName( control );
-	            const dataNodeName = ( name.lastIndexOf( '/' ) !== -1 ) ? name.substring( name.lastIndexOf( '/' ) + 1 ) : name;
-	            const expr = that.form.input.getCalculation( control );
-	            const dataType = that.form.input.getXmlType( control );
-	            const relevantExpr = that.form.input.getRelevant( control );
-	            const dataNodesObj = that.form.model.node( name );
+	        nodes.forEach( control => {
+	            const name = this.form.input.getName( control );
+	            const dataNodesObj = this.form.model.node( name );
 	            const dataNodes = dataNodesObj.getElements();
+
+	            const props = {
+	                name,
+	                expr: this.form.input.getCalculation( control ),
+	                dataType: this.form.input.getXmlType( control ),
+	                relevantExpr: this.form.input.getRelevant( control ),
+	                index: 0,
+	                dataNodesObj
+	            };
 
 	            if ( dataNodes.length > 1 ) {
 
@@ -51429,99 +52116,206 @@
 	                     * If the update was triggered by a datanode inside a repeat
 	                     * and the dependent node is inside the same repeat, we can prevent the expensive index determination
 	                     */
-	                    const dataNode = that.form.model.node( updated.repeatPath, updated.repeatIndex ).getElement().querySelector( dataNodeName );
-	                    index = dataNodes.indexOf( dataNode );
-	                    updateCalc( index );
-	                } else if ( $control[ 0 ].type === 'hidden' ) {
+	                    const dataNodeName = ( name.lastIndexOf( '/' ) !== -1 ) ? name.substring( name.lastIndexOf( '/' ) + 1 ) : name;
+	                    const dataNode = this.form.model.node( updated.repeatPath, updated.repeatIndex ).getElement().querySelector( dataNodeName );
+	                    props.index = dataNodes.indexOf( dataNode );
+	                    this._updateCalc( control, props );
+	                } else if ( control.type === 'hidden' ) {
 	                    /*
-	                     * This case is the consequence of the unfortunate decision to place calculated items without a visible form control,
-	                     * as a separate group (.or-calculated-items), instead of in the Form DOM in the locations where they belong.
+	                     * This case is the consequence of the  decision to place calculated items without a visible form control,
+	                     * as a separate group (.or-calculated-items, or .or-setvalue-items), instead of in the Form DOM in the locations .
 	                     * This occurs when update is called with empty updated object and multiple repeats are present.
 	                     */
 	                    dataNodes.forEach( ( el, index ) => {
-	                        updateCalc( index );
+	                        const obj = Object.create( props );
+	                        obj.index = index;
+	                        this._updateCalc( control, obj );
 	                    } );
 	                } else {
 	                    /*
 	                     * This occurs when the updated object contains a relevantPath that refers to a repeat and multiple repeats are
 	                     * present, without calculated items that HAVE a visible form control.
 	                     */
-	                    const $repeatSiblings = $control.closest( '.or-repeat' ).siblings( '.or-repeat' ).addBack();
-	                    if ( $repeatSiblings.length === dataNodes.length ) {
-	                        index = $repeatSiblings.index( $control.closest( '.or-repeat' ) );
-	                        updateCalc( index );
+	                    const repeatSiblings = getSiblingElementsAndSelf( control.closest( '.or-repeat' ), '.or-repeat' );
+	                    if ( repeatSiblings.length === dataNodes.length ) {
+	                        props.index = repeatSiblings.indexOf( control.closest( '.or-repeat' ) );
+	                        this._updateCalc( control, props );
 	                    }
 	                }
 	            } else if ( dataNodes.length === 1 ) {
-	                index = 0;
-	                updateCalc( index );
+	                this._updateCalc( control, props );
 	            }
 
-	            function updateCalc( index ) {
-	                const pathParts = name.split( '/' );
+	        } );
+	    },
+
+	    /**
+	     * Runs <setvalue> actions.
+	     *
+	     * @param {CustomEvent} [event] - The event type that triggered the setvalue action.
+	     * @param {UpdatedDataNodes} [updated] - The object containing info on updated data nodes. Only used here for the odk-new-repeat event.
+	     */
+	    setValue( event ) {
+	        let ignoreRelevance = false;
+	        let index = 0;
+
+	        if ( !event ) {
+	            return;
+	        }
+
+	        if ( !this.form ) {
+	            throw new Error( 'Setvalue module not correctly instantiated with form property.' );
+	        }
+
+	        let nodes = [];
+
+	        if ( event.type === new events.InstanceFirstLoad().type ) {
+	            // We ignore relevance for the data-instance-first-load, as that will likely never be what users want for a default value.
+	            ignoreRelevance = true;
+	            // Do not use getRelatedNodes here, because the obtaining (and caching) of nodes inside repeats is (and should be) disabled at the 
+	            // time this event fires.
+	            nodes = this.form.filterRadioCheckSiblings( [ ...this.form.view.html.querySelectorAll( `[data-setvalue][data-event*="${event.type}"]` ) ] );
+	        } else if ( event.type === new events.NewRepeat().type ) {
+	            // Only this event requires specific index targeting through the "updated" object
+	            nodes = this.form.getRelatedNodes( 'data-setvalue', `[data-event*="${event.type}"]`, event.detail ).get();
+	        } else if ( event.type === new events.XFormsValueChanged().type ) {
+	            const question = event.target.closest( '.question' );
+	            nodes = question ? [ ...question.querySelectorAll( `[data-setvalue][data-event*="${event.type}"]` ) ] : nodes;
+	        }
+
+	        nodes.forEach( setvalueControl => {
+	            const name = this.form.input.getName( setvalueControl );
+	            const dataNodesObj = this.form.model.node( name );
+	            const dataNodes = dataNodesObj.getElements();
+
+	            const props = {
+	                name,
+	                expr: setvalueControl.dataset.setvalue,
+	                dataType: this.form.input.getXmlType( setvalueControl ),
+	                relevantExpr: this.form.input.getRelevant( setvalueControl ),
+	                index: event.detail && typeof event.detail.repeatIndex !== 'undefined' ? event.detail.repeatIndex : 0,
+	                dataNodesObj
+	            };
+
+	            if ( dataNodes.length > 1 && event.type !== new events.NewRepeat().type && event.type !== new events.XFormsValueChanged().type ) {
 	                /*
-	                 * First determine immediate group parent of node, which will always be in correct location in DOM. This is where
-	                 * we can use the index to be guaranteed to get the correct node.
-	                 * (also for nodes in #calculated-items).
-	                 *
-	                 * Then get all the group parents of that node.
-	                 *
-	                 * TODO: determine index at every level to properly support repeats and nested repeats
-	                 *
-	                 * Note: getting the parents of $control wouldn't work for nodes inside #calculated-items!
+	                 * This case is the consequence of the decision to place setvalue items that are siblings of bind in the XForm 
+	                 * as a separate group (.or-setvalue-items), instead of in the Form DOM in the locations where they belong.
+	                 * This occurs when update is called when multiple repeats are present. 
+	                 * For now this is only relevant for events that are *not* odk-new-repeat and *not* xforms-value-changed.
 	                 */
-	                const parentPath = pathParts.splice( 0, pathParts.length - 1 ).join( '/' );
-	                let startElement;
+	                dataNodes.forEach( ( el, index ) => {
+	                    const obj = Object.create( props );
+	                    const control = setvalueControl;
+	                    obj.index = index;
+	                    this._updateCalc( control, obj, ignoreRelevance );
+	                } );
 
-	                if ( index === 0 ) {
-	                    startElement = that.form.view.html.querySelector( `.or-group[name="${parentPath}"],.or-group-data[name="${parentPath}"]` );
-	                } else {
-	                    startElement = that.form.view.html.querySelectorAll( `.or-repeat[name="${parentPath}"]` )[ index ] ||
-	                        that.form.view.html.querySelectorAll( `.or-group[name="${parentPath}"],.or-group-data[name="${parentPath}"]` )[ index ];
-	                }
-	                const ancestorGroups = startElement ? [ startElement ].concat( getAncestors( startElement, '.or-group, .or-group-data' ) ) : [];
-
-	                if ( ancestorGroups.length ) {
-	                    // Start at the highest level, and traverse down to the immediate parent group.
-	                    var relevant = ancestorGroups.filter( el => el.matches( '[data-relevant]' ) ).map( group => {
-	                        const $group = jquery( group );
-	                        const nm = that.form.input.getName( group );
-
-	                        return {
-	                            context: nm,
-	                            // thankfully relevants on repeats are not possible with XLSForm-produced forms
-	                            index: that.form.view.$.find( `.or-group[name="${nm}"], .or-group-data[name="${nm}"]` ).index( $group ), // performance....
-	                            expr: that.form.input.getRelevant( group )
-	                        };
-	                    } ).concat( [ {
-	                        context: name,
-	                        index,
-	                        expr: relevantExpr
-	                    } ] ).every( item => item.expr ? that.form.model.evaluate( item.expr, 'boolean', item.context, item.index ) : true );
-	                } else {
-	                    relevant = relevantExpr ? that.form.model.evaluate( relevantExpr, 'boolean', name, index ) : true;
-	                }
-
-	                // Not sure if using 'string' is always correct
-	                const newExpr = that.form.replaceChoiceNameFn( expr, 'string', name, index );
-
-	                // It is possible that the fixed expr is '' which causes an error in XPath
-	                const xpathType = that.form.input.getInputType( control ) === 'number' ? 'number' : 'string';
-	                const result = relevant && newExpr ? that.form.model.evaluate( newExpr, xpathType, name, index ) : '';
-
-	                // Filter the result set to only include the target node
-	                dataNodesObj.setIndex( index );
-
-	                // Set the value
-	                dataNodesObj.setVal( result, dataType );
-
-	                // Not the most efficient to use input.setVal here as it will do another lookup
-	                // of the node, that we already have...
-	                // We should not use value "result" here because node.setVal() may have done a data type conversion
-	                that.form.input.setVal( control, dataNodesObj.getVal() );
+	            } else if ( event.type === new events.XFormsValueChanged().type ) {
+	                // control for xforms-value-changed is located elsewhere, or does not exist.
+	                const control = this.form.input.find( props.name, props.index );
+	                this._updateCalc( control, props, ignoreRelevance );
+	            } else if ( dataNodes[ index ] ) {
+	                const control = setvalueControl;
+	                this._updateCalc( control, props, ignoreRelevance );
+	            } else {
+	                console.error( 'SetValue called for node that does not exist in model.' );
 	            }
 	        } );
+	    },
+
+	    _updateCalc( control, props, ignoreRelevance = false ) {
+	        let relevant = true;
+
+	        if ( !ignoreRelevance ) {
+	            relevant = this._isRelevant( props );
+	        }
+
+	        // Not sure if using 'string' is always correct
+	        const newExpr = this.form.replaceChoiceNameFn( props.expr, 'string', props.name, props.index );
+
+	        // It is possible that the fixed expr is '' which causes an error in XPath
+	        // const xpathType = this.form.input.getInputType( control ) === 'number' ? 'number' : 'string';
+	        const result = relevant && newExpr ? this.form.model.evaluate( newExpr, 'string', props.name, props.index ) : '';
+
+	        // Filter the result set to only include the target node
+	        props.dataNodesObj.setIndex( props.index );
+
+	        // Set the value
+	        props.dataNodesObj.setVal( result, props.dataType );
+
+	        // Not the most efficient to use input.setVal here as it will do another lookup
+	        // of the node, that we already have...
+	        // We should not use value "result" here because node.setVal() may have done a data type conversion
+	        if ( control ) {
+	            this.form.input.setVal( control, props.dataNodesObj.getVal() );
+
+	            /*
+	             * We need to specifically call validate on the question itself, because the validationUpdate
+	             * in the evaluation cascade only updates questions with a _dependency_ on this question.
+	             */
+	            if ( control.type !== 'hidden' && config.validateContinuously === true ) {
+	                this.form.validateInput( control );
+	            }
+	        }
+	    },
+
+	    /**
+	     * Determines relevancy of node by re-evaluating relevant expressions of self and ancestors.
+	     *
+	     * @param {*} props
+	     * @returns {boolean}
+	     */
+	    _isRelevant( props ) {
+	        let relevant = props.relevantExpr ? this.form.model.evaluate( props.relevantExpr, 'boolean', props.name, props.index ) : true;
+
+	        // Only look at ancestors if self is relevant.
+	        if ( relevant ) {
+	            const pathParts = props.name.split( '/' );
+	            /*
+	             * First determine immediate group parent of node, which will always be in correct location in DOM. This is where
+	             * we can use the index to be guaranteed to get the correct node.
+	             * (also for nodes in #calculated-items).
+	             *
+	             * Then get all the group parents of that node.
+	             *
+	             * TODO: determine index at every level to properly support repeats and nested repeats
+	             *
+	             * Note: getting the parents of control wouldn't work for nodes inside #calculated-items!
+	             */
+	            const parentPath = pathParts.splice( 0, pathParts.length - 1 ).join( '/' );
+	            let startElement;
+
+	            if ( props.index === 0 ) {
+	                startElement = this.form.view.html.querySelector( `.or-group[name="${parentPath}"],.or-group-data[name="${parentPath}"]` );
+	            } else {
+	                startElement = this.form.view.html.querySelectorAll( `.or-repeat[name="${parentPath}"]` )[ props.index ] ||
+	                    this.form.view.html.querySelectorAll( `.or-group[name="${parentPath}"],.or-group-data[name="${parentPath}"]` )[ props.index ];
+	            }
+	            const ancestorGroups = startElement ? [ startElement ].concat( getAncestors( startElement, '.or-group, .or-group-data' ) ) : [];
+
+	            if ( ancestorGroups.length ) {
+	                // Start at the highest level, and traverse down to the immediate parent group.
+	                relevant = ancestorGroups.filter( el => el.matches( '[data-relevant]' ) ).map( group => {
+	                    const nm = this.form.input.getName( group );
+
+	                    return {
+	                        context: nm,
+	                        // thankfully relevants on repeats are not possible with XLSForm-produced forms
+	                        index: [ ...this.form.view.html.querySelectorAll( `.or-group[name="${nm}"], .or-group-data[name="${nm}"]` ) ].indexOf( group ), // performance....
+	                        expr: this.form.input.getRelevant( group )
+	                    };
+	                } ).concat( [ {
+	                    context: props.name,
+	                    index: props.index,
+	                    expr: props.relevantExpr
+	                } ] ).every( item => item.expr ? this.form.model.evaluate( item.expr, 'boolean', item.context, item.index ) : true );
+	            }
+	        }
+
+	        return relevant;
 	    }
+
 	};
 
 	/**
@@ -51789,29 +52583,36 @@
 	 *
 	 * Most methods are prototype method to facilitate customizations outside of enketo-core.
 	 *
-	 * @param {string} formSelector - jQuery selector for the form
+	 * @param {Element} form - HTML form element
 	 * @param {FormDataObj} data - Data object containing XML model, (partial) XML instance-to-load, external data and flag about whether instance-to-load has already been submitted before.
 	 * @param {{webMapId: string|undefined}} options - form options
 	 *
 	 * @class
 	 */
-	function Form( formSelector, data, options ) {
-	    const $form = jquery( formSelector );
+	function Form( formEl, data, options ) {
+	    const $form = jquery( formEl );
 
-	    this.$nonRepeats = {};
-	    this.$all = {};
+	    if ( typeof formEl === 'string' ) {
+	        console.deprecate( 'Form instantiation using a selector', 'a HTML <form> element' );
+	        formEl = $form[ 0 ];
+	    }
+
+	    this.nonRepeats = {};
+	    this.all = {};
 	    this.options = typeof options !== 'object' ? {} : options;
 	    if ( typeof this.options.clearIrrelevantImmediately === 'undefined' ) {
 	        this.options.clearIrrelevantImmediately = true;
 	    }
+
 	    this.view = {
 	        $: $form,
-	        html: $form[ 0 ],
-	        $clone: $form.clone()
+	        html: formEl,
+	        clone: formEl.cloneNode( true )
 	    };
 	    this.model = new FormModel( data );
 	    this.repeatsPresent = !!this.view.html.querySelector( '.or-repeat' );
 	    this.widgetsInitialized = false;
+	    this.repeatsInitialized = false;
 	    this.pageNavigationBlocked = false;
 	    this.initialized = false;
 	}
@@ -51914,6 +52715,12 @@
 	     */
 	    get id() {
 	        return this.view.html.id;
+	    },
+	    /**
+	     * @type Array<string>
+	     */
+	    get languages() {
+	        return this.langs.languagesUsed;
 	    }
 	};
 
@@ -51942,21 +52749,6 @@
 	    let loadErrors = [];
 	    const that = this;
 
-	    loadErrors = loadErrors.concat( this.model.init() );
-
-	    if ( typeof this.model === 'undefined' || !( this.model instanceof FormModel ) ) {
-	        loadErrors.push( 'Form could not be initialized without a model.' );
-	        return loadErrors;
-	    }
-
-	    // Before initializing form view, passthrough some model events externally
-	    this.model.events.addEventListener( 'dataupdate', event => {
-	        that.view.html.dispatchEvent( events.DataUpdate( event.detail ) );
-	    } );
-	    this.model.events.addEventListener( 'removed', event => {
-	        that.view.html.dispatchEvent( events.Removed( event.detail ) );
-	    } );
-
 	    this.toc = this.addModule( tocModule );
 	    this.pages = this.addModule( pageModule );
 	    this.langs = this.addModule( languageModule );
@@ -51972,6 +52764,30 @@
 	    this.required = this.addModule( requiredModule );
 	    this.mask = this.addModule( maskModule );
 	    this.readonly = this.addModule( readonlyModule );
+
+	    // Handle odk-instance-first-load event
+	    this.model.events.addEventListener( events.InstanceFirstLoad().type, event => this.calc.setValue( event ) );
+
+	    // Handle odk-new-repeat event before initializing repeats
+	    this.view.html.addEventListener( events.NewRepeat().type, event => this.calc.setValue( event ) );
+
+	    // Handle xforms-value-changed
+	    this.view.html.addEventListener( events.XFormsValueChanged().type, event => this.calc.setValue( event ) );
+
+	    loadErrors = loadErrors.concat( this.model.init() );
+
+	    if ( typeof this.model === 'undefined' || !( this.model instanceof FormModel ) ) {
+	        loadErrors.push( 'Form could not be initialized without a model.' );
+	        return loadErrors;
+	    }
+
+	    // Before initializing form view, passthrough some model events externally
+	    this.model.events.addEventListener( events.DataUpdate().type, event => {
+	        that.view.html.dispatchEvent( events.DataUpdate( event.detail ) );
+	    } );
+	    this.model.events.addEventListener( events.Removed().type, event => {
+	        that.view.html.dispatchEvent( events.Removed( event.detail ) );
+	    } );
 
 	    try {
 	        this.preloads.init();
@@ -51994,7 +52810,12 @@
 	        this.pages.init();
 
 	        // after radio button data-name setting (now done in XLST)
+	        // Set temporary event handler to ensure calculations in newly added repeats are run for the first time
+	        const tempHandler = event => this.calc.update( event.detail );
+	        this.view.html.addEventListener( events.AddRepeat().type, tempHandler );
+	        this.repeatsInitialized = true;
 	        this.repeats.init();
+	        this.view.html.removeEventListener( events.AddRepeat().type, tempHandler );
 
 	        // after repeats.init, but before itemset.update
 	        this.output.update();
@@ -52023,7 +52844,7 @@
 	        // after loading existing instance to not trigger an 'edit' event
 	        this.setEventHandlers();
 
-	        // update field calculations again to make sure that dependent
+	        // Update field calculations again to make sure that dependent
 	        // field values are calculated
 	        this.calc.update();
 
@@ -52062,7 +52883,7 @@
 	    const errors = [];
 	    if ( !this.goToTarget( this.getGoToTarget( xpath ) ) ) {
 	        errors.push( t( 'alert.gotonotfound.msg', {
-	            path: location.hash.substring( 1 )
+	            path: xpath.substring( xpath.lastIndexOf( '/' ) + 1 )
 	        } ) );
 	    }
 	    return errors;
@@ -52092,7 +52913,7 @@
 	Form.prototype.resetView = function() {
 	    //form language selector was moved outside of <form> so has to be separately removed
 	    jquery( '#form-languages' ).remove();
-	    this.view.$.replaceWith( this.view.$clone );
+	    this.view.$.replaceWith( jquery( this.view.clone ) );
 	};
 
 	/**
@@ -52168,7 +52989,10 @@
 	                const index = that.model.node( name ).getElements().indexOf( element );
 	                const control = that.input.find( name, index );
 	                if ( control ) {
-	                    that.input.setVal( control, value );
+	                    that.input.setVal( control, value, null );
+	                    if ( that.input.getXmlType( control ) === 'binary' && value.startsWith( 'jr://' ) && element.getAttribute( 'src' ) ) {
+	                        control.setAttribute( 'data-loaded-url', element.getAttribute( 'src' ) );
+	                    }
 	                }
 	            } catch ( e ) {
 	                console.error( e );
@@ -52199,9 +53023,9 @@
 	 * @return {jQuery} - A jQuery collection of elements
 	 */
 	Form.prototype.getRelatedNodes = function( attr, filter, updated ) {
-	    let $collection;
-	    let $repeatControls = null;
-	    let $controls;
+	    let collection;
+	    let repeatControls = null;
+	    let controls;
 	    let selector = [];
 	    const that = this;
 
@@ -52209,29 +53033,31 @@
 	    filter = filter || '';
 
 	    // The collection of non-repeat inputs, calculations and groups is cached (unchangeable)
-	    if ( !this.$nonRepeats[ attr ] ) {
-	        $controls = this.view.$.find( `:not(.or-repeat-info)[${attr}]` )
-	            .filter( function() {
-	                return jquery( this ).closest( '.or-repeat' ).length === 0;
-	            } );
-	        this.$nonRepeats[ attr ] = this.filterRadioCheckSiblings( $controls );
+	    if ( !this.nonRepeats[ attr ] ) {
+	        controls = [ ...this.view.html.querySelectorAll( `:not(.or-repeat-info)[${attr}]` ) ]
+	            .filter( el => !el.closest( '.or-repeat' ) );
+	        this.nonRepeats[ attr ] = this.filterRadioCheckSiblings( controls );
 	    }
 
 	    // If the updated node is inside a repeat (and there are multiple repeats present)
 	    if ( typeof updated.repeatPath !== 'undefined' && updated.repeatIndex >= 0 ) {
-	        $controls = this.view.$.find( `.or-repeat[name="${updated.repeatPath}"]` ).eq( updated.repeatIndex )
-	            .find( `[${attr}]` );
-	        $repeatControls = this.filterRadioCheckSiblings( $controls );
+	        const repeatEl = [ ...this.view.html.querySelectorAll( `.or-repeat[name="${updated.repeatPath}"]` ) ][ updated.repeatIndex ];
+	        controls = repeatEl ? [ ...repeatEl.querySelectorAll( `[${attr}]` ) ] : [];
+	        repeatControls = this.filterRadioCheckSiblings( controls );
 	    }
 
 	    // If a new repeat was created, update the cached collection of all form controls with that attribute
 	    // If a repeat was deleted ( update.repeatPath && !updated.cloned), rebuild cache
-	    if ( !this.$all[ attr ] || ( updated.repeatPath && !updated.cloned ) ) {
+	    if ( !this.all[ attr ] || ( updated.repeatPath && !updated.cloned ) ) {
 	        // (re)build the cache
-	        this.$all[ attr ] = this.filterRadioCheckSiblings( this.view.$.find( `[${attr}]` ) );
-	    } else if ( updated.cloned && $repeatControls ) {
+	        // However, if repeats have not been initialized exclude nodes inside a repeat until the first repeat has been added during repeat initialization. 
+	        // The default view repeat will be removed during initialization (and stored as template), before it is re-added, if necessary. 
+	        // We need to avoid adding these fields to the initial cache, 
+	        // so we don't waste time evaluating logic, and don't have to rebuild the cache after repeats have been initialized.
+	        this.all[ attr ] = this.repeatsInitialized ? this.filterRadioCheckSiblings( [ ...this.view.html.querySelectorAll( `[${attr}]` ) ] ) : this.nonRepeats[ attr ];
+	    } else if ( updated.cloned && repeatControls ) {
 	        // update the cache
-	        this.$all[ attr ] = this.$all[ attr ].add( $repeatControls );
+	        this.all[ attr ] = this.all[ attr ].concat( repeatControls );
 	    }
 
 	    /**
@@ -52241,11 +53067,11 @@
 	     * repeats such as with /path/to/repeat[3]/node, /path/to/repeat[position() = 3]/node or indexed-repeat(/path/to/repeat/node, /path/to/repeat, 3).
 	     * We accept that for now.
 	     **/
-	    if ( $repeatControls ) {
+	    if ( repeatControls ) {
 	        // The non-repeat fields have to be added too, e.g. to update a calculated item with count(to/repeat/node) at the top level
-	        $collection = this.$nonRepeats[ attr ].add( $repeatControls );
+	        collection = this.nonRepeats[ attr ].concat( repeatControls );
 	    } else {
-	        $collection = this.$all[ attr ];
+	        collection = this.all[ attr ];
 	    }
 
 	    // Add selectors based on specific changed nodes
@@ -52260,22 +53086,22 @@
 	    }
 
 	    const selectorStr = selector.join( ', ' );
-
-	    $collection = selectorStr ? $collection.filter( selectorStr ) : $collection;
+	    collection = selectorStr ? collection.filter( el => el.matches( selectorStr ) ) : collection;
 
 	    // TODO: exclude descendents of disabled elements? .find( ':not(:disabled) span.active' )
-	    return $collection;
+	    // TODO: remove jQuery wrapper, just return array of elements
+	    return jquery( collection );
 	};
 
 	/**
-	 * @param {jQuery} $controls
-	 * @return {jQuery}
+	 * @param {Array<Element>} controls
+	 * @return {Array<Element>}
 	 */
-	Form.prototype.filterRadioCheckSiblings = $controls => {
+	Form.prototype.filterRadioCheckSiblings = controls => {
 	    const wrappers = [];
-	    return $controls.filter( function() {
+	    return controls.filter( control => {
 	        // TODO: can this be further performance-optimized?
-	        const wrapper = this.type === 'radio' || this.type === 'checkbox' ? jquery( this.parentNode ).parent( '.option-wrapper' )[ 0 ] : null;
+	        const wrapper = control.type === 'radio' || control.type === 'checkbox' ? closestAncestorUntil( control, '.option-wrapper', '.question' ) : null;
 	        // Filter out duplicate radiobuttons and checkboxes
 	        if ( wrapper ) {
 	            if ( wrappers.indexOf( wrapper ) !== -1 ) {
@@ -52288,7 +53114,7 @@
 	};
 
 	/**
-	 * Crafts an optimized jQuery selector for element attributes that contain an expression with a target node name.
+	 * Crafts an optimized selector for element attributes that contain an expression with a target node name.
 	 *
 	 * @param {string} filter - The filter to use
 	 * @param {string} attr - The attribute to target
@@ -52419,7 +53245,6 @@
 	    this.view.$.on( 'change.file',
 	        'input:not(.ignore), select:not(.ignore), textarea:not(.ignore)',
 	        function() {
-	            const $input = jquery( this );
 	            const input = this;
 	            const n = {
 	                path: that.input.getName( input ),
@@ -52443,9 +53268,9 @@
 
 	            if ( updated ) {
 	                that.validateInput( input )
-	                    .then( valid => {
+	                    .then( () => {
 	                        // propagate event externally after internal processing is completed
-	                        $input.trigger( 'valuechange', valid );
+	                        input.dispatchEvent( events.XFormsValueChanged( { repeatIndex: n.index } ) );
 	                    } );
 	            }
 	        } );
@@ -52469,28 +53294,24 @@
 	    } );
 
 	    this.view.html.addEventListener( events.AddRepeat().type, event => {
-	        const index = event.detail ? event.detail[ 0 ] : undefined;
 	        const $clone = jquery( event.target );
-	        const updated = {
-	            repeatPath: $clone.attr( 'name' ),
-	            repeatIndex: index,
-	            cloned: true
-	        };
-	        // Set defaults of added repeats in Form, setAllVals does not trigger change event
-	        that.setAllVals( $clone, index );
+
+	        // Set template-defined static defaults of added repeats in Form, setAllVals does not trigger change event
+	        this.setAllVals( $clone, event.detail.repeatIndex );
+
 	        // Initialize calculations, relevant, itemset, required, output inside that repeat.
-	        that.evaluationCascade.forEach( fn => {
-	            fn.call( that, updated );
+	        this.evaluationCascade.forEach( fn => {
+	            fn.call( that, event.detail );
 	        } );
-	        that.progress.update();
+	        this.progress.update();
 	    } );
 
 	    this.view.html.addEventListener( events.RemoveRepeat().type, () => {
-	        that.progress.update();
+	        this.progress.update();
 	    } );
 
 	    this.view.html.addEventListener( events.ChangeLanguage().type, () => {
-	        that.output.update();
+	        this.output.update();
 	    } );
 
 	    this.view.$.find( '.or-group > h4' ).on( 'click', function() {
@@ -52786,10 +53607,15 @@
 	            // Flip to page
 	            this.pages.flipToPageContaining( jquery( target ) );
 	        }
+	        // check if the target has a form control
+	        if ( target.closest( '.calculation, .setvalue' ) ) {
+	            // It is up to the apps to decide what to do with this event.
+	            target.dispatchEvent( events.GoToInvisible() );
+	        }
 	        // check if the nearest question or group is irrelevant after page flip
 	        if ( target.closest( '.or-branch.disabled' ) ) {
 	            // It is up to the apps to decide what to do with this event.
-	            target.dispatchEvent( events.GoToHidden() );
+	            target.dispatchEvent( events.GoToIrrelevant() );
 	        }
 	        // Scroll to element
 	        target.scrollIntoView();
@@ -52809,7 +53635,7 @@
 	 * @type string
 	 * @default
 	 */
-	Form.requiredTransformerVersion = '1.35.0';
+	Form.requiredTransformerVersion = '1.40.1';
 
 	/**
 	 * @class FormModel

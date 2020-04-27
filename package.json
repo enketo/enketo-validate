@@ -1,6 +1,6 @@
 {
     "name": "enketo-validate",
-    "version": "1.8.2",
+    "version": "1.9.0",
     "description": "An XForm validator around Enketo's form engine",
     "main": "src/validator.js",
     "bin": "./validate",
@@ -26,25 +26,25 @@
     },
     "homepage": "https://github.com/enketo/enketo-validate#readme",
     "dependencies": {
-        "commander": "^3.0.2",
-        "enketo-transformer": "^1.36.0",
+        "commander": "^5.1.0",
+        "enketo-transformer": "^1.40.1",
         "enketo-xpath-extensions-oc": "git+https://github.com/OpenClinica/enketo-xpath-extensions-oc.git#efa9830",
-        "jsdom": "15.1.x",
-        "libxslt": "0.7.x"
+        "jsdom": "^16.2.2",
+        "libxslt": "0.9.x"
     },
     "devDependencies": {
         "chai": "^4.2.0",
-        "docdash": "^1.1.1",
-        "enketo-core": "5.9.1",
-        "eslint": "^6.6.0",
-        "eslint-plugin-jsdoc": "^15.12.2",
-        "istanbul-reporter-shield-badge": "^1.2.0",
-        "jsdoc": "^3.6.3",
-        "mocha": "^6.2.2",
-        "nyc": "^14.1.1",
-        "pkg": "^4.4.0",
-        "rimraf": "^3.0.0",
-        "rollup": "^1.27.0",
+        "docdash": "^1.2.0",
+        "enketo-core": "5.15.0",
+        "eslint": "^6.8.0",
+        "eslint-plugin-jsdoc": "^24.0.0",
+        "istanbul-reporter-shield-badge": "^1.2.1",
+        "jsdoc": "^3.6.4",
+        "mocha": "^7.1.2",
+        "nyc": "^15.0.1",
+        "pkg": "^4.4.8",
+        "rimraf": "^3.0.2",
+        "rollup": "^2.7.2",
         "rollup-plugin-commonjs": "10.1.x",
         "rollup-plugin-node-resolve": "5.2.x"
     }

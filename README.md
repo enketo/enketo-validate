@@ -19,7 +19,7 @@ Live demo web application (meant for testing purposes only) that uses Enketo Val
 
 ## Prerequisites
 
-1. install nodeJS 8+
+1. install nodeJS 12
 2. install build tools for native modules with `apt-get install build-essential`
 
 ## Via Command-line
