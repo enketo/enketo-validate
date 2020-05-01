@@ -107,7 +107,7 @@ class XForm {
         // * https://github.com/jsdom/jsdom/issues/2028
         // doc.evaluate does not support namespaces at all (nsResolver is not used) in JSDom, hence this clever not() trick
         // to use querySelectorAll instead.
-        this._formControls = this._formControls || [ ...this.doc.querySelectorAll( 'h\\:body *:not(item):not(label):not(hint):not(value):not(itemset):not(output):not(repeat):not(group)' ) ];
+        this._formControls = this._formControls || [ ...this.doc.querySelectorAll( 'h\\:body *:not(item):not(label):not(hint):not(value):not(itemset):not(output):not(repeat):not(group):not(setvalue)' ) ];
         return this._formControls;
     }
 
@@ -297,7 +297,7 @@ class XForm {
         // These are the elements we expect to have a label though we're going slightly beyond spec requirement here.
         this.formControls.concat( this.items )
             .forEach( control => {
-                // the selector ":scope > label" fails with namespace elements such as odk:rank
+                // the selector ":scope > label" fails with namespaced elements such as odk:rank
                 if ( ![ ...control.childNodes ].some( el => el.nodeName === 'label' ) ) {
                     const type = control.nodeName === 'item' || control.nodeName === 'itemset' ? 'Select option for question' : 'Question';
                     const ref = control.getAttribute( 'ref' ) || control.parentElement.getAttribute( 'ref' ) || '?';
