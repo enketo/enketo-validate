@@ -153,10 +153,11 @@ describe( 'XForm', () => {
     } );
 
     describe( 'with missing <label> elements', () => {
-        const xf = loadXForm( 'missing-labels.xml' );
-        const result = validator.validate( xf );
-        const ISSUES = 6;
+
         it( 'outputs errors', () => {
+            const xf = loadXForm( 'missing-labels.xml' );
+            const result = validator.validate( xf );
+            const ISSUES = 6;
             expect( result.errors.length ).to.equal( ISSUES );
             expect( arrContains( result.errors, /"a" has no label/i ) ).to.equal( true );
             expect( arrContains( result.errors, /"e" has no label/i ) ).to.equal( true );
@@ -165,6 +166,13 @@ describe( 'XForm', () => {
             expect( arrContains( result.errors, /option for question "f" has no label/i ) ).to.equal( true );
             expect( arrContains( result.errors, /option for question "i" has no label/i ) ).to.equal( true );
         } );
+
+        it( 'does not output errors for setvalue actions without a label', () => {
+            const xf = loadXForm( 'setvalue.xml' );
+            const result = validator.validate( xf );
+            expect( result.errors.length ).to.equal( 0 );
+        } );
+
     } );
 
     describe( 'with duplicate nodenames', () => {

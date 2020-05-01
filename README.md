@@ -94,7 +94,7 @@ In it's current iteration, the validator does the following:
 * It checks for nested repeats.
 * It checks for form controls that have a calculation but are not set as readonly.
 
-\* Note, that `/path/to/nonexisting/node` is perfectly valid XPath.
+\* Note, that `/path/to/a/nonexisting/node` is perfectly valid XPath.
 
 ## Funding
 

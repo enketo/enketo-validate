@@ -2,6 +2,11 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+[Unreleased]
+---------------------
+##### Fixed
+- Setvalue elements are incorrectly reported as errors because they have no label.
+
 [1.9.1] - 2020-04-27
 ---------------------
 ##### Fixed
