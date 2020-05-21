@@ -151,7 +151,7 @@
     "terrain": "maps",
     "placement-map": "maps",
     "field-list": {
-        "controls": [ "group" ]
+        "controls": [ "group", "repeat" ]
     },
     "picker": {
         "controls": [ "range" ]

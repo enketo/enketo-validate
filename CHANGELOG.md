@@ -2,6 +2,11 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+[Unreleased]
+---------------------
+##### Fixed
+- Incorrect warning for "field-list" appearance on repeat.
+
 [1.9.2] - 2020-05-01
 ---------------------
 ##### Fixed
@@ -59,7 +64,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 ---------------------
 ##### Added
 - Detect disallowed logic references to node itself.
-  
+
 #### Changed
 - Added version property to CommonJS module validation output.
 - Updated to Enketo Core 5.0.x
@@ -135,4 +140,4 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 [1.0.0] - 2017-12-18
 ---------------------
 ##### Added
-- First published version. 
+- First published version.

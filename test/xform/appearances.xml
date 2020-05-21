@@ -99,6 +99,8 @@
                 </item>
             </select1>
         </group>
-        <repeat nodeset="/data/two" appearance="field-list"/>
+        <input ref="/data/two" appearance="field-list">
+            <label>label</label>
+        </input>
     </h:body>
 </h:html>
