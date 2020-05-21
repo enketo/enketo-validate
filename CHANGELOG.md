@@ -5,7 +5,8 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 [Unreleased]
 ---------------------
 ##### Fixed
-- Incorrect warning for "field-list" appearance on repeat.
+- False warning for "field-list" appearance on repeat.
+- False warning for w-value appearance on repeat.
 
 [1.9.2] - 2020-05-01
 ---------------------

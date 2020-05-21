@@ -157,7 +157,7 @@
         "controls": [ "range" ]
     },
     "w1": {
-        "controls": [ "input", "select1", "select", "upload", "trigger", "range", "odk:rank", "group" ]
+        "controls": [ "input", "select1", "select", "upload", "trigger", "range", "odk:rank", "group", "repeat" ]
     },
     "w2": "w1",
     "w3": "w1",
