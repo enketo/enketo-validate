@@ -1,0 +1,64 @@
+<?xml version="1.0"?>
+<h:html xmlns="http://www.w3.org/2002/xforms"
+    xmlns:ev="http://www.w3.org/2001/xml-events"
+    xmlns:h="http://www.w3.org/1999/xhtml"
+    xmlns:jr="http://openrosa.org/javarosa"
+    xmlns:oc="http://openclinica.org/xforms"
+    xmlns:odkkkkkk="http://www.opendatakit.org/xforms"
+    xmlns:orxxxx="http://openrosa.org/xforms"
+    xmlns:xsdddd="http://www.w3.org/2001/XMLSchema">
+    <h:head>
+        <h:title>appearances</h:title>
+        <model>
+            <instance>
+                <data id="data">
+                    <one>
+                        <c/>
+                        <d/>
+                        <e/>
+                        <f/>
+                    </one>
+                    <meta>
+                        <instanceID/>
+                    </meta>
+                </data>
+            </instance>
+            <bind nodeset="/data/one/c" type="string"/>
+            <bind nodeset="/data/one/d" type="string"/>
+            <bind nodeset="/data/one/f" type="string"/>
+            <bind nodeset="/data/meta/instanceID" type="string"/>
+        </model>
+    </h:head>
+    <h:body>
+        <group ref="/data/one" appearance="horizontal">
+            <label>Group with clinicaldata issues</label>
+            <input ref="/data/one/c" appearance="horizontal">
+                <label>label c</label>
+            </input>
+            <select1 ref="/data/one/d" appearance="horizontal">
+                <label>label d</label>
+                <item>
+                    <label>Alaska</label>
+                    <value>AK</value>
+                </item>
+            </select1>
+             <range ref="/data/one/e" start="0" end="10" step="1" appearance="horizontal">
+                <label>label e</label>
+            </range>
+            <select ref="/data/one/f" appearance="horizontal">
+                <label>label f</label>
+                <item>
+                    <label>Alaska</label>
+                    <value>AK</value>
+                </item>
+            </select>
+             <odkkkkkk:rank ref="/data/one/i" appearance="horizontal">
+                <label>label i</label>
+                <item>
+                    <label>Alaska</label>
+                    <value>AK</value>
+                </item>
+            </odkkkkkk:rank>
+        </group>
+    </h:body>
+</h:html>

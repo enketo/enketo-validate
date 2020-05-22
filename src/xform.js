@@ -1,4 +1,4 @@
-'use strict';
+/* global __dirname */
 
 const jsdom = require( 'jsdom' );
 const { JSDOM } = jsdom;
@@ -37,6 +37,7 @@ class XForm {
      */
     get binds() {
         this._binds = this._binds || [ ...this.doc.querySelectorAll( 'bind' ) ];
+
         return this._binds;
     }
 
@@ -45,6 +46,7 @@ class XForm {
      */
     get bindsWithCalc() {
         this._bindsWithCalc = this._bindsWithCalc || [ ...this.doc.querySelectorAll( 'bind[calculate]' ) ];
+
         return this._bindsWithCalc;
     }
 
@@ -59,6 +61,7 @@ class XForm {
         // doc.evaluate does not support namespaces at all (nsResolver is not used) in JSDom, hence this clever not() trick
         // to use querySelectorAll instead.
         this._formControls = this._formControls || [ ...this.doc.querySelectorAll( 'h\\:body *:not(item):not(label):not(hint):not(value):not(itemset):not(output):not(repeat):not(group):not(setvalue)' ) ];
+
         return this._formControls;
     }
 
@@ -72,6 +75,7 @@ class XForm {
         // * https://github.com/jsdom/jsdom/issues/2028
         // doc.evaluate does not support namespaces at all (nsResolver is not used) in JSDom
         this._groups = this._groups || [ ...this.doc.querySelectorAll( 'h\\:body group' ) ];
+
         return this._groups;
     }
 
@@ -85,6 +89,7 @@ class XForm {
         // * https://github.com/jsdom/jsdom/issues/2028
         // doc.evaluate does not support namespaces at all (nsResolver is not used) in JSDom
         this._repeats = this._repeats || [ ...this.doc.querySelectorAll( 'h\\:body repeat' ) ];
+
         return this._repeats;
     }
 
@@ -98,6 +103,7 @@ class XForm {
         // * https://github.com/jsdom/jsdom/issues/2028
         // doc.evaluate does not support namespaces at all (nsResolver is not used) in JSDom
         this._items = this._items || [ ...this.doc.querySelectorAll( 'h\\:body item, h\\:body itemset' ) ];
+
         return this._items;
     }
 
@@ -121,8 +127,8 @@ class XForm {
     /**
      * Returns a `<bind>` element with the provided nodeset attribute value.
      *
-     * @param {string} nodeset nodeset attribute value
-     * @return {Node}
+     * @param {string} nodeset - nodeset attribute value
+     * @return {Node} bind element matching the nodeset value
      */
     getBind( nodeset ) {
         return this.doc.querySelector( `bind[nodeset="${nodeset}"]` );
@@ -142,9 +148,11 @@ class XForm {
         Object.entries( this.NAMESPACES ).some( obj => {
             if ( obj[ 1 ] === ns ) {
                 prefix = obj[ 0 ];
+
                 return true;
             }
         } );
+
         return prefix;
     }
 
@@ -195,12 +203,13 @@ class XForm {
     enketoEvaluate( expr, type = 'string', contextPath = null ) {
         try {
             if ( !this.model ) {
-                console.log( 'Unexpectedly, there is no model when enketoEvaluate is called, creating one.' );
+                //console.log( 'Unexpectedly, there is no model when enketoEvaluate is called, creating one.' );
                 this.parseModel();
             }
             // Note that the jsdom XPath evaluator was disabled in parseModel.
             // So we are certain to be testing Enketo's own XPath evaluator.
             let newExpr = this._stripJrChoiceName( expr );
+
             return this.model.evaluate( newExpr, type, contextPath );
         } catch ( e ) {
             throw this._cleanXPathException( e );
@@ -352,6 +361,7 @@ class XForm {
             .filter( this._withFormControl.bind( this ) )
             .filter( bind => {
                 const readonly = bind.getAttribute( 'readonly' );
+
                 // TODO: the check for true() should be probably be done in XPath,
                 // using XPath boolean conversion rules.
                 return !readonly || readonly.trim() !== 'true()';
@@ -375,16 +385,25 @@ class XForm {
                 }
                 const appearances = appearanceVal.split( ' ' );
                 appearances.forEach( appearance => {
-                    let rules = appearanceRules[ appearance ];
+                    let rules = appearanceRules[ appearance ] || [];
+
                     if ( typeof rules === 'string' ) {
                         rules = appearanceRules[ rules ];
                     }
+                    if ( typeof rules === 'object' && !Array.isArray( rules ) ){
+                        rules = [ rules ];
+                    }
+                    if ( !Array.isArray( rules ) ){
+                        console.error( 'Appearance rules in expected format.' );
+                    }
+
                     const controlNsPrefix = this.nsPrefixResolver( control.namespaceURI );
                     const controlName = controlNsPrefix && /:/.test( control.nodeName ) ? controlNsPrefix + ':' + control.nodeName.split( ':' )[ 1 ] : control.nodeName;
                     const pathAttr = controlName === 'repeat' ? 'nodeset' : 'ref';
                     const ref = control.getAttribute( pathAttr );
                     if ( !ref ) {
                         errors.push( `Question found in body that has no ${pathAttr} attribute (${control.nodeName}).` );
+
                         return;
                     }
                     const nodeName = ref.substring( ref.lastIndexOf( '/' ) + 1 ); // in model!
@@ -392,31 +411,51 @@ class XForm {
                     let dataType = bindEl ? bindEl.getAttribute( 'type' ) : 'string';
                     // Convert ns prefix to properly evaluate XML Schema datatypes regardless of namespace prefix used in XForm.
                     const typeValNs = /:/.test( dataType ) ? bindEl.lookupNamespaceURI( dataType.split( ':' )[ 0 ] ) : null;
-                    dataType = typeValNs ? `${this.nsPrefixResolver(typeValNs)}:${dataType.split(':')[1]}` : dataType;
-                    if ( !rules ) {
+                    dataType = typeValNs ? `${this.nsPrefixResolver( typeValNs )}:${dataType.split( ':' )[1]}` : dataType;
+
+                    if ( rules.length === 0 ) {
                         warnings.push( `Appearance "${appearance}" for question "${nodeName}" is not supported.` );
+
                         return;
                     }
-                    if ( rules.controls && !rules.controls.includes( controlName ) ) {
+
+                    const allowedControls = rules.map( rule => rule.controls || [] ).flat();
+                    if ( allowedControls.length && !allowedControls.includes( controlName ) ) {
                         warnings.push( `Appearance "${appearance}" for question "${nodeName}" is not valid for this question type (${control.nodeName}).` );
+
                         return;
                     }
-                    if ( rules.types && !rules.types.includes( dataType ) ) {
+
+                    const allowedTypes = rules.map( rule => rule.types || [] ).flat();
+                    if ( allowedTypes.length && !allowedTypes.includes( dataType ) ) {
                         // Only check types if controls check passed.
                         // TODO check namespaced types when it becomes applicable (for XML Schema types).
                         warnings.push( `Appearance "${appearance}" for question "${nodeName}" is not valid for this data type (${dataType}).` );
+
                         return;
                     }
-                    if ( rules.appearances && !rules.appearances.some( appearanceMatch => appearances.includes( appearanceMatch ) ) ) {
+
+                    // Find rule that allows this appearance.
+                    // For now it is safe to just take the first matching control if one exist and otherwise the first matching type.
+                    const applicableRule = rules.find( rule => ( rule.controls || [] ).includes( controlName ) )
+                        || rules.find( rule => ( rule.types || [] ).includes( dataType ) )
+                        || rules[0];
+
+                    if ( applicableRule && applicableRule.appearances && !applicableRule.appearances.some( appearanceMatch => appearances.includes( appearanceMatch ) ) ) {
                         warnings.push( `Appearance "${appearance}" for question "${nodeName}" requires any of these appearances: ${rules.appearances}.` );
+
                         return;
                     }
-                    if ( rules.preferred ) {
-                        warnings.push( `Appearance "${appearance}" for question "${nodeName}" is deprecated, use "${rules.preferred}" instead.` );
+
+                    if ( applicableRule && applicableRule.preferred ) {
+                        warnings.push( `Appearance "${appearance}" for question "${nodeName}" is deprecated, use "${applicableRule.preferred}" instead.` );
                     }
                     // Possibilities for future additions:
                     // - check accept/mediaType
                     // - check conflicting combinations of appearances
+
+
+
                 } );
 
             } );
@@ -447,6 +486,7 @@ class XForm {
             .filter( bind => bind.getAttributeNS( this.NAMESPACES.oc, 'external' ) === 'clinicaldata' )
             .filter( bind => {
                 const calculation = bind.getAttribute( 'calculate' );
+
                 return !calculation || !CLINICALDATA_REF.test( calculation );
             } )
             .map( this._nodeName.bind( this ) )
@@ -472,13 +512,14 @@ class XForm {
         const scriptEl = window.document.createElement( 'script' );
         scriptEl.textContent = scriptContent;
         window.document.body.appendChild( scriptEl );
+
         return window;
     }
 
     /**
      * Returns some dummy external data that can be used to instantiate a Form instance that requires external data.
      *
-     * @return {Array<{id: string, xml: Document}>}
+     * @return {Array<{id: string, xml: Document}>} external data object with dummy content
      */
     _getExternalDummyContent() {
         let external = [];
@@ -486,6 +527,7 @@ class XForm {
             const { document } = ( new JSDOM( '<something/>', { contentType: 'text/xml' } ) ).window;
             external.push( { id: instance.id, xml: document } );
         } );
+
         return external;
     }
 
@@ -514,13 +556,14 @@ class XForm {
      */
     _extractModelStr() {
         let doc = libxmljs.parseXml( this.xformStr );
+
         return xslModelSheet.apply( doc );
     }
 
     /**
      * Returns a JSDOM instance of the XForm.
      *
-     * @return {JSDOM}
+     * @return {JSDOM} JSDOM instance of the XForm
      */
     _getDom() {
         try {
@@ -536,10 +579,11 @@ class XForm {
      * Determines whether  a `<bind>` element has corresponding input form control.
      *
      * @param {Element} bind - The XForm <bind> element.
-     * @return {boolean}
+     * @return {boolean} whether the provided bind has a matching form control
      */
     _withFormControl( bind ) {
         const nodeset = bind.getAttribute( 'nodeset' );
+
         // We are not checking for <group> and <repeat>,
         // as the purpose of this function is to identify calculations without form control
         return !!this.doc.querySelector( `input[ref="${nodeset}"], select[ref="${nodeset}"], ` +
@@ -550,7 +594,7 @@ class XForm {
      * A reverse method of {@link XForm#_withFormControl|_withFormControl}
      *
      * @param {Element} bind - The XForm <bind> element.
-     * @return {boolean}
+     * @return {boolean} whether the provided bind has no matching form control
      */
     _withoutFormControl( bind ) {
         return !this._withFormControl( bind );
@@ -564,28 +608,30 @@ class XForm {
      */
     _nodeName( bind ) {
         const path = bind.getAttribute( 'nodeset' );
+
         return path.substring( path.lastIndexOf( '/' ) + 1 );
     }
 
     /**
      * Returns a cleaned-up XmlDomParser error string unless in debug mode.
      *
-     * @param {Error} error
-     * @return {Error|string}
+     * @param {Error} error - Error object
+     * @return {Error|string} cleaned up error message or original error object
      */
     _cleanXmlDomParserError( error ) {
         if ( this.options.debug ) {
             return error;
         }
         let parts = error.message.split( '\n' );
+
         return parts[ 0 ] + ' ' + parts.splice( 1, 4 ).join( ', ' );
     }
 
     /**
      * Returns cleaned-up XPath Exception error string unless in debug mode.
      *
-     * @param {Error} error
-     * @return {Error|string}
+     * @param {Error} error - Error object
+     * @return {Error|string} cleaned up error message or original error object
      */
     _cleanXPathException( error ) {
         if ( this.options.debug ) {
@@ -598,6 +644,7 @@ class XForm {
             .replace( /Function "{}(.*)"/g, 'Function "$1"' )
             .replace( /\/model\/instance\[1\]/g, '' )
             .replace( /\(line: undefined, character: undefined\)/g, '' );
+
         // '. ,' => ','
         return parts.join( ', ' ).replace( /\.\s*,/g, ',' );
     }

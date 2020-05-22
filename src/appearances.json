@@ -21,9 +21,14 @@
     "image-map": {
         "controls": [ "select1", "select" ]
     },
-    "horizontal": {
-        "controls": [ "range", "input" ]
-    },
+    "horizontal": [
+        {
+            "controls": [ "range", "input" ]
+        },{
+            "controls": [ "select", "select1" ],
+            "preferred": "columns"
+        }
+    ],
     "vertical": "horizontal",
     "no-buttons": {
         "controls": [ "select", "select1" ],

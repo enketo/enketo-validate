@@ -150,6 +150,17 @@ describe( 'XForm', () => {
             //expect( arrContains( result.warnings, /deprecated/ ) ).to.equal( false );
             expect( resultOc.warnings.length ).to.equal( ISSUES );
         } );
+
+        it( 'including the special case "horizontal" output warnings', () => {
+            const xf = loadXForm( 'appearance-horizontal.xml' );
+            const result = validator.validate( xf );
+
+            expect( result.warnings.length ).to.equal( 4 );
+            expect( arrContains( result.warnings, /"horizontal" for question "d" .+ deprecated.+"columns"/i ) ).to.equal( true );
+            expect( arrContains( result.warnings, /"horizontal" for question "f" .+ deprecated.+"columns"/i ) ).to.equal( true );
+            expect( arrContains( result.warnings, /"horizontal" for question "i".+not valid/i ) ).to.equal( true );
+            expect( arrContains( result.warnings, /"horizontal" for question "one".+not valid.+\(group\)/i ) ).to.equal( true );
+        } );
     } );
 
     describe( 'with missing <label> elements', () => {

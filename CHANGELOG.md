@@ -11,6 +11,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 ##### Fixed
 - False warning for "field-list" appearance on repeat.
 - False warning for w-value appearance on repeat.
+- Unhelpful warning when using "horizontal" appearance on select/select1.
 
 [1.9.2] - 2020-05-01
 ---------------------
