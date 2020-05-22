@@ -4,6 +4,10 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 [Unreleased]
 ---------------------
+##### Changed
+- In OC mode appearance errors are no output as warnings.
+- In OC mode deprecated appearance warnings are no longer suppressed.
+
 ##### Fixed
 - False warning for "field-list" appearance on repeat.
 - False warning for w-value appearance on repeat.

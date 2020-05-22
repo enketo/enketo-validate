@@ -105,13 +105,13 @@ describe( 'XForm', () => {
 
         it( 'outputs errors for calculations without form control that refer to external ' +
             'clinicaldata instance but do not have the oc:external="clinicaldata" bind', () => {
-                expect( arrContains( result1.errors, /refers to external clinicaldata without the required "external" attribute/i ) ).to.equal( true );
-            } );
+            expect( arrContains( result1.errors, /refers to external clinicaldata without the required "external" attribute/i ) ).to.equal( true );
+        } );
 
         it( 'outputs errors for binds with oc:external="clinicaldata" that do not ' +
             'do not have a calculation that refers to instance(\'clinicaldata\')', () => {
-                expect( arrContains( result1.errors, /not .* calculation referring to instance\('clinicaldata'\)/i ) ).to.equal( true );
-            } );
+            expect( arrContains( result1.errors, /not .* calculation referring to instance\('clinicaldata'\)/i ) ).to.equal( true );
+        } );
     } );
 
     describe( 'with incorrect appearance usage', () => {
@@ -142,13 +142,13 @@ describe( 'XForm', () => {
             expect( result.errors.length ).to.equal( 0 );
         } );
 
-        it( 'outputs no warnings with --oc flag', () => {
-            expect( resultOc.warnings.length ).to.equal( 0 );
+        it( 'outputs no errors with --oc flag either', () => {
+            expect( resultOc.errors.length ).to.equal( 0 );
         } );
 
-        it( 'outputs errors with --oc flag and ignores "deprecated" usage', () => {
-            expect( arrContains( result.errors, /deprecated/ ) ).to.equal( false );
-            expect( resultOc.errors.length ).to.equal( ISSUES - 2 );
+        it( 'outputs warnings with --oc flag too', () => {
+            //expect( arrContains( result.warnings, /deprecated/ ) ).to.equal( false );
+            expect( resultOc.warnings.length ).to.equal( ISSUES );
         } );
     } );
 

@@ -411,8 +411,7 @@ class XForm {
                         warnings.push( `Appearance "${appearance}" for question "${nodeName}" requires any of these appearances: ${rules.appearances}.` );
                         return;
                     }
-                    // switched off when warnings are output as errors (for OC) - may need different approach
-                    if ( rules.preferred && warnings !== errors ) {
+                    if ( rules.preferred ) {
                         warnings.push( `Appearance "${appearance}" for question "${nodeName}" is deprecated, use "${rules.preferred}" instead.` );
                     }
                     // Possibilities for future additions:
