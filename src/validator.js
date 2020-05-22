@@ -8,7 +8,7 @@ const { XForm } = require( './xform' );
 /**
  * @constant
  * @static
- * @type string
+ * @type {string}
  */
 const { version } = require( '../package' );
 
@@ -71,6 +71,7 @@ let validate = ( xformStr, options = {} ) => {
 
             if ( !path ) {
                 warnings.push( `Found bind (index: ${index}) without nodeset attribute.` );
+
                 return;
             }
 
@@ -79,6 +80,7 @@ let validate = ( xformStr, options = {} ) => {
 
             if ( !context ) {
                 warnings.push( `Found bind for "${nodeName}" that does not exist in the model.` );
+
                 return;
             }
 

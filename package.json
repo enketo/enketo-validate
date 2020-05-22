@@ -7,7 +7,9 @@
     "scripts": {
         "test": "nyc mocha test/spec/*.spec.js && node update-readme-with-shield-badge.js",
         "build-docs": "rimraf docs && ./node_modules/.bin/jsdoc -c jsdoc.config.js",
-        "prepublish": "rollup --config && rollup --config rollup.utils.config.js"
+        "prepublish": "rollup --config && rollup --config rollup.utils.config.js",
+        "style-fix": "eslint *.js  src/**/*.js test/**/*.js --fix",
+        "style-check": "eslint *.js  src/**/*.js test/**/*.js"
     },
     "repository": {
         "type": "git",

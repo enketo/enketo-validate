@@ -1,6 +1,5 @@
+/* global process */
 /* eslint-env mocha */
-
-'use strict';
 
 const validator = require( '../../src/validator' );
 const expect = require( 'chai' ).expect;

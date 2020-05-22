@@ -1,3 +1,4 @@
+/* global process */
 /* eslint-env mocha */
 
 'use strict';
