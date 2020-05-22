@@ -694,6 +694,7 @@
 	    if ( /^".+"$/.test( str ) || /^'.+'$/.test( str ) ) {
 	        return str.substring( 1, str.length - 1 );
 	    }
+
 	    return str;
 	}
 
@@ -717,8 +718,10 @@
 	        } else if ( filenameParts.length === 1 ) {
 	            filenameParts[ 0 ] += postfix;
 	        }
+
 	        return filenameParts.join( '.' );
 	    }
+
 	    return '';
 	}
 
@@ -735,6 +738,7 @@
 	    for ( let i = list.length >>> 0; i--; ) {
 	        array[ i ] = list[ i ];
 	    }
+
 	    return array;
 	}
 
@@ -817,6 +821,7 @@
 	 */
 	function getPasteData( event ) {
 	    const clipboardData = event.originalEvent.clipboardData || window.clipboardData; // modern || IE11
+
 	    return ( clipboardData ) ? clipboardData.getData( 'text' ) : null;
 	}
 
@@ -881,7 +886,7 @@
 
 	var jquery = createCommonjsModule(function (module) {
 	/*!
-	 * jQuery JavaScript Library v3.5.0
+	 * jQuery JavaScript Library v3.5.1
 	 * https://jquery.com/
 	 *
 	 * Includes Sizzle.js
@@ -891,7 +896,7 @@
 	 * Released under the MIT license
 	 * https://jquery.org/license
 	 *
-	 * Date: 2020-04-10T15:07Z
+	 * Date: 2020-05-04T22:49Z
 	 */
 	( function( global, factory ) {
 
@@ -1019,7 +1024,7 @@
 
 
 	var
-		version = "3.5.0",
+		version = "3.5.1",
 
 		// Define a local copy of jQuery
 		jQuery = function( selector, context ) {
@@ -5115,7 +5120,7 @@
 
 			// If not, create one
 			if ( !value ) {
-				value = Object.create( null );
+				value = {};
 
 				// We can accept data for non-element nodes in modern browsers,
 				// but we should not, see #8335.
@@ -11776,6 +11781,7 @@
 	        }
 	        next = next.nextElementSibling;
 	    }
+
 	    return siblings;
 	}
 
@@ -11860,6 +11866,7 @@
 	        }
 	        el = el.previousSibling;
 	    }
+
 	    return found;
 	}
 
@@ -11879,6 +11886,7 @@
 	        }
 	        node = node.previousSibling;
 	    }
+
 	    return found;
 	}
 
@@ -11982,6 +11990,7 @@
 	     */
 	    get: function( element, key ) {
 	        const item = this._storage.get( element );
+
 	        return item ? item.get( key ) : item;
 	    },
 	    /**
@@ -11993,6 +12002,7 @@
 	     */
 	    has: function( element, key ) {
 	        const item = this._storage.get( element );
+
 	        return item && item.has( key );
 	    },
 	    /**
@@ -12007,6 +12017,7 @@
 	        if ( !this._storage.get( key ).size === 0 ) {
 	            this._storage.delete( element );
 	        }
+
 	        return ret;
 	    }
 	};
@@ -12061,6 +12072,7 @@
 	 */
 	function _getCleanLocalTime( dt ) {
 	    dt = typeof dt == 'undefined' ? new Date() : dt;
+
 	    return _cleanSpecialChars( dt.toLocaleTimeString( _locale ) );
 	}
 
@@ -12078,19 +12090,19 @@
 	const time = {
 	    // For now we just look at a subset of numbers in Arabic and Latin. There are actually over 20 number scripts and :digit: doesn't work in browsers
 	    /**
-	     * @type string
+	     * @type {string}
 	     */
 	    get hour12() {
 	        return this.hasMeridian( _getCleanLocalTime() );
 	    },
 	    /**
-	     * @type string
+	     * @type {string}
 	     */
 	    get pmNotation() {
 	        return this.meridianNotation( new Date( 2000, 1, 1, 23, 0, 0 ) );
 	    },
 	    /**
-	     * @type string
+	     * @type {string}
 	     */
 	    get amNotation() {
 	        return this.meridianNotation( new Date( 2000, 1, 1, 1, 0, 0 ) );
@@ -12103,8 +12115,10 @@
 	        let matches = _getCleanLocalTime( dt ).match( HAS_MERIDIAN );
 	        if ( matches && matches.length ) {
 	            matches = matches.filter( item => !!item );
+
 	            return matches[ matches.length - 1 ].trim();
 	        }
+
 	        return null;
 	    },
 	    /**
@@ -12183,6 +12197,7 @@
 	                // Comply with XML schema decimal type that has no special values. '' is our only option.
 	                return '';
 	            }
+
 	            return num;
 	        },
 	        /**
@@ -12191,6 +12206,7 @@
 	         */
 	        validate( x ) {
 	            const num = Number( x );
+
 	            return !isNaN( num ) && num !== Number.POSITIVE_INFINITY && num !== Number.NEGATIVE_INFINITY;
 	        }
 	    },
@@ -12208,6 +12224,7 @@
 	                // Comply with XML schema int type that has no special values. '' is our only option.
 	                return '';
 	            }
+
 	            return ( num >= 0 ) ? Math.floor( num ) : -Math.floor( Math.abs( num ) );
 	        },
 	        /**
@@ -12216,6 +12233,7 @@
 	         */
 	        validate( x ) {
 	            const num = Number( x );
+
 	            return !isNaN( num ) && num !== Number.POSITIVE_INFINITY && num !== Number.NEGATIVE_INFINITY && Math.round( num ) === num && num.toString() === x.toString();
 	        }
 	    },
@@ -12235,9 +12253,11 @@
 	                const month = Number( segments[ 2 ] ) - 1;
 	                const day = Number( segments[ 3 ] );
 	                const date = new Date( year, month, day );
+
 	                // Do not approve automatic JavaScript conversion of invalid dates such as 2017-12-32
 	                return date.getFullYear() === year && date.getMonth() === month && date.getDate() === day;
 	            }
+
 	            return false;
 	        },
 	        /**
@@ -12248,8 +12268,9 @@
 	            if ( isNumber( x ) ) {
 	                // The XPath expression "2012-01-01" + 2 returns a number of days in XPath.
 	                const date = new Date( x * 24 * 60 * 60 * 1000 );
+
 	                return date.toString() === 'Invalid Date' ?
-	                    '' : `${date.getFullYear().toString().pad(4)}-${(date.getMonth() + 1).toString().pad(2)}-${date.getDate().toString().pad(2)}`;
+	                    '' : `${date.getFullYear().toString().pad( 4 )}-${( date.getMonth() + 1 ).toString().pad( 2 )}-${date.getDate().toString().pad( 2 )}`;
 	            } else {
 	                // For both dates and datetimes
 	                // If it's a datetime, we can quite safely assume it's in the local timezone, and therefore we can simply chop off
@@ -12257,6 +12278,7 @@
 	                if ( /[0-9]T[0-9]/.test( x ) ) {
 	                    x = x.split( 'T' )[ 0 ];
 	                }
+
 	                return this.validate( x ) ? x : '';
 	            }
 	        }
@@ -12297,7 +12319,7 @@
 	            } else {
 	                const convertedDate = types.date.convert( parts[ 0 ] );
 	                if ( convertedDate ) {
-	                    return `${convertedDate}T00:00:00.000${(new Date()).getTimezoneOffsetAsTime()}`;
+	                    return `${convertedDate}T00:00:00.000${( new Date() ).getTimezoneOffsetAsTime()}`;
 	                }
 	            }
 
@@ -12384,7 +12406,7 @@
 	            if ( tz.length === 0 ) {
 	                offset = new Date().getTimezoneOffsetAsTime();
 	            } else {
-	                offset = `${tz[0] + tz[1].pad(2)}:${tz[2] ? tz[2].pad(2) : '00'}`;
+	                offset = `${tz[0] + tz[1].pad( 2 )}:${tz[2] ? tz[2].pad( 2 ) : '00'}`;
 	            }
 
 	            x = `${o.hours}:${o.minutes}:${o.seconds}${o.milliseconds ? `.${o.milliseconds}` : ''}${offset}`;
@@ -12413,6 +12435,7 @@
 	                    x = timeParts.join( ':' );
 	                }
 	            }
+
 	            return x;
 	        }
 	    },
@@ -12437,6 +12460,7 @@
 	         */
 	        validate( x ) {
 	            const coords = x.toString().trim().split( ' ' );
+
 	            // Note that longitudes from -180 to 180 are problematic when recording points close to the international
 	            // dateline. They are therefore set from -360  to 360 (circumventing Earth twice, I think) which is
 	            // an arbitrary limit. https://github.com/kobotoolbox/enketo-express/issues/1033
@@ -12463,6 +12487,7 @@
 	         */
 	        validate( x ) {
 	            const geopoints = x.toString().split( ';' );
+
 	            return geopoints.length >= 2 && geopoints.every( geopoint => types.geopoint.validate( geopoint ) );
 	        },
 	        /**
@@ -12483,6 +12508,7 @@
 	         */
 	        validate( x ) {
 	            const geopoints = x.toString().split( ';' );
+
 	            return geopoints.length >= 4 && ( geopoints[ 0 ] === geopoints[ geopoints.length - 1 ] ) && geopoints.every( geopoint => types.geopoint.validate( geopoint ) );
 	        },
 	        /**
@@ -12561,6 +12587,7 @@
 
 	/**
 	 * The odk-instance-first-load event as defined in the ODK XForms spec.
+	 *
 	 * @see https://opendatakit.github.io/xforms-spec/#event:odk-instance-first-load
 	 *@return {CustomEvent} Custom "odk-instance-first-load" event (bubbling)
 	 */
@@ -12570,6 +12597,7 @@
 
 	/**
 	 * The odk-new-repeat event as defined in the ODK XForms spec.
+	 *
 	 * @see https://opendatakit.github.io/xforms-spec/#event:odk-new-repeat
 	 * @param {{repeatPath: string, repeatIndex: number, trigger: string}} detail - Data to be passed with event.
 	 * @return {CustomEvent} Custom "odk-new-repeat" event (bubbling)
@@ -12580,6 +12608,7 @@
 
 	/**
 	 * The addrepeat event is similar but fired under different circumstances.
+	 *
 	 * @param {{repeatPath: string, repeatIndex: number, trigger: string}} detail - Data to be passed with event.
 	 * @return {CustomEvent} Custom "odk-new-repeat" event (bubbling)
 	 */
@@ -12616,6 +12645,7 @@
 
 	/**
 	 * Xforms-value-changed event as defined in the ODK XForms spec.
+	 *
 	 * @see https://opendatakit.github.io/xforms-spec/#event:xforms-value-changed
 	 *@return {CustomEvent} Custom "xforms-value-changed" event (bubbling)
 	 * @param {{repeatIndex: number}} detail - Data to be passed with event.
@@ -12713,6 +12743,23 @@
 	    return new CustomEvent( 'change-option', { bubbles: true } );
 	}
 
+	/**
+	 * Go to printify text event.
+	 *
+	 * @return {CustomEvent} Custom "printify" event (bubbling)
+	 */
+	function Printify() {
+	    return new CustomEvent( 'printify', { bubbles: true } );
+	}
+
+	/**
+	 * Go to deprintify text event.
+	 *
+	 * @return {CustomEvent} Custom "deprintify" event (bubbling)
+	 */
+	function DePrintify() {
+	    return new CustomEvent( 'deprintify', { bubbles: true } );
+	}
 
 	var events = {
 	    DataUpdate,
@@ -12736,7 +12783,9 @@
 	    GoToIrrelevant,
 	    GoToInvisible,
 	    XFormsValueChanged,
-	    ChangeOption
+	    ChangeOption,
+	    Printify,
+	    DePrintify
 	};
 
 	/**
@@ -12804,6 +12853,7 @@
 	    while ( x.length < digits ) {
 	        x = `0${x}`;
 	    }
+
 	    return x;
 	};
 
@@ -22245,8 +22295,9 @@
 	 * Class dealing with the XML Model of a form
 	 *
 	 * @class
-	 * @param {{modelStr: string, instanceStr: string=, external: Array.<{id: string, xml: XMLDocument}>=, submitted: boolean= }} data - data object containing XML model, (partial) XML instance to load, external data array, flag to indicate whether data was submitted before
-	 * @param {{full:boolean=}=} options - Whether to initialize the full model or only the primary instance
+	 * @param {FormDataObj} data - data object
+	 * @param {object=} options - FormModel options
+	 * @param {string=} options.full - Whether to initialize the full model or only the primary instance.
 	 */
 	FormModel = function( data, options ) {
 
@@ -22276,7 +22327,7 @@
 	 */
 	FormModel.prototype = {
 	    /**
-	     * @type string
+	     * @type {string}
 	     */
 	    get version() {
 	        return this.evaluate( '/node()/@version', 'string', null, null, true );
@@ -22476,6 +22527,7 @@
 	        const idAttr = el.getAttribute( 'id' );
 	        if ( idAttr === id ) {
 	            instanceEl = el;
+
 	            return true;
 	        } else {
 	            return false;
@@ -22528,6 +22580,7 @@
 	            if ( !node.children.length && node.textContent ) {
 	                newNode.textContent = node.textContent;
 	            }
+
 	            return newNode;
 	        }
 	        case document.TEXT_NODE:
@@ -22638,6 +22691,7 @@
 	    Array.prototype.slice.call( record.querySelectorAll( '*' ) )
 	        .filter( recordNode => {
 	            const val = recordNode.textContent;
+
 	            return recordNode.children.length === 0 && val.trim().length === 0;
 	        } )
 	        .forEach( leafNode => {
@@ -22788,6 +22842,7 @@
 	 */
 	FormModel.prototype.getRepeatCommentText = path => {
 	    path = path.trim();
+
 	    return REPEAT_COMMENT_PREFIX + path;
 	};
 
@@ -22927,9 +22982,11 @@
 	        const path = getXPath( element, 'instance' );
 	        const family = Array.prototype.slice.call( this.xml.querySelectorAll( nodeName.replace( /\./g, '\\.' ) ) )
 	            .filter( node => path === getXPath( node, 'instance' ) );
+
 	        return family.length === 1 ? null : family.indexOf( element );
 	    } else {
 	        console.error( 'no node, or multiple nodes, provided to determineIndex function' );
+
 	        return -1;
 	    }
 	};
@@ -23014,6 +23071,7 @@
 	 */
 	FormModel.prototype.getTemplateNodes = function() {
 	    const jrPrefix = this.getNamespacePrefix( JAVAROSA_XFORMS_NS );
+
 	    // For now we support both the official namespaced template and the hacked non-namespaced template attributes
 	    // Note: due to an MS Edge bug, we use the slow JS XPath evaluator here. It would be VERY GOOD for performance
 	    // to switch back once the Edge bug is fixed. The bug results in not finding any templates.
@@ -23036,6 +23094,7 @@
 	    if ( navigator.userAgent.indexOf( 'Trident/' ) === -1 ) {
 	        dataStr = this.removeDuplicateEnketoNsDeclarations( dataStr );
 	    }
+
 	    return dataStr;
 	};
 
@@ -23046,6 +23105,7 @@
 	FormModel.prototype.removeDuplicateEnketoNsDeclarations = function( xmlStr ) {
 	    let i = 0;
 	    const declarationExp = new RegExp( `( xmlns:${this.getNamespacePrefix( ENKETO_XFORMS_NS )}="${ENKETO_XFORMS_NS}")`, 'g' );
+
 	    return xmlStr.replace( declarationExp, match => {
 	        i++;
 	        if ( i > 1 ) {
@@ -23166,6 +23226,7 @@
 	 */
 	FormModel.prototype.getNamespacePrefix = function( namespace ) {
 	    const found = Object.entries( this.namespaces ).find( arr => arr[ 1 ] === namespace );
+
 	    return found ? found[ 0 ] : undefined;
 	};
 
@@ -23198,6 +23259,7 @@
 	        expr = expr.replace( LITERALS, ( m, p1, p2, p3, p4 ) => {
 	            const encoded = typeof p1 !== 'undefined' ? encodeURIComponent( p1 ) : encodeURIComponent( p3 );
 	            const quote = p2 || p4;
+
 	            return quote + encoded + quote;
 	        } );
 	        // Insert /model/instance[1]
@@ -23207,9 +23269,11 @@
 	        expr = expr.replace( LITERALS, ( m, p1, p2, p3, p4 ) => {
 	            const decoded = typeof p1 !== 'undefined' ? decodeURIComponent( p1 ) : decodeURIComponent( p3 );
 	            const quote = p2 || p4;
+
 	            return quote + decoded + quote;
 	        } );
 	    }
+
 	    return expr;
 	};
 
@@ -23329,6 +23393,7 @@
 	            expr = expr.replace( pullData, `"${pullDataResult}"` );
 	        }
 	    }
+
 	    return expr;
 	};
 
@@ -23522,6 +23587,7 @@
 	        } else {
 	            response = result[ resultTypes[ resTypeNum ][ 2 ] ];
 	        }
+
 	        return response;
 	    }
 	};
@@ -23536,7 +23602,7 @@
 	 * Class dealing with nodes and nodesets of the XML instance
 	 *
 	 * @class
-	 * @param {string} [selector] - SimpleXPath or jQuery selectedor
+	 * @param {string} [selector] - SimpleXPath or jQuery selector
 	 * @param {number} [index] - The index of the target node with that selector
 	 * @param {NodesetFilter} [filter] - Filter object for the result nodeset
 	 * @param {FormModel} model - Instance of FormModel
@@ -23576,6 +23642,7 @@
 	            this._nodes = this._nodes
 	                .filter( node => {
 	                    val = node.textContent;
+
 	                    return node.children.length === 0 && val.trim().length > 0;
 	                } );
 	        }
@@ -23653,14 +23720,17 @@
 	                target.removeAttribute( 'type' );
 	            }
 	        }
+
 	        return updated;
 	    }
 	    if ( targets.length > 1 ) {
 	        console.error( 'nodeset.setVal expected nodeset with one node, but received multiple' );
+
 	        return null;
 	    }
 	    if ( targets.length === 0 ) {
 	        console.log( `Data node: ${this.selector} with null-based index: ${this.index} not found. Ignored.` );
+
 	        return null;
 	    }
 
@@ -23674,6 +23744,7 @@
 	 */
 	Nodeset.prototype.getVal = function() {
 	    const nodes = this.getElements();
+
 	    return nodes.length ? nodes[ 0 ].textContent : undefined;
 	};
 
@@ -23763,6 +23834,7 @@
 	        typeof types[ xmlDataType.toLowerCase() ].convert !== 'undefined' ) {
 	        return types[ xmlDataType.toLowerCase() ].convert( x );
 	    }
+
 	    return x;
 	};
 
@@ -23780,10 +23852,12 @@
 	    return this.validateRequired( requiredExpr )
 	        .then( passed => {
 	            result.requiredValid = passed;
+
 	            return ( passed === false ) ? null : that.validateConstraintAndType( constraintExpr, xmlDataType );
 	        } )
 	        .then( passed => {
 	            result.constraintValid = passed;
+
 	            return result;
 	        } );
 	};
@@ -23866,7 +23940,7 @@
 	/**
 	 * Exposed {@link module:types|types} to facilitate extending with custom types
 	 *
-	 * @type object
+	 * @type {object}
 	 */
 	FormModel.prototype.types = types;
 
@@ -24003,6 +24077,7 @@
 	                result.push( question );
 	            }
 	        } );
+
 	        return result;
 	    },
 	    /**
@@ -24046,6 +24121,7 @@
 	                    return control.type.toLowerCase();
 	                }
 	            }
+
 	            return console.error( '<input> node has no type' );
 
 	        } else if ( nodeName === 'select' ) {
@@ -24112,6 +24188,7 @@
 	        if ( !name ) {
 	            console.error( 'input node has no name' );
 	        }
+
 	        return name;
 	    },
 	    /**
@@ -24221,6 +24298,7 @@
 	                // value of file input can be reset to empty but not to a non-empty value
 	                if ( value ) {
 	                    control.setAttribute( 'data-loaded-file-name', value );
+
 	                    // console.error('Cannot set value of file input field (value: '+value+'). If trying to load '+
 	                    //  'this record for editing this file input field will remain unchanged.');
 	                    return false;
@@ -24253,10 +24331,10 @@
 	                    // Add a space before the timezone offset to satisfy some browsers.
 	                    // For IE11, we also need to strip the Left-to-Right marks \u200E...
 	                    const ds = `${new Date().toLocaleDateString( 'en', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric'
-} ).replace( /\u200E/g, '' )} ${value.replace( /(\d\d:\d\d:\d\d)(\.\d{1,3})(\s?((\+|-)\d\d))(:)?(\d\d)?/, '$1 GMT$3$7' )}`;
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric'
+                    } ).replace( /\u200E/g, '' )} ${value.replace( /(\d\d:\d\d:\d\d)(\.\d{1,3})(\s?((\+|-)\d\d))(:)?(\d\d)?/, '$1 GMT$3$7' )}`;
 	                    const d = new Date( ds );
 	                    if ( d.toString() !== 'Invalid Date' ) {
 	                        value = `${d.getHours().toString().pad( 2 )}:${d.getMinutes().toString().pad( 2 )}`;
@@ -24344,6 +24422,7 @@
 	 */
 	function alert( content ) {
 	    window.alert( content );
+
 	    return Promise.resolve();
 	}
 
@@ -24353,6 +24432,7 @@
 	 */
 	function confirm( content ) {
 	    const msg = content.message ? content.message : content;
+
 	    return Promise.resolve( window.confirm( msg ) );
 	}
 
@@ -24397,6 +24477,7 @@
 	        return true;
 	    }
 	    const containsNumericPredicate = /\[\d+\]/.test( expr );
+
 	    return containsNumericPredicate;
 	}
 
@@ -24554,6 +24635,7 @@
 	                                    const text = label.textContent;
 	                                    const active = label.classList.contains( 'active' );
 	                                    const alt = label.alt;
+
 	                                    return { language, type, text, active, src, alt };
 	                                } );
 	                                break;
@@ -24562,6 +24644,7 @@
 	                                    const lang = label.getAttribute( 'lang' );
 	                                    // Two falsy values should set active to true.
 	                                    const active = ( !lang && !that.form.langs.currentLang ) || ( lang === that.form.langs.currentLang );
+
 	                                    return { language: lang, type: 'span', text: label.textContent, active };
 	                                } );
 	                                break;
@@ -24662,6 +24745,7 @@
 	        } else {
 	            response.push( result.singleNodeValue );
 	        }
+
 	        return response;
 	    },
 
@@ -24672,6 +24756,7 @@
 	     */
 	    getNodeFromItem( expr, content ) {
 	        const nodes = this.getNodesFromItem( expr, content, true );
+
 	        return nodes.length ? nodes[ 0 ] : null;
 	    },
 
@@ -24684,6 +24769,7 @@
 	        const option = document.createElement( 'option' );
 	        option.textContent = label;
 	        option.value = value;
+
 	        return option;
 	    },
 
@@ -24707,6 +24793,7 @@
 	            el.src = translation.src;
 	            el.alt = translation.alt;
 	        }
+
 	        return el;
 	    },
 
@@ -24728,6 +24815,7 @@
 	        translations.forEach( translation => {
 	            label.appendChild( that.createOptionTranslation( translation, value ) );
 	        } );
+
 	        return label;
 	    }
 	};
@@ -24749,7 +24837,8 @@
 	var repeatModule = {
 	    /**
 	     * Initializes all Repeat Groups in form (only called once).
-	     * @param  {Form} form the parent form object
+	     *
+	     * @param  {Form} form - the parent form object
 	     */
 	    init() {
 	        const that = this;
@@ -24774,6 +24863,7 @@
 	                if ( this.firstChild && this.firstChild.nodeType === 3 ) {
 	                    this.firstChild.textContent = '';
 	                }
+
 	                return !this.querySelector( '.question' );
 	            } )
 	            .addClass( 'empty' );
@@ -24820,16 +24910,19 @@
 	        this.form.view.$.on( 'click', 'button.add-repeat-btn:enabled', function() {
 	            // Create a clone
 	            that.add( jquery( this ).closest( '.or-repeat-info' )[ 0 ] );
+
 	            // Prevent default
 	            return false;
 	        } );
 	        this.form.view.$.on( 'click', 'button.remove:enabled', function() {
 	            that.confirmDelete( this.closest( '.or-repeat' ) );
+
 	            //prevent default
 	            return false;
 	        } );
 
 	        this.countUpdate();
+
 	        return true;
 	    },
 	    // Make this function overwritable
@@ -24869,6 +24962,7 @@
 	            const parent = checkEl.parentElement;
 	            checkEl = parent ? parent.closest( '.or-repeat' ) : null;
 	        }
+
 	        return count - 1;
 	    },
 	    /*
@@ -24882,10 +24976,12 @@
 	            return null;
 	        }
 	        const name = repeatInfo.dataset.name;
+
 	        return [ ...repeatInfo.closest( 'form.or' ).querySelectorAll( `.or-repeat-info[data-name="${name}"]` ) ].indexOf( repeatInfo );
 	    },
 	    /**
 	     * [updateViewInstancesFromModel description]
+	     *
 	     * @param {Element} repeatInfo - repeatInfo element
 	     * @return {number}
 	     */
@@ -24905,10 +25001,12 @@
 	                .reduce( ( acc, current ) => acc.concat( [ ...current.querySelectorAll( '.or-repeat-info:not([data-repeat-count])' ) ] ), [] )
 	                .forEach( this.updateViewInstancesFromModel.bind( this ) );
 	        }
+
 	        return repInModelSeries.length;
 	    },
 	    /**
 	     * [updateDefaultFirstRepeatInstance description]
+	     *
 	     * @param {Element} repeatInfo - repeatInfo element
 	     */
 	    updateDefaultFirstRepeatInstance( repeatInfo ) {
@@ -24985,6 +25083,7 @@
 	    add( repeatInfo, toCreate = 1, trigger = 'user' ) {
 	        if ( !repeatInfo ) {
 	            console.error( 'Nothing to clone' );
+
 	            return false;
 	        }
 
@@ -25175,7 +25274,7 @@
 	     */
 	    tocItems: [],
 	    /**
-	     * @type Number
+	     * @type {number}
 	     * @default
 	     */
 	    _maxTocLevel: [],
@@ -25266,13 +25365,14 @@
 	                tocItemText = hintEl.textContent;
 	            }
 	        }
-	        tocItemText = tocItemText && tocItemText.length > 20 ? `${tocItemText.substring(0,20)}...` : tocItemText;
+	        tocItemText = tocItemText && tocItemText.length > 20 ? `${tocItemText.substring( 0,20 )}...` : tocItemText;
+
 	        return tocItemText;
 	    },
 	    /**
 	     * Builds List of ToC Items
 	     *
-	     * @param {Array<Object>} items
+	     * @param {Array<object>} items
 	     * @param {Element} appendTo
 	     */
 	    _buildTocHtmlList( items, appendTo ) {
@@ -25333,7 +25433,7 @@
 
 	var pageModule = {
 	    /**
-	     * @type boolean
+	     * @type {boolean}
 	     * @default
 	     */
 	    active: false,
@@ -25363,6 +25463,7 @@
 	                } )
 	                .map( el => {
 	                    el.setAttribute( 'role', 'page' );
+
 	                    return el;
 	                } );
 
@@ -25421,24 +25522,28 @@
 	            if ( !that.form.pageNavigationBlocked ) {
 	                that._flipToFirst();
 	            }
+
 	            return false;
 	        } );
 	        this.$btnPrev.off( '.pagemode' ).on( 'click.pagemode', () => {
 	            if ( !that.form.pageNavigationBlocked ) {
 	                that._prev();
 	            }
+
 	            return false;
 	        } );
 	        this.$btnNext.off( '.pagemode' ).on( 'click.pagemode', () => {
 	            if ( !that.form.pageNavigationBlocked ) {
 	                that._next();
 	            }
+
 	            return false;
 	        } );
 	        this.$btnLast.off( '.pagemode' ).on( 'click.pagemode', () => {
 	            if ( !that.form.pageNavigationBlocked ) {
 	                that._flipToLast();
 	            }
+
 	            return false;
 	        } );
 	    },
@@ -25496,6 +25601,7 @@
 	                        }
 	                    }
 	                }
+
 	                return false;
 	            } )
 	            .parent().find( '.pages-toc__overlay' ).on( 'click', () => {
@@ -25802,6 +25908,7 @@
 	                if ( $node.parentsUntil( '.or', '#or-calculated-items' ).length === 0 ) {
 	                    console.error( 'could not find branch node for ', this );
 	                }
+
 	                return;
 	            }
 
@@ -25815,6 +25922,7 @@
 	                    // now remove the groups that have a repeat-info child without repeat instance siblings
 	                    .filter( function() {
 	                        const $g = jquery( this );
+
 	                        return $g.children( '.or-repeat' ).length > 0 || $g.children( '.or-repeat-info' ).length === 0;
 	                    } ); //.eq( index )
 	                // If the parent doesn't exist in the DOM it means there is a repeat ancestor and there are no instances of that repeat.
@@ -25894,6 +26002,7 @@
 	     */
 	    evaluate( expr, contextPath, index ) {
 	        const result = this.form.model.evaluate( expr, 'boolean', contextPath, index );
+
 	        return result;
 	    },
 	    /**
@@ -25948,6 +26057,7 @@
 	            this.form.widgets.enable( $branchNode[ 0 ] );
 	            this.activate( $branchNode );
 	        }
+
 	        return change;
 	    },
 
@@ -25976,6 +26086,7 @@
 
 	            this.deactivate( $branchNode );
 	        }
+
 	        return change;
 	    },
 	    /**
@@ -26047,7 +26158,7 @@
 	 */
 	var progressModule = {
 	    /**
-	     * @type number
+	     * @type {number}
 	     */
 	    status: 0,
 	    /**
@@ -26118,6 +26229,7 @@
 	        this.options = options || {};
 	        this.question = element.closest( '.question' );
 	        this._props = this._getProps();
+
 	        // Some widgets (e.g. ImageMap) initialize asynchronously and init returns a promise.
 	        return this._init() || this;
 	    }
@@ -26139,6 +26251,7 @@
 	     */
 	    _getProps() {
 	        const that = this;
+
 	        return {
 	            get readonly() { return that.element.nodeName.toLowerCase() === 'select' ? !!that.element.getAttribute( 'readonly' ) : !!that.element.readOnly; },
 	            appearances: [ ...this.element.closest( '.question, form.or' ).classList ]
@@ -26174,7 +26287,7 @@
 	     * Returns widget properties. May need to be extended.
 	     *
 	     * @readonly
-	     * @type object
+	     * @type {object}
 	     */
 	    get props() {
 	        return this._props;
@@ -26217,7 +26330,7 @@
 	     * Obtains the value from the current widget state. Should be overridden.
 	     *
 	     * @readonly
-	     * @type *
+	     * @type {*}
 	     */
 	    get value() {
 	        return undefined;
@@ -26227,7 +26340,7 @@
 	     * Sets a value in the widget. Should be overridden.
 	     *
 	     * @param {*} value
-	     * @type *
+	     * @type {*}
 	     */
 	    set value( value ) {}
 
@@ -26236,7 +26349,7 @@
 	     * This form control is often hidden by the widget.
 	     *
 	     * @readonly
-	     * @type *
+	     * @type {*}
 	     */
 	    get originalInputValue() {
 	        return inputHelper.getVal( this.element );
@@ -26247,7 +26360,7 @@
 	     * This form control is often hidden by the widget.
 	     *
 	     * @param {*} value
-	     * @type *
+	     * @type {*}
 	     */
 	    set originalInputValue( value ) {
 	        // Avoid unnecessary change events as they could have significant negative consequences!
@@ -26262,7 +26375,7 @@
 	     *
 	     * @static
 	     * @readonly
-	     * @type string
+	     * @type {string}
 	     */
 	    static get name() {
 	        return this.constructor.name;
@@ -26273,7 +26386,7 @@
 	     *
 	     * @readonly
 	     * @static
-	     * @type boolean
+	     * @type {boolean}
 	     */
 	    static get list() {
 	        return false;
@@ -26306,7 +26419,7 @@
 	 **/
 	const os = {
 	    /**
-	     * @type string
+	     * @type {string}
 	     **/
 	    get ios() {
 	        // in iOS13, the default Safari setting is 'Request Desktop Site' to be On. 
@@ -26315,7 +26428,7 @@
 	        return /iPad|iPhone|iPod/i.test( pf ) || ( /Mac/i.test( pf ) && document.documentElement.ontouchstart !== undefined );
 	    },
 	    /**
-	     * @type string
+	     * @type {string}
 	     **/
 	    get android() {
 	        return /android/i.test( ua );
@@ -26352,7 +26465,7 @@
 	        return inputTypes;
 	    },
 	    /** 
-	     * @type boolean
+	     * @type {boolean}
 	     **/
 	    get touch() {
 	        return mobile;
@@ -26428,6 +26541,7 @@
 	        if ( e.which === 27 ) {
 	            $parent.find( toggle ).focus();
 	        }
+
 	        return $this.click();
 	    }
 
@@ -26512,6 +26626,7 @@
 
 	jquery.fn.dropdown.noConflict = function() {
 	    jquery.fn.dropdown = old;
+
 	    return this;
 	};
 
@@ -26535,25 +26650,26 @@
 	/**
 	 * Bootstrap Select picker that supports single and multiple selects
 	 * A port of https://github.com/silviomoreto/bootstrap-select
-	 * @extends Widget
+	 *
+	 * @augments Widget
 	 */
 	class DesktopSelectpicker extends Widget {
 	    /**
-	     * @type string
+	     * @type {string}
 	     */
 	    static get selector() {
 	        return '.question select';
 	    }
 
 	    /**
-	     * @type boolean
+	     * @type {boolean}
 	     */
 	    static get list() {
 	        return true;
 	    }
 
 	    /**
-	     * @return {boolean}
+	     * @return {boolean} Whether additional condition to instantiate the widget is met.
 	     */
 	    static condition() {
 	        return !support.touch;
@@ -26585,8 +26701,8 @@
 	    }
 
 	    /**
-	     * @param {string} template
-	     * @return {jQuery}
+	     * @param {string} template - The select template to use.
+	     * @return {jQuery} - The jQuery-wrapped template.
 	     */
 	    _createLi( template ) {
 	        const li = [];
@@ -26639,8 +26755,7 @@
 	    /**
 	     * Create text to show in closed picker
 	     *
-	     * @param {jQuery} [$select] - jQuery-wrapped select element
-	     * @return {string}
+	     * @return {string} - text to show in closed picker
 	     */
 	    _createSelectedStr() {
 	        const selectedLabels = [];
@@ -26732,6 +26847,7 @@
 	            } )
 	            .on( 'click', 'li.disabled', e => {
 	                e.stopPropagation();
+
 	                return false;
 	            } )
 	            .on( 'click', 'a', e => {
@@ -26791,18 +26907,18 @@
 	 * An enhancement for the native multi-selectpicker found on most mobile devices,
 	 * to show the selected values next to the select box
 	 *
-	 * @extends Widget
+	 * @augments Widget
 	 */
 	class MobileSelectPicker extends Widget {
 	    /**
-	     * @type string
+	     * @type {string}
 	     */
 	    static get selector() {
 	        return '.question select[multiple]';
 	    }
 
 	    /**
-	     * @return {boolean}
+	     * @return {boolean} Whether additional condition to instantiate the widget is met.
 	     */
 	    static condition() {
 	        return support.touch;
@@ -27067,18 +27183,18 @@
 	/**
 	 * Autocomplete select1 picker for modern browsers.
 	 *
-	 * @extends Widget
+	 * @augments Widget
 	 */
 	class AutocompleteSelectpicker extends Widget {
 	    /**
-	     * @type string
+	     * @type {string}
 	     */
 	    static get selector() {
 	        return '.question input[list]';
 	    }
 
 	    /**
-	     * @type boolean
+	     * @type {boolean}
 	     */
 	    static get list() {
 	        return true;
@@ -27128,7 +27244,7 @@
 	        }
 
 	        if ( sadExcuseForABrowser ) {
-	            console.debug( 'Polyfill required' );
+	            //console.debug( 'Polyfill required' );
 	            // don't bother de-jqueryfying this I think, since it's only for IE11 now I think (and we'll remove IE11 support).
 	            jquery( this.fakeInput ).relevantDropdown();
 	        }
@@ -27170,7 +27286,7 @@
 	    }
 
 	    /**
-	     * @param {string} label
+	     * @param {string} label - label value
 	     * @return {string} value
 	     */
 	    _findValue( label ) {
@@ -27183,6 +27299,7 @@
 	        this.options.forEach( option => {
 	            if ( option.value === label ) {
 	                value = option.getAttribute( 'data-value' );
+
 	                return false;
 	            }
 	        } );
@@ -27191,7 +27308,7 @@
 	    }
 
 	    /**
-	     * @param {string} value
+	     * @param {string} value - option value
 	     * @return {string} label
 	     */
 	    _findLabel( value ) {
@@ -27204,9 +27321,11 @@
 	        this.options.forEach( option => {
 	            if ( option.dataset.value === value ) {
 	                label = option.value;
+
 	                return false;
 	            }
 	        } );
+
 	        return label;
 	    }
 
@@ -41884,11 +42003,11 @@
 	 */
 
 	/**
-	 * @extends Widget
+	 * @augments Widget
 	 */
 	class Geopicker extends Widget {
 	    /**
-	     * @type string
+	     * @type {string}
 	     */
 	    static get selector() {
 	        return '.question input[data-type-xml="geopoint"], .question input[data-type-xml="geotrace"], .question input[data-type-xml="geoshape"]';
@@ -41977,6 +42096,7 @@
 	        this.$widget.find( '.toggle-input-type-btn' ).on( 'click', () => {
 	            const type = that.$inputGroup.hasClass( 'kml-input-mode' ) ? 'points' : 'kml';
 	            that._switchInputType( type );
+
 	            return false;
 	        } );
 
@@ -41993,18 +42113,21 @@
 	        this.$points.on( 'click', '.point', function() {
 	            that._setCurrent( that.$points.find( '.point' ).index( jquery( this ) ) );
 	            that._switchInputType( 'points' );
+
 	            return false;
 	        } );
 
 	        // handle addpoint button click
 	        this.$points.find( '.addpoint' ).on( 'click', () => {
 	            that._addPoint();
+
 	            return false;
 	        } );
 
 	        // handle polygon close button click
 	        this.$widget.find( '.close-chain-btn' ).on( 'click', () => {
 	            that._closePolygon();
+
 	            return false;
 	        } );
 
@@ -42028,6 +42151,7 @@
 	            that.$widget.find( '.search-bar' ).removeClass( 'hide-search' );
 	            that.$widget.addClass( 'full-screen' );
 	            that._updateMap();
+
 	            return false;
 	        } );
 
@@ -42068,6 +42192,7 @@
 	                that.polygon = null;
 	                that.polyline = null;
 	            }
+
 	            return false;
 	        } );
 
@@ -42253,6 +42378,7 @@
 
 	        if ( oldValue !== newValue ) {
 	            this.originalInputValue = newValue;
+
 	            return true;
 	        } else {
 	            return false;
@@ -42290,6 +42416,7 @@
 	        if ( Array.isArray( latLng ) ) {
 	            return [ latLng[ 0 ], latLng[ 1 ] ];
 	        }
+
 	        return latLng;
 	    }
 
@@ -42370,6 +42497,7 @@
 	            }, () => {
 	                console.error( 'error occurred trying to obtain position' );
 	            }, options );
+
 	            return false;
 	        } );
 	    }
@@ -42601,6 +42729,7 @@
 	        // so it will be re-used when the form is reset or multiple geo widgets are created
 	        map.tileIndex = ( map.tileIndex === undefined ) ? Math.round( Math.random() * 100 ) % map.tiles.length : map.tileIndex;
 	        url = map.tiles[ map.tileIndex ];
+
 	        return Promise.resolve( leafletSrc.tileLayer( url, options ) );
 	    }
 
@@ -42681,6 +42810,7 @@
 
 	        layers.reverse().some( layer => {
 	            defaultLayer = layer;
+
 	            return that.props.appearances.some( appearance => appearance === layer.options.name );
 	        } );
 
@@ -42795,6 +42925,7 @@
 	            }
 	            this.polyline = null;
 	            this.polygon = null;
+
 	            // console.log( 'list of points invalid' );
 	            return;
 	        }
@@ -43101,7 +43232,7 @@
 	    }
 
 	    /**
-	     * @type string
+	     * @type {string}
 	     */
 	    get value() {
 	        let newValue = '';
@@ -43131,6 +43262,7 @@
 	                newValue = newValue.substring( 0, newValue.lastIndexOf( ';' ) );
 	            }
 	        } );
+
 	        return newValue;
 	    }
 
@@ -43185,6 +43317,7 @@
 	        const widget = this.element.parentElement.querySelector( '.widget' );
 	        if ( widget ) {
 	            widget.remove();
+	            this.loadMap = undefined;
 	            this.map = undefined;
 	            this.polyline = undefined;
 	            this.polygon = undefined;
@@ -43196,11 +43329,11 @@
 	/**
 	 * Auto-resizes textarea elements.
 	 *
-	 * @extends Widget
+	 * @augments Widget
 	 */
 	class TextareaWidget extends Widget {
 	    /**
-	     * @type string
+	     * @type {string}
 	     */
 	    static get selector() {
 	        return 'form';
@@ -43241,11 +43374,11 @@
 	/**
 	 * Enhances radio buttons
 	 *
-	 * @extends Widget
+	 * @augments Widget
 	 */
 	class Radiopicker extends Widget {
 	    /**
-	     * @type string
+	     * @type {string}
 	     */
 	    static get selector() {
 	        return 'form';
@@ -43273,6 +43406,7 @@
 	            // Readonly buttons/checkboxes will not respond to clicks.
 	            .on( 'click', 'input[type="checkbox"][readonly],input[type="radio"][readonly]', event => {
 	                event.stopImmediatePropagation();
+
 	                return false;
 	            } )
 	            /*
@@ -43302,6 +43436,7 @@
 	                        this.checked = false;
 	                    }
 	                }
+
 	                return byProgram;
 	            } )
 	            // Add unselect radio button functionality.
@@ -43317,7 +43452,7 @@
 	    }
 
 	    /**
-	     * @param {Element} el
+	     * @param {Element} el - Element to update
 	     */
 	    _updateDataChecked( el ) {
 	        if ( el.checked ) {
@@ -45369,18 +45504,19 @@
 	/**
 	 * Extends eternicode's bootstrap-datepicker without changing the original.
 	 * https://github.com/eternicode/bootstrap-datepicker
-	 * @extends Widget
+	 *
+	 * @augments Widget
 	 */
 	class DatepickerExtended extends Widget {
 	    /**
-	     * @type string
+	     * @type {string}
 	     */
 	    static get selector() {
 	        return '.question input[type="date"]';
 	    }
 
 	    /**
-	     * @type boolean
+	     * @type {boolean}
 	     */
 	    static condition() {
 	        return !support.touch || !support.inputTypes.date;
@@ -45508,6 +45644,7 @@
 	     */
 	    _toActualDate( date = '' ) {
 	        date = date.trim();
+
 	        return date && this.settings.format === 'yyyy' && date.length < 5 ? `${date}-01-01` : ( date && this.settings.format === 'yyyy-mm' && date.length < 8 ? `${date}-01` : date );
 	    }
 
@@ -45517,6 +45654,7 @@
 	     */
 	    _toDisplayDate( date = '' ) {
 	        date = date.trim();
+
 	        return date && this.settings.format === 'yyyy' ? date.substring( 0, 4 ) : ( this.settings.format === 'yyyy-mm' ? date.substring( 0, 7 ) : date );
 	    }
 
@@ -45544,14 +45682,14 @@
 	    }
 
 	    /**
-	     * @type string
+	     * @type {string}
 	     */
 	    get displayedValue() {
 	        return this.question.querySelector( '.widget input' ).value;
 	    }
 
 	    /**
-	     * @type string
+	     * @type {string}
 	     */
 	    get value() {
 	        return this._toActualDate( this.displayedValue );
@@ -45571,11 +45709,11 @@
 	 * For now, the whole purpose of this widget is to show a native month picker on
 	 * MOBILE devices with browsers that support it.
 	 *
-	 * @extends Widget
+	 * @augments Widget
 	 */
 	class DatepickerMobile extends Widget {
 	    /**
-	     * @type string
+	     * @type {string}
 	     */
 	    static get selector() {
 	        return '.or-appearance-month-year input[type="date"]';
@@ -45604,7 +45742,7 @@
 	    }
 
 	    /**
-	     * @type string
+	     * @type {string}
 	     */
 	    get value() {
 	        return this.widgetInput.value ? `${this.widgetInput.value}-01` : '';
@@ -45914,6 +46052,7 @@
 	            el.textContent = this.meridianNotation.pm;
 	            const pmLength = el.scrollWidth;
 	            el.remove();
+
 	            return amLength > pmLength ? amLength : pmLength;
 	        },
 
@@ -45934,12 +46073,12 @@
 	            }
 
 	            templateContent = `<table><tr><td><a href="#" data-action="incrementHour"><span class="${this.icons.up}"></span></a></td><td class="separator">&nbsp;</td><td><a href="#" data-action="incrementMinute"><span class="${this.icons.up}"></span></a></td>${this.showSeconds ?
-        `<td class="separator">&nbsp;</td><td><a href="#" data-action="incrementSecond"><span class="${this.icons.up}"></span></a></td>` : ''}${this.showMeridian ?
-        `<td class="separator">&nbsp;</td><td class="meridian-column"><a href="#" data-action="toggleMeridian"><span class="${this.icons.up}"></span></a></td>` : ''}</tr><tr><td>${hourTemplate}</td> <td class="separator">:</td><td>${minuteTemplate}</td> ${this.showSeconds ?
-        `<td class="separator">:</td><td>${secondTemplate}</td>` : ''}${this.showMeridian ?
-        `<td class="separator">&nbsp;</td><td>${meridianTemplate}</td>` : ''}</tr><tr><td><a href="#" data-action="decrementHour"><span class="${this.icons.down}"></span></a></td><td class="separator"></td><td><a href="#" data-action="decrementMinute"><span class="${this.icons.down}"></span></a></td>${this.showSeconds ?
-        `<td class="separator">&nbsp;</td><td><a href="#" data-action="decrementSecond"><span class="${this.icons.down}"></span></a></td>` : ''}${this.showMeridian ?
-        `<td class="separator">&nbsp;</td><td><a href="#" data-action="toggleMeridian"><span class="${this.icons.down}"></span></a></td>` : ''}</tr></table>`;
+                `<td class="separator">&nbsp;</td><td><a href="#" data-action="incrementSecond"><span class="${this.icons.up}"></span></a></td>` : ''}${this.showMeridian ?
+                `<td class="separator">&nbsp;</td><td class="meridian-column"><a href="#" data-action="toggleMeridian"><span class="${this.icons.up}"></span></a></td>` : ''}</tr><tr><td>${hourTemplate}</td> <td class="separator">:</td><td>${minuteTemplate}</td> ${this.showSeconds ?
+                `<td class="separator">:</td><td>${secondTemplate}</td>` : ''}${this.showMeridian ?
+                `<td class="separator">&nbsp;</td><td>${meridianTemplate}</td>` : ''}</tr><tr><td><a href="#" data-action="decrementHour"><span class="${this.icons.down}"></span></a></td><td class="separator"></td><td><a href="#" data-action="decrementMinute"><span class="${this.icons.down}"></span></a></td>${this.showSeconds ?
+                `<td class="separator">&nbsp;</td><td><a href="#" data-action="decrementSecond"><span class="${this.icons.down}"></span></a></td>` : ''}${this.showMeridian ?
+                `<td class="separator">&nbsp;</td><td><a href="#" data-action="toggleMeridian"><span class="${this.icons.down}"></span></a></td>` : ''}</tr></table>`;
 
 	            switch ( this.template ) {
 	                case 'dropdown':
@@ -45954,6 +46093,7 @@
 	            if ( this.hour === '' ) {
 	                return '';
 	            }
+
 	            //return this.hour +                                                           ':' + ( this.minute.toString().length === 1 ? '0' + this.minute : this.minute ) + ( this.showSeconds ? ':' + ( this.second.toString().length === 1 ? '0' + this.second : this.second ) : '' ) + ( this.showMeridian ? ' ' + this.meridian : '' );
 	            return `${this.hour.toString().length === 1 ? `0${this.hour}` : this.hour}:${this.minute.toString().length === 1 ? `0${this.minute}` : this.minute}${this.showSeconds ? `:${this.second.toString().length === 1 ? `0${this.second}` : this.second}` : ''}${this.showMeridian ? ` ${this.meridian}` : ''}`;
 	        },
@@ -46134,6 +46274,7 @@
 
 	        getCurrentHour() {
 	            const h24 = new Date().getHours();
+
 	            return ( this.showMeridian ) ? h24 % 12 : h24;
 	        },
 
@@ -46152,6 +46293,7 @@
 	            if ( this.showMeridian ) {
 	                if ( this.hour === 11 ) {
 	                    this.hour++;
+
 	                    return this.toggleMeridian();
 	                } else if ( this.hour === 12 ) {
 	                    this.hour = 0;
@@ -46260,6 +46402,9 @@
 	         * to the nearest "step", like 45 if step is 15. Segment will
 	         * "overflow" to 0 if it's larger than 59 or would otherwise
 	         * round up to 60.
+	         *
+	         * @param {number} segment - The segment value
+	         * @param {number} step - The step
 	         */
 	        changeToNearestStep( segment, step ) {
 	            if ( segment % step === 0 ) {
@@ -46405,6 +46550,7 @@
 	        setTime( time, ignoreWidget ) {
 	            if ( !time ) {
 	                this.clear();
+
 	                return;
 	            }
 
@@ -46433,6 +46579,7 @@
 	                timeMode = ( ( new RegExp( am, 'i' ) ).test( time ) ? 1 : 0 ) + ( ( new RegExp( pm, 'i' ) ).test( time ) ? 2 : 0 ); // 0 = none, 1 = AM, 2 = PM, 3 = BOTH.
 	                if ( timeMode > 2 ) { // If both are present, fail.
 	                    this.clear();
+
 	                    return;
 	                }
 
@@ -46442,6 +46589,7 @@
 
 	                if ( this.explicitMode && hour.length > 2 && ( hour.length % 2 ) !== 0 ) {
 	                    this.clear();
+
 	                    return;
 	                }
 
@@ -46741,6 +46889,7 @@
 	    $.fn.timepicker = function( option ) {
 	        const args = Array( ...arguments );
 	        args.shift();
+
 	        return this.each( function() {
 	            const $this = $( this );
 	            let data = $this.data( 'timepicker' );
@@ -46804,18 +46953,19 @@
 	} ) )( jquery, window, document );
 
 	/**
-	 * @extends Widget
+	 * @augments Widget
 	 */
 	class TimepickerExtended extends Widget {
 	    /**
-	     * @type string
+	     * @type {string}
+	     * @return {string} The selector the widget should activated on.
 	     */
 	    static get selector() {
 	        return '.question input[type="time"]:not([readonly])';
 	    }
 
 	    /**
-	     * @return {boolean}
+	     * @return {boolean} Whether additional condition to instantiate the widget is met.
 	     */
 	    static condition() {
 	        return !support.touch || !support.inputTypes.time;
@@ -46885,7 +47035,7 @@
 	    }
 
 	    /**
-	     * @type string
+	     * @type {string}
 	     */
 	    get value() {
 	        return this.fakeTimeI.value;
@@ -46897,11 +47047,11 @@
 	}
 
 	/**
-	 * @extends Widget
+	 * @augments Widget
 	 */
 	class DatetimepickerExtended extends Widget {
 	    /**
-	     * @type string
+	     * @type {string}
 	     */
 	    static get selector() {
 	        return '.question input[type="datetime-local"]:not([readonly])';
@@ -46950,12 +47100,14 @@
 	                    this.$fakeDateI.val( '' ).datepicker( 'update' );
 	                }
 	                this.originalInputValue = this.value;
+
 	                return false;
 	            } );
 
 	        this.$fakeTimeI
 	            .on( 'change', () => {
 	                this.originalInputValue = this.value;
+
 	                return false;
 	            } );
 
@@ -46986,7 +47138,7 @@
 	     */
 	    _createFakeTimeInput() {
 	        const $fakeTime = jquery(
-	                `<div class="timepicker">
+	            `<div class="timepicker">
                     <input class="ignore timepicker-default" type="text" placeholder="hh:mm"/>
                 </div>` )
 	            .append( this.resetButtonHtml );
@@ -47019,13 +47171,14 @@
 	    }
 
 	    /**
-	     * @type string
+	     * @type {string}
 	     */
 	    get value() {
 	        if ( this.$fakeDateI.val().length > 0 && this.$fakeTimeI.val().length > 3 ) {
 	            const d = this.$fakeDateI.val().split( '-' );
 	            const timeModified = time.hour12 ? types.time.convertMeridian( this.$fakeTimeI.val() ) : this.$fakeTimeI.val();
 	            const t = timeModified.split( ':' );
+
 	            return new Date( d[ 0 ], d[ 1 ] - 1, d[ 2 ], t[ 0 ], t[ 1 ] ).toISOLocalString();
 	        } else {
 	            return '';
@@ -47063,11 +47216,11 @@
 	 * TODO: it looks like empty date/datetime-local inputs are hidden, so not clear to me if this widget actually 
 	 * changes anything.
 	 *
-	 * @extends Widget
+	 * @augments Widget
 	 */
 	class DatepickerNative extends Widget {
 	    /**
-	     * @type string
+	     * @type {string}
 	     */
 	    static get selector() {
 	        return '.question input[type="date"],.question input[type="datetime-local"]';
@@ -47091,11 +47244,11 @@
 	/**
 	 * Media Picker. Hides text labels if a media label is present.
 	 *
-	 * @extends Widget
+	 * @augments Widget
 	 */
 	class MediaPicker extends Widget {
 	    /**
-	     * @type string
+	     * @type {string}
 	     */
 	    static get selector() {
 	        return '.or-appearance-no-buttons';
@@ -47153,7 +47306,7 @@
 	 *
 	 * It is meant for media previews and media downloads.
 	 *
-	 * @param  {?string|Object} subject - File or filename in local storage
+	 * @param  {?string|object} subject - File or filename in local storage
 	 * @return {Promise|string|Error} promise url string or rejection with Error
 	 */
 	fileManager.getFileUrl = subject => {
@@ -47194,7 +47347,7 @@
 	 *
 	 * It is meant for loading images into a canvas.
 	 *
-	 * @param  {?string|Object} subject - File or filename in local storage
+	 * @param  {?string|object} subject - File or filename in local storage
 	 * @return {Promise|string|Error} promise url string or rejection with Error
 	 */
 	fileManager.getObjectUrl = subject => fileManager.getFileUrl( subject )
@@ -47202,6 +47355,7 @@
 	        if ( /https?:\/\//.test( url ) ) {
 	            return fileManager.urlToBlob( url ).then( URL.createObjectURL );
 	        }
+
 	        return url;
 	    } );
 
@@ -47297,7 +47451,7 @@
 	 * Error to be translated
 	 * 
 	 * @class
-	 * @extends Error
+	 * @augments Error
 	 * @param {string} message
 	 * @param {string} translationKey
 	 * @param {*} translationOptions
@@ -47317,11 +47471,11 @@
 	 * FilePicker that works both offline and online. It abstracts the file storage/cache away
 	 * with the injected fileManager.
 	 *
-	 * @extends Widget
+	 * @augments Widget
 	 */
 	class Filepicker extends Widget {
 	    /**
-	     * @type string
+	     * @type {string}
 	     */
 	    static get selector() {
 	        return '.question:not(.or-appearance-draw):not(.or-appearance-signature):not(.or-appearance-annotate) input[type="file"]';
@@ -47437,6 +47591,7 @@
 	                if ( that.props.readonly || event.namespace !== 'propagate' ) {
 	                    that.fakeInput.focus();
 	                    event.stopImmediatePropagation();
+
 	                    return false;
 	                }
 	            } )
@@ -47450,6 +47605,7 @@
 	                if ( event.namespace === 'propagate' ) {
 	                    // Trigger eventhandler to update instance value
 	                    jquery( this.element ).trigger( 'change.file' );
+
 	                    return false;
 	                } else {
 	                    event.stopImmediatePropagation();
@@ -47510,6 +47666,7 @@
 	            if ( this.props.readonly || this.originalInputValue || this.value ) {
 	                this.fakeInput.focus();
 	                event.stopImmediatePropagation();
+
 	                return;
 	            }
 	            jquery( that.element ).trigger( 'click.propagate' );
@@ -47549,7 +47706,7 @@
 	    _showFeedback( fb, status ) {
 	        const message = fb instanceof TranslatedError ? t( fb.translationKey, fb.translationOptions ) :
 	            fb instanceof Error ? fb.message :
-	            fb || '';
+	                fb || '';
 	        status = status || '';
 	        // replace text and replace all existing classes with the new status class
 	        this.feedback.textContent = message;
@@ -47639,7 +47796,7 @@
 	    }
 
 	    /**
-	     * @type object
+	     * @type {object}
 	     */
 	    get props() {
 	        const props = this._props;
@@ -47653,7 +47810,7 @@
 	    }
 
 	    /**
-	     * @type string
+	     * @type {string}
 	     */
 	    get value() {
 	        return this.fakeInput.value;
@@ -48334,11 +48491,11 @@
 	/**
 	 * Widget to obtain user-provided drawings or signature.
 	 *
-	 * @extends Widget
+	 * @augments Widget
 	 */
 	class DrawWidget extends Widget {
 	    /**
-	     * @type string
+	     * @type {string}
 	     */
 	    static get selector() {
 	        // note that the selector needs to match both the pre-instantiated form and the post-instantiated form (type attribute changes)
@@ -48387,9 +48544,11 @@
 	                that.pad.off();
 	                if ( existingFilename ) {
 	                    that.element.value = existingFilename;
+
 	                    return that._loadFileIntoPad( existingFilename )
 	                        .then( that._updateDownloadLink.bind( that ) );
 	                }
+
 	                return true;
 	            } );
 	        this.disable();
@@ -48423,6 +48582,7 @@
 	                        that.$widget.addClass( 'full-screen' );
 	                        that._resizeCanvas( canvas );
 	                        that.enable();
+
 	                        return false;
 	                    } )
 	                    .end().find( '.hide-canvas-btn' ).on( 'click', () => {
@@ -48430,6 +48590,7 @@
 	                        that.pad.off();
 	                        that._forceUpdate();
 	                        that._resizeCanvas( canvas );
+
 	                        return false;
 	                    } ).click();
 
@@ -48493,6 +48654,7 @@
 	                if ( that.props.readonly || event.namespace !== 'propagate' ) {
 	                    that.$fakeInput.focus();
 	                    event.stopImmediatePropagation();
+
 	                    return false;
 	                }
 	            } )
@@ -48531,6 +48693,7 @@
 	                if ( that.props.readonly || $input[ 0 ].value || $fakeInput[ 0 ].value ) {
 	                    jquery( this ).focus();
 	                    event.stopImmediatePropagation();
+
 	                    return false;
 	                }
 	                event.preventDefault();
@@ -48592,6 +48755,8 @@
 
 	    /**
 	     * Updates value
+	     *
+	     * @param changed
 	     */
 	    _updateValue( changed = true ) {
 	        const now = new Date();
@@ -48653,10 +48818,12 @@
 	        if ( typeof file === 'string' && file.startsWith( 'jr://' ) && this.element.dataset.loadedUrl ) {
 	            file = this.element.dataset.loadedUrl;
 	        }
+
 	        return fileManager.getObjectUrl( file )
 	            .then( that.pad.fromObjectURL.bind( that.pad ) )
 	            .then( objectUrl => {
 	                that.cache = objectUrl;
+
 	                return objectUrl;
 	            } )
 	            .catch( () => {
@@ -48777,7 +48944,7 @@
 	    }
 
 	    /**
-	     * @type object
+	     * @type {object}
 	     */
 	    get props() {
 	        const props = this._props;
@@ -48794,7 +48961,7 @@
 	    }
 
 	    /**
-	     * @type string
+	     * @type {string}
 	     */
 	    get value() {
 	        return this.cache || '';
@@ -48816,11 +48983,11 @@
 	 * Column (select) Widgets. Adds a filler if the last row contains two elements.
 	 * The filler avoids the last radiobutton or checkbox to not be lined up correctly below the second column.
 	 *
-	 * @extends Widget
+	 * @augments Widget
 	 */
 	class Columns extends Widget {
 	    /**
-	     * @type string
+	     * @type {string}
 	     */
 	    static get selector() {
 	        return '.question.or-appearance-columns';
@@ -48843,11 +49010,11 @@
 	}
 
 	/**
-	 * @extends Widget
+	 * @augments Widget
 	 */
 	class RangeWidget extends Widget {
 	    /**
-	     * @type string
+	     * @type {string}
 	     */
 	    static get selector() {
 	        return '.or-appearance-distress input[type="number"], .question:not(.or-appearance-analog-scale):not(.or-appearance-rating) > input[type="number"][min][max][step]';
@@ -48944,7 +49111,7 @@
 	    }
 
 	    /**
-	     * @param {number} completeness
+	     * @param {number} completeness - level of mercury
 	     */
 	    _updateMercury( completeness ) {
 	        const trackHeight = this.widget.querySelector( '.range-widget__ticks' ).clientHeight;
@@ -48953,7 +49120,7 @@
 	    }
 
 	    /**
-	     * @param {object} props
+	     * @param {object} props - The range properties.
 	     * @return {string} HTML string
 	     */
 	    _stepsBetweenHtmlStr( props ) {
@@ -48966,6 +49133,7 @@
 	                }
 	            }
 	        }
+
 	        return html;
 	    }
 
@@ -49010,7 +49178,7 @@
 	    }
 
 	    /**
-	     * @type object
+	     * @type {object}
 	     */
 	    get props() {
 	        const props = this._props;
@@ -49031,7 +49199,7 @@
 	    }
 
 	    /**
-	     * @type string
+	     * @type {string}
 	     */
 	    get value() {
 	        return this.range.classList.contains( 'empty' ) ? '' : this.range.value;
@@ -49047,11 +49215,11 @@
 	}
 
 	/**
-	 * @extends RangeWidget
+	 * @augments RangeWidget
 	 */
 	class AnalogScaleWidget extends RangeWidget {
 	    /**
-	     * @type string
+	     * @type {string}
 	     */
 	    static get selector() {
 	        return '.or-appearance-analog-scale input[type="number"]';
@@ -49171,7 +49339,7 @@
 	    }
 
 	    /**
-	     * @type object
+	     * @type {object}
 	     */
 	    get props() {
 	        const props = this._props;
@@ -49182,11 +49350,12 @@
 	        props.vertical = !props.appearances.includes( 'horizontal' );
 	        props.ticks = !props.appearances.includes( 'no-ticks' );
 	        props.maxTicks = 10;
+
 	        return props;
 	    }
 
 	    /**
-	     * @type *
+	     * @type {*}
 	     */
 	    get value() {
 	        return super.value;
@@ -49200,11 +49369,11 @@
 	/**
 	 * Viewer for image labels that have set a big-image version.
 	 *
-	 * @extends Widget
+	 * @augments Widget
 	 */
 	class ImageViewer extends Widget {
 	    /**
-	     * @type string
+	     * @type {string}
 	     */
 	    static get selector() {
 	        return 'a.or-big-image';
@@ -49228,18 +49397,19 @@
 
 	/**
 	 * Visually transforms a question into a comment modal that can be shown on its linked question.
-	 * @extends Widget
+	 *
+	 * @augments Widget
 	 */
 	class Comment extends Widget {
 	    /**
-	     * @type string
+	     * @type {string}
 	     */
 	    static get selector() {
 	        return '.or-appearance-comment input[type="text"][data-for], .or-appearance-comment textarea[data-for]';
 	    }
 
 	    /**
-	     * @type string
+	     * @type {string}
 	     */
 	    static get helpersRequired() {
 	        return [ 'input', 'pathToAbsolute' ];
@@ -49436,15 +49606,17 @@
 	    }
 	}
 
+	const SELECTORS = 'path[id], g[id], circle[id]';
+
 	/**
 	 * Image Map widget that turns an SVG image into a clickable map
 	 * by matching radiobutton/checkbox values with id attribute values in the SVG.
 	 *
-	 * @extends Widget
+	 * @augments Widget
 	 */
 	class ImageMap extends Widget {
 	    /**
-	     * @type string
+	     * @type {string}
 	     */
 	    static get selector() {
 	        return '.simple-select.or-appearance-image-map label:first-child > input';
@@ -49481,7 +49653,7 @@
 	    }
 
 	    /**
-	     * @param {object} widget
+	     * @param {object} widget - the widget element
 	     */
 	    _addFunctionality( widget ) {
 	        if ( widget ) {
@@ -49498,8 +49670,8 @@
 	    }
 
 	    /**
-	     * @param {Element} img
-	     * @return {Promise}
+	     * @param {Element} img - the image element
+	     * @return {Promise} the widget element
 	     */
 	    _addMarkup( img ) {
 	        const that = this;
@@ -49529,22 +49701,30 @@
 	                    that.question.querySelector( '.option-wrapper' ).before( fragment );
 	                    const widget = that.question.querySelector( '.image-map' );
 	                    const svg = widget.querySelector( 'svg' );
-	                    // Resize, using original unscaled SVG dimensions
-	                    // svg.getBBox() only works after SVG has been added to DOM.
-	                    // In FF getBBox causes an "NS_ERROR_FAILURE" exception likely because the SVG
-	                    // image has not finished rendering. This doesn't always happen though.
-	                    // For now, we just log the FF error, and hope that resizing is done correctly via
-	                    // attributes.
-	                    let bbox = {};
-	                    try {
-	                        bbox = svg.getBBox();
-	                    } catch ( e ) {
-	                        console.error( 'Could not obtain Boundary Box of SVG element', e );
+
+	                    // Use any explicitly defined viewPort and else define one using bounding box or attributes
+	                    if ( !svg.getAttribute( 'viewBox' ) ) {
+	                        // Resize, using original unscaled SVG dimensions
+	                        let viewBox;
+	                        try {
+	                            const bbox = svg.getBBox();
+	                            viewBox = `${bbox.x} ${bbox.y} ${bbox.width} ${bbox.height}`;
+	                        } catch ( e ) {
+	                            // svg.getBBox() only works after SVG has been added to DOM.
+	                            // In FF getBBox causes an "NS_ERROR_FAILURE" exception likely because the SVG
+	                            // image has not finished rendering. This doesn't always happen though.
+	                            // For now, we just log the FF error, and hope that resizing is done correctly via
+	                            // attributes.
+	                            console.error( 'Could not obtain Boundary Box of SVG element', e );
+	                            let width = svg.getAttribute( 'width' );
+	                            let height = svg.getAttribute( 'height' );
+	                            if ( width && height ) {
+	                                viewBox = `0 0 ${parseInt( width, 10 )} ${parseInt( height, 10 )}`;
+	                            }
+	                        }
+	                        svg.setAttribute( 'viewBox', viewBox );
 	                    }
 
-	                    const width = bbox.width || svg.getAttribute( 'width' );
-	                    const height = bbox.height || svg.getAttribute( 'height' );
-	                    svg.setAttribute( 'viewBox', [ 0, 0, parseInt( width, 10 ), parseInt( height, 10 ) ].join( ' ' ) );
 	                    return widget;
 	                } else {
 	                    throw ( 'Image is not an SVG doc' );
@@ -49554,7 +49734,7 @@
 	    }
 
 	    /**
-	     * @param {Error} err
+	     * @param {Error} err - error message
 	     */
 	    _showSvgNotFoundError( err ) {
 	        console.error( err );
@@ -49569,11 +49749,11 @@
 	    /**
 	     * Removes id attributes from unmatched path elements in order to prevent hover effect (and click listener).
 	     *
-	     * @param {Element} svg
+	     * @param {Element} svg - SVG element
 	     * @return {Element} cleaned up SVG
 	     */
 	    _removeUnmatchedIds( svg ) {
-	        svg.querySelectorAll( 'path[id], g[id]' ).forEach( el => {
+	        svg.querySelectorAll( SELECTORS ).forEach( el => {
 	            if ( !this._getInput( el.id ) ) {
 	                el.removeAttribute( 'id' );
 	            }
@@ -49583,8 +49763,8 @@
 	    }
 
 	    /**
-	     * @param {string} id
-	     * @return {Element}
+	     * @param {string} id - the option ID
+	     * @return {Element} input element with matching ID
 	     */
 	    _getInput( id ) {
 	        return this.question.querySelector( `input[value="${id}"]` );
@@ -49595,7 +49775,7 @@
 	     */
 	    _setSvgClickHandler() {
 	        this.svg.addEventListener( 'click', ev => {
-	            if ( !ev.target.closest( 'svg' ).matches( '[or-readonly]' ) && ev.target.matches( 'path[id], g[id]' ) ) {
+	            if ( !ev.target.closest( 'svg' ).matches( '[or-readonly]' ) && ( ev.target.matches( SELECTORS ) || ev.target.closest( SELECTORS ) ) ) {
 	                const id = ev.target.id || ev.target.closest( 'g[id]' ).id;
 	                const input = this._getInput( id );
 	                if ( input ) {
@@ -49618,15 +49798,15 @@
 	     * Handles hover listener
 	     */
 	    _setHoverHandler() {
-	        this.svg.querySelectorAll( 'path[id], g[id]' ).forEach( el => {
+	        this.svg.querySelectorAll( SELECTORS ).forEach( el => {
 	            el.addEventListener( 'mouseenter', ev => {
 	                const id = ev.target.id || ev.target.closest( 'g[id]' ).id;
 	                const labels = getSiblingElements( this._getInput( id ), '.option-label.active' );
-	                const optionLabel = labels && labels.length ? labels[ 0 ].textContent : '';
+	                const optionLabel = labels && labels.length ? labels[0].textContent : '';
 	                this.tooltip.textContent = optionLabel;
 	            } );
 	            el.addEventListener( 'mouseleave', ev => {
-	                if ( ev.target.matches( 'path[id], g[id]' ) ) {
+	                if ( ev.target.matches( SELECTORS ) ) {
 	                    this.tooltip.textContent = '';
 	                }
 	            } );
@@ -49634,8 +49814,8 @@
 	    }
 
 	    /**
-	     * @param {object} data
-	     * @return {boolean}
+	     * @param {object} data - an object
+	     * @return {boolean} whether provided object is an SVG document
 	     */
 	    _isSvgDoc( data ) {
 	        return typeof data === 'object' && data.querySelector( 'svg' );
@@ -49647,7 +49827,7 @@
 	     */
 	    _updateImage() {
 	        let values = this.originalInputValue;
-	        this.svg.querySelectorAll( 'path[or-selected], g[or-selected]' ).forEach( el => el.removeAttribute( 'or-selected' ) );
+	        this.svg.querySelectorAll( 'path[or-selected], g[or-selected], circle[or-selected]' ).forEach( el => el.removeAttribute( 'or-selected' ) );
 
 	        if ( typeof values === 'string' ) {
 	            values = [ values ];
@@ -49656,7 +49836,7 @@
 	        values.forEach( value => {
 	            if ( value ) {
 	                // if multiple values have the same id, change all of them (e.g. a province that is not contiguous)
-	                this.svg.querySelectorAll( `path#${value},g#${value}` ).forEach( el => el.setAttribute( 'or-selected', '' ) );
+	                this.svg.querySelectorAll( `path#${value},g#${value},circle#${value}` ).forEach( el => el.setAttribute( 'or-selected', '' ) );
 	            }
 	        } );
 	    }
@@ -49683,7 +49863,7 @@
 	    }
 
 	    /**
-	     * @type string
+	     * @type {string}
 	     */
 	    get value() {
 	        // This widget is unusual. It would better to get the value from the map.
@@ -50945,18 +51125,18 @@
 	var html5sortable_cjs = sortable;
 
 	/**
-	 * @extends Widget
+	 * @augments Widget
 	 */
 	class RankWidget extends Widget {
 	    /**
-	     * @type string
+	     * @type {string}
 	     */
 	    static get selector() {
 	        return '.question input.rank';
 	    }
 
 	    /**
-	     * @type boolean
+	     * @type {boolean}
 	     */
 	    static get list() {
 	        return true;
@@ -50973,7 +51153,7 @@
 	        jquery( this.list )
 	            .toggleClass( 'rank-widget--empty', !loadedValue )
 	            .append( this.resetButtonHtml )
-	            .append( `<div class="rank-widget__overlay"><span class="rank-widget__overlay__content" data-i18n="${startTextKey}">${support.touch ? t('rankwidget.tapstart') : t('rankwidget.clickstart')}</span></div>` )
+	            .append( `<div class="rank-widget__overlay"><span class="rank-widget__overlay__content" data-i18n="${startTextKey}">${support.touch ? t( 'rankwidget.tapstart' ) : t( 'rankwidget.clickstart' )}</span></div>` )
 	            .on( 'click', function() {
 	                if ( !that.element.disabled ) {
 	                    this.classList.remove( 'rank-widget--empty' );
@@ -51018,10 +51198,11 @@
 	    }
 
 	    /**
-	     * @type string
+	     * @type {string}
 	     */
 	    get value() {
 	        const result = html5sortable_cjs( this.list, 'serialize' );
+
 	        return result[ 0 ].container.value;
 	    }
 
@@ -51045,6 +51226,7 @@
 	            if ( aIndex === -1 || bIndex === -1 ) {
 	                throw new Error( 'Could not load rank widget value. Mismatch in item values.' );
 	            }
+
 	            return aIndex - bIndex;
 	        } );
 
@@ -51098,7 +51280,7 @@
 	    // Since we're overriding the setter we also have to overwrite the getter
 	    // https://stackoverflow.com/questions/28950760/override-a-setter-and-the-getter-must-also-be-overridden
 	    /**
-	     * @type string
+	     * @type {string}
 	     */
 	    get originalInputValue() {
 	        return super.originalInputValue;
@@ -51107,7 +51289,7 @@
 	    /**
 	     * This is the input that Enketo's engine listens on.
 	     *
-	     * @type string
+	     * @type {string}
 	     */
 	    set originalInputValue( value ) {
 	        super.originalInputValue = value;
@@ -51117,11 +51299,11 @@
 	}
 
 	/**
-	 * @extends Widget
+	 * @augments Widget
 	 */
 	class UrlWidget extends Widget {
 	    /**
-	     * @type string
+	     * @type {string}
 	     */
 	    static get selector() {
 	        return '.or-appearance-url input[type="text"]';
@@ -51144,7 +51326,7 @@
 	    }
 
 	    /**
-	     * @type string
+	     * @type {string}
 	     */
 	    get value() {
 	        return this.question.querySelector( '.url-widget' ).href;
@@ -51166,7 +51348,7 @@
 	 */
 	class TextMaxWidget extends Widget {
 	    /**
-	     * @type string
+	     * @type {string}
 	     */
 	    static get selector() {
 	        return '[data-type-xml="string"]';
@@ -51183,11 +51365,11 @@
 	/**
 	 * The whole purpose of this widget is to workaround iOS browser bugs. See bug descriptions inline below.
 	 *
-	 * @extends Widget
+	 * @augments Widget
 	 */
 	class DatepickerNativeIos extends Widget {
 	    /**
-	     * @type string
+	     * @type {string}
 	     */
 	    static get selector() {
 	        return ' .question input[type="date"], .question input[type="datetime-local"], .question input[type="time"]';
@@ -51228,11 +51410,11 @@
 	}
 
 	/**
-	 * @extends RangeWidget
+	 * @augments RangeWidget
 	 */
 	class RatingWidget extends Widget {
 	    /**
-	     * @type string
+	     * @type {string}
 	     */
 	    static get selector() {
 	        return '.or-appearance-rating input[type="number"]';
@@ -51327,7 +51509,7 @@
 	    }
 
 	    /**
-	     * @type object
+	     * @type {object}
 	     */
 	    get props() {
 	        const props = this._props;
@@ -51343,7 +51525,7 @@
 	    }
 
 	    /**
-	     * @type string
+	     * @type {string}
 	     */
 	    get value() {
 	        return this.originalInputValue;
@@ -51363,37 +51545,39 @@
 	 */
 	class TextPrintWidget extends Widget {
 	    /**
-	     * @type string
+	     * @type {string}
 	     */
 	    static get selector() {
 	        // The [data-for] exclusion prevents "comment" widgets from being included.
 	        // It is not quite correct to do this but atm the "for" attribute in XForms is only used for comment widgets.
-	        return '.question:not(.or-appearance-autocomplete):not(.or-appearance-url) > input[type=text]:not(.ignore):not([data-for])';
+	        return '.question:not(.or-appearance-autocomplete):not(.or-appearance-url) > input[type=text]:not(.ignore):not([data-for]), .question:not(.or-appearance-autocomplete):not(.or-appearance-url) > textarea:not(.ignore):not([data-for])';
 	    }
 
 	    _init() {
-	        this.question.classList.add( 'or-text-print-initialized' );
-
-	        const className = 'print-input-text';
-	        const printElement = document.createElement( 'div' );
-	        printElement.classList.add( className, 'widget', 'print-only' );
-
-	        this.element.after( printElement );
-
-	        this.widget = this.element.parentElement.querySelector( `.${className}` );
-	        this._copyValue();
-
-	        this.element.addEventListener( 'input', () => {
-	            this._copyValue();
-	        } );
+	        this.question.addEventListener( events.Printify().type, this._addWidget.bind( this ) );
+	        this.question.addEventListener( events.DePrintify().type, this._removeWidget.bind( this ) );
 	    }
 
-	    _copyValue() {
-	        this.widget.innerHTML = this.element.value.replace( /\n/g, '<br>' );
+	    _addWidget() {
+	        if ( !this.widget ) {
+	            const className = 'print-input-text';
+	            const printElement = document.createElement( 'div' );
+	            printElement.classList.add( className, 'widget' );
+
+	            this.element.after( printElement );
+	            this.element.classList.add( 'print-hide' );
+
+	            this.widget = this.element.parentElement.querySelector( `.${className}` );
+	            this.widget.innerHTML = this.element.value.replace( /\n/g, '<br>' );
+	        }
 	    }
 
-	    update() {
-	        this._copyValue();
+	    _removeWidget() {
+	        if ( this.widget ) {
+	            this.element.classList.remove( 'print-hide' );
+	            this.element.parentElement.removeChild( this.widget );
+	            this.widget = null;
+	        }
 	    }
 	}
 
@@ -51432,7 +51616,7 @@
 	    /**
 	     * Obtain the current value from the widget. 
 	     *
-	     * @type *
+	     * @type {string}
 	     */
 	    get value() {
 	        return this.widget.textContent;
@@ -51441,7 +51625,7 @@
 	    /**
 	     * Set a value in the widget.
 	     *
-	     * @param {*} value
+	     * @param {number} [value] - The number value to update with.
 	     */
 	    set value( value ) {
 	        let displayValue = '';
@@ -51547,6 +51731,7 @@
 	            return [ ...group.querySelectorAll( 'input:not(.ignore), select:not(.ignore), textarea:not(.ignore)' ) ]
 	                .filter( el => el.matches( selector ) );
 	        }
+
 	        return [ ...group.querySelectorAll( selector ) ];
 	    }
 
@@ -51774,16 +51959,17 @@
 	        this.form.view.html.addEventListener( events.AddRepeat().type, event => this.setFormUi( this._currentLang, event.target ) );
 	    },
 	    /**
-	     * @type string
+	     * @type {string}
 	     */
 	    get currentLang() {
 	        return this._currentLang;
 	    },
 	    /**
-	     * @type string|null
+	     * @type {string}
 	     */
 	    get currentLangDesc() {
 	        const langOption = this.formLanguages.querySelector( `[value="${this._currentLang}"]` );
+
 	        return langOption ? langOption.textContent : null;
 	    },
 	    /**
@@ -51900,9 +52086,11 @@
 	                value = that.form.model.evaluate( 'now()', 'string' );
 	                o.dataNode.setVal( value, 'datetime' );
 	            } );
+
 	            //TODO: why populate this upon load?
 	            return this.form.model.evaluate( 'now()', 'string' );
 	        }
+
 	        return 'error - unknown timestamp parameter';
 	    },
 	    /**
@@ -51923,6 +52111,7 @@
 
 	            return `${year}-${month}-${day}`;
 	        }
+
 	        return o.curVal;
 	    },
 	    /**
@@ -51941,6 +52130,7 @@
 	                return `no ${o.param} property in enketo`;
 	            }
 	        }
+
 	        return o.curVal;
 	    },
 	    /**
@@ -51952,6 +52142,7 @@
 	        if ( o.curVal.length === 0 ) {
 	            return ( o.param === 'application' ) ? 'enketo' : `${o.param} not supported in enketo`;
 	        }
+
 	        return o.curVal;
 	    },
 	    /**
@@ -51962,6 +52153,7 @@
 	        if ( o.curVal.length === 0 ) {
 	            return 'patient preload item not supported in enketo';
 	        }
+
 	        return o.curVal;
 	    },
 	    /**
@@ -51972,6 +52164,7 @@
 	        if ( o.curVal.length === 0 ) {
 	            return 'user preload item not supported in enketo yet';
 	        }
+
 	        return o.curVal;
 	    },
 	    /**
@@ -51982,6 +52175,7 @@
 	        if ( o.curVal.length === 0 ) {
 	            return this.form.model.evaluate( 'concat("uuid:", uuid())', 'string' );
 	        }
+
 	        return o.curVal;
 	    }
 	};
@@ -52264,7 +52458,7 @@
 	     * Determines relevancy of node by re-evaluating relevant expressions of self and ancestors.
 	     *
 	     * @param {*} props
-	     * @returns {boolean}
+	     * @return {boolean}
 	     */
 	    _isRelevant( props ) {
 	        let relevant = props.relevantExpr ? this.form.model.evaluate( props.relevantExpr, 'boolean', props.name, props.index ) : true;
@@ -52491,6 +52685,7 @@
 	jquery.fn.clearInputs = function( ev1, ev2 ) {
 	    ev1 = ev1 || 'edit';
 	    ev2 = ev2 || '';
+
 	    return this.each( function() {
 	        //remove media previews
 	        jquery( this ).find( '.file-preview' ).remove();
@@ -52560,12 +52755,12 @@
 
 	/**
 	 * @typedef FormDataObj
-	 * @property {string} modelStr
-	 * @property {string} [instanceStr]
-	 * @property {boolean} [submitted]
-	 * @property {object} external
-	 * @property {string} external.id
-	 * @property {string} [external.xmlStr]
+	 * @property {string} modelStr -  XML Model as string
+	 * @property {string} [instanceStr] - (partial) XML instance to load
+	 * @property {boolean} [submitted] - Flag to indicate whether data was submitted before
+	 * @property {object} [external] - Array of external data objects, required for each external data instance in the XForm
+	 * @property {string} [external.id] - ID of external instance
+	 * @property {string} [external.xmlStr] - XML string of external instance content
 	 */
 
 	/**
@@ -52583,10 +52778,13 @@
 	 *
 	 * Most methods are prototype method to facilitate customizations outside of enketo-core.
 	 *
-	 * @param {Element} form - HTML form element
+	 * @param {Element} form - HTML form element (a product of Enketo Transformer after transforming a valid ODK XForm)
+	 * @param formEl
 	 * @param {FormDataObj} data - Data object containing XML model, (partial) XML instance-to-load, external data and flag about whether instance-to-load has already been submitted before.
-	 * @param {{webMapId: string|undefined}} options - form options
-	 *
+	 * @param {object} [options] - form options
+	 * @param {boolean} [options.clearIrrelevantImmediately] - If `clearIrrelevantImmediately` is set to `true` or not set at all, Enketo will clear the value of a question as soon as it becomes irrelevant, after loading (so while the user traverses the form). If it is set to `false` Enketo will leave the values intact (and just hide the question).
+	 * @param {boolean} [options.printRelevantOnly] - If `printRelevantOnly` is set to `true` or not set at all, printing the form only includes what is visible, ie. all the groups and questions that do not have a `relevant` expression or for which the expression evaluates to `true`.
+	 * @param {language} [options.language] - Overrides the default languages rules of the XForm itself. Pass any valid and present-in-the-form IANA subtag string, e.g. `ar`.
 	 * @class
 	 */
 	function Form( formEl, data, options ) {
@@ -52641,7 +52839,7 @@
 	        ].concat( this.evaluationCascadeAdditions );
 	    },
 	    /**
-	     * @type string
+	     * @type {string}
 	     */
 	    get recordName() {
 	        return this.view.$.attr( 'name' );
@@ -52650,7 +52848,7 @@
 	        this.view.$.attr( 'name', name );
 	    },
 	    /**
-	     * @type boolean
+	     * @type {boolean}
 	     */
 	    get editStatus() {
 	        return this.view.html.dataset.edited === 'true';
@@ -52663,55 +52861,55 @@
 	        this.view.html.dataset.edited = status;
 	    },
 	    /**
-	     * @type string
+	     * @type {string}
 	     */
 	    get surveyName() {
 	        return this.view.$.find( '#form-title' ).text();
 	    },
 	    /**
-	     * @type string
+	     * @type {string}
 	     */
 	    get instanceID() {
 	        return this.model.instanceID;
 	    },
 	    /**
-	     * @type string
+	     * @type {string}
 	     */
 	    get deprecatedID() {
 	        return this.model.deprecatedID;
 	    },
 	    /**
-	     * @type string
+	     * @type {string}
 	     */
 	    get instanceName() {
 	        return this.model.instanceName;
 	    },
 	    /**
-	     * @type string
+	     * @type {string}
 	     */
 	    get version() {
 	        return this.model.version;
 	    },
 	    /**
-	     * @type string
+	     * @type {string}
 	     */
 	    get encryptionKey() {
 	        return this.view.$.data( 'base64rsapublickey' );
 	    },
 	    /**
-	     * @type string
+	     * @type {string}
 	     */
 	    get action() {
 	        return this.view.$.attr( 'action' );
 	    },
 	    /**
-	     * @type string
+	     * @type {string}
 	     */
 	    get method() {
 	        return this.view.$.attr( 'method' );
 	    },
 	    /**
-	     * @type string
+	     * @type {string}
 	     */
 	    get id() {
 	        return this.view.html.id;
@@ -52778,6 +52976,7 @@
 
 	    if ( typeof this.model === 'undefined' || !( this.model instanceof FormModel ) ) {
 	        loadErrors.push( 'Form could not be initialized without a model.' );
+
 	        return loadErrors;
 	    }
 
@@ -52863,6 +53062,7 @@
 	        }, 0 );
 
 	        this.initialized = true;
+
 	        return loadErrors;
 	    } catch ( e ) {
 	        console.error( e );
@@ -52872,6 +53072,7 @@
 	    document.querySelector( 'body' ).scrollIntoView();
 
 	    console.debug( 'loadErrors', loadErrors );
+
 	    return loadErrors;
 	};
 
@@ -52886,6 +53087,7 @@
 	            path: xpath.substring( xpath.lastIndexOf( '/' ) + 1 )
 	        } ) );
 	    }
+
 	    return errors;
 	};
 
@@ -52901,6 +53103,7 @@
 	    if ( include.irrelevant === false ) {
 	        return this.getDataStrWithoutIrrelevantNodes();
 	    }
+
 	    return this.model.getStr();
 	};
 
@@ -52909,11 +53112,17 @@
 	 * new Form ( .....) and form.init()
 	 * For this reason, it does not fix event handler, $form, formView.$ etc.!
 	 * It also does not affect the XML instance!
+	 *
+	 * @return {Element} the new form element
 	 */
 	Form.prototype.resetView = function() {
 	    //form language selector was moved outside of <form> so has to be separately removed
-	    jquery( '#form-languages' ).remove();
-	    this.view.$.replaceWith( jquery( this.view.clone ) );
+	    if ( this.langs.formLanguages ) {
+	        this.langs.formLanguages.remove();
+	    }
+	    this.view.html.replaceWith( this.view.clone );
+
+	    return document.querySelector( 'form.or' );
 	};
 
 	/**
@@ -52960,6 +53169,7 @@
 	        }
 
 	    } );
+
 	    return expr;
 	};
 
@@ -52980,6 +53190,7 @@
 	    this.model.node( selector, groupIndex ).getElements()
 	        .reduce( ( nodes, current ) => {
 	            const newNodes = [ ...current.querySelectorAll( '*' ) ].filter( ( n ) => n.children.length === 0 && n.textContent );
+
 	            return nodes.concat( newNodes );
 	        }, [] )
 	        .forEach( element => {
@@ -53011,6 +53222,7 @@
 	    const control = $control[ 0 ];
 	    const path = this.input.getName( control );
 	    const index = this.input.getIndex( control );
+
 	    return this.model.node( path, index ).getVal();
 	};
 
@@ -53099,6 +53311,7 @@
 	 */
 	Form.prototype.filterRadioCheckSiblings = controls => {
 	    const wrappers = [];
+
 	    return controls.filter( control => {
 	        // TODO: can this be further performance-optimized?
 	        const wrapper = control.type === 'radio' || control.type === 'checkbox' ? closestAncestorUntil( control, '.option-wrapper', '.question' ) : null;
@@ -53109,6 +53322,7 @@
 	            }
 	            wrappers.push( wrapper );
 	        }
+
 	        return true;
 	    } );
 	};
@@ -53362,8 +53576,10 @@
 	    if ( node ) {
 	        const question = this.input.getWrapNode( node );
 	        const cls = question.classList;
+
 	        return !cls.contains( 'invalid-required' ) && !cls.contains( 'invalid-constraint' ) && !cls.contains( 'invalid-relevant' );
 	    }
+
 	    return this.view.html.querySelector( '.invalid-required, .invalid-constraint, .invalid-relevant' ) === null;
 	};
 
@@ -53390,6 +53606,7 @@
 	    return this.validateContent( this.view.$ )
 	        .then( valid => {
 	            that.view.html.dispatchEvent( events.ValidationComplete() );
+
 	            return valid;
 	        } );
 	};
@@ -53424,6 +53641,7 @@
 	        if ( !elem ) {
 	            return Promise.resolve();
 	        }
+
 	        return that.validateInput( elem );
 	    } ).toArray();
 
@@ -53437,6 +53655,7 @@
 	            if ( $firstError.length > 0 ) {
 	                that.goToTarget( $firstError[ 0 ] );
 	            }
+
 	            return $firstError.length === 0;
 	        } )
 	        .catch( () => // fail whole-form validation if any of the question
@@ -53539,6 +53758,7 @@
 	            if ( !passed && !previouslyInvalid ) {
 	                control.dispatchEvent( events.Invalidated() );
 	            }
+
 	            return passed;
 	        } )
 	        .catch( e => {
@@ -53626,13 +53846,14 @@
 	        input.focus();
 	        input.dispatchEvent( events.ApplyFocus() );
 	    }
+
 	    return !!target;
 	};
 
 	/**
 	 * Static method to obtain required enketo-transform version direct from class.
 	 *
-	 * @type string
+	 * @type {string}
 	 * @default
 	 */
 	Form.requiredTransformerVersion = '1.40.1';

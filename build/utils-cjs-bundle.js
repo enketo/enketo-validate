@@ -259,12 +259,12 @@ function _getQueryThreadStatus( commentsOrdered, threadId ) {
  */
 module.exports = {
     /**
-     * @type function
+     * @type {Function}
      * @see {@link https://enketo.github.io/enketo-core/module-utils.html#~parseFunctionFromExpression|parseFunctionFromExpression}
      */
     parseFunctionFromExpression,
     /**
-     * @type function
+     * @type {Function}
      * @see {@link https://github.com/OpenClinica/enketo-xpath-extensions-oc|addXPathExtensionsOc}
      */
     addXPathExtensionsOc,

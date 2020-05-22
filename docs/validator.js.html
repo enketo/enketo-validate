@@ -57,7 +57,7 @@ const { XForm } = require( './xform' );
 /**
  * @constant
  * @static
- * @type string
+ * @type {string}
  */
 const { version } = require( '../package' );
 
@@ -96,13 +96,10 @@ let validate = ( xformStr, options = {} ) => {
     if ( xform ) {
         xform.checkStructure( warnings, errors );
         xform.checkBinds( warnings, errors );
+        xform.checkAppearances( warnings, errors );
 
         if ( options.openclinica ) {
             xform.checkOpenClinicaRules( warnings, errors );
-            // OpenClinica would like all appearance warnings to be output as errors, for now
-            xform.checkAppearances( errors, errors );
-        } else {
-            xform.checkAppearances( warnings, errors );
         }
     }
 
@@ -123,6 +120,7 @@ let validate = ( xformStr, options = {} ) => {
 
             if ( !path ) {
                 warnings.push( `Found bind (index: ${index}) without nodeset attribute.` );
+
                 return;
             }
 
@@ -131,6 +129,7 @@ let validate = ( xformStr, options = {} ) => {
 
             if ( !context ) {
                 warnings.push( `Found bind for "${nodeName}" that does not exist in the model.` );
+
                 return;
             }
 
@@ -159,7 +158,8 @@ let validate = ( xformStr, options = {} ) => {
     return { warnings, errors, version };
 };
 
-module.exports = { validate, version };</code></pre>
+module.exports = { validate, version };
+</code></pre>
         </article>
     </section>
 
