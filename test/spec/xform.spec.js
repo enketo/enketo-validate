@@ -1,8 +1,5 @@
 /* global process */
 /* eslint-env mocha */
-
-'use strict';
-
 const XForm = require( '../../src/xform' ).XForm;
 const validator = require( '../../src/validator' );
 const expect = require( 'chai' ).expect;

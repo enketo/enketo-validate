@@ -2,7 +2,12 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
-[1.10.0] - 2020-05-22
+[Unreleased]
+---------------------
+##### Changed
+- Improved performance of check to see if bind has matching model node.
+
+[1.10.1] - 2020-05-22
 ---------------------
 ##### Changed
 - In OC mode appearance errors are no output as warnings.

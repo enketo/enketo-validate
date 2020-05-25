@@ -217,6 +217,21 @@ class XForm {
     }
 
     /**
+     * Obtains a node from the model from its simple path.
+     *
+     * @param {string} path
+     * @return {Element|null} the result element or null if not found
+     */
+    findNode( path ){
+        if ( !this.model ) {
+            //console.log( 'Unexpectedly, there is no model when enketoEvaluate is called, creating one.' );
+            this.parseModel();
+        }
+
+        return this.model.xml.querySelector( path.replace( '/', '' ).replace( /\//g, '>' ) );
+    }
+
+    /**
      * Checks if the structure is valid. Modifies provided `warnings` and `errors` arrays.
      *
      * @param {Array} warnings - Array of existing warnings.

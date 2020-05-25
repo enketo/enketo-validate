@@ -76,7 +76,9 @@ let validate = ( xformStr, options = {} ) => {
             }
 
             const nodeName = path.substring( path.lastIndexOf( '/' ) + 1 );
-            const context = xform.enketoEvaluate( path, 'node' );
+
+            // Note: using enketoEvaluate here, would much slower.
+            const context = xform.findNode( path );
 
             if ( !context ) {
                 warnings.push( `Found bind for "${nodeName}" that does not exist in the model.` );
