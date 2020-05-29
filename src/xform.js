@@ -574,6 +574,11 @@ class XForm {
      * @return {string|Document} The XML content to apply the stylesheet to given as a string or a libxmljs document.
      */
     _extractModelStr() {
+        // First remove all jr:template="" attributes, because older forms won't have an additional first repeat instance.
+        // https://github.com/enketo/enketo-validate/issues/73
+        // This is of course a very bad way of doing this relying on a jr prefix, but likely no problem for anyone.
+        this.xformStr = this.xformStr.replace( /jr:template=""/g, '' );
+
         let doc = libxmljs.parseXml( this.xformStr );
 
         return xslModelSheet.apply( doc );
