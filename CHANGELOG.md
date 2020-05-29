@@ -2,6 +2,11 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+[Unrleased]
+----------------------
+##### Fixed
+- Binary builds for Mac OS and Linux
+
 [1.10.2] - 2020-05-28
 ---------------------
 ##### Changed

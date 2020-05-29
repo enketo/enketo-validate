@@ -17,16 +17,16 @@ echo "Building binaries for ${OS}..."
 TARGET_BASE="../enketo-validate-binaries"
 TARGET_OS="$TARGET_BASE/${OS}"
 FILENAME="validate"
-NODE_VERSION="8"
+NODE_VERSION="12"
 
-# Create the binary 
-pkg validate --targets node${NODE_VERSION}-${OS}-x64 --output validate-${OS}
+# Create the binary
+npx pkg validate --targets node${NODE_VERSION}-${OS}-x64 --output validate-${OS}
 mkdir -p ${TARGET_OS}
 mv ./validate-${OS} ${TARGET_OS}/${FILENAME}
 
 # Copy the compiled libxmljs-mt files:
-mkdir -p ${TARGET_OS}/node_modules/libxmljs-mt/build/Release
-cp -f node_modules/libxmljs-mt/build/Release/*.node ${TARGET_OS}/node_modules/libxmljs-mt/build/Release/
+mkdir -p ${TARGET_OS}/node_modules/node1-libxmljsmt/build/Release
+cp -f node_modules/node1-libxmljsmt/build/Release/*.node ${TARGET_OS}/node_modules/node1-libxmljsmt/build/Release/
 
 # Copy the compiled libxslt files:
 mkdir -p ${TARGET_OS}/node_modules/libxslt/build/Release
