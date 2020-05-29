@@ -9,9 +9,7 @@ export default {
     },
     plugins: [
         resolve( {
-            module: true,
-            main: true,
-            browser: true,
+            mainFields: [ 'module', 'main', 'browser' ]
         } ),
         commonjs( {
             include: 'node_modules/**',

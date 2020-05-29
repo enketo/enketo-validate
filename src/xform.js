@@ -517,6 +517,10 @@ class XForm {
     _getWindow( scriptContent = '' ) {
         // Let any logging by Enketo Core fall into the abyss.
         const virtualConsole = new jsdom.VirtualConsole();
+
+        // virtualConsole.on( 'log', console.log );
+        // virtualConsole.on( 'error', console.error );
+
         const { window } = new JSDOM( '', { runScripts: 'dangerously', virtualConsole: virtualConsole } );
 
         // add polyfill for document.createRange

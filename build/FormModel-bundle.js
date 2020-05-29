@@ -12051,7 +12051,6 @@
 	    'repeatOrdinals': false,
 	    'validateContinuously': false,
 	    'validatePage': true,
-	    'clearIrrelevantImmediately': true,
 	    'swipePage': true,
 	    'textMaxChars': 2000
 	};
@@ -12761,6 +12760,10 @@
 	    return new CustomEvent( 'deprintify', { bubbles: true } );
 	}
 
+	function UpdateMaxSize() {
+	    return new CustomEvent( 'update-max-size', { bubbles: true } );
+	}
+
 	var events = {
 	    DataUpdate,
 	    FakeFocus,
@@ -12785,7 +12788,8 @@
 	    XFormsValueChanged,
 	    ChangeOption,
 	    Printify,
-	    DePrintify
+	    DePrintify,
+	    UpdateMaxSize
 	};
 
 	/**
@@ -22395,8 +22399,9 @@
 	                instanceDoc.removeChild( secondaryInstanceChildren[ i ] );
 	            }
 	            let rootEl;
-	            // instanceof Document is only supported for Enketo Validate. It is not meant to be used otherwise as it could create problems.
-	            if ( instance.xml instanceof XMLDocument || instance.xml instanceof Document ) {
+	            // The instance.xml.constructor.name === 'Document' check is only supported for Enketo Validate.
+	            // Document instances are not supposed to be used otherwise as it could create problems.
+	            if ( instance.xml instanceof XMLDocument || instance.xml.constructor.name === 'Document' ) {
 	                if ( window.navigator.userAgent.indexOf( 'Trident/' ) >= 0 ) {
 	                    // IE does not support importNode
 	                    rootEl = that.importNode( instance.xml.documentElement, true );
@@ -24462,7 +24467,7 @@
 	 * Hopefully in the future it can do this properly, but for now it considers any expression
 	 * with a non-numeric (position) predicate to be dynamic.
 	 * This function relies on external instances themselves to be static.
-	 * 
+	 *
 	 * @static
 	 * @param {string} expr - XPath expression to analyze
 	 * @return {boolean} Whether expression contains a predicate
@@ -24496,15 +24501,20 @@
 
 	        if ( updated.relevantPath ) {
 	            // Questions that are descendants of a group:
-	            nodes = this.form.getRelatedNodes( 'data-items-path', `[name^="${updated.relevantPath}/"]` )
-	                .add( this.form.getRelatedNodes( 'data-items-path', `[name^="${updated.relevantPath}/"] ~ datalist > .itemset-template` ) )
-	                // Individual questions (autocomplete)
-	                .add( this.form.getRelatedNodes( 'data-items-path', `[name="${updated.relevantPath}"]` ) )
-	                .add( this.form.getRelatedNodes( 'data-items-path', `[name="${updated.relevantPath}"] ~ datalist > .itemset-template` ) )
-	                // Individual radiobutton questions with an itemset...:
-	                .add( this.form.getRelatedNodes( 'data-items-path', `[data-name="${updated.relevantPath}"]` ) )
-	                .add( this.form.getRelatedNodes( 'data-items-path', `[data-name="${updated.relevantPath}"] ~ datalist > .itemset-template` ) )
-	                .get();
+	            nodes  = this.form.getRelatedNodes( 'data-items-path', '.itemset-template' ).get()
+	                .filter( template => {
+	                    return template.querySelector( `[type="checkbox"][name^="${updated.relevantPath}/"]` ) // checkboxes, ancestor relevant
+	                     || template.querySelector( `[type="radio"][data-name^="${updated.relevantPath}/"]` ) //  radiobuttons, ancestor relevant
+	                     || template.parentElement.matches( `select[name^="${updated.relevantPath}/"]` ) // select minimal, ancestor relevant
+	                     || template.parentElement.parentElement.querySelector( `input[list][name^="${updated.relevantPath}/"]` ) // autocomplete, ancestor relevant
+	                     || template.querySelector( `[type="checkbox"][name="${updated.relevantPath}"]` ) // checkboxes, self relevant
+	                     || template.querySelector( `[type="radio"][data-name="${updated.relevantPath}"]` ) //  radiobuttons, self relevant
+	                     || template.parentElement.matches( `select[name="${updated.relevantPath}"]` ) // select minimal, self relevant
+	                     || template.parentElement.parentElement.querySelector( `input[list][name="${updated.relevantPath}"]` ); // autocomplete, self relevant
+	                } );
+
+	            // TODO: missing case: static shared itemlist in repeat
+
 	        } else {
 	            nodes = this.form.getRelatedNodes( 'data-items-path', '.itemset-template', updated )
 	                .get();
@@ -25648,7 +25658,7 @@
 	            //.off( 'changebranch.pagemode' )
 	            .on( 'changebranch.pagemode', () => {
 	                that._updateAllActive();
-	                // If the current page has become inactive (e.g. a form whose first page during load becomes irrelevant)
+	                // If the current page has become inactive (e.g. a form whose first page during load becomes non-relevant)
 	                if ( !that.activePages.includes( that.current ) ) {
 	                    that._next();
 	                }
@@ -25755,7 +25765,7 @@
 	     */
 	    _setToCurrent( pageEl ) {
 	        pageEl.classList.add( 'current', 'hidden' );
-	        // Was just added, for animation?        
+	        // Was just added, for animation?
 	        pageEl.classList.remove( 'hidden' );
 	        getAncestors( pageEl, '.or-group, .or-group-data, .or-repeat', '.or' )
 	            .forEach( el => el.classList.add( 'contains-current' ) );
@@ -25852,9 +25862,9 @@
 	var relevantModule = {
 	    /**
 	     * @param {UpdatedDataNodes} [updated] - The object containing info on updated data nodes.
-	     * @param {boolean} forceClearIrrelevant
+	     * @param {boolean} forceClearNonRelevant
 	     */
-	    update( updated, forceClearIrrelevant ) {
+	    update( updated, forceClearNonRelevant ) {
 	        let $nodes;
 
 	        if ( !this.form ) {
@@ -25863,13 +25873,13 @@
 
 	        $nodes = this.form.getRelatedNodes( 'data-relevant', '', updated );
 
-	        this.updateNodes( $nodes, forceClearIrrelevant );
+	        this.updateNodes( $nodes, forceClearNonRelevant );
 	    },
 	    /**
 	     * @param {jQuery} $nodes
-	     * @param {boolean} forceClearIrrelevant
+	     * @param {boolean} forceClearNonRelevant
 	     */
-	    updateNodes( $nodes, forceClearIrrelevant ) {
+	    updateNodes( $nodes, forceClearNonRelevant ) {
 	        let p;
 	        let $branchNode;
 	        let result;
@@ -25983,7 +25993,7 @@
 	                alreadyCovered.push( this.getAttribute( 'name' ) );
 	            }
 
-	            if ( that.process( $branchNode, p.path, result, forceClearIrrelevant ) === true ) {
+	            if ( that.process( $branchNode, p.path, result, forceClearNonRelevant ) === true ) {
 	                branchChange = true;
 	            }
 	        } );
@@ -26011,13 +26021,13 @@
 	     * @param {jQuery} $branchNode
 	     * @param {string} path - Path of branch node
 	     * @param {boolean} result - result of relevant evaluation
-	     * @param {boolean} forceClearIrrelevant - Whether to force clearing of irrelevant nodes and descendants
+	     * @param {boolean} forceClearNonRelevant - Whether to force clearing of non-relevant nodes and descendants
 	     */
-	    process( $branchNode, path, result, forceClearIrrelevant ) {
+	    process( $branchNode, path, result, forceClearNonRelevant ) {
 	        if ( result === true ) {
 	            return this.enable( $branchNode, path );
 	        } else {
-	            return this.disable( $branchNode, path, forceClearIrrelevant );
+	            return this.disable( $branchNode, path, forceClearNonRelevant );
 	        }
 	    },
 
@@ -26066,18 +26076,18 @@
 	     *
 	     * @param {jQuery} $branchNode - The jQuery object to hide and disable
 	     * @param {string} path
-	     * @param {boolean} forceClearIrrelevant
+	     * @param {boolean} forceClearNonRelevant
 	     * @return {boolean}
 	     */
-	    disable( $branchNode, path, forceClearIrrelevant ) {
+	    disable( $branchNode, path, forceClearNonRelevant ) {
 	        const virgin = $branchNode.hasClass( 'pre-init' );
 	        let change = false;
 
-	        if ( virgin || this.selfRelevant( $branchNode ) || forceClearIrrelevant ) {
+	        if ( virgin || this.selfRelevant( $branchNode ) || forceClearNonRelevant ) {
 	            change = true;
 	            // if the branch was previously enabled, keep any default values
 	            if ( !virgin ) {
-	                if ( this.form.options.clearIrrelevantImmediately || forceClearIrrelevant ) {
+	                if ( forceClearNonRelevant ) {
 	                    this.clear( $branchNode, path );
 	                }
 	            } else {
@@ -47523,7 +47533,7 @@
 	        // Monitor maxSize changes to update placeholder text. This facilitates asynchronous
 	        // obtaining of max size from server without slowing down form loading.
 	        this._updatePlaceholder();
-	        jquery( this.element.closest( 'form.or' ) ).on( 'updateMaxSize', this._updatePlaceholder.bind( this ) );
+	        this.element.closest( 'form.or' ).addEventListener( events.UpdateMaxSize().type, this._updatePlaceholder.bind( this ) );
 
 	        fileManager.init()
 	            .then( () => {
@@ -48637,7 +48647,7 @@
 	        // Monitor maxSize changes to update placeholder text in annotate widget. This facilitates asynchronous
 	        // obtaining of max size from server without slowing down form loading.
 	        this._updatePlaceholder();
-	        this.$widget.closest( 'form.or' ).on( 'updateMaxSize', this._updatePlaceholder.bind( this ) );
+	        this.element.closest( 'form.or' ).addEventListener( events.UpdateMaxSize().type, this._updatePlaceholder.bind( this ) );
 
 	        const that = this;
 
@@ -48764,7 +48774,7 @@
 	        this.element.dataset.filenamePostfix = postfix;
 	        // Note that this.element has become a text input.
 	        // When a default file is loaded this function is called by the canvasreload handler, but the user hasn't changed anything.
-	        // We want to make sure the model remains unchanged in that case. 
+	        // We want to make sure the model remains unchanged in that case.
 	        if ( changed ) {
 	            this.originalInputValue = this.props.filename;
 	        }
@@ -51702,7 +51712,7 @@
 	/**
 	 * Disables  widgets, if they aren't disabled already when the branch was disabled by the controller.
 	 * In most widgets, this function will do nothing because all fieldsets, inputs, textareas and selects will get
-	 * the disabled attribute automatically when the branch element provided as parameter becomes irrelevant.
+	 * the disabled attribute automatically when the branch element provided as parameter becomes non-relevant.
 	 *
 	 * @static
 	 * @param {Element} group - The element inside which all widgets need to be disabled.
@@ -52782,7 +52792,6 @@
 	 * @param formEl
 	 * @param {FormDataObj} data - Data object containing XML model, (partial) XML instance-to-load, external data and flag about whether instance-to-load has already been submitted before.
 	 * @param {object} [options] - form options
-	 * @param {boolean} [options.clearIrrelevantImmediately] - If `clearIrrelevantImmediately` is set to `true` or not set at all, Enketo will clear the value of a question as soon as it becomes irrelevant, after loading (so while the user traverses the form). If it is set to `false` Enketo will leave the values intact (and just hide the question).
 	 * @param {boolean} [options.printRelevantOnly] - If `printRelevantOnly` is set to `true` or not set at all, printing the form only includes what is visible, ie. all the groups and questions that do not have a `relevant` expression or for which the expression evaluates to `true`.
 	 * @param {language} [options.language] - Overrides the default languages rules of the XForm itself. Pass any valid and present-in-the-form IANA subtag string, e.g. `ar`.
 	 * @class
@@ -52798,9 +52807,6 @@
 	    this.nonRepeats = {};
 	    this.all = {};
 	    this.options = typeof options !== 'object' ? {} : options;
-	    if ( typeof this.options.clearIrrelevantImmediately === 'undefined' ) {
-	        this.options.clearIrrelevantImmediately = true;
-	    }
 
 	    this.view = {
 	        $: $form,
@@ -53262,9 +53268,9 @@
 	    // If a repeat was deleted ( update.repeatPath && !updated.cloned), rebuild cache
 	    if ( !this.all[ attr ] || ( updated.repeatPath && !updated.cloned ) ) {
 	        // (re)build the cache
-	        // However, if repeats have not been initialized exclude nodes inside a repeat until the first repeat has been added during repeat initialization. 
-	        // The default view repeat will be removed during initialization (and stored as template), before it is re-added, if necessary. 
-	        // We need to avoid adding these fields to the initial cache, 
+	        // However, if repeats have not been initialized exclude nodes inside a repeat until the first repeat has been added during repeat initialization.
+	        // The default view repeat will be removed during initialization (and stored as template), before it is re-added, if necessary.
+	        // We need to avoid adding these fields to the initial cache,
 	        // so we don't waste time evaluating logic, and don't have to rebuild the cache after repeats have been initialized.
 	        this.all[ attr ] = this.repeatsInitialized ? this.filterRadioCheckSiblings( [ ...this.view.html.querySelectorAll( `[${attr}]` ) ] ) : this.nonRepeats[ attr ];
 	    } else if ( updated.cloned && repeatControls ) {
@@ -53453,7 +53459,7 @@
 	     *
 	     * Readonly fields are not excluded because of this scenario:
 	     * 1. readonly field has a calculation
-	     * 2. readonly field becomes irrelevant (e.g. parent group with relevant)
+	     * 2. readonly field becomes non-relevant (e.g. parent group with relevant)
 	     * 3. this clears value in view, which should propagate to model via 'change' event
 	     */
 	    this.view.$.on( 'change.file',
@@ -53584,14 +53590,14 @@
 	};
 
 	/**
-	 * Clears irrelevant
+	 * Clears non-relevant values.
 	 */
-	Form.prototype.clearIrrelevant = function() {
+	Form.prototype.clearNonRelevant = function() {
 	    this.relevant.update( null, true );
 	};
 
 	/**
-	 * Clears all irrelevant question values if necessary and then
+	 * Clears all non-relevant question values if necessary and then
 	 * validates all enabled input fields after first resetting everything as valid.
 	 *
 	 * @return {Promise} wrapping {boolean} whether the form contains any errors
@@ -53599,9 +53605,7 @@
 	Form.prototype.validateAll = function() {
 	    const that = this;
 	    // to not delay validation unneccessarily we only clear irrelevants if necessary
-	    if ( this.options.clearIrrelevantImmediately === false ) {
-	        this.clearIrrelevant();
-	    }
+	    this.clearNonRelevant();
 
 	    return this.validateContent( this.view.$ )
 	        .then( valid => {
@@ -53675,7 +53679,7 @@
 	        return targetPath;
 	    }
 
-	    // index is irrelevant (no positions in returned path)
+	    // index is non-relevant (no positions in returned path)
 	    target = this.model.evaluate( targetPath, 'node', contextPath, 0, true );
 
 	    return getXPath( target, 'instance', false );
