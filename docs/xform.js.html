@@ -32,7 +32,7 @@
     
     <input type="text" id="nav-search" placeholder="Search" />
     
-    <h2><a href="index.html">Home</a></h2><h2><a href="https://github.com/enketo/enketo-validate" target="_blank" class="menu-item" id="repository" >Github repo</a></h2><h2><a href="https://github.com/enketo/enketo-validate/blob/master/CHANGELOG.md" target="_blank" class="menu-item" id="change-log" >Change log</a></h2><h3>Classes</h3><ul><li><a href="FormModel.html">FormModel</a></li><li><a href="XForm.html">XForm</a><ul class='methods'><li data-type='method'><a href="XForm.html#_cleanXmlDomParserError">_cleanXmlDomParserError</a></li><li data-type='method'><a href="XForm.html#_cleanXPathException">_cleanXPathException</a></li><li data-type='method'><a href="XForm.html#_extractModelStr">_extractModelStr</a></li><li data-type='method'><a href="XForm.html#_getDom">_getDom</a></li><li data-type='method'><a href="XForm.html#_getExternalDummyContent">_getExternalDummyContent</a></li><li data-type='method'><a href="XForm.html#_getWindow">_getWindow</a></li><li data-type='method'><a href="XForm.html#_nodeName">_nodeName</a></li><li data-type='method'><a href="XForm.html#_stripJrChoiceName">_stripJrChoiceName</a></li><li data-type='method'><a href="XForm.html#_withFormControl">_withFormControl</a></li><li data-type='method'><a href="XForm.html#_withoutFormControl">_withoutFormControl</a></li><li data-type='method'><a href="XForm.html#checkAppearances">checkAppearances</a></li><li data-type='method'><a href="XForm.html#checkBinds">checkBinds</a></li><li data-type='method'><a href="XForm.html#checkOpenClinicaRules">checkOpenClinicaRules</a></li><li data-type='method'><a href="XForm.html#checkStructure">checkStructure</a></li><li data-type='method'><a href="XForm.html#enketoEvaluate">enketoEvaluate</a></li><li data-type='method'><a href="XForm.html#getBind">getBind</a></li><li data-type='method'><a href="XForm.html#nsPrefixResolver">nsPrefixResolver</a></li><li data-type='method'><a href="XForm.html#parseModel">parseModel</a></li></ul></li><li></li></ul><h3>Modules</h3><ul><li><a href="module-utils.html">utils</a><ul class='members'><li data-type='member'><a href="module-utils.html#.addXPathExtensionsOc">addXPathExtensionsOc</a></li><li data-type='member'><a href="module-utils.html#.parseFunctionFromExpression">parseFunctionFromExpression</a></li></ul></li><li><a href="module-validator.html">validator</a><ul class='methods'><li data-type='method'><a href="module-validator.html#.validate">validate</a></li></ul></li></ul>
+    <h2><a href="index.html">Home</a></h2><h2><a href="https://github.com/enketo/enketo-validate" target="_blank" class="menu-item" id="repository" >Github repo</a></h2><h2><a href="https://github.com/enketo/enketo-validate/blob/master/CHANGELOG.md" target="_blank" class="menu-item" id="change-log" >Change log</a></h2><h3>Classes</h3><ul><li><a href="FormModel.html">FormModel</a></li><li><a href="XForm.html">XForm</a><ul class='methods'><li data-type='method'><a href="XForm.html#_cleanXmlDomParserError">_cleanXmlDomParserError</a></li><li data-type='method'><a href="XForm.html#_cleanXPathException">_cleanXPathException</a></li><li data-type='method'><a href="XForm.html#_extractModelStr">_extractModelStr</a></li><li data-type='method'><a href="XForm.html#_getDom">_getDom</a></li><li data-type='method'><a href="XForm.html#_getExternalDummyContent">_getExternalDummyContent</a></li><li data-type='method'><a href="XForm.html#_getWindow">_getWindow</a></li><li data-type='method'><a href="XForm.html#_nodeName">_nodeName</a></li><li data-type='method'><a href="XForm.html#_stripJrChoiceName">_stripJrChoiceName</a></li><li data-type='method'><a href="XForm.html#_withFormControl">_withFormControl</a></li><li data-type='method'><a href="XForm.html#_withoutFormControl">_withoutFormControl</a></li><li data-type='method'><a href="XForm.html#checkAppearances">checkAppearances</a></li><li data-type='method'><a href="XForm.html#checkBinds">checkBinds</a></li><li data-type='method'><a href="XForm.html#checkOpenClinicaRules">checkOpenClinicaRules</a></li><li data-type='method'><a href="XForm.html#checkStructure">checkStructure</a></li><li data-type='method'><a href="XForm.html#enketoEvaluate">enketoEvaluate</a></li><li data-type='method'><a href="XForm.html#findNode">findNode</a></li><li data-type='method'><a href="XForm.html#getBind">getBind</a></li><li data-type='method'><a href="XForm.html#nsPrefixResolver">nsPrefixResolver</a></li><li data-type='method'><a href="XForm.html#parseModel">parseModel</a></li></ul></li><li></li></ul><h3>Modules</h3><ul><li><a href="module-utils.html">utils</a><ul class='members'><li data-type='member'><a href="module-utils.html#.addXPathExtensionsOc">addXPathExtensionsOc</a></li><li data-type='member'><a href="module-utils.html#.parseFunctionFromExpression">parseFunctionFromExpression</a></li></ul></li><li><a href="module-validator.html">validator</a><ul class='methods'><li data-type='method'><a href="module-validator.html#.validate">validate</a></li></ul></li></ul>
 </nav>
 
 <div id="main">
@@ -263,6 +263,21 @@ class XForm {
         } catch ( e ) {
             throw this._cleanXPathException( e );
         }
+    }
+
+    /**
+     * Obtains a node from the model from its simple path.
+     *
+     * @param {string} path
+     * @return {Element|null} the result element or null if not found
+     */
+    findNode( path ){
+        if ( !this.model ) {
+            //console.log( 'Unexpectedly, there is no model when enketoEvaluate is called, creating one.' );
+            this.parseModel();
+        }
+
+        return this.model.xml.querySelector( path.replace( '/', '' ).replace( /\//g, '>' ) );
     }
 
     /**
@@ -551,6 +566,10 @@ class XForm {
     _getWindow( scriptContent = '' ) {
         // Let any logging by Enketo Core fall into the abyss.
         const virtualConsole = new jsdom.VirtualConsole();
+
+        // virtualConsole.on( 'log', console.log );
+        // virtualConsole.on( 'error', console.error );
+
         const { window } = new JSDOM( '', { runScripts: 'dangerously', virtualConsole: virtualConsole } );
 
         // add polyfill for document.createRange
@@ -604,6 +623,11 @@ class XForm {
      * @return {string|Document} The XML content to apply the stylesheet to given as a string or a libxmljs document.
      */
     _extractModelStr() {
+        // First remove all jr:template="" attributes, because older forms won't have an additional first repeat instance.
+        // https://github.com/enketo/enketo-validate/issues/73
+        // This is of course a very bad way of doing this relying on a jr prefix, but likely no problem for anyone.
+        this.xformStr = this.xformStr.replace( /jr:template=""/g, '' );
+
         let doc = libxmljs.parseXml( this.xformStr );
 
         return xslModelSheet.apply( doc );

@@ -77,7 +77,7 @@ let validate = ( xformStr, options = {} ) => {
 
             const nodeName = path.substring( path.lastIndexOf( '/' ) + 1 );
 
-            // Note: using enketoEvaluate here, would much slower.
+            // Note: using enketoEvaluate here, would be much slower.
             const context = xform.findNode( path );
 
             if ( !context ) {

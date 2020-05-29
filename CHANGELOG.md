@@ -2,10 +2,13 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
-[Unreleased]
+[1.10.2] - 2020-05-28
 ---------------------
 ##### Changed
 - Improved performance of check to see if bind has matching model node.
+
+##### Fixed
+- Forms with repeat templates without a first instance of those repeats, report false warning for missing model nodes.
 
 [1.10.1] - 2020-05-22
 ---------------------
