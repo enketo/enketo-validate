@@ -31,13 +31,13 @@
         "commander": "^5.1.0",
         "enketo-transformer": "^1.40.2",
         "enketo-xpath-extensions-oc": "git+https://github.com/OpenClinica/enketo-xpath-extensions-oc.git#efa9830",
-        "jsdom": "16.2.2",
+        "jsdom": "^16.3.0",
         "libxslt": "0.9.x"
     },
     "devDependencies": {
         "chai": "^4.2.0",
         "docdash": "^1.2.0",
-        "enketo-core": "github:enketo/enketo-core#7f47be63",
+        "enketo-core": "^5.16.4",
         "eslint": "^7.5.0",
         "eslint-plugin-jsdoc": "^26.0.2",
         "istanbul-reporter-shield-badge": "^1.2.1",
@@ -47,7 +47,7 @@
         "pkg": "^4.4.9",
         "rimraf": "^3.0.2",
         "rollup": "^2.23.0",
-        "rollup-plugin-commonjs": "10.1.x",
-        "rollup-plugin-node-resolve": "5.2.x"
+        "rollup-plugin-commonjs": "^10.1.x",
+        "rollup-plugin-node-resolve": "^5.2.x"
     }
 }
