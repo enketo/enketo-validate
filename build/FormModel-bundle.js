@@ -635,7 +635,7 @@
 	let cookies;
 
 	/**
-	 * Parses an Expression to extract all function calls and theirs argument arrays.
+	 * Parses an Expression to extract all function calls and their argument arrays.
 	 *
 	 * @static
 	 * @param {string} expr - The expression to search
@@ -643,12 +643,7 @@
 	 * @return {Array<Array<string, any>>} The result array, where each result is an array containing the function call and array of arguments.
 	 */
 	function parseFunctionFromExpression( expr, func ) {
-	    let index;
 	    let result;
-	    let openBrackets;
-	    let start;
-	    let argStart;
-	    let args;
 	    const findFunc = new RegExp( `${func}\\s*\\(`, 'g' );
 	    const results = [];
 
@@ -657,11 +652,11 @@
 	    }
 
 	    while ( ( result = findFunc.exec( expr ) ) !== null ) {
-	        openBrackets = 1;
-	        args = [];
-	        start = result.index;
-	        argStart = findFunc.lastIndex;
-	        index = argStart - 1;
+	        const args = [];
+	        let openBrackets = 1;
+	        let start = result.index;
+	        let argStart = findFunc.lastIndex;
+	        let index = argStart - 1;
 	        while ( openBrackets !== 0 && index < expr.length ) {
 	            index++;
 	            if ( expr[ index ] === '(' ) {
@@ -687,8 +682,8 @@
 
 	/**
 	 * @static
-	 * @param {string} str
-	 * @return {string}
+	 * @param {string} str - original string
+	 * @return {string} stripped string
 	 */
 	function stripQuotes( str ) {
 	    if ( /^".+"$/.test( str ) || /^'.+'$/.test( str ) ) {
@@ -704,15 +699,14 @@
 	// See https://github.com/kobotoolbox/enketo-express/issues/374
 	/**
 	 * @static
-	 * @param {object} file
-	 * @param {string} postfix
-	 * @return {string}
+	 * @param {object} file - File instance
+	 * @param {string} postfix - postfix for filename
+	 * @return {string} new filename
 	 */
 	function getFilename( file, postfix ) {
-	    let filenameParts;
 	    if ( typeof file === 'object' && file !== null && file.name ) {
 	        postfix = postfix || '';
-	        filenameParts = file.name.split( '.' );
+	        const filenameParts = file.name.split( '.' );
 	        if ( filenameParts.length > 1 ) {
 	            filenameParts[ filenameParts.length - 2 ] += postfix;
 	        } else if ( filenameParts.length === 1 ) {
@@ -729,8 +723,8 @@
 	 * Converts NodeLists or DOMtokenLists to an array.
 	 *
 	 * @static
-	 * @param {NodeList|DOMTokenList} list
-	 * @return {Array}
+	 * @param {NodeList|DOMTokenList} list - a Nodelist or DOMTokenList
+	 * @return {Array} list converted to array
 	 */
 	function toArray( list ) {
 	    const array = [];
@@ -744,8 +738,8 @@
 
 	/**
 	 * @static
-	 * @param {*} n
-	 * @return {boolean}
+	 * @param {*} n - value
+	 * @return {boolean} whether it is a number value
 	 */
 	function isNumber( n ) {
 	    return !isNaN( parseFloat( n ) ) && isFinite( n );
@@ -753,31 +747,27 @@
 
 	/**
 	 * @static
-	 * @param {string} name
-	 * @return {string}
+	 * @param {string} name - a cookie to look for
+	 * @return {string|undefined} the value of the cookie
 	 */
 	function readCookie( name ) {
-	    let c;
-	    let C;
-	    let i;
-
 	    if ( cookies ) {
 	        return cookies[ name ];
 	    }
 
-	    c = document.cookie.split( '; ' );
+	    const parts = document.cookie.split( '; ' );
 	    cookies = {};
 
-	    for ( i = c.length - 1; i >= 0; i-- ) {
-	        C = c[ i ].split( '=' );
+	    for ( let i = parts.length - 1; i >= 0; i-- ) {
+	        const ck = parts[ i ].split( '=' );
 	        // decode URI
-	        C[ 1 ] = decodeURIComponent( C[ 1 ] );
+	        ck[ 1 ] = decodeURIComponent( ck[ 1 ] );
 	        // if cookie is signed (using expressjs/cookie-parser/), extract value
-	        if ( C[ 1 ].substr( 0, 2 ) === 's:' ) {
-	            C[ 1 ] = C[ 1 ].slice( 2 );
-	            C[ 1 ] = C[ 1 ].slice( 0, C[ 1 ].lastIndexOf( '.' ) );
+	        if ( ck[ 1 ].substr( 0, 2 ) === 's:' ) {
+	            ck[ 1 ] = ck[ 1 ].slice( 2 );
+	            ck[ 1 ] = ck[ 1 ].slice( 0, ck[ 1 ].lastIndexOf( '.' ) );
 	        }
-	        cookies[ C[ 0 ] ] = decodeURIComponent( C[ 1 ] );
+	        cookies[ ck[ 0 ] ] = decodeURIComponent( ck[ 1 ] );
 	    }
 
 	    return cookies[ name ];
@@ -785,24 +775,19 @@
 
 	/**
 	 * @static
-	 * @param {string} dataURI
-	 * @return {Blob}
+	 * @param {string} dataURI - dataURI
+	 * @return {Blob} dataURI converted to a Blob
 	 */
 	function dataUriToBlobSync( dataURI ) {
-	    let byteString;
-	    let mimeString;
-	    let buffer;
-	    let array;
-
 	    // convert base64 to raw binary data held in a string
 	    // doesn't handle URLEncoded DataURIs - see SO answer #6850276 for code that does this
-	    byteString = atob( dataURI.split( ',' )[ 1 ] );
+	    const byteString = atob( dataURI.split( ',' )[ 1 ] );
 	    // separate out the mime component
-	    mimeString = dataURI.split( ',' )[ 0 ].split( ':' )[ 1 ].split( ';' )[ 0 ];
+	    const mimeString = dataURI.split( ',' )[ 0 ].split( ':' )[ 1 ].split( ';' )[ 0 ];
 
 	    // write the bytes of the string to an ArrayBuffer
-	    buffer = new ArrayBuffer( byteString.length );
-	    array = new Uint8Array( buffer );
+	    const buffer = new ArrayBuffer( byteString.length );
+	    const array = new Uint8Array( buffer );
 
 	    for ( let i = 0; i < byteString.length; i++ ) {
 	        array[ i ] = byteString.charCodeAt( i );
@@ -816,29 +801,13 @@
 
 	/**
 	 * @static
-	 * @param {Event} event
-	 * @return {string|null}
+	 * @param {Event} event - a paste event
+	 * @return {string|null} clipboard data text value contained in event or null
 	 */
 	function getPasteData( event ) {
-	    const clipboardData = event.originalEvent.clipboardData || window.clipboardData; // modern || IE11
+	    const clipboardData = event.clipboardData || window.clipboardData; // modern || IE11
 
 	    return ( clipboardData ) ? clipboardData.getData( 'text' ) : null;
-	}
-
-	/**
-	 * Update a HTML anchor to serve as a download or reset it if an empty objectUrl is provided.
-	 *
-	 * @static
-	 * @param {HTMLElement} anchor - The anchor element
-	 * @param {string} objectUrl - The objectUrl to download
-	 * @param {string} fileName - The filename of the file
-	 */
-	function updateDownloadLink( anchor, objectUrl, fileName ) {
-	    if ( window.updateDownloadLinkIe11 ) {
-	        return window.updateDownloadLinkIe11( ...arguments );
-	    }
-	    anchor.setAttribute( 'href', objectUrl || '' );
-	    anchor.setAttribute( 'download', fileName || '' );
 	}
 
 	/**
@@ -849,11 +818,11 @@
 	 */
 	function resizeImage( file, maxPixels ) {
 	    return new Promise( ( resolve, reject ) => {
-	        let image = new Image();
+	        const image = new Image();
 	        image.src = URL.createObjectURL( file );
 	        image.onload = () => {
-	            let width = image.width;
-	            let height = image.height;
+	            const width = image.width;
+	            const height = image.height;
 
 	            if ( width <= maxPixels && height <= maxPixels ) {
 	                resolve( file );
@@ -870,11 +839,11 @@
 	                newHeight = maxPixels;
 	            }
 
-	            let canvas = document.createElement( 'canvas' );
+	            const canvas = document.createElement( 'canvas' );
 	            canvas.width = newWidth;
 	            canvas.height = newHeight;
 
-	            let context = canvas.getContext( '2d' );
+	            const context = canvas.getContext( '2d' );
 
 	            context.drawImage( image, 0, 0, newWidth, newHeight );
 
@@ -11965,15 +11934,15 @@
 	 */
 	const elementDataStore = {
 	    /**
-	     * @type WeakMap
+	     * @type {WeakMap}
 	     */
 	    _storage: new WeakMap(),
 	    /**
 	     * Adds object to element storage. Ensures that element storage exist.
 	     *
-	     * @param {Node} element - Target element.
-	     * @param {string} key - Name of the stored data.
-	     * @param {object} obj - Stored data.
+	     * @param {Node} element - target element
+	     * @param {string} key - name of the stored data
+	     * @param {object} obj - stored data
 	     */
 	    put: function( element, key, obj ) {
 	        if ( !this._storage.has( element ) ) {
@@ -11984,9 +11953,9 @@
 	    /**
 	     * Return object from element storage.
 	     *
-	     * @param {Node} element - Target element.
-	     * @param {string} key - Name of the stored data.
-	     * @return {object} Stored data object.
+	     * @param {Node} element - target element
+	     * @param {string} key - name of the stored data
+	     * @return {object} stored data object
 	     */
 	    get: function( element, key ) {
 	        const item = this._storage.get( element );
@@ -11996,9 +11965,9 @@
 	    /**
 	     * Checkes whether element has given storage item.
 	     *
-	     * @param {Node} element - Target element.
-	     * @param {string} key - Name of the stored data.
-	     * @return {boolean}
+	     * @param {Node} element - target element
+	     * @param {string} key - name of the stored data
+	     * @return {boolean} whether data is present
 	     */
 	    has: function( element, key ) {
 	        const item = this._storage.get( element );
@@ -12008,9 +11977,9 @@
 	    /**
 	     * Removes item from element storage. Removes element storage if empty.
 	     *
-	     * @param {Node} element - Target element.
-	     * @param {string} key - Name of the stored data.
-	     * @return {object} Removed data object.
+	     * @param {Node} element - target element
+	     * @param {string} key - name of the stored data
+	     * @return {object} removed data object
 	     */
 	    remove: function( element, key ) {
 	        var ret = this._storage.get( element ).delete( key );
@@ -12066,8 +12035,10 @@
 	const HAS_MERIDIAN = new RegExp( `^(${TIME_PART} ?(${MERIDIAN_PART}))|((${MERIDIAN_PART}) ?${TIME_PART})$` );
 
 	/**
-	 * @param {Date} dt - Date object
-	 * @return {string}
+	 * Transforms time to a cleaned-up localized time.
+	 *
+	 * @param {Date} dt - date object
+	 * @return {string} cleaned-up localized time
 	 */
 	function _getCleanLocalTime( dt ) {
 	    dt = typeof dt == 'undefined' ? new Date() : dt;
@@ -12076,8 +12047,10 @@
 	}
 
 	/**
-	 * @param {string} timeStr
-	 * @return {string}
+	 * Remove unneeded and problematic special characters in (date)time string.
+	 *
+	 * @param {string} timeStr - (date)time string to clean up
+	 * @return {string} transformed (date)time string with removed unneeded special characters that cause issues
 	 */
 	function _cleanSpecialChars( timeStr ) {
 	    return timeStr.replace( /[\u200E\u200F]/g, '' );
@@ -12107,8 +12080,8 @@
 	        return this.meridianNotation( new Date( 2000, 1, 1, 1, 0, 0 ) );
 	    },
 	    /**
-	     * @type function
-	     * @param {Date} dt
+	     * @type {Function}
+	     * @param {Date} dt - datetime string
 	     */
 	    meridianNotation( dt ) {
 	        let matches = _getCleanLocalTime( dt ).match( HAS_MERIDIAN );
@@ -12123,7 +12096,7 @@
 	    /**
 	     * Whether time string has meridian parts
 	     *
-	     * @type function
+	     * @type {Function}
 	     * @param {string} time - Time string
 	     */
 	    hasMeridian( time ) {
@@ -12133,7 +12106,7 @@
 
 	/**
 	 * XML types
-	 * 
+	 *
 	 * @module types
 	 */
 
@@ -12146,8 +12119,8 @@
 	     */
 	    'string': {
 	        /**
-	         * @param {string} x
-	         * @return {string}
+	         * @param {string} x - value
+	         * @return {string} converted value
 	         */
 	        convert( x ) {
 	            return x.replace( /^\s+$/, '' );
@@ -12187,8 +12160,8 @@
 	     */
 	    'decimal': {
 	        /**
-	         * @param {number|string} x
-	         * @return {number}
+	         * @param {number|string} x - value
+	         * @return {number} converted value
 	         */
 	        convert( x ) {
 	            const num = Number( x );
@@ -12200,8 +12173,8 @@
 	            return num;
 	        },
 	        /**
-	         * @param {number|string} x
-	         * @return {boolean}
+	         * @param {number|string} x - value
+	         * @return {boolean} whether value is valid
 	         */
 	        validate( x ) {
 	            const num = Number( x );
@@ -12214,8 +12187,8 @@
 	     */
 	    'int': {
 	        /**
-	         * @param {number|string} x
-	         * @return {number}
+	         * @param {number|string} x - value
+	         * @return {number} converted value
 	         */
 	        convert( x ) {
 	            const num = Number( x );
@@ -12227,8 +12200,8 @@
 	            return ( num >= 0 ) ? Math.floor( num ) : -Math.floor( Math.abs( num ) );
 	        },
 	        /**
-	         * @param {number|string} x
-	         * @return {boolean}
+	         * @param {number|string} x - value
+	         * @return {boolean} whether value is valid
 	         */
 	        validate( x ) {
 	            const num = Number( x );
@@ -12241,8 +12214,8 @@
 	     */
 	    'date': {
 	        /**
-	         * @param {string} x
-	         * @return {boolean}
+	         * @param {string} x - value
+	         * @return {boolean} whether value is valid
 	         */
 	        validate( x ) {
 	            const pattern = /^([0-9]{4})-([0-9]{2})-([0-9]{2})$/;
@@ -12260,8 +12233,8 @@
 	            return false;
 	        },
 	        /**
-	         * @param {number|string} x
-	         * @return {string}
+	         * @param {number|string} x - value
+	         * @return {string} converted value
 	         */
 	        convert( x ) {
 	            if ( isNumber( x ) ) {
@@ -12287,8 +12260,8 @@
 	     */
 	    'datetime': {
 	        /**
-	         * @param {string} x
-	         * @return {boolean}
+	         * @param {string} x - value
+	         * @return {boolean} whether value is valid
 	         */
 	        validate( x ) {
 	            const parts = x.split( 'T' );
@@ -12299,8 +12272,8 @@
 	            return types.date.validate( parts[ 0 ] );
 	        },
 	        /**
-	         * @param {number|string} x
-	         * @return {string}
+	         * @param {number|string} x - value
+	         * @return {string} converted value
 	         */
 	        convert( x ) {
 	            let date = 'Invalid Date';
@@ -12333,9 +12306,9 @@
 	        // (for timezone offset), as long as the convertor automatically converts
 	        // to a valid time.
 	        /**
-	         * @param {string} x
-	         * @param {boolean} [requireMillis]
-	         * @return {boolean}
+	         * @param {string} x - value
+	         * @param {boolean} [requireMillis] - whether milliseconds are required
+	         * @return {boolean} whether value is valid
 	         */
 	        validate( x, requireMillis ) {
 	            let m = x.match( /^(\d\d):(\d\d):(\d\d)\.\d\d\d(\+|-)(\d\d):(\d\d)$/ );
@@ -12358,9 +12331,9 @@
 	                m[ 6 ] < 60 && m[ 6 ] >= 0; // this is probably either 0 or 30
 	        },
 	        /**
-	         * @param {string} x
-	         * @param {boolean} [requireMillis]
-	         * @return {string}
+	         * @param {string} x - value
+	         * @param {boolean} [requireMillis] - whether milliseconds are required
+	         * @return {string} converted value
 	         */
 	        convert( x, requireMillis ) {
 	            let date;
@@ -12416,8 +12389,8 @@
 	         * converts "11:30 AM", and "11:30 ", and "11:30 上午" to: "11:30"
 	         * converts "11:30 PM", and "11:30 下午" to: "23:30"
 	         *
-	         * @param {string} x
-	         * @return {string}
+	         * @param {string} x - value
+	         * @return {string} converted value
 	         */
 	        convertMeridian( x ) {
 	            x = x.trim();
@@ -12454,8 +12427,8 @@
 	     */
 	    'geopoint': {
 	        /**
-	         * @param {string} x
-	         * @return {boolean}
+	         * @param {string} x - value
+	         * @return {boolean} whether value is valid
 	         */
 	        validate( x ) {
 	            const coords = x.toString().trim().split( ' ' );
@@ -12469,8 +12442,8 @@
 	                ( typeof coords[ 3 ] === 'undefined' || ( !isNaN( coords[ 3 ] ) && coords[ 3 ] >= 0 ) );
 	        },
 	        /**
-	         * @param {string} x
-	         * @return {string}
+	         * @param {string} x - value
+	         * @return {string} converted value
 	         */
 	        convert( x ) {
 	            return x.toString().trim();
@@ -12481,8 +12454,8 @@
 	     */
 	    'geotrace': {
 	        /**
-	         * @param {string} x
-	         * @return {boolean}
+	         * @param {string} x - value
+	         * @return {boolean} whether value is valid
 	         */
 	        validate( x ) {
 	            const geopoints = x.toString().split( ';' );
@@ -12490,8 +12463,8 @@
 	            return geopoints.length >= 2 && geopoints.every( geopoint => types.geopoint.validate( geopoint ) );
 	        },
 	        /**
-	         * @param {string} x
-	         * @return {string}
+	         * @param {string} x - value
+	         * @return {string} converted value
 	         */
 	        convert( x ) {
 	            return x.toString().trim();
@@ -12502,8 +12475,8 @@
 	     */
 	    'geoshape': {
 	        /**
-	         * @param {string} x
-	         * @return {boolean}
+	         * @param {string} x - value
+	         * @return {boolean} whether value is valid
 	         */
 	        validate( x ) {
 	            const geopoints = x.toString().split( ';' );
@@ -12511,8 +12484,8 @@
 	            return geopoints.length >= 4 && ( geopoints[ 0 ] === geopoints[ geopoints.length - 1 ] ) && geopoints.every( geopoint => types.geopoint.validate( geopoint ) );
 	        },
 	        /**
-	         * @param {string} x
-	         * @return {string}
+	         * @param {string} x - value
+	         * @return {string} converted value
 	         */
 	        convert( x ) {
 	            return x.toString().trim();
@@ -12646,9 +12619,8 @@
 	 * Xforms-value-changed event as defined in the ODK XForms spec.
 	 *
 	 * @see https://opendatakit.github.io/xforms-spec/#event:xforms-value-changed
-	 *@return {CustomEvent} Custom "xforms-value-changed" event (bubbling)
 	 * @param {{repeatIndex: number}} detail - Data to be passed with event.
-	 * @return {Event} "change" event (bubbling)
+	 * @return {CustomEvent} Custom "xforms-value-changed" event (bubbling).
 	 */
 	function XFormsValueChanged( detail ) {
 	    return new CustomEvent( 'xforms-value-changed', { detail, bubbles: true } );
@@ -22239,7 +22211,7 @@
 
 	/**
 	 * @function xpath-evaluator-binding
-	 * @param {Function} addExtensions
+	 * @param {Function} addExtensions - extension function
 	 */
 	function bindJsEvaluator( addExtensions ) {
 	    const evaluator = new engine.XPathEvaluator();
@@ -22458,12 +22430,17 @@
 	            id = 'record';
 	            if ( this.data.instanceStr ) {
 	                this.mergeXml( this.data.instanceStr );
-	            } else {
+	            }
+
+	            // Set the two most important meta fields before any field 'dataupdate' event fires.
+	            // The first dataupdate event will fire in response to the instance-first-load event.
+	            this.setInstanceIdAndDeprecatedId();
+
+	            if ( !this.data.instanceStr ){
 	                // Only dispatch for newly created records
 	                this.events.dispatchEvent( events.InstanceFirstLoad() );
 	            }
-	            // Set the two most important meta fields before any field 'dataupdate' event fires.
-	            this.setInstanceIdAndDeprecatedId();
+
 	        } catch ( e ) {
 	            console.error( e );
 	            this.loadErrors.push( `Error trying to parse XML ${id}. ${e.message}` );
@@ -22485,7 +22462,7 @@
 
 	/**
 	 * @param {string} id - Instance ID
-	 * @param {object} [sessObj]
+	 * @param {object} [sessObj] - session object
 	 */
 	FormModel.prototype.createSession = function( id, sessObj ) {
 	    let instance;
@@ -22523,12 +22500,12 @@
 	 * in IE11. This function is a replacement for this specifically to find a secondary instance.
 	 *
 	 * @param  {string} id - DOM element id.
-	 * @return {Element}
+	 * @return {Element|undefined} secondary instance XML element
 	 */
 	FormModel.prototype.getSecondaryInstance = function( id ) {
 	    let instanceEl;
 
-	    [].slice.call( this.xml.querySelectorAll( 'model > instance' ) ).some( el => {
+	    [ ...this.xml.querySelectorAll( 'model > instance' ) ].some( el => {
 	        const idAttr = el.getAttribute( 'id' );
 	        if ( idAttr === id ) {
 	            instanceEl = el;
@@ -22545,10 +22522,10 @@
 	/**
 	 * Returns a new Nodeset instance
 	 *
-	 * @param {string|null} [selector]
-	 * @param {string|number|null} [index]
-	 * @param {NodesetFilter|null} [filter]
-	 * @return {Nodeset}
+	 * @param {string|null} [selector] - simple path to node
+	 * @param {string|number|null} [index] - index of node
+	 * @param {NodesetFilter|null} [filter] - filter to apply
+	 * @return {Nodeset} Nodeset instance
 	 */
 	FormModel.prototype.node = function( selector, index, filter ) {
 	    return new Nodeset( selector, index, filter, this );
@@ -22598,7 +22575,6 @@
 	 * Merges an XML instance string into the XML Model
 	 *
 	 * @param {string} recordStr - The XML record as string
-	 * @param {string} modelDoc - The XML model to merge the record into
 	 */
 	FormModel.prototype.mergeXml = function( recordStr ) {
 	    let modelInstanceChildStr;
@@ -22684,7 +22660,7 @@
 	                    }
 	                }
 	            } catch ( e ) {
-	                console.log( 'Ignored error:', e );
+	                console.warn( 'Ignored error:', e );
 	            }
 	        } );
 
@@ -22793,6 +22769,12 @@
 	    instanceIdEl = instanceIdObj.getElement();
 	    instanceIdExistingVal = instanceIdObj.getVal();
 
+	    if ( !instanceIdEl ){
+	        console.warn( 'Model has no instanceID element' );
+
+	        return;
+	    }
+
 	    if ( this.data.instanceStr && this.data.submitted ) {
 	        deprecatedIdEl = this.getMetaNode( 'deprecatedID' ).getElement();
 
@@ -22822,12 +22804,12 @@
 	 * Creates a custom XPath Evaluator to be used for XPath Expresssions that contain custom
 	 * OpenRosa functions or for browsers that do not have a native evaluator.
 	 *
-	 * @type function
+	 * @type {Function}
 	 */
 	FormModel.prototype.bindJsEvaluator = bindJsEvaluator;
 
 	/**
-	 * @param {string} localName
+	 * @param {string} localName - node name without namespace
 	 * @return {Element} node
 	 */
 	FormModel.prototype.getMetaNode = function( localName ) {
@@ -22842,7 +22824,7 @@
 	};
 
 	/**
-	 * @param {string} path
+	 * @param {string} path - path to repeat
 	 * @return {string} repeat comment text
 	 */
 	FormModel.prototype.getRepeatCommentText = path => {
@@ -22852,7 +22834,7 @@
 	};
 
 	/**
-	 * @param {string} repeatPath
+	 * @param {string} repeatPath - path to repeat
 	 * @return {string} selector
 	 */
 	FormModel.prototype.getRepeatCommentSelector = function( repeatPath ) {
@@ -22860,8 +22842,8 @@
 	};
 
 	/**
-	 * @param {string} repeatPath
-	 * @param {number} repeatSeriesIndex
+	 * @param {string} repeatPath - path to repeat
+	 * @param {number} repeatSeriesIndex - index of repeat series
 	 * @return {Element} node
 	 */
 	FormModel.prototype.getRepeatCommentEl = function( repeatPath, repeatSeriesIndex ) {
@@ -23016,7 +22998,7 @@
 	};
 
 	/**
-	 * @param {Array<string>} repeatPaths
+	 * @param {Array<string>} repeatPaths - repeat paths
 	 */
 	FormModel.prototype.extractFakeTemplates = function( repeatPaths ) {
 	    const that = this;
@@ -23033,7 +23015,7 @@
 	};
 
 	/**
-	 * @param {string} repeatPath
+	 * @param {string} repeatPath - path to repeat
 	 */
 	FormModel.prototype.addRepeatComments = function( repeatPath ) {
 	    const comment = this.getRepeatCommentText( repeatPath );
@@ -23048,9 +23030,9 @@
 	};
 
 	/**
-	 * @param {string} repeatPath
+	 * @param {string} repeatPath - path to repeat
 	 * @param {Element} repeat - Target node
-	 * @param {boolean} empty
+	 * @param {boolean} empty - whether to empty values before adding the template
 	 */
 	FormModel.prototype.addTemplate = function( repeatPath, repeat, empty ) {
 	    this.addRepeatComments( repeatPath );
@@ -23077,11 +23059,7 @@
 	FormModel.prototype.getTemplateNodes = function() {
 	    const jrPrefix = this.getNamespacePrefix( JAVAROSA_XFORMS_NS );
 
-	    // For now we support both the official namespaced template and the hacked non-namespaced template attributes
-	    // Note: due to an MS Edge bug, we use the slow JS XPath evaluator here. It would be VERY GOOD for performance
-	    // to switch back once the Edge bug is fixed. The bug results in not finding any templates.
-	    // https://developer.microsoft.com/en-us/microsoft-edge/platform/issues/9544701/
-	    return this.evaluate( `/model/instance[1]/*//*[@template] | /model/instance[1]/*//*[@${jrPrefix}:template]`, 'nodes', null, null, false );
+	    return this.evaluate( `/model/instance[1]/*//*[@${jrPrefix}:template]`, 'nodes', null, null, true );
 	};
 
 	/**
@@ -23238,7 +23216,7 @@
 	/**
 	 * Returns a namespace resolver with single `lookupNamespaceURI` method
 	 *
-	 * @return {{lookupNamespaceURI: Function}}
+	 * @return {{lookupNamespaceURI: Function}} namespace resolver
 	 */
 	FormModel.prototype.getNsResolver = function() {
 	    const namespaces = ( typeof this.namespaces === 'undefined' ) ? {} : this.namespaces;
@@ -23327,8 +23305,8 @@
 	 * to their native XPath equivalents using [position() = x] predicates
 	 *
 	 * @param {string} expr - The XPath expression
-	 * @param {string} selector
-	 * @param {number} index
+	 * @param {string} selector - context path
+	 * @param {number} index - index of context node
 	 * @return {string} Converted XPath expression
 	 */
 	FormModel.prototype.replaceIndexedRepeatFn = function( expr, selector, index ) {
@@ -23382,8 +23360,8 @@
 
 	/**
 	 * @param {string} expr - The XPath expression
-	 * @param {string} selector
-	 * @param {number} index
+	 * @param {string} selector - context path
+	 * @param {number} index - index of context node
 	 * @return {string} Converted XPath expression
 	 */
 	FormModel.prototype.replacePullDataFn = function( expr, selector, index ) {
@@ -23404,8 +23382,8 @@
 
 	/**
 	 * @param {string} expr - The XPath expression
-	 * @param {string} selector
-	 * @param {number} index
+	 * @param {string} selector - context path
+	 * @param {number} index - index of context node
 	 * @return {string} Converted XPath expression
 	 */
 	FormModel.prototype.convertPullDataFn = function( expr, selector, index ) {
@@ -23433,8 +23411,7 @@
 	            // The 4th argument will become an XPath predicate. The context for an XPath predicate, is not the same
 	            // as the context for the complete expression, so we have to evaluate the position separately. Otherwise
 	            // relative paths would break.
-	            searchValue = that.evaluate( params[ 3 ], 'string', selector, index, true );
-	            searchValue = searchValue === '' || isNaN( searchValue ) ? `'${searchValue}'` : searchValue;
+	            searchValue = `'${that.evaluate( params[ 3 ], 'string', selector, index, true )}'`;
 	            searchXPath = `instance(${params[ 0 ]})/root/item[${params[ 2 ]} = ${searchValue}]/${params[ 1 ]}`;
 
 	            replacements[ pullData[ 0 ] ] = searchXPath;
@@ -23460,7 +23437,7 @@
 	 * @param {number} [index] - 0-based index of selector in document
 	 * @param {boolean} [tryNative] - Whether an attempt to try the Native Evaluator is safe (ie. whether it is
 	 *                                certain that there are no date comparisons)
-	 * @return {number|string|boolean|Array<element>} The result
+	 * @return {number|string|boolean|Array<Element>} The result
 	 */
 	FormModel.prototype.evaluate = function( expr, resTypeStr, selector, index, tryNative ) {
 	    let j, context, doc, resTypeNum, resultTypes, result, collection, response, repeats, cacheKey, original, cacheable;
@@ -23549,8 +23526,8 @@
 	            // console.log( 'trying the blazing fast native XPath Evaluator for', expr, index );
 	            result = doc.evaluate( expr, context, this.getNsResolver(), resTypeNum, null );
 	        } catch ( e ) {
-	            console.log( '%cWell native XPath evaluation did not work... No worries, worth a shot, the expression probably ' +
-	                'contained unknown OpenRosa functions or errors:', 'color:orange', expr );
+	            //console.log( '%cWell native XPath evaluation did not work... No worries, worth a shot, the expression probably ' +
+	            //    'contained unknown OpenRosa functions or errors:', expr );
 	        }
 	    }
 
@@ -23734,7 +23711,7 @@
 	        return null;
 	    }
 	    if ( targets.length === 0 ) {
-	        console.log( `Data node: ${this.selector} with null-based index: ${this.index} not found. Ignored.` );
+	        console.warn( `Data node: ${this.selector} with null-based index: ${this.index} not found. Ignored.` );
 
 	        return null;
 	    }
@@ -23847,7 +23824,7 @@
 	 * @param {string} constraintExpr - The XPath expression
 	 * @param {string} requiredExpr - The XPath expression
 	 * @param {string} xmlDataType - XML data type
-	 * @return {Promise}
+	 * @return {Promise} promise that resolves with a ValidateInputResolution object
 	 */
 	Nodeset.prototype.validate = function( constraintExpr, requiredExpr, xmlDataType ) {
 	    const that = this;
@@ -23916,7 +23893,7 @@
 	 * Validates if requiredness is fulfilled.
 	 *
 	 * @param {string} [expr] - The XPath expression
-	 * @return {Promise<boolean>}
+	 * @return {Promise<boolean>} Promise that resolves with a boolean
 	 */
 	Nodeset.prototype.validateRequired = function( expr ) {
 	    const that = this;
@@ -24064,14 +24041,14 @@
 
 	var inputHelper = {
 	    /**
-	     * @param {Element} control
+	     * @param {Element} control - form control HTML element
 	     * @return {Element} Wrap node
 	     */
 	    getWrapNode( control ) {
 	        return control.closest( '.question, .calculation, .setvalue' );
 	    },
 	    /**
-	     * @param {Array<Element>} controls
+	     * @param {Array<Element>} controls - form controls HTML elements
 	     * @return {Array<Element>} Wrap nodes
 	     */
 	    getWrapNodes( controls ) {
@@ -24086,7 +24063,7 @@
 	        return result;
 	    },
 	    /**
-	     * @param {Element} control
+	     * @param {Element} control - form control HTML element
 	     * @return {object} control element properties
 	     */
 	    getProps( control ) {
@@ -24106,7 +24083,7 @@
 	        };
 	    },
 	    /**
-	     * @param {Element} control
+	     * @param {Element} control - form control HTML element
 	     * @return {string} input type
 	     */
 	    getInputType( control ) {
@@ -24140,14 +24117,14 @@
 	        }
 	    },
 	    /**
-	     * @param {Element} control
+	     * @param {Element} control - form control HTML element
 	     * @return {string} element constraint
 	     */
 	    getConstraint( control ) {
 	        return control.dataset.constraint;
 	    },
 	    /**
-	     * @param {Element} control
+	     * @param {Element} control - form control HTML element
 	     * @return {string|undefined} element required
 	     */
 	    getRequired( control ) {
@@ -24157,35 +24134,35 @@
 	        }
 	    },
 	    /**
-	     * @param {Element} control
+	     * @param {Element} control - form control HTML element
 	     * @return {string} element relevant
 	     */
 	    getRelevant( control ) {
 	        return control.dataset.relevant;
 	    },
 	    /**
-	     * @param {Element} control
+	     * @param {Element} control - form control HTML element
 	     * @return {boolean} whether element is read only
 	     */
 	    getReadonly( control ) {
 	        return control.matches( '[readonly]' );
 	    },
 	    /**
-	     * @param {Element} control
+	     * @param {Element} control - form control HTML element
 	     * @return {string} element calculate
 	     */
 	    getCalculation( control ) {
 	        return control.dataset.calculate;
 	    },
 	    /**
-	     * @param {Element} control
+	     * @param {Element} control - form control HTML element
 	     * @return {string} element XML type
 	     */
 	    getXmlType( control ) {
 	        return ( control.dataset.typeXml || 'string' ).toLowerCase();
 	    },
 	    /**
-	     * @param {Element} control
+	     * @param {Element} control - form control HTML element
 	     * @return {string} element name
 	     */
 	    getName( control ) {
@@ -24197,28 +24174,28 @@
 	        return name;
 	    },
 	    /**
-	     * @param {Element} control
-	     * @return {string}
+	     * @param {Element} control - form control HTML element
+	     * @return {number} - the repeat index of the form control
 	     */
 	    getIndex( control ) {
 	        return this.form.repeats.getIndex( control.closest( '.or-repeat' ) );
 	    },
 	    /**
-	     * @param {Element} control
+	     * @param {Element} control - form control HTML element
 	     * @return {boolean} whether element is multiple
 	     */
 	    isMultiple( control ) {
 	        return this.getInputType( control ) === 'checkbox' || control.multiple;
 	    },
 	    /**
-	     * @param {Element} control
+	     * @param {Element} control - form control HTML element
 	     * @return {boolean} whether element is enabled
 	     */
 	    isEnabled( control ) {
 	        return !( control.disabled || closestAncestorUntil( control, '.disabled', '.or' ) );
 	    },
 	    /**
-	     * @param {Element} control
+	     * @param {Element} control - form control HTML element
 	     * @return {string} element value
 	     */
 	    getVal( control ) {
@@ -24264,9 +24241,9 @@
 	    },
 	    /**
 	     * Finds a form control that is not a nested setvalue/xforms-value-changed directive
-	     * 
-	     * @param {string} name
-	     * @param {number} index
+	     *
+	     * @param {string} name - name attribute value
+	     * @param {number} index - repeat index
 	     * @return {Element} found element
 	     */
 	    find( name, index = 0 ) {
@@ -24280,10 +24257,12 @@
 	        return question ? question.querySelector( `[${attr}="${name}"]:not(.ignore)` ) : null;
 	    },
 	    /**
-	     * @param {Element} control
-	     * @param {*} value
-	     * @param {Event} [event]
-	     * @return {Element}
+	     * Sets the value of a form control (or group like radiobuttons)
+	     *
+	     * @param {Element} control - form control HTML element
+	     * @param {string|number} value - value to set
+	     * @param {Event} [event] - event to fire after setting value
+	     * @return {Element} first control whose value was set
 	     */
 	    setVal( control, value, event = events.InputUpdate() ) {
 	        let inputs;
@@ -24401,8 +24380,8 @@
 	        return inputs[ 0 ];
 	    },
 	    /**
-	     * @param {Element} control
-	     * @return {Promise<undefined|ValidateInputResolution>}
+	     * @param {Element} control - form control HTML element
+	     * @return {Promise<undefined|ValidateInputResolution>} Promise that resolves
 	     */
 	    validate( control ) {
 	        return this.form.validateInput( control );
@@ -24736,8 +24715,8 @@
 	     * Minimal XPath evaluation helper that queries from a single item context.
 	     *
 	     * @param {string} expr - The XPath expression
-	     * @param {string} context
-	     * @param {boolean} single
+	     * @param {string} context - context path
+	     * @param {boolean} single - whether to only return a single (first) node
 	     * @return {Array<Element>} found nodes
 	     */
 	    getNodesFromItem( expr, context, single ) {
@@ -24760,19 +24739,21 @@
 	    },
 
 	    /**
-	     * @param {string} expr - The XPath expression
-	     * @param {string} content
+	     * @param {string} expr - XPath expression
+	     * @param {string} context - evalation context path
 	     * @return {Element|null} found nodes
 	     */
-	    getNodeFromItem( expr, content ) {
-	        const nodes = this.getNodesFromItem( expr, content, true );
+	    getNodeFromItem( expr, context ) {
+	        const nodes = this.getNodesFromItem( expr, context, true );
 
 	        return nodes.length ? nodes[ 0 ] : null;
 	    },
 
 	    /**
-	     * @param {string} label
-	     * @param {string} value
+	     * Creates a HTML option element
+	     *
+	     * @param {string} label - option label
+	     * @param {string} value - option value
 	     * @return {Element} created option
 	     */
 	    createOption( label, value ) {
@@ -24784,8 +24765,12 @@
 	    },
 
 	    /**
-	     * @param {string} translation
-	     * @param {string} value
+	     * Creates an option translation <span> element
+	     *
+	     * @param {object} translation - translation object
+	     * @param {string} [translation.type] - type of element to create, defaults to span
+	     * @param {string} [translation.text] - translation text
+	     * @param {string} value - option value
 	     * @return {Element} created element
 	     */
 	    createOptionTranslation( translation, value ) {
@@ -24808,9 +24793,11 @@
 	    },
 
 	    /**
-	     * @param {Array<object>} attributes
-	     * @param {Array<object>} translations
-	     * @param {string} value
+	     * Creates an input HTML element
+	     *
+	     * @param {Array<object>} attributes - attributes to add to input
+	     * @param {Array<object>} translations - translation to add
+	     * @param {string} value - option value
 	     * @return {Element} label element (wrapper)
 	     */
 	    createInput( attributes, translations, value ) {
@@ -24847,8 +24834,6 @@
 	var repeatModule = {
 	    /**
 	     * Initializes all Repeat Groups in form (only called once).
-	     *
-	     * @param  {Form} form - the parent form object
 	     */
 	    init() {
 	        const that = this;
@@ -24993,7 +24978,7 @@
 	     * [updateViewInstancesFromModel description]
 	     *
 	     * @param {Element} repeatInfo - repeatInfo element
-	     * @return {number}
+	     * @return {number} length of repeat series in model
 	     */
 	    updateViewInstancesFromModel( repeatInfo ) {
 	        const repeatPath = repeatInfo.dataset.name;
@@ -25220,13 +25205,13 @@
 	                const input = inputs.length ? inputs[ 0 ] : null;
 
 	                if ( input ) {
-	                    // For very long static datalists, a huge performance improvement can be achieved, by using the 
+	                    // For very long static datalists, a huge performance improvement can be achieved, by using the
 	                    // same datalist for all repeat instances that use it.
 	                    if ( this.staticLists.includes( id ) ) {
 	                        datalist.remove();
 	                    } else {
 	                        // Let all identical input[list] questions amongst all repeat instances use the same
-	                        // datalist by moving it under repeatInfo. 
+	                        // datalist by moving it under repeatInfo.
 	                        // It will survive removal of all repeat instances.
 	                        const parent = datalist.parentElement;
 	                        const name = input.name;
@@ -25279,7 +25264,7 @@
 
 	var tocModule = {
 	    /**
-	     * @type Array
+	     * @type {Array}
 	     * @default
 	     */
 	    tocItems: [],
@@ -25327,7 +25312,7 @@
 	    /**
 	     * Generate ToC Html Fragment
 	     *
-	     * @return DocumentFragment
+	     * @return {DocumentFragment} HTML list element containing Table of Contents
 	     */
 	    getHtmlFragment() {
 	        this.generateTocItems();
@@ -25362,7 +25347,7 @@
 	    /**
 	     * Get Title of Current ToC Element
 	     *
-	     * @param {Element} el
+	     * @param {Element} el - HTML element that serves as page
 	     */
 	    _getTitle( el ) {
 	        let tocItemText;
@@ -25382,8 +25367,8 @@
 	    /**
 	     * Builds List of ToC Items
 	     *
-	     * @param {Array<object>} items
-	     * @param {Element} appendTo
+	     * @param {Array<object>} items - ToC list of items
+	     * @param {Element} appendTo - HTML Element to append ToC list to
 	     */
 	    _buildTocHtmlList( items, appendTo ) {
 	        if ( items.length > 0 ) {
@@ -25448,16 +25433,16 @@
 	     */
 	    active: false,
 	    /**
-	     * @type Array|jQuery
+	     * @type {Array|jQuery}
 	     * @default
 	     */
 	    current: null,
 	    /**
-	     * @type jQuery
+	     * @type {jQuery}
 	     */
 	    activePages: [],
 	    /**
-	     * @type function
+	     * @type {Function}
 	     */
 	    init() {
 	        if ( !this.form ) {
@@ -25508,7 +25493,7 @@
 	     * alternatively, (e.g. if a top level repeat without field-list appearance is provided as parameter)
 	     * it flips to the page contained with the jQueried parameter;
 	     *
-	     * @param {jQuery} $e
+	     * @param {jQuery} $e - Element on page to flip to
 	     */
 	    flipToPageContaining( $e ) {
 	        let $closest;
@@ -25681,7 +25666,7 @@
 	        return this.current;
 	    },
 	    /**
-	     * @param {Array<Node>} all
+	     * @param {Array<Node>} all - all elements that represent a page
 	     */
 	    _updateAllActive( all ) {
 	        all = all || [ ...this.form.view.html.querySelectorAll( '[role="page"]' ) ];
@@ -25696,14 +25681,14 @@
 	        this._updateToc();
 	    },
 	    /**
-	     * @param {number} currentIndex
+	     * @param {number} currentIndex - current index
 	     * @return {jQuery} Previous page
 	     */
 	    _getPrev( currentIndex ) {
 	        return this.activePages[ currentIndex - 1 ];
 	    },
 	    /**
-	     * @param {number} currentIndex
+	     * @param {number} currentIndex - current index
 	     * @return {jQuery} Next page
 	     */
 	    _getNext( currentIndex ) {
@@ -25761,7 +25746,7 @@
 	        }
 	    },
 	    /**
-	     * @param {Element} pageEl
+	     * @param {Element} pageEl - page element
 	     */
 	    _setToCurrent( pageEl ) {
 	        pageEl.classList.add( 'current', 'hidden' );
@@ -25774,8 +25759,8 @@
 	    /**
 	     * Switches to a page
 	     *
-	     * @param {Element} pageEl
-	     * @param {number} newIndex
+	     * @param {Element} pageEl - page element
+	     * @param {number} newIndex - new index
 	     */
 	    _flipTo( pageEl, newIndex ) {
 	        // if there is a current page (note: if current page was removed it is not null, hence the .closest('html') check)
@@ -25812,7 +25797,7 @@
 	    /**
 	     * Focuses on first question and scrolls it into view
 	     *
-	     * @param {Element} pageEl
+	     * @param {Element} pageEl - page element
 	     */
 	    _focusOnFirstQuestion( pageEl ) {
 	        //triggering fake focus in case element cannot be focused (if hidden by widget)
@@ -25832,7 +25817,7 @@
 	    /**
 	     * Updates status of navigation buttons
 	     *
-	     * @param {number} [index]
+	     * @param {number} [index] - index of current page
 	     */
 	    _toggleButtons( index = this._getCurrentIndex() ) {
 	        const next = this._getNext( index );
@@ -25862,7 +25847,7 @@
 	var relevantModule = {
 	    /**
 	     * @param {UpdatedDataNodes} [updated] - The object containing info on updated data nodes.
-	     * @param {boolean} forceClearNonRelevant
+	     * @param {boolean} forceClearNonRelevant -  whether to empty the values of non-relevant nodes
 	     */
 	    update( updated, forceClearNonRelevant ) {
 	        let $nodes;
@@ -25876,8 +25861,8 @@
 	        this.updateNodes( $nodes, forceClearNonRelevant );
 	    },
 	    /**
-	     * @param {jQuery} $nodes
-	     * @param {boolean} forceClearNonRelevant
+	     * @param {jQuery} $nodes - Nodes to update
+	     * @param {boolean} forceClearNonRelevant - whether to empty the values of non-relevant nodes
 	     */
 	    updateNodes( $nodes, forceClearNonRelevant ) {
 	        let p;
@@ -26005,10 +25990,10 @@
 	    /**
 	     * Evaluates a relevant expression (for future fancy stuff this is placed in a separate function)
 	     *
-	     * @param {string} expr
-	     * @param {string} contextPath
-	     * @param {number} index
-	     * @return {boolean}
+	     * @param {string} expr - relevant XPath expression to evaluate
+	     * @param {string} contextPath - Path of the context node
+	     * @param {number} index - index of context node
+	     * @return {boolean} result of evaluation
 	     */
 	    evaluate( expr, contextPath, index ) {
 	        const result = this.form.model.evaluate( expr, 'boolean', contextPath, index );
@@ -26018,10 +26003,10 @@
 	    /**
 	     * Processes the evaluation result for a branch
 	     *
-	     * @param {jQuery} $branchNode
-	     * @param {string} path - Path of branch node
+	     * @param {jQuery} $branchNode - branch node
+	     * @param {string} path - path of branch node
 	     * @param {boolean} result - result of relevant evaluation
-	     * @param {boolean} forceClearNonRelevant - Whether to force clearing of non-relevant nodes and descendants
+	     * @param {boolean} forceClearNonRelevant - whether to empty the values of non-relevant nodes
 	     */
 	    process( $branchNode, path, result, forceClearNonRelevant ) {
 	        if ( result === true ) {
@@ -26034,8 +26019,8 @@
 	    /**
 	     * Checks whether branch currently has 'relevant' state
 	     *
-	     * @param {jQuery} $branchNode
-	     * @return {boolean}
+	     * @param {jQuery} $branchNode - branch node
+	     * @return {boolean} whether branch is currently relevant
 	     */
 	    selfRelevant( $branchNode ) {
 	        return !$branchNode.hasClass( 'disabled' ) && !$branchNode.hasClass( 'pre-init' );
@@ -26045,8 +26030,8 @@
 	     * Enables and reveals a branch node/group
 	     *
 	     * @param {jQuery} $branchNode - The jQuery object to reveal and enable
-	     * @param {string} path
-	     * @return {boolean}
+	     * @param {string} path - path of branch node
+	     * @return {boolean} whether the relevant changed as a result of this action
 	     */
 	    enable( $branchNode, path ) {
 	        let change = false;
@@ -26075,9 +26060,9 @@
 	     * Disables and hides a branch node/group
 	     *
 	     * @param {jQuery} $branchNode - The jQuery object to hide and disable
-	     * @param {string} path
-	     * @param {boolean} forceClearNonRelevant
-	     * @return {boolean}
+	     * @param {string} path - path of branch node
+	     * @param {boolean} forceClearNonRelevant - whether to empty the values of non-relevant nodes
+	     * @return {boolean} whether the relevant changed as a result of this action
 	     */
 	    disable( $branchNode, path, forceClearNonRelevant ) {
 	        const virgin = $branchNode.hasClass( 'pre-init' );
@@ -26103,8 +26088,8 @@
 	     * Clears values from branchnode.
 	     * This function is separated so it can be overridden in custom apps.
 	     *
-	     * @param {jQuery} $branchNode
-	     * @param {string} path
+	     * @param {jQuery} $branchNode - branch node
+	     * @param {string} path - path of branch node
 	     */
 	    clear( $branchNode, path ) {
 	        // A change event ensures the model is updated
@@ -26119,8 +26104,8 @@
 	        }
 	    },
 	    /**
-	     * @param {jQuery} $branchNode
-	     * @param {boolean} bool
+	     * @param {jQuery} $branchNode - branch node
+	     * @param {boolean} bool - value to set disabled property to
 	     */
 	    setDisabledProperty( $branchNode, bool ) {
 	        const type = $branchNode.prop( 'nodeName' ).toLowerCase();
@@ -26138,7 +26123,7 @@
 	     * Activates form controls.
 	     * This function is separated so it can be overridden in custom apps.
 	     *
-	     * @param {jQuery} $branchNode
+	     * @param {jQuery} $branchNode - branch node
 	     */
 	    activate( $branchNode ) {
 	        this.setDisabledProperty( $branchNode, false );
@@ -26147,7 +26132,7 @@
 	     * Deactivates form controls.
 	     * This function is separated so it can be overridden in custom apps.
 	     *
-	     * @param {jQuery} $branchNode
+	     * @param {jQuery} $branchNode - branch node
 	     */
 	    deactivate( $branchNode ) {
 	        $branchNode.addClass( 'disabled' );
@@ -26172,11 +26157,11 @@
 	     */
 	    status: 0,
 	    /**
-	     * @type Element
+	     * @type {Element}
 	     */
 	    lastChanged: null,
 	    /**
-	     * @type Array<Element>
+	     * @type {Array<Element>}
 	     */
 	    all: null,
 	    /**
@@ -26189,7 +26174,7 @@
 	    /**
 	     * Updates rounded % value of progress and triggers event if changed.
 	     *
-	     * @param {Element} el
+	     * @param {Element} el - the element that represent the current state of progress
 	     */
 	    update( el ) {
 	        let status;
@@ -26263,7 +26248,7 @@
 	        const that = this;
 
 	        return {
-	            get readonly() { return that.element.nodeName.toLowerCase() === 'select' ? !!that.element.getAttribute( 'readonly' ) : !!that.element.readOnly; },
+	            get readonly() { return that.element.nodeName.toLowerCase() === 'select' ? that.element.hasAttribute( 'readonly' ) : !!that.element.readOnly; },
 	            appearances: [ ...this.element.closest( '.question, form.or' ).classList ]
 	                .filter( cls => cls.indexOf( 'or-appearance-' ) === 0 )
 	                .map( cls => cls.substring( 14 ) ),
@@ -26307,7 +26292,7 @@
 	     * Returns a HTML document fragment for a reset button.
 	     *
 	     * @readonly
-	     * @type Element
+	     * @type {Element}
 	     */
 	    get resetButtonHtml() {
 	        return range.createContextualFragment(
@@ -26324,7 +26309,7 @@
 	     * Returns a HTML document fragment for a download button.
 	     *
 	     * @readonly
-	     * @type Element
+	     * @type {Element}
 	     */
 	    get downloadButtonHtml() {
 	        return range.createContextualFragment(
@@ -26349,7 +26334,7 @@
 	    /**
 	     * Sets a value in the widget. Should be overridden.
 	     *
-	     * @param {*} value
+	     * @param {*} value - value to set
 	     * @type {*}
 	     */
 	    set value( value ) {}
@@ -26369,7 +26354,7 @@
 	     * Updates the value in the original form control the widget is instantiated on.
 	     * This form control is often hidden by the widget.
 	     *
-	     * @param {*} value
+	     * @param {*} value - value to set
 	     * @type {*}
 	     */
 	    set originalInputValue( value ) {
@@ -26407,7 +26392,7 @@
 	     * Note that the Element (used in the constructor) will be provided as parameter.
 	     *
 	     * @static
-	     * @return {boolean}
+	     * @return {boolean} to instantiate or not to instantiate, that is the question
 	     */
 	    static condition() {
 	        return true;
@@ -26447,7 +26432,7 @@
 
 	/**
 	 * Detects features.
-	 * 
+	 *
 	 * @module support
 	 */
 
@@ -26468,13 +26453,13 @@
 	}
 
 	var support = {
-	    /** 
-	     * @type Array<string>
+	    /**
+	     * @type {Array<string>}
 	     **/
 	    get inputTypes() {
 	        return inputTypes;
 	    },
-	    /** 
+	    /**
 	     * @type {boolean}
 	     **/
 	    get touch() {
@@ -26657,6 +26642,8 @@
 	 * The replacement should have and use getters and setters for `value` and `originalInputValue`
 	 */
 
+	const range$1 = document.createRange();
+
 	/**
 	 * Bootstrap Select picker that supports single and multiple selects
 	 * A port of https://github.com/silviomoreto/bootstrap-select
@@ -26686,10 +26673,11 @@
 	    }
 
 	    _init() {
-	        const $select = jquery( this.element );
-	        $select.css( 'display', 'none' );
-	        const $template = this._createLi( this._getTemplate() );
-	        this.$picker = $template.insertAfter( $select );
+	        const select =  this.element;
+	        select.style.display = 'none';
+	        const template = this._getTemplate();
+	        select.after( template );
+	        this.picker = this.question.querySelector( '.bootstrap-select' );
 	        if ( this.props.readonly ) {
 	            this.disable();
 	        }
@@ -26698,41 +26686,36 @@
 	    }
 
 	    /**
-	     * @return {string} HTML string
+	     * @return {Element} HTML fragment
 	     */
 	    _getTemplate() {
-	        return `
+	        const template = range$1.createContextualFragment( `
         <div class="btn-group bootstrap-select widget clearfix">
             <button type="button" class="btn btn-default dropdown-toggle clearfix" data-toggle="dropdown">
-                <span class="selected">__SELECTED_OPTIONS</span><span class="caret"></span>
+                <span class="selected"></span><span class="caret"></span>
             </button>
-            <ul class="dropdown-menu" role="menu">__ADD_LI</ul>
-        </div>`;
+            <ul class="dropdown-menu" role="menu">${this._getLisHtml()}</ul>
+        </div>` );
+	        this._showSelected( template.querySelector( '.selected' ) );
+
+	        return template;
 	    }
 
 	    /**
-	     * @param {string} template - The select template to use.
-	     * @return {jQuery} - The jQuery-wrapped template.
+	     * Generates HTML text for <li> elements
 	     */
-	    _createLi( template ) {
-	        const li = [];
-	        let liHtml = '';
+	    _getLisHtml( ) {
 	        const inputAttr = this.props.multiple ? 'type="checkbox"' : `type="radio" name="${Math.random() * 100000}"`;
 
-	        jquery( this.element ).find( 'option' ).each( function() {
-	            li.push( {
-	                label: jquery( this ).text(),
-	                selected: jquery( this ).is( ':selected' ),
-	                value: jquery( this ).attr( 'value' )
-	            } );
-	        } );
+	        return [ ...this.element.querySelectorAll( 'option' ) ]
+	            .map( option => {
+	                const label = option.textContent;
+	                const selected = option.matches( ':checked' );
+	                const value = option.value;
+	                if ( value ) {
+	                    const checkedInputAttr = selected ? ' checked="checked"' : '';
+	                    const checkedLiAttr = selected ? 'class="active"' : '';
 
-	        if ( li.length > 0 ) {
-	            template = template.replace( '__SELECTED_OPTIONS', this._createSelectedStr() );
-	            for ( let i = 0; i < li.length; i++ ) {
-	                if ( li[ i ].value ) {
-	                    const checkedInputAttr = li[ i ].selected ? ' checked="checked"' : '';
-	                    const checkedLiAttr = li[ i ].selected ? 'class="active"' : '';
 	                    /**
 	                     * e.g.:
 	                     * <li checked="checked">
@@ -26743,47 +26726,50 @@
 	                     *       </a>
 	                     *    </li>
 	                     */
-	                    liHtml += `
-                    <li ${checkedLiAttr}>
-                        <a class="option-wrapper" tabindex="-1" href="#">
-                            <label>
-                                <input class="ignore" ${inputAttr}${checkedInputAttr} value="${li[ i ].value}" />
-                                <span class="option-label">${li[ i ].label}</span>
-                            </label>
-                        </a>
-                    </li>`;
+	                    return `
+                        <li ${checkedLiAttr}>
+                            <a class="option-wrapper" tabindex="-1" href="#">
+                                <label>
+                                    <input class="ignore" ${inputAttr}${checkedInputAttr} value="${value}" />
+                                    <span class="option-label">${label}</span>
+                                </label>
+                            </a>
+                        </li>`;
+	                } else {
+	                    return '';
 	                }
-	            }
-	        }
-
-	        template = template.replace( '__ADD_LI', liHtml );
-
-	        return jquery( template );
+	            } ).join( '' );
 	    }
 
-
 	    /**
-	     * Create text to show in closed picker
+	     * Update text to show in closed picker
 	     *
-	     * @return {string} - text to show in closed picker
+	     * @param {Element} el - HTML element to show text in
 	     */
-	    _createSelectedStr() {
-	        const selectedLabels = [];
-	        const $select = jquery( this.element );
-	        $select.find( 'option:selected' ).each( function() {
-	            if ( jquery( this ).attr( 'value' ).length > 0 ) {
-	                selectedLabels.push( jquery( this ).text() );
-	            }
-	        } );
+	    _showSelected( el ) {
+	        const selectedLabels = [ ...this.element.querySelectorAll( 'option:checked' ) ]
+	            .filter( option =>  option.getAttribute( 'value' ).length )
+	            .map( option => option.textContent );
+
+	        // keys for i18next parser to pick up:
+	        // t( 'selectpicker.numberselected' );
 
 	        if ( selectedLabels.length === 0 ) {
-	            return t( 'selectpicker.noneselected' );
+	            // do not use variable for translation key to not confuse i18next-parser
+	            el.textContent = t( 'selectpicker.noneselected' );
+	            el.dataset.i18n =  'selectpicker.noneselected';
+	            delete el.dataset.i18nNumber;
+
 	        } else if ( selectedLabels.length === 1 ) {
-	            return selectedLabels[ 0 ];
+	            el.textContent = selectedLabels[ 0 ];
+	            delete el.dataset.i18n;
+	            delete el.dataset.i18nNumber;
 	        } else {
-	            return t( 'selectpicker.numberselected', {
-	                number: selectedLabels.length
-	            } );
+	            const number = selectedLabels.length;
+	            // do not use variable for translation key to not confuse i18next-parser
+	            el.textContent = t( 'selectpicker.numberselected', { number } );
+	            el.dataset.i18n = 'selectpicker.numberselected';
+	            el.dataset.i18nNumber = number ;
 	        }
 	    }
 
@@ -26793,7 +26779,7 @@
 	    _clickListener() {
 	        const _this = this;
 
-	        this.$picker
+	        jquery( this.picker )
 	            .on( 'click', 'li:not(.disabled)', function( e ) {
 	                const li = this;
 	                const input = li.querySelector( 'input' );
@@ -26809,9 +26795,9 @@
 	                }
 
 	                if ( !_this.props.multiple ) {
-	                    _this.$picker.find( 'li' ).removeClass( 'active' );
-	                    getSiblingElementsAndSelf( option, 'option' ).forEach( el => { el.selected = false; } );
-	                    _this.$picker.find( 'input' ).prop( 'checked', false );
+	                    _this.picker.querySelectorAll( 'li' ).forEach( li=> li.classList.remove( 'active' ) );
+	                    getSiblingElementsAndSelf( option, 'option' ).forEach( option => { option.selected = false; } );
+	                    _this.picker.querySelectorAll( 'input' ).forEach( input  => input.checked = false );
 	                } else {
 	                    //don't close dropdown for multiple select
 	                    e.stopPropagation();
@@ -26835,7 +26821,9 @@
 	                        input.checked = true;
 	                    }
 
-	                    _this.$picker.find( '.selected' ).html( _this._createSelectedStr() );
+	                    const showSelectedEl = _this.picker.querySelector( '.selected' );
+	                    _this._showSelected( showSelectedEl );
+
 	                    select.dispatchEvent( new events.Change() );
 	                }, 10 );
 
@@ -26875,7 +26863,7 @@
 
 	        // Focus on original element (form.goTo functionality)
 	        this.element.addEventListener( events.ApplyFocus().type, () => {
-	            _this.$picker.find( '.dropdown-toggle' ).focus();
+	            _this.picker.querySelector( '.dropdown-toggle' ).focus();
 	        } );
 	    }
 
@@ -26883,7 +26871,7 @@
 	     * Disables widget
 	     */
 	    disable() {
-	        this.$picker[ 0 ].querySelectorAll( 'li' ).forEach( el => {
+	        this.picker.querySelectorAll( 'li' ).forEach( el => {
 	            el.classList.add( 'disabled' );
 	            const input = el.querySelector( 'input' );
 	            // are both below necessary?
@@ -26896,7 +26884,7 @@
 	     * Enables widget
 	     */
 	    enable() {
-	        this.$picker[ 0 ].querySelectorAll( 'li' ).forEach( el => {
+	        this.picker.querySelectorAll( 'li' ).forEach( el => {
 	            el.classList.remove( 'disabled' );
 	            const input = el.querySelector( 'input' );
 	            input.disabled = false;
@@ -26908,7 +26896,7 @@
 	     * Updates widget
 	     */
 	    update() {
-	        this.$picker.remove();
+	        this.picker.remove();
 	        this._init();
 	    }
 	}
@@ -42024,8 +42012,8 @@
 	    }
 
 	    /**
-	     * @param {Element} element
-	     * @return {boolean}
+	     * @param {Element} element - The element to instantiate the widget on
+	     * @return {boolean} To instantiate or not to instantiate, that is the question.
 	     */
 	    static condition( element ) {
 	        // Allow geopicker and ArcGIS geopicker to be used in same form
@@ -42247,7 +42235,7 @@
 	    }
 
 	    /**
-	     * @param {string} type
+	     * @param {string} type - Type of input to switch to
 	     */
 	    _switchInputType( type ) {
 	        if ( type === 'kml' ) {
@@ -42400,8 +42388,8 @@
 	     * error feedback than provided by the form controller. This can be used to pinpoint the exact
 	     * invalid geopoints in a list of geopoints (the form controller only validates the total list).
 	     *
-	     * @param {string} geopoint
-	     * @return {boolean}
+	     * @param {string} geopoint - Geopoint to check
+	     * @return {boolean} Whether geopoint is valid.
 	     */
 	    _isValidGeopoint( geopoint ) {
 	        return geopoint ? types.geopoint.validate( geopoint ) : false;
@@ -42420,7 +42408,7 @@
 	    }
 
 	    /**
-	     * @type LatLngArray|LatLngObj
+	     * @param {LatLngArray|LatLngObj} latLng - Geo array or object to clean
 	     */
 	    _cleanLatLng( latLng ) {
 	        if ( Array.isArray( latLng ) ) {
@@ -42463,7 +42451,7 @@
 	    /**
 	     * Changes the current point in the list of points
 	     *
-	     * @param {number} index
+	     * @param {number} index - The index to set to current
 	     */
 	    _setCurrent( index ) {
 	        this.currentIndex = index;
@@ -42541,13 +42529,13 @@
 	                            } else {
 	                                //TODO: add error message
 	                                that.$search.closest( '.input-group' ).addClass( 'has-error' );
-	                                console.log( `Location "${address}" not found` );
+	                                console.warn( `Location "${address}" not found` );
 	                            }
 	                        }, 'json' )
 	                        .fail( () => {
 	                            //TODO: add error message
 	                            that.$search.closest( '.input-group' ).addClass( 'has-error' );
-	                            console.log( 'Error. Geocoding service may not be available or app is offline' );
+	                            console.error( 'Error. Geocoding service may not be available or app is offline' );
 	                        } )
 	                        .always( () => {
 
@@ -42613,7 +42601,7 @@
 	    }
 
 	    /**
-	     * @return {Promise}
+	     * @return {Promise} A Promise that resolves with undefined.
 	     */
 	    _addDynamicMap() {
 	        const that = this;
@@ -42698,13 +42686,13 @@
 	     * Displays intersect error
 	     */
 	    _showIntersectError() {
-	        dialog.alert( 'Borders cannot intersect!' );
+	        dialog.alert( t( 'geopicker.bordersintersectwarning' ) );
 	    }
 
 	    /**
 	     * Obtains the tile layers according to the definition in the app configuration.
 	     *
-	     * @return {Promise}
+	     * @return {Promise} A promise that resolves with the map layers.
 	     */
 	    _getLayers() {
 	        const that = this;
@@ -42729,7 +42717,7 @@
 	     *
 	     * @param {object} map - Map layer as defined in the apps configuration.
 	     * @param {number} index - The index of the layer.
-	     * @return {Promise}
+	     * @return {Promise} A promise that resolves with a Leaflet tile layer.
 	     */
 	    _getLeafletTileLayer( map, index ) {
 	        let url;
@@ -42748,7 +42736,7 @@
 	     *
 	     * @param {object} map - Map layer as defined in the apps configuration.
 	     * @param {number} index - The index of the layer.
-	     * @return {Promise}
+	     * @return {Promise} A promise that resolves with a Google Maps layer.
 	     */
 	    _getGoogleTileLayer( map, index ) {
 	        const options = this._getTileOptions( map, index );
@@ -42782,7 +42770,7 @@
 	     * Loader for the Google Maps script that can be called multiple times, but will ensure the
 	     * script is only requested once.
 	     *
-	     * @return {Promise}
+	     * @return {Promise} A promise that resolves with undefined.
 	     */
 	    _loadGoogleMapsScript() {
 	        // request Google maps script only once, using a variable outside of the scope of the current widget
@@ -42811,7 +42799,7 @@
 	    }
 
 	    /**
-	     * @param {Array<object>} layers
+	     * @param {Array<object>} layers - Map layers
 	     * @return {object} Default layer
 	     */
 	    _getDefaultLayer( layers ) {
@@ -42828,7 +42816,7 @@
 	    }
 
 	    /**
-	     * @param {Array<object>} layers
+	     * @param {Array<object>} layers - Map layers
 	     * @return {Array<object>} Base layers
 	     */
 	    _getBaseLayers( layers ) {
@@ -42894,7 +42882,7 @@
 	                    }
 	                } ) );
 	            } else {
-	                console.debug( 'this latLng was not considered valid', latLng );
+	                console.warn( 'this latLng was not considered valid', latLng );
 	            }
 	        } );
 
@@ -43072,8 +43060,6 @@
 
 	    /**
 	     * Closes polygon
-	     *
-	     * @return {Error|undefined}
 	     */
 	    _closePolygon() {
 	        const lastPoint = this.points[ this.points.length - 1 ];
@@ -43088,10 +43074,10 @@
 	        // if the last point is not a valid point, assume the user wants to use this to close
 	        // otherwise create a new point.
 	        if ( !this._isValidLatLng( lastPoint ) ) {
-	            console.log( 'current last point is not a valid point, so will use this as closing point' );
+	            //console.log( 'current last point is not a valid point, so will use this as closing point' );
 	            this.currentIndex = this.points.length - 1;
 	        } else {
-	            console.log( 'current last point is valid, so will create a new one to use to close' );
+	            //console.log( 'current last point is valid, so will create a new one to use to close' );
 	            this._addPoint();
 	        }
 
@@ -43107,7 +43093,7 @@
 	     * Updates the (fake) input element for latitude, longitude, altitude and accuracy.
 	     *
 	     * @param {LatLngArray|LatLngObj} coords - Latitude, longitude, altitude and accuracy.
-	     * @param {string} [ev]
+	     * @param {string} [ev] - Event to dispatch.
 	     */
 	    _updateInputs( coords, ev ) {
 	        const lat = coords[ 0 ] || coords.lat || '';
@@ -43129,7 +43115,7 @@
 	     * only between. Separator between KML tuples can be newline, space or a combination.
 	     * It only extracts the value of the first <coordinates> element or, if <coordinates> are not included from the whole string.
 	     *
-	     * @param {string} kmlCoordinates
+	     * @param {string} kmlCoordinates - KML coordinates XML element or its content
 	     * @return {Array<Array<number>>} Array of geopoint coordinates
 	     */
 	    _convertKmlCoordinatesToLeafletCoordinates( kmlCoordinates ) {
@@ -43163,7 +43149,7 @@
 	     * where one point is added or edited would have intersections.
 	     *
 	     * @param {LatLngArray|LatLngObj} latLng - An object or array notation of point.
-	     * @param {number} index
+	     * @param {number} index - Index of point to test.
 	     * @return {boolean} Whether polyline would have intersections.
 	     */
 	    updatedPolylineWouldIntersect( latLng, index ) {
@@ -43216,9 +43202,9 @@
 	    /**
 	     * Checks whether the array of points contains empty ones.
 	     *
-	     * @param {Array<LatLngArray>} points
+	     * @param {Array<LatLngArray>} points - Array of geopoints
 	     * @param {number} [allowedIndex] - The index in which an empty value is allowed.
-	     * @return {boolean}
+	     * @return {boolean} Whether the array contains empty points.
 	     */
 	    containsEmptyPoints( points, allowedIndex ) {
 	        return points.some( ( point, index ) => index !== allowedIndex && ( !point[ 0 ] || !point[ 1 ] ) );
@@ -43359,7 +43345,7 @@
 	            }
 	        } );
 	        textareas.forEach( this._resize.bind( this ) );
-	        this.element.addEventListener( 'pageflip', event => {
+	        this.element.addEventListener( events.PageFlip().type, event => {
 	            const els = event.target.querySelectorAll( 'textarea' );
 	            els.forEach( this._resize.bind( this ) );
 	        } );
@@ -45558,7 +45544,6 @@
 
 	        // It is much easier to first enable and disable, and not as bad it seems, since readonly will become dynamic eventually.
 	        if ( this.props.readonly ) {
-	            console.log( 'disabling datepicker' );
 	            this.disable();
 	        }
 	    }
@@ -45575,7 +45560,7 @@
 	            .append( this.resetButtonHtml );
 	        const $fakeDateI = $fakeDate.find( 'input' );
 
-	        $dateI.hide().after( $fakeDate );
+	        $dateI.hide().before( $fakeDate );
 
 	        return $fakeDateI;
 	    }
@@ -45649,8 +45634,8 @@
 	    }
 
 	    /**
-	     * @param {string} [date]
-	     * @return string
+	     * @param {string} [date] - date
+	     * @return {string} the actual date
 	     */
 	    _toActualDate( date = '' ) {
 	        date = date.trim();
@@ -45659,8 +45644,8 @@
 	    }
 
 	    /**
-	     * @param {string} [date]
-	     * @return string
+	     * @param {string} [date] - date
+	     * @return {string} the display date
 	     */
 	    _toDisplayDate( date = '' ) {
 	        date = date.trim();
@@ -45730,8 +45715,8 @@
 	    }
 
 	    /**
-	     * @param {Element} element
-	     * @return {boolean}
+	     * @param {Element} element - the element to instantiate the widget on
+	     * @return {boolean} to instantiate or not to instantiate, that is the question
 	     */
 	    static condition( element ) {
 	        // Do not instantiate if DatepickerExtended was instantiated on element or if non-mobile device is used.
@@ -46989,7 +46974,7 @@
 	        );
 	        fragment.querySelector( '.widget' ).append( this.resetButtonHtml );
 	        this.element.classList.add( 'hide' );
-	        this.element.after( fragment );
+	        this.element.before( fragment );
 
 	        const resetBtn = this.question.querySelector( '.widget > .btn-reset' );
 	        this.fakeTimeI = this.question.querySelector( '.widget > input' );
@@ -47036,11 +47021,8 @@
 	     * Updates widget
 	     */
 	    update() {
-	        if ( this.element.value !== this.value ) {
-	            jquery( this.element )
-	                .next( '.widget' )
-	                .find( 'input' )
-	                .timepicker( 'setTime', this.element.value );
+	        if ( this.element.value !== this.value && this.fakeTimeI ) {
+	            jquery( this.fakeTimeI ).timepicker( 'setTime', this.element.value );
 	        }
 	    }
 
@@ -47067,7 +47049,7 @@
 	        return '.question input[type="datetime-local"]:not([readonly])';
 	    }
 	    /**
-	     * @return {boolean}
+	     * @return {boolean} to instantiate or not to instantiate, that is the question
 	     */
 	    static condition() {
 	        return !support.touch || !support.inputTypes[ 'datetime-local' ];
@@ -47078,7 +47060,7 @@
 	        this.$fakeTimeI = this._createFakeTimeInput();
 
 	        this.element.classList.add( 'hide' );
-	        this.element.after( document.createRange().createContextualFragment( '<div class="datetimepicker widget" />' ) );
+	        this.element.before( document.createRange().createContextualFragment( '<div class="datetimepicker widget" />' ) );
 	        const widget = this.question.querySelector( '.widget' );
 	        widget.append( this.$fakeDateI[ 0 ].closest( '.date' ) );
 	        widget.append( this.$fakeTimeI[ 0 ].closest( '.timepicker' ) );
@@ -47157,7 +47139,7 @@
 	    }
 
 	    /**
-	     * @param {jQuery} $els
+	     * @param {jQuery} $els - a set of elements wrapped in jQuery
 	     */
 	    _setFocusHandler( $els ) {
 	        // Handle focus on original input (goTo functionality)
@@ -47206,7 +47188,7 @@
 	        const vals = val.split( 'T' );
 	        const dateVal = vals[ 0 ];
 	        /**
-	         * seems the source of issue #649 is in the toISOLocalString function 
+	         * seems the source of issue #649 is in the toISOLocalString function
 	         * refer: https://github.com/enketo/enketo-xpathjs/blob/master/src/date-extensions.js#L16
 	         */
 	        const timeVal = ( vals[ 1 ] && vals[ 1 ].length > 4 ) ? vals[ 1 ].substring( 0, 5 ) : ( dateVal && !vals[ 1 ] ) ? '00:00' : '';
@@ -47222,8 +47204,8 @@
 	 *
 	 * The placeholder is considered particularly unhelpful for month-year and year appearances.
 	 * For consistency it's also removed from regular date inputs.
-	 * 
-	 * TODO: it looks like empty date/datetime-local inputs are hidden, so not clear to me if this widget actually 
+	 *
+	 * TODO: it looks like empty date/datetime-local inputs are hidden, so not clear to me if this widget actually
 	 * changes anything.
 	 *
 	 * @augments Widget
@@ -47237,8 +47219,8 @@
 	    }
 
 	    /**
-	     * @param {Element} element
-	     * @return {boolean}
+	     * @param {Element} element - the element to instantiate the widget on
+	     * @return {boolean} to instantiate or not to instantiate, that is the question
 	     */
 	    static condition( element ) {
 	        // Do not instantiate if DatepickerExtended was instantiated on element or if mobile device is used.
@@ -47458,13 +47440,34 @@
 	fileManager.getMaxSizeReadable = () => { return `${5}MB`; };
 
 	/**
+	 * Update a HTML anchor to serve as a download or reset it if an empty objectUrl is provided.
+	 *
+	 * @static
+	 * @param {HTMLElement} anchor - The anchor element
+	 * @param {string} objectUrl - The objectUrl to download
+	 * @param {string} fileName - The filename of the file
+	 */
+	function updateDownloadLink( anchor, objectUrl, fileName ) {
+	    if ( window.updateDownloadLinkIe11 ) {
+	        return window.updateDownloadLinkIe11( ...arguments );
+	    }
+	    anchor.setAttribute( 'href', objectUrl || '' );
+	    anchor.setAttribute( 'download', fileName || '' );
+	}
+
+	// Export as default to facilitate overriding this function.
+	var downloadUtils = {
+	    updateDownloadLink
+	};
+
+	/**
 	 * Error to be translated
-	 * 
+	 *
 	 * @class
 	 * @augments Error
-	 * @param {string} message
-	 * @param {string} translationKey
-	 * @param {*} translationOptions
+	 * @param {string} message - error message
+	 * @param {string} translationKey - translation key
+	 * @param {*} translationOptions - translation options
 	 */
 	function TranslatedError( message, translationKey, translationOptions ) {
 	    this.message = message;
@@ -47570,7 +47573,7 @@
 	    /**
 	     * Click action of reset button
 	     *
-	     * @param {Element} resetButton
+	     * @param {Element} resetButton - reset button HTML element
 	     */
 	    _setResetButtonListener( resetButton ) {
 	        if ( resetButton ) {
@@ -47702,7 +47705,7 @@
 	    /**
 	     * Sets file name as value
 	     *
-	     * @param {string} fileName
+	     * @param {string} fileName - filename
 	     */
 	    _showFileName( fileName ) {
 	        this.value = fileName;
@@ -47710,8 +47713,8 @@
 	    }
 
 	    /**
-	     * @param {TranslatedError|Error} fb
-	     * @param {string} [status]
+	     * @param {TranslatedError|Error} fb - Error instance
+	     * @param {string} [status] - status
 	     */
 	    _showFeedback( fb, status ) {
 	        const message = fb instanceof TranslatedError ? t( fb.translationKey, fb.translationOptions ) :
@@ -47724,8 +47727,8 @@
 	    }
 
 	    /**
-	     * @param {string} url
-	     * @param {string} mediaType
+	     * @param {string} url - URL
+	     * @param {string} mediaType - media type
 	     */
 	    _showPreview( url, mediaType ) {
 	        let htmlStr;
@@ -47752,9 +47755,9 @@
 	    }
 
 	    /**
-	     * @param {File} file - Image file to be resized
-	     * @param {string} mediaType
-	     * @return {Promise<Blob|File>} Resolves with blob, rejects with input file
+	     * @param {File} file - image file to be resized
+	     * @param {string} mediaType - media type
+	     * @return {Promise<Blob|File>} resolves with blob, rejects with input file
 	     */
 	    _resizeFile( file, mediaType ) {
 	        return new Promise( ( resolve, reject ) => {
@@ -47782,11 +47785,11 @@
 	    }
 
 	    /**
-	     * @param {string} objectUrl
-	     * @param {string} fileName
+	     * @param {string} objectUrl - ObjectURL
+	     * @param {string} fileName - filename
 	     */
 	    _updateDownloadLink( objectUrl, fileName ) {
-	        updateDownloadLink( this.downloadLink, objectUrl, fileName );
+	        downloadUtils.updateDownloadLink( this.downloadLink, objectUrl, fileName );
 	    }
 
 	    /**
@@ -48440,9 +48443,12 @@
 	 * the canvas.
 	 *
 	 * @function external:SignaturePad#fromObjectURL
-	 * @param {*} objectUrl
-	 * @param {*} options
-	 * @return {Promise}
+	 * @param {*} objectUrl - ObjectURL
+	 * @param {object} options - options
+	 * @param {number} [options.ratio] - ratio
+	 * @param {number} [options.width] - width
+	 * @param {number} [options.height] - height
+	 * @return {Promise} a promise that resolves with an objectURL
 	 */
 	SignaturePad.prototype.fromObjectURL = function( objectUrl, options ) {
 	    const image = new Image();
@@ -48485,7 +48491,7 @@
 	 * This is to facilitate undoing a drawing stroke over a background (bitmap) image.
 	 *
 	 * @function external:SignaturePad#updateData
-	 * @param {*} pointGroups
+	 * @param {*} pointGroups - pointGroups
 	 */
 	SignaturePad.prototype.updateData = function( pointGroups ) {
 	    const that = this;
@@ -48621,7 +48627,7 @@
 	            .on( 'applyfocus', () => {
 	                canvas.focus();
 	            } )
-	            .closest( '[role="page"]' ).on( 'pageflip', () => {
+	            .closest( '[role="page"]' ).on( events.PageFlip().type, () => {
 	                // When an existing value is loaded into the canvas and is not
 	                // the first page, it won't become visible until the canvas is clicked
 	                // or the window is resized:
@@ -48641,7 +48647,7 @@
 
 	    // All this is copied from the file-picker widget
 	    /**
-	     * @param {string} loadedFileName
+	     * @param {string} loadedFileName - the loaded filename
 	     */
 	    _handleFiles( loadedFileName ) {
 	        // Monitor maxSize changes to update placeholder text in annotate widget. This facilitates asynchronous
@@ -48714,7 +48720,7 @@
 	    }
 
 	    /**
-	     * @param {string} fileName
+	     * @param {string} fileName - filename to show
 	     */
 	    _showFileName( fileName ) {
 	        this.$widget.find( '.fake-file-input' ).val( fileName ).prop( 'readonly', !!fileName );
@@ -48728,7 +48734,7 @@
 	    }
 
 	    /**
-	     * @return {DocumentFragment}
+	     * @return {DocumentFragment} a document fragment with the widget markup
 	     */
 	    _getMarkup() {
 	        // HTML syntax copied from filepicker widget
@@ -48766,7 +48772,7 @@
 	    /**
 	     * Updates value
 	     *
-	     * @param changed
+	     * @param {boolean} [changed] - whether the value has changed
 	     */
 	    _updateValue( changed = true ) {
 	        const now = new Date();
@@ -48818,7 +48824,7 @@
 
 	    /**
 	     * @param {string|File} file - Either a filename or a file.
-	     * @return {Promise<string>}
+	     * @return {Promise} promise resolving with a string
 	     */
 	    _loadFileIntoPad( file ) {
 	        const that = this;
@@ -48842,7 +48848,7 @@
 	    }
 
 	    /**
-	     * @param {string} message
+	     * @param {string} message - the feedback message to show
 	     */
 	    _showFeedback( message ) {
 	        message = message || '';
@@ -48852,14 +48858,14 @@
 	    }
 
 	    /**
-	     * @param {string} url
+	     * @param {string} url - the download URL
 	     */
 	    _updateDownloadLink( url ) {
 	        if ( url && url.indexOf( 'data:' ) === 0 ) {
 	            url = URL.createObjectURL( dataUriToBlobSync( url ) );
 	        }
 	        const fileName = url ? getFilename( { name: this.element.value }, this.element.dataset.filenamePostfix ) : '';
-	        updateDownloadLink( this.$widget.find( '.btn-download' )[ 0 ], url, fileName );
+	        downloadUtils.updateDownloadLink( this.$widget.find( '.btn-download' )[ 0 ], url, fileName );
 	    }
 
 	    /**
@@ -49329,7 +49335,7 @@
 	        if ( this.props.vertical ) {
 	            // Will only be triggered if question by itself constitutes a page.
 	            // It will not be triggered if question is contained inside a group with fieldlist appearance.
-	            this.question.addEventListener( 'pageflip', this._stretchHeight.bind( this ) );
+	            this.question.addEventListener( events.PageFlip().type, this._stretchHeight.bind( this ) );
 	        }
 	    }
 
@@ -49449,8 +49455,8 @@
 	    }
 
 	    /**
-	     * @param {Element} input
-	     * @return {Element}
+	     * @param {Element} input - form control HTML element
+	     * @return {Element} the HTML question the widget is linked with
 	     */
 	    _getLinkedQuestion( input ) {
 	        const contextPath = this.options.helpers.input.getName( input );
@@ -49466,15 +49472,15 @@
 	    }
 
 	    /**
-	     * @return {boolean}
+	     * @return {boolean} whether comment has error
 	     */
 	    _commentHasError() {
 	        return this.commentQuestion.classList.contains( 'invalid-required' ) || this.commentQuestion.classList.contains( 'invalid-constraint' );
 	    }
 
 	    /**
-	     * @param {*} value
-	     * @param {Error} error
+	     * @param {*} value - comment value
+	     * @param {Error} error - error instance
 	     */
 	    _setCommentButtonState( value, error ) {
 	        value = typeof value === 'string' ? value.trim() : value;
@@ -49516,14 +49522,14 @@
 	            if ( this.commentButton.matches( ':visible' ) ) {
 	                this.commentButton.click();
 	            } else {
-	                console.log( `The linked question is not visible. Cannot apply focus to ${this.element.getAttribute( 'name' )}` );
+	                console.warn( `The linked question is not visible. Cannot apply focus to ${this.element.getAttribute( 'name' )}` );
 	            }
 	        } );
 	    }
 
 	    /**
-	     * @param {Element} linkedQuestion
-	     * @return {boolean}
+	     * @param {Element} linkedQuestion - the HTML question the widget is linked with
+	     * @return {boolean} whether comment modal is currently shown
 	     */
 	    _isCommentModalShown( linkedQuestion ) {
 	        return !!linkedQuestion.querySelector( '.or-comment-widget' );
@@ -49605,7 +49611,7 @@
 	    /**
 	     * Hides comment modal
 	     *
-	     * @param {Element} linkedQuestion
+	     * @param {Element} linkedQuestion - the HTML question the widget is linked with
 	     */
 	    _hideCommentModal( linkedQuestion ) {
 	        linkedQuestion.querySelector( '.or-comment-widget' ).remove();
@@ -49676,6 +49682,7 @@
 	            this._setChangeHandler();
 	            this._setHoverHandler();
 	            this._updateImage();
+	            this._setPageHandler();
 	        }
 	    }
 
@@ -49714,25 +49721,7 @@
 
 	                    // Use any explicitly defined viewPort and else define one using bounding box or attributes
 	                    if ( !svg.getAttribute( 'viewBox' ) ) {
-	                        // Resize, using original unscaled SVG dimensions
-	                        let viewBox;
-	                        try {
-	                            const bbox = svg.getBBox();
-	                            viewBox = `${bbox.x} ${bbox.y} ${bbox.width} ${bbox.height}`;
-	                        } catch ( e ) {
-	                            // svg.getBBox() only works after SVG has been added to DOM.
-	                            // In FF getBBox causes an "NS_ERROR_FAILURE" exception likely because the SVG
-	                            // image has not finished rendering. This doesn't always happen though.
-	                            // For now, we just log the FF error, and hope that resizing is done correctly via
-	                            // attributes.
-	                            console.error( 'Could not obtain Boundary Box of SVG element', e );
-	                            let width = svg.getAttribute( 'width' );
-	                            let height = svg.getAttribute( 'height' );
-	                            if ( width && height ) {
-	                                viewBox = `0 0 ${parseInt( width, 10 )} ${parseInt( height, 10 )}`;
-	                            }
-	                        }
-	                        svg.setAttribute( 'viewBox', viewBox );
+	                        this._setViewBox( svg );
 	                    }
 
 	                    return widget;
@@ -49741,6 +49730,29 @@
 	                }
 	            } )
 	            .catch( this._showSvgNotFoundError.bind( that ) );
+	    }
+
+	    _setViewBox( svg ){
+	        let viewBox;
+	        try {
+	            // Resize, using original unscaled SVG dimensions
+	            // Note that width and height will be zero if the SVG is currently not visible
+	            const bbox = svg.getBBox();
+	            viewBox = `${bbox.x} ${bbox.y} ${bbox.width} ${bbox.height}`;
+	        } catch ( e ) {
+	            // svg.getBBox() only works after SVG has been added to DOM.
+	            // In FF getBBox causes an "NS_ERROR_FAILURE" exception likely because the SVG
+	            // image has not finished rendering. This doesn't always happen though.
+	            // For now, we just log the FF error, and hope that resizing is done correctly via
+	            // attributes.
+	            console.error( 'Could not obtain Boundary Box of SVG element', e );
+	            let width = svg.getAttribute( 'width' );
+	            let height = svg.getAttribute( 'height' );
+	            if ( width && height ) {
+	                viewBox = `0 0 ${parseInt( width, 10 )} ${parseInt( height, 10 )}`;
+	            }
+	        }
+	        svg.setAttribute( 'viewBox', viewBox );
 	    }
 
 	    /**
@@ -49821,6 +49833,17 @@
 	                }
 	            } );
 	        } );
+	    }
+
+	    /**
+	     * Handles page flip of page in which the widget is placed.
+	     */
+	    _setPageHandler(){
+	        const page = this.element.closest( '[role="page"]' );
+
+	        if ( page ){
+	            page.addEventListener( events.PageFlip().type, () => this._setViewBox( this.svg ) );
+	        }
 	    }
 
 	    /**
@@ -51218,31 +51241,32 @@
 
 	    set value( value ) {
 	        if ( !value ) {
-	            return this._reset();
-	        }
-	        const that = this;
-	        const values = value.split( ' ' );
-	        const items = [ ...this.list.querySelectorAll( `${this.itemSelector} input` ) ];
+	            this._reset();
+	        } else {
+	            const that = this;
+	            const values = value.split( ' ' );
+	            const items = [ ...this.list.querySelectorAll( `${this.itemSelector} input` ) ];
 
-	        // Basic error check
-	        if ( values.length !== items.length ) {
-	            throw new Error( 'Could not load rank widget value. Number of items mismatch.' );
-	        }
-
-	        // Don't even attempt to rectify a mismatch between the value and the available items.
-	        items.sort( ( a, b ) => {
-	            const aIndex = values.indexOf( a.value );
-	            const bIndex = values.indexOf( b.value );
-	            if ( aIndex === -1 || bIndex === -1 ) {
-	                throw new Error( 'Could not load rank widget value. Mismatch in item values.' );
+	            // Basic error check
+	            if ( values.length !== items.length ) {
+	                throw new Error( 'Could not load rank widget value. Number of items mismatch.' );
 	            }
 
-	            return aIndex - bIndex;
-	        } );
+	            // Don't even attempt to rectify a mismatch between the value and the available items.
+	            items.sort( ( a, b ) => {
+	                const aIndex = values.indexOf( a.value );
+	                const bIndex = values.indexOf( b.value );
+	                if ( aIndex === -1 || bIndex === -1 ) {
+	                    throw new Error( 'Could not load rank widget value. Mismatch in item values.' );
+	                }
 
-	        items.forEach( item => {
-	            jquery( that.list ).find( '.btn-reset' ).before( jquery( item.parentNode ).detach() );
-	        } );
+	                return aIndex - bIndex;
+	            } );
+
+	            items.forEach( item => {
+	                jquery( that.list ).find( '.btn-reset' ).before( jquery( item.parentNode ).detach() );
+	            } );
+	        }
 	    }
 
 	    /**
@@ -51386,8 +51410,8 @@
 	    }
 
 	    /**
-	     * @param {Element} element
-	     * @return {boolean}
+	     * @param {Element} element - the element to instantiate the widget on
+	     * @return {boolean} to instantiate or not to instantiate, that is the question
 	     */
 	    static condition( element ) {
 	        // Do not instantiate if DatepickerExtended was instantiated on element or if non-iOS browser is used.
@@ -51409,7 +51433,7 @@
 	         * This is a very ugly solution, but the bug is fairly obscure, and the workaround is hopefully
 	         * just temporary.
 	         */
-	        console.log( 'Adding iOS readonly date/time/datetime picker workaround.' );
+	        //console.log( 'Adding iOS readonly date/time/datetime picker workaround.' );
 	        this.element.addEventListener( 'focus', () => {
 	            // prepare for future where readonly state is dynamic
 	            if ( this.element.readOnly ) {
@@ -51602,7 +51626,7 @@
 	    }
 
 	    /**
-	     * Initialize 
+	     * Initialize
 	     */
 	    _init() {
 	        const fragment = document.createRange().createContextualFragment( '<div class="widget "></div>' );
@@ -51624,7 +51648,7 @@
 	    }
 
 	    /**
-	     * Obtain the current value from the widget. 
+	     * Obtain the current value from the widget.
 	     *
 	     * @type {string}
 	     */
@@ -51699,12 +51723,12 @@
 	 * done during create().
 	 *
 	 * @static
-	 * @param {Element} group
+	 * @param {Element} group - HTML element
 	 */
 	function enable( group ) {
 	    widgets.forEach( Widget => {
 	        const els = _getElements( group, Widget.selector )
-	            .filter( el => el.nodeName.toLowerCase() === 'select' ? !el.getAttribute( 'readonly' ) : !el.readOnly );
+	            .filter( el => el.nodeName.toLowerCase() === 'select' ? !el.hasAttribute( 'readonly' ) : !el.readOnly );
 	        new Collection( els ).enable( Widget );
 	    } );
 	}
@@ -51835,7 +51859,7 @@
 	class Collection {
 	    /**
 	     * @class
-	     * @param {Array<Element>} elements
+	     * @param {Array<Element>} elements - HTML elements
 	     */
 	    constructor( elements ) {
 	        if ( !Array.isArray( elements ) ) {
@@ -51844,9 +51868,9 @@
 	        this.elements = elements;
 	    }
 	    /**
-	     * @param {Element} element
-	     * @param {object} Widget
-	     * @param {object} [options]
+	     * @param {Element} element - HTML element
+	     * @param {object} Widget - widget to instantiate
+	     * @param {object} [options] - widget options
 	     */
 	    _instantiateSingleWidget( element, Widget, options = {} ) {
 	        if ( !Widget.condition( element ) ) {
@@ -51863,8 +51887,8 @@
 	        }
 	    }
 	    /**
-	     * @param {object} Widget
-	     * @param {Function} method
+	     * @param {object} Widget - widget to instantiate
+	     * @param {Function} method - widget function to call
 	     */
 	    _methodCall( Widget, method ) {
 	        this.elements.forEach( element => {
@@ -51875,26 +51899,26 @@
 	        } );
 	    }
 	    /**
-	     * @param {object} Widget
-	     * @param {object} [options]
+	     * @param {object} Widget - widget to instantiate
+	     * @param {object} [options] - widget options
 	     */
 	    instantiate( Widget, options ) {
 	        this.elements.forEach( el => this._instantiateSingleWidget( el, Widget, options ) );
 	    }
 	    /**
-	     * @param {object} Widget
+	     * @param {object} Widget - widget to instantiate
 	     */
 	    update( Widget ) {
 	        this._methodCall( Widget, 'update' );
 	    }
 	    /**
-	     * @param {object} Widget
+	     * @param {object} Widget - widget to instantiate
 	     */
 	    disable( Widget ) {
 	        this._methodCall( Widget, 'disable' );
 	    }
 	    /**
-	     * @param {object} Widget
+	     * @param {object} Widget - The widget to instantiate
 	     */
 	    enable( Widget ) {
 	        this._methodCall( Widget, 'enable' );
@@ -51915,7 +51939,7 @@
 
 	var languageModule = {
 	    /**
-	     * @param {string} overrideLang
+	     * @param {string} overrideLang - override language IANA subtag
 	     */
 	    init( overrideLang ) {
 	        if ( !this.form ) {
@@ -51983,7 +52007,7 @@
 	        return langOption ? langOption.textContent : null;
 	    },
 	    /**
-	     * @type array
+	     * @type {Array}
 	     */
 	    get languagesUsed() {
 	        return this.languages || [];
@@ -52011,7 +52035,7 @@
 	    /**
 	     * swap language of <select> and <datalist> <option>s
 	     *
-	     * @param {Element} select
+	     * @param {Element} select - select or datalist HTML element
 	     */
 	    setSelect( select ) {
 	        const type = select.nodeName.toLowerCase();
@@ -52075,13 +52099,13 @@
 	                    dataNode.setVal( newVal, props.xmlType );
 	                }
 	            } else {
-	                console.log( `Preload "${item}" not supported. May or may not be a big deal.` );
+	                console.warn( `Preload "${item}" not supported. May or may not be a big deal.` );
 	            }
 	        } );
 	    },
 	    /**
-	     * @param {object} o
-	     * @return {string}
+	     * @param {object} o - parameter object
+	     * @return {string} evaluated value or error message
 	     */
 	    'timestamp': function( o ) {
 	        let value;
@@ -52104,8 +52128,8 @@
 	        return 'error - unknown timestamp parameter';
 	    },
 	    /**
-	     * @param {object} o
-	     * @return {string}
+	     * @param {object} o - parameter object
+	     * @return {string} current value or evaluated value
 	     */
 	    'date': function( o ) {
 	        let today;
@@ -52125,8 +52149,8 @@
 	        return o.curVal;
 	    },
 	    /**
-	     * @param {object} o
-	     * @return {string}
+	     * @param {object} o - parameter object
+	     * @return {string} current value or evaluated value
 	     */
 	    'property': function( o ) {
 	        let node;
@@ -52144,8 +52168,8 @@
 	        return o.curVal;
 	    },
 	    /**
-	     * @param {object} o
-	     * @return {string}
+	     * @param {object} o - parameter object
+	     * @return {string} current value or evaluated value
 	     */
 	    'context': function( o ) {
 	        // 'application', 'user'??
@@ -52156,8 +52180,8 @@
 	        return o.curVal;
 	    },
 	    /**
-	     * @param {object} o
-	     * @return {string}
+	     * @param {object} o - parameter object
+	     * @return {string} current value or error message
 	     */
 	    'patient': function( o ) {
 	        if ( o.curVal.length === 0 ) {
@@ -52167,8 +52191,8 @@
 	        return o.curVal;
 	    },
 	    /**
-	     * @param {object} o
-	     * @return {string}
+	     * @param {object} o - parameter object
+	     * @return {string} current value or error message
 	     */
 	    'user': function( o ) {
 	        if ( o.curVal.length === 0 ) {
@@ -52178,8 +52202,8 @@
 	        return o.curVal;
 	    },
 	    /**
-	     * @param {object} o
-	     * @return {string}
+	     * @param {object} o - parameter object
+	     * @return {string} current value or evaluated value
 	     */
 	    'uid': function( o ) {
 	        if ( o.curVal.length === 0 ) {
@@ -52275,7 +52299,7 @@
 	    /**
 	     * Updates calculated items.
 	     *
-	     * @param {UpdatedDataNodes} [updated] - The object containing info on updated data nodes.
+	     * @param {UpdatedDataNodes} updated - the object containing info on updated data nodes
 	     * @param {string} [filter] - CSS selector filter.
 	     */
 	    update( updated = {}, filter = '' ) {
@@ -52356,8 +52380,7 @@
 	    /**
 	     * Runs <setvalue> actions.
 	     *
-	     * @param {CustomEvent} [event] - The event type that triggered the setvalue action.
-	     * @param {UpdatedDataNodes} [updated] - The object containing info on updated data nodes. Only used here for the odk-new-repeat event.
+	     * @param {CustomEvent} [event] - the event type that triggered the setvalue action.
 	     */
 	    setValue( event ) {
 	        let ignoreRelevance = false;
@@ -52376,7 +52399,7 @@
 	        if ( event.type === new events.InstanceFirstLoad().type ) {
 	            // We ignore relevance for the data-instance-first-load, as that will likely never be what users want for a default value.
 	            ignoreRelevance = true;
-	            // Do not use getRelatedNodes here, because the obtaining (and caching) of nodes inside repeats is (and should be) disabled at the 
+	            // Do not use getRelatedNodes here, because the obtaining (and caching) of nodes inside repeats is (and should be) disabled at the
 	            // time this event fires.
 	            nodes = this.form.filterRadioCheckSiblings( [ ...this.form.view.html.querySelectorAll( `[data-setvalue][data-event*="${event.type}"]` ) ] );
 	        } else if ( event.type === new events.NewRepeat().type ) {
@@ -52403,9 +52426,9 @@
 
 	            if ( dataNodes.length > 1 && event.type !== new events.NewRepeat().type && event.type !== new events.XFormsValueChanged().type ) {
 	                /*
-	                 * This case is the consequence of the decision to place setvalue items that are siblings of bind in the XForm 
+	                 * This case is the consequence of the decision to place setvalue items that are siblings of bind in the XForm
 	                 * as a separate group (.or-setvalue-items), instead of in the Form DOM in the locations where they belong.
-	                 * This occurs when update is called when multiple repeats are present. 
+	                 * This occurs when update is called when multiple repeats are present.
 	                 * For now this is only relevant for events that are *not* odk-new-repeat and *not* xforms-value-changed.
 	                 */
 	                dataNodes.forEach( ( el, index ) => {
@@ -52445,14 +52468,18 @@
 	        // Filter the result set to only include the target node
 	        props.dataNodesObj.setIndex( props.index );
 
+	        const existingModelValue = props.dataNodesObj.getVal();
+
 	        // Set the value
 	        props.dataNodesObj.setVal( result, props.dataType );
+
+	        const newModelValue = props.dataNodesObj.getVal();
 
 	        // Not the most efficient to use input.setVal here as it will do another lookup
 	        // of the node, that we already have...
 	        // We should not use value "result" here because node.setVal() may have done a data type conversion
-	        if ( control ) {
-	            this.form.input.setVal( control, props.dataNodesObj.getVal() );
+	        if ( control && existingModelValue !== newModelValue ) {
+	            this.form.input.setVal( control, newModelValue );
 
 	            /*
 	             * We need to specifically call validate on the question itself, because the validationUpdate
@@ -52467,8 +52494,8 @@
 	    /**
 	     * Determines relevancy of node by re-evaluating relevant expressions of self and ancestors.
 	     *
-	     * @param {*} props
-	     * @return {boolean}
+	     * @param {*} props - properties of a node
+	     * @return {boolean} whether the node is relevant
 	     */
 	    _isRelevant( props ) {
 	        let relevant = props.relevantExpr ? this.form.model.evaluate( props.relevantExpr, 'boolean', props.name, props.index ) : true;
@@ -52572,88 +52599,97 @@
 	 */
 	const KEYBOARD_CUT_PASTE = 'xvc';
 
-	/**
-	 * @static
-	 */
-	function init$1() {
+	var maskModule = {
+
+	    init() {
 	    /*
 	     * These are hardcoded number input masks. The approach will be different if we
 	     * ever add complex user-defined input masks.
 	     */
-	    _setNumberMask( '[data-type-xml="int"]', /^(-?[0-9]+$)/, '-0123456789' );
-	    _setNumberMask( '[data-type-xml="decimal"]', /^(-?[0-9]+[.,]?[0-9]*$)/, '-0123456789.,' );
-	}
+	        this._setNumberMask( '[data-type-xml="int"]', /^(-?[0-9]+$)/, '-0123456789' );
+	        this._setNumberMask( '[data-type-xml="decimal"]', /^(-?[0-9]+[.,]?[0-9]*$)/, '-0123456789.,' );
+	    },
 
-	/**
-	 * @param {string} selector
-	 * @param {string} validRegex
-	 * @param {string} allowedChars
-	 */
-	function _setNumberMask( selector, validRegex, allowedChars ) {
+	    /**
+	     * @param {string} selector - selector of elements to apply mask to
+	     * @param {string} validRegex - regular expression for valid values
+	     * @param {string} allowedChars - string of allowed characters
+	     */
+	    _setNumberMask( selector, validRegex, allowedChars ) {
+	        const form = this.form.view.html;
 
-	    jquery( selector )
-	        .on( 'keydown', e => {
+	        form.addEventListener( 'keydown', event => {
+	            if ( event.target.matches( selector ) ){
 	            // The "key" property is the correct standards-compliant property to use
 	            // but needs some corrections for non-standard-compliant IE behavior.
-	            if ( _isNotPrintableKey( e ) || _isKeyboardCutPaste( e ) || allowedChars.indexOf( e.key ) !== -1 ) {
-	                return true;
+	                if ( this._isNotPrintableKey( event ) || this._isKeyboardCutPaste( event ) || allowedChars.indexOf( event.key ) !== -1 ) {
+	                    return true;
+	                }
+	                event.preventDefault();
+	                event.stopPropagation();
 	            }
 
-	            return false;
-	        } )
-	        .on( 'paste', function( e ) {
-	            const val = getPasteData( e );
-	            // HTML number input fields will trim the pasted value automatically.
-	            if ( val && validRegex.test( val.trim() ) ) {
-	                // Note that this.value will be empty if the pasted value is not a valid number (except in IE11).
+	        } );
+
+	        form.addEventListener( 'paste', event => {
+	            if ( event.target.matches( selector ) ){
+	                const val = getPasteData( event );
+	                // HTML number input fields will trim the pasted value automatically.
+	                if ( val && validRegex.test( val.trim() ) ) {
+	                // Note that event.target.value will be empty if the pasted value is not a valid number (except in IE11).
 	                // In that case the paste action has the same result as pasting an empty value, ie
 	                // clearing any existing value.
-	                return true;
+	                    return true;
+	                }
+
+	                event.target.value =  '';
+	                event.target.dispatchEvent( new Event( 'change' ) );
+
+	                event.preventDefault();
+	                event.stopPropagation();
 	            }
 
-	            jquery( this ).val( '' ).trigger( 'change' );
-
-	            return false;
-	        } )
+	        } );
 	        /*
-	         * Workaround for most browsers keeping invalid numbers visible in the input without a means to access the invalid value.
-	         * E.g. see https://bugs.chromium.org/p/chromium/issues/detail?id=178437&can=2&q=178437&colspec=ID%20Pri%20M%20Stars%20ReleaseBlock%20Component%20Status%20Owner%20Summary%20OS%20Modified
-	         *
-	         * A much more intelligent way to solve the problem would be to add a feedback loop from the Model to the input that would
-	         * correct (a converted number) or empty (an invalid number). https://github.com/enketo/enketo-core/issues/407
-	         */
-	        .on( 'blur', function() {
+	     * Workaround for most browsers keeping invalid numbers visible in the input without a means to access the invalid value.
+	     * E.g. see https://bugs.chromium.org/p/chromium/issues/detail?id=178437&can=2&q=178437&colspec=ID%20Pri%20M%20Stars%20ReleaseBlock%20Component%20Status%20Owner%20Summary%20OS%20Modified
+	     *
+	     * A much more intelligent way to solve the problem would be to add a feedback loop from the Model to the input that would
+	     * correct (a converted number) or empty (an invalid number). https://github.com/enketo/enketo-core/issues/407
+	     */
+	        form.addEventListener( 'blur', event => {
+	            if ( event.target.matches( selector ) ){
 	            // proper browsers:
-	            if ( typeof this.validity !== 'undefined' && typeof this.validity.badInput !== 'undefined' && this.validity.badInput ) {
-	                this.value = '';
-	            }
-	            // IE11 (no validity.badInput support, but does give access to invalid number with this.value)
-	            else if ( typeof this.validity.badInput === 'undefined' && this.value && !validRegex.test( this.value.trim() ) ) {
-	                this.value = '';
+	                if ( typeof event.target.validity !== 'undefined' && typeof event.target.validity.badInput !== 'undefined' && event.target.validity.badInput ) {
+	                    event.target.value = '';
+	                }
+	                // IE11 (no validity.badInput support, but does give access to invalid number with event.target.value)
+	                else if ( typeof event.target.validity.badInput === 'undefined' && event.target.value && !validRegex.test( event.target.value.trim() ) ) {
+	                    event.target.value = '';
+	                }
 	            }
 	        } );
-	}
 
-	// Using the (assumed) fact that a non-printable character key always has length > 1
-	// IE11: non-confirming 'Spacebar'
-	/**
-	 * @param {Event} e
-	 * @return {boolean}
-	 */
-	function _isNotPrintableKey( e ) {
-	    return e.key.length > 1 && e.key !== 'Spacebar';
-	}
+	    },
 
-	/**
-	 * @param {Event} e
-	 * @return {boolean}
-	 */
-	function _isKeyboardCutPaste( e ) {
-	    return KEYBOARD_CUT_PASTE.indexOf( e.key ) !== -1 && ( e.metaKey || e.ctrlKey );
-	}
+	    // Using the (assumed) fact that a non-printable character key always has length > 1
+	    // IE11: non-confirming 'Spacebar'
+	    /**
+	     * @param {Event} e - event
+	     * @return {boolean} whether key is printable
+	     */
+	    _isNotPrintableKey( e ) {
+	        return e.key.length > 1 && e.key !== 'Spacebar';
+	    },
 
-	var maskModule = {
-	    init: init$1
+	    /**
+	     * @param {Event} e - event
+	     * @return {boolean} whether event is a paste event
+	     */
+	    _isKeyboardCutPaste( e ) {
+	        return KEYBOARD_CUT_PASTE.indexOf( e.key ) !== -1 && ( e.metaKey || e.ctrlKey );
+	    }
+
 	};
 
 	/**
@@ -52690,7 +52726,7 @@
 	 * @function external:jQuery#clearInputs
 	 * @param {string} [ev1] - Event to be triggered when a value is cleared
 	 * @param {string} [ev2] - Event to be triggered when a value is cleared
-	 * @return {jQuery}
+	 * @return {jQuery} original jQuery-wrapped elements
 	 */
 	jquery.fn.clearInputs = function( ev1, ev2 ) {
 	    ev1 = ev1 || 'edit';
@@ -52764,36 +52800,15 @@
 	jquery.fn.reverse = [].reverse;
 
 	/**
-	 * @typedef FormDataObj
-	 * @property {string} modelStr -  XML Model as string
-	 * @property {string} [instanceStr] - (partial) XML instance to load
-	 * @property {boolean} [submitted] - Flag to indicate whether data was submitted before
-	 * @property {object} [external] - Array of external data objects, required for each external data instance in the XForm
-	 * @property {string} [external.id] - ID of external instance
-	 * @property {string} [external.xmlStr] - XML string of external instance content
-	 */
-
-	/**
-	 * @typedef UpdatedDataNodes
-	 * @global
-	 * @description The object containing info on updated data nodes
-	 * @property {Array<string>} [nodes]
-	 * @property {string} [repeatPath]
-	 * @property {number} [repeatIndex]
-	 * @property {string} [relevantPath]
-	 */
-
-	/**
 	 * Class: Form
 	 *
 	 * Most methods are prototype method to facilitate customizations outside of enketo-core.
 	 *
-	 * @param {Element} form - HTML form element (a product of Enketo Transformer after transforming a valid ODK XForm)
-	 * @param formEl
+	 * @param {Element} formEl - HTML form element (a product of Enketo Transformer after transforming a valid ODK XForm)
 	 * @param {FormDataObj} data - Data object containing XML model, (partial) XML instance-to-load, external data and flag about whether instance-to-load has already been submitted before.
 	 * @param {object} [options] - form options
 	 * @param {boolean} [options.printRelevantOnly] - If `printRelevantOnly` is set to `true` or not set at all, printing the form only includes what is visible, ie. all the groups and questions that do not have a `relevant` expression or for which the expression evaluates to `true`.
-	 * @param {language} [options.language] - Overrides the default languages rules of the XForm itself. Pass any valid and present-in-the-form IANA subtag string, e.g. `ar`.
+	 * @param {string} [options.language] - Overrides the default languages rules of the XForm itself. Pass any valid and present-in-the-form IANA subtag string, e.g. `ar`.
 	 * @class
 	 */
 	function Form( formEl, data, options ) {
@@ -52826,11 +52841,11 @@
 	 */
 	Form.prototype = {
 	    /**
-	     * @type Array
+	     * @type {Array}
 	     */
 	    evaluationCascadeAdditions: [],
 	    /**
-	     * @type Array
+	     * @type {Array}
 	     */
 	    get evaluationCascade() {
 	        return [
@@ -52921,7 +52936,7 @@
 	        return this.view.html.id;
 	    },
 	    /**
-	     * @type Array<string>
+	     * @type {Array<string>}
 	     */
 	    get languages() {
 	        return this.langs.languagesUsed;
@@ -52931,7 +52946,7 @@
 	/**
 	 * Returns a module and adds the form property to it.
 	 *
-	 * @param {object} module
+	 * @param {object} module - Enketo Core module
 	 * @return {object} updated module
 	 */
 	Form.prototype.addModule = function( module ) {
@@ -52978,6 +52993,18 @@
 	    // Handle xforms-value-changed
 	    this.view.html.addEventListener( events.XFormsValueChanged().type, event => this.calc.setValue( event ) );
 
+	    // Before initializing form view and model, passthrough some model events externally
+	    // Because of setvalue/instance-first-load, this should be done before the model is initialized. This is important for custom
+	    // applications that submit each individual value separately (opposed to a full XML model at the end).
+	    this.model.events.addEventListener( events.DataUpdate().type, event => {
+	        that.view.html.dispatchEvent( events.DataUpdate( event.detail ) );
+	    } );
+
+	    // This probably does not need to be before model.init();
+	    this.model.events.addEventListener( events.Removed().type, event => {
+	        that.view.html.dispatchEvent( events.Removed( event.detail ) );
+	    } );
+
 	    loadErrors = loadErrors.concat( this.model.init() );
 
 	    if ( typeof this.model === 'undefined' || !( this.model instanceof FormModel ) ) {
@@ -52985,14 +53012,6 @@
 
 	        return loadErrors;
 	    }
-
-	    // Before initializing form view, passthrough some model events externally
-	    this.model.events.addEventListener( events.DataUpdate().type, event => {
-	        that.view.html.dispatchEvent( events.DataUpdate( event.detail ) );
-	    } );
-	    this.model.events.addEventListener( events.Removed().type, event => {
-	        that.view.html.dispatchEvent( events.Removed( event.detail ) );
-	    } );
 
 	    try {
 	        this.preloads.init();
@@ -53077,13 +53096,11 @@
 
 	    document.querySelector( 'body' ).scrollIntoView();
 
-	    console.debug( 'loadErrors', loadErrors );
-
 	    return loadErrors;
 	};
 
 	/**
-	 * @param {string} xpath
+	 * @param {string} xpath - simple path to question
 	 * @return {Array<string>} A list of errors originated from `goToTarget`. Empty if everything went fine.
 	 */
 	Form.prototype.goTo = function( xpath ) {
@@ -53136,14 +53153,14 @@
 	 * TODO: this needs to work for all expressions (relevants, constraints), now it only works for calculated items
 	 * Ideally this belongs in the form Model, but unfortunately it needs access to the view
 	 *
-	 * @param {string} expr
-	 * @param {string} resTypeStr
-	 * @param {string} selector
-	 * @param {number} index
-	 * @param {boolean} tryNative
+	 * @param {string} expr - XPath expression
+	 * @param {string} resTypeStr - type of result
+	 * @param {string} context - context path
+	 * @param {number} index - index of context
+	 * @param {boolean} tryNative - whether to try the native evaluator, i.e. if there is no risk it would create an incorrect result such as with date comparisons
 	 * @return {string} updated expression
 	 */
-	Form.prototype.replaceChoiceNameFn = function( expr, resTypeStr, selector, index, tryNative ) {
+	Form.prototype.replaceChoiceNameFn = function( expr, resTypeStr, context, index, tryNative ) {
 	    const that = this;
 	    const choiceNames = parseFunctionFromExpression( expr, 'jr:choice-name' );
 
@@ -53152,7 +53169,7 @@
 
 	        if ( params.length === 2 ) {
 	            let label = '';
-	            const value = that.model.evaluate( params[ 0 ], resTypeStr, selector, index, tryNative );
+	            const value = that.model.evaluate( params[ 0 ], resTypeStr, context, index, tryNative );
 	            const name = stripQuotes( params[ 1 ] ).trim();
 	            const $input = that.view.$.find( `[name="${name}"]` );
 
@@ -53184,8 +53201,8 @@
 	 * Since not all data nodes with a value have a corresponding input element,
 	 * we cycle through the HTML form elements and check for each form element whether data is available.
 	 *
-	 * @param {jQuery} $group
-	 * @param {number} groupIndex
+	 * @param {jQuery} $group - group of elements for which form controls should be updated (with current model values)
+	 * @param {number} groupIndex - index of the group
 	 */
 	Form.prototype.setAllVals = function( $group, groupIndex ) {
 	    const that = this;
@@ -53221,7 +53238,7 @@
 	};
 
 	/**
-	 * @param {jQuery} $control
+	 * @param {jQuery} $control - HTML form control
 	 * @return {string|undefined} Value
 	 */
 	Form.prototype.getModelValue = function( $control ) {
@@ -53237,7 +53254,7 @@
 	 *
 	 * @param {string} attr - The attribute name to search for
 	 * @param {string} [filter] - The optional filter to append to each selector
-	 * @param {UpdatedDataNodes} [updated] - The object containing info on updated data nodes.
+	 * @param {UpdatedDataNodes} updated - object that contains information on updated nodes
 	 * @return {jQuery} - A jQuery collection of elements
 	 */
 	Form.prototype.getRelatedNodes = function( attr, filter, updated ) {
@@ -53312,8 +53329,8 @@
 	};
 
 	/**
-	 * @param {Array<Element>} controls
-	 * @return {Array<Element>}
+	 * @param {Array<Element>} controls - radiobutton/checkbox HTML input elements
+	 * @return {Array<Element>} filtered controls without any sibling radiobuttons and checkboxes (only the first)
 	 */
 	Form.prototype.filterRadioCheckSiblings = controls => {
 	    const wrappers = [];
@@ -53434,9 +53451,7 @@
 	 *
 	 * Note: it does not take care of re-validating a question itself after its value has changed due to a calculation update!
 	 *
-	 * @param {object} [updated]
-	 * @param {boolean} [updated.cloned]
-	 * @param {string} repeatPath
+	 * @param {UpdatedDataNodes} updated - object that contains information on updated nodes
 	 */
 	Form.prototype.validationUpdate = function( updated ) {
 	};
@@ -53541,16 +53556,16 @@
 	};
 
 	/**
-	 * @param {Element} node
+	 * @param {Element} node - form control HTML element
 	 * @param {string} [type] - One of "constraint", "required" and "relevant".
 	 */
 	Form.prototype.setValid = function( node, type ) {
-	    const classes = ( type ) ? [ `invalid-${type}` ] : [ 'invalid-constraint', 'invalid-required', 'invalid-relevant' ];
+	    const classes =  type ? [ `invalid-${type}` ] : [ 'invalid-constraint', 'invalid-required', 'invalid-relevant' ];
 	    this.input.getWrapNode( node ).classList.remove( ...classes );
 	};
 
 	/**
-	 * @param {Element} node
+	 * @param {Element} node - form control HTML element
 	 * @param {string} [type] - One of "constraint", "required" and "relevant".
 	 */
 	Form.prototype.setInvalid = function( node, type ) {
@@ -53575,7 +53590,7 @@
 	/**
 	 * Checks whether the question is not currently marked as invalid. If no argument is provided, it checks the whole form.
 	 *
-	 * @param {Element} node
+	 * @param {Element} node - form control HTML element
 	 * @return {!boolean} Whether the question/form is not marked as invalid.
 	 */
 	Form.prototype.isValid = function( node ) {
@@ -53625,7 +53640,7 @@
 	/**
 	 * Validates all enabled input fields in the supplied container, after first resetting everything as valid.
 	 *
-	 * @param {jQuery} $container
+	 * @param {jQuery} $container - HTML container element inside which to validate form controls
 	 * @return {Promise} wrapping {boolean} whether the container contains any errors
 	 */
 	Form.prototype.validateContent = function( $container ) {
@@ -53668,9 +53683,9 @@
 	};
 
 	/**
-	 * @param {string} targetPath
-	 * @param {string} contextPath
-	 * @return {string} path
+	 * @param {string} targetPath - simple relative or absolute path
+	 * @param {string} contextPath - absolute context path
+	 * @return {string} absolute path
 	 */
 	Form.prototype.pathToAbsolute = function( targetPath, contextPath ) {
 	    let target;
@@ -53687,14 +53702,14 @@
 
 	/**
 	 * @typedef ValidateInputResolution
-	 * @property {bool} requiredValid
-	 * @property {bool} constraintValid
+	 * @property {boolean} requiredValid
+	 * @property {boolean} constraintValid
 	 */
 
 	/**
 	 * Validates question values.
 	 *
-	 * @param {Element} control
+	 * @param {Element} control - form control HTML element
 	 * @return {Promise<undefined|ValidateInputResolution>} resolves with validation result
 	 */
 	Form.prototype.validateInput = function( control ) {
@@ -53773,8 +53788,8 @@
 	};
 
 	/**
-	 * @param {string} path
-	 * @return {undefined|Element}
+	 * @param {string} path - path to HTML form control
+	 * @return {null|Element} HTML question element
 	 */
 	Form.prototype.getGoToTarget = function( path ) {
 	    let hits;
@@ -53860,7 +53875,7 @@
 	 * @type {string}
 	 * @default
 	 */
-	Form.requiredTransformerVersion = '1.40.1';
+	Form.requiredTransformerVersion = '1.40.2';
 
 	/**
 	 * @class FormModel

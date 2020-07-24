@@ -7,7 +7,7 @@
  */
 
 /**
- * Parses an Expression to extract all function calls and theirs argument arrays.
+ * Parses an Expression to extract all function calls and their argument arrays.
  *
  * @static
  * @param {string} expr - The expression to search
@@ -15,12 +15,7 @@
  * @return {Array<Array<string, any>>} The result array, where each result is an array containing the function call and array of arguments.
  */
 function parseFunctionFromExpression( expr, func ) {
-    let index;
     let result;
-    let openBrackets;
-    let start;
-    let argStart;
-    let args;
     const findFunc = new RegExp( `${func}\\s*\\(`, 'g' );
     const results = [];
 
@@ -29,11 +24,11 @@ function parseFunctionFromExpression( expr, func ) {
     }
 
     while ( ( result = findFunc.exec( expr ) ) !== null ) {
-        openBrackets = 1;
-        args = [];
-        start = result.index;
-        argStart = findFunc.lastIndex;
-        index = argStart - 1;
+        const args = [];
+        let openBrackets = 1;
+        let start = result.index;
+        let argStart = findFunc.lastIndex;
+        let index = argStart - 1;
         while ( openBrackets !== 0 && index < expr.length ) {
             index++;
             if ( expr[ index ] === '(' ) {
