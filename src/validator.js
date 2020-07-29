@@ -33,7 +33,7 @@ const { version } = require( '../package' );
  * @param {ValidationOptions} [options] - Validation options.
  * @return {ValidateResult} validation results.
  */
-let validate = ( xformStr, options = {} ) => {
+const validate = async( xformStr, options = {} ) => {
     let warnings = [];
     let errors = [];
     let xform;
@@ -44,69 +44,65 @@ let validate = ( xformStr, options = {} ) => {
         errors.push( e );
     }
 
-    if ( xform ) {
-        xform.checkStructure( warnings, errors );
-        xform.checkBinds( warnings, errors );
-        xform.checkAppearances( warnings, errors );
-
-        if ( options.openclinica ) {
-            xform.checkOpenClinicaRules( warnings, errors );
-        }
+    if ( !xform ){
+        return Promise.resolve( { warnings, errors, version } );
     }
 
-    try {
-        if ( xform ) {
-            xform.parseModel();
-        }
+    xform.checkStructure( warnings, errors );
+    xform.checkBinds( warnings, errors );
+    xform.checkAppearances( warnings, errors );
+
+    if ( options.openclinica ) {
+        xform.checkOpenClinicaRules( warnings, errors );
+    }
+
+    try{
+        await xform.parseModel();
     } catch ( e ) {
         let ers = Array.isArray( e ) ? e : [ e ];
         errors = errors.concat( ers );
     }
 
-    if ( xform ) {
+    // Find binds
 
-        // Find binds
-        xform.binds.forEach( ( bind, index ) => {
-            const path = bind.getAttribute( 'nodeset' );
+    for( const bind of xform.binds ){
+        const path = bind.getAttribute( 'nodeset' );
 
-            if ( !path ) {
-                warnings.push( `Found bind (index: ${index}) without nodeset attribute.` );
+        if ( !path ) {
+            warnings.push( 'Found bind without nodeset attribute.' );
 
-                return;
-            }
+            continue;
+        }
 
-            const nodeName = path.substring( path.lastIndexOf( '/' ) + 1 );
+        const nodeName = path.substring( path.lastIndexOf( '/' ) + 1 );
+        // Note: using enketoEvaluate here, would be much slower
+        const nodeExists = await xform.nodeExists( path );
 
-            // Note: using enketoEvaluate here, would be much slower.
-            const context = xform.findNode( path );
+        if ( !nodeExists ) {
+            warnings.push( `Found bind for "${nodeName}" that does not exist in the model.` );
 
-            if ( !context ) {
-                warnings.push( `Found bind for "${nodeName}" that does not exist in the model.` );
+            continue;
+        }
 
-                return;
-            }
+        for ( const logicName of [ 'calculate', 'constraint', 'relevant', 'required' ] ){
+            const logicExpr = bind.getAttribute( logicName );
+            const calculation = logicName === 'calculate';
 
-            [ 'calculate', 'constraint', 'relevant', 'required' ].forEach( logicName => {
-                const logicExpr = bind.getAttribute( logicName );
-                const calculation = logicName === 'calculate';
+            if ( logicExpr ) {
+                const friendlyLogicName = calculation ? 'Calculation' : logicName[ 0 ].toUpperCase() + logicName.substring( 1 );
 
-                if ( logicExpr ) {
-                    const friendlyLogicName = calculation ? 'Calculation' : logicName[ 0 ].toUpperCase() + logicName.substring( 1 );
-
-                    try {
-                        xform.enketoEvaluate( logicExpr, ( calculation ? 'string' : 'boolean' ), path );
-
-                        // TODO: check for cyclic dependencies within single expression and between calculations, e.g. triangular calculation dependencies
-                    } catch ( e ) {
-                        errors.push( `${friendlyLogicName} formula for "${nodeName}": ${e}` );
-                    }
-
+                try {
+                    await xform.enketoEvaluate( logicExpr, ( calculation ? 'string' : 'boolean' ), path );
                 }
-            } );
-
-        } );
-
+                catch( e ){
+                    errors.push( `${friendlyLogicName} formula for "${nodeName}": ${e}` );
+                }
+                // TODO: check for cyclic dependencies within single expression and between calculations, e.g. triangular calculation dependencies
+            }
+        }
     }
+
+    await xform.exit();
 
     return { warnings, errors, version };
 };

@@ -1,7 +1,8 @@
 {
     "env": {
         "es6": true,
-        "browser": true,
+        "browser": false,
+        "node": true,
         "commonjs": true
     },
     "globals": {

@@ -5,7 +5,7 @@
     "main": "src/validator.js",
     "bin": "./validate",
     "scripts": {
-        "test": "nyc mocha test/spec/*.spec.js && npm run style-check && node update-readme-with-shield-badge.js",
+        "test": "nyc mocha test/spec/*.spec.js --exit --timeout 5000 && npm run style-check && node update-readme-with-shield-badge.js",
         "build-docs": "rimraf docs && ./node_modules/.bin/jsdoc -c jsdoc.config.js",
         "prepublish": "rollup --config && rollup --config rollup.utils.config.js",
         "style-fix": "eslint *.js src/**/*.js test/**/*.js --fix",
@@ -32,12 +32,13 @@
         "enketo-transformer": "^1.40.2",
         "enketo-xpath-extensions-oc": "git+https://github.com/OpenClinica/enketo-xpath-extensions-oc.git#efa9830",
         "jsdom": "^16.3.0",
-        "libxslt": "0.9.x"
+        "libxslt": "0.9.x",
+        "puppeteer": "^5.2.1"
     },
     "devDependencies": {
         "chai": "^4.2.0",
         "docdash": "^1.2.0",
-        "enketo-core": "^5.16.4",
+        "enketo-core": "enketo/enketo-core#826c0fd1",
         "eslint": "^7.5.0",
         "eslint-plugin-jsdoc": "^26.0.2",
         "istanbul-reporter-shield-badge": "^1.2.1",

@@ -1,72 +1,88 @@
-/* global process */
-/* eslint-env mocha */
-
 const { XForm } = require( '../../src/xform' );
 const expect = require( 'chai' ).expect;
 const fs = require( 'fs' );
 const path = require( 'path' );
 
 const loadXForm = filename => fs.readFileSync( path.join( process.cwd(), 'test/xform', filename ), 'utf-8' );
+const testThrownEvaluation = async( xf, expr ) => {
+    let thrown;
+    try{
+        await xf.enketoEvaluate( expr );
+    }
+    catch( e ){
+        thrown = e;
+    }
+
+    return thrown;
+};
 
 describe( 'XPath expressions', () => {
 
     const xf = new XForm( loadXForm( 'model-only.xml' ) );
-    xf.parseModel();
+    const parsing = xf.parseModel();
 
     describe( 'with function calls with an insufficient number of parameters', () => {
 
-        it( 'should throw an error message for selected()', () => {
+
+        it( 'should throw an error message for selected()', async() => {
+            await parsing;
             const expr = 'selected(/data/a)';
-            const evaluationFn = () => xf.enketoEvaluate( expr );
-            expect( evaluationFn ).to.throw();
+            const thrown = await testThrownEvaluation( xf, expr );
+            expect( thrown ).to.not.be.undefined;
         } );
 
-        it( 'should throw an error message for floor()', () => {
+        it( 'should throw an error message for floor()', async() => {
+            await parsing;
             const expr = 'floor()';
-            const evaluationFn = () => xf.enketoEvaluate( expr );
-            expect( evaluationFn ).to.throw();
+            const thrown = await testThrownEvaluation( xf, expr );
+            expect( thrown ).to.not.be.undefined;
         } );
 
     } );
 
-    describe( 'with function calls with an excessive number of parameters', () => {
+    describe( 'with function calls with an excessive number of parameters', async() => {
 
-        it( 'should throw an error message for selected()', () => {
+        it( 'should throw an error message for selected()', async() => {
+            await parsing;
             const expr = 'selected(/data/a, /data/b, 4)';
-            const evaluationFn = () => xf.enketoEvaluate( expr );
-            expect( evaluationFn ).to.throw();
+            const thrown = await testThrownEvaluation( xf, expr );
+            expect( thrown ).to.not.be.undefined;
         } );
 
-        it( 'should throw an error message for floor()', () => {
+        it( 'should throw an error message for floor()', async() => {
+            await parsing;
             const expr = 'floor(4, 5)';
-            const evaluationFn = () => xf.enketoEvaluate( expr );
-            expect( evaluationFn ).to.throw();
+            const thrown = await testThrownEvaluation( xf, expr );
+            expect( thrown ).to.not.be.undefined;
         } );
 
     } );
 
     describe( 'with function calls with a correct number of parameters', () => {
 
-        it( 'should not throw an error message for selected()', () => {
+        it( 'should not throw an error message for selected()', async() => {
+            await parsing;
             const expr = 'selected(/data/a, /data/b)';
-            const evaluationFn = () => xf.enketoEvaluate( expr );
-            expect( evaluationFn ).not.to.throw();
+            const thrown = await testThrownEvaluation( xf, expr );
+            expect( thrown ).to.be.undefined;
         } );
 
-        it( 'should not throw an error message for floor()', () => {
+        it( 'should not throw an error message for floor()', async() => {
+            await parsing;
             const expr = 'floor(4)';
-            const evaluationFn = () => xf.enketoEvaluate( expr );
-            expect( evaluationFn ).not.to.throw();
+            const thrown = await testThrownEvaluation( xf, expr );
+            expect( thrown ).to.be.undefined;
         } );
 
     } );
 
     describe( 'with function calls to not supported functions', () => {
 
-        it( 'should throw an error message for not-supported-fn()', () => {
+        it( 'should throw an error message for not-supported-fn()', async() => {
+            await parsing;
             const expr = 'not-supported-fn(/data/a)';
-            const evaluationFn = () => xf.enketoEvaluate( expr );
-            expect( evaluationFn ).to.throw();
+            const thrown = await testThrownEvaluation( xf, expr );
+            expect( thrown ).to.not.be.undefined;
         } );
 
     } );
@@ -109,60 +125,68 @@ describe( 'XPath expressions', () => {
 
     describe( 'with instance() calls', () => {
 
-        it( 'should throw an error message if instance does not exist in the form', () => {
+        it( 'should throw an error message if instance does not exist in the form', async() => {
+            await parsing;
             const expr = 'instance("not-there")';
-            const evaluationFn = () => xf.enketoEvaluate( expr );
-            expect( evaluationFn ).to.throw();
+            const thrown = await testThrownEvaluation( xf, expr );
+            expect( thrown ).to.not.be.undefined;
         } );
 
-        it( 'should not throw an error message if internal instance exists in the form', () => {
+        it( 'should not throw an error message if internal instance exists in the form', async() => {
+            await parsing;
             const expr = 'instance("existing-internal")/item';
-            const evaluationFn = () => xf.enketoEvaluate( expr );
-            expect( evaluationFn ).not.to.throw();
+            const thrown = await testThrownEvaluation( xf, expr );
+            expect( thrown ).to.be.undefined;
         } );
 
-        it( 'should not throw an error message if external instance exists in the form', () => {
+        it( 'should not throw an error message if external instance exists in the form', async() => {
+            await parsing;
             const expr = 'instance("existing-external")/item';
-            const evaluationFn = () => xf.enketoEvaluate( expr );
-            expect( evaluationFn ).not.to.throw();
+            const thrown = await testThrownEvaluation( xf, expr );
+            expect( thrown ).to.be.undefined;
         } );
 
     } );
 
     describe( 'with jr:choice-name() calls', () => {
-        it( 'should not throw an error message for simple usage with double quotes', () => {
+        it( 'should not throw an error message for simple usage with double quotes', async() => {
+            await parsing;
             const expr = 'jr:choice-name("yes", "/data/a")';
-            const evaluationFn = () => xf.enketoEvaluate( expr );
-            expect( evaluationFn ).not.to.throw();
+            const thrown = await testThrownEvaluation( xf, expr );
+            expect( thrown ).to.be.undefined;
         } );
 
-        it( 'should not throw an error message for simple usage with single quotes', () => {
+        it( 'should not throw an error message for simple usage with single quotes', async() => {
+            await parsing;
             const expr = 'jr:choice-name("yes", \'/data/a\')';
-            const evaluationFn = () => xf.enketoEvaluate( expr );
-            expect( evaluationFn ).not.to.throw();
+            const thrown = await testThrownEvaluation( xf, expr );
+            expect( thrown ).to.be.undefined;
         } );
 
-        it( 'should not throw an error message for complex usage', () => {
+        it( 'should not throw an error message for complex usage', async() => {
+            await parsing;
             // additional logic, with brackets, after jr:choice-name()
             const expr = 'if(string-length(/K/p/i/a) !=0, jr:choice-name(/K/p/i/a,\'/K/p/i/a\'),\'unspecified\')';
-            const evaluationFn = () => xf.enketoEvaluate( expr );
-            expect( evaluationFn ).not.to.throw();
+            const thrown = await testThrownEvaluation( xf, expr );
+            expect( thrown ).to.be.undefined;
         } );
 
-        it( 'should not throw an error message for very complex usage', () => {
+        it( 'should not throw an error message for very complex usage', async() => {
+            await parsing;
             // nested function inside jr:choice-name()
             const expr = 'if(string-length(/K/p/i/a) !=0, jr:choice-name(concat("a", "b"),\'/K/p/i/a\'),\'unspecified\')';
-            const evaluationFn = () => xf.enketoEvaluate( expr );
-            expect( evaluationFn ).not.to.throw();
+            const thrown = await testThrownEvaluation( xf, expr );
+            expect( thrown ).to.be.undefined;
         } );
     } );
 
     // Needs to fail here as we're not in openclinica mode.
-    describe( 'with comment-status() calls', () => {
-        it( 'should not throw an error message', () => {
+    describe( 'with comment-status() calls',  () => {
+        it( 'should throw an error message', async() => {
+            await parsing;
             const expr = 'comment-status(/data/a)';
-            const evaluationFn = () => xf.enketoEvaluate( expr );
-            expect( evaluationFn ).to.throw();
+            const thrown = await testThrownEvaluation( xf, expr );
+            expect( thrown ).to.not.be.undefined;
         } );
     } );
 
@@ -171,14 +195,16 @@ describe( 'XPath expressions', () => {
 describe( 'XPath expressions (in custom OpenClinica evaluator)', () => {
 
     const xf = new XForm( loadXForm( 'model-only.xml' ), { openclinica: true } );
-    xf.parseModel();
+    const parsing = xf.parseModel();
 
-    describe( 'with comment-status() calls', () => {
-        it( 'should not throw an error message', () => {
+    describe( 'with comment-status() calls',  () => {
+        it( 'should not throw an error message', async() => {
+            await parsing;
             const expr = 'comment-status(/data/a)';
-            const evaluationFn = () => xf.enketoEvaluate( expr );
-            expect( evaluationFn ).not.to.throw();
+            const thrown = await testThrownEvaluation( xf, expr );
+            expect( thrown ).to.be.undefined;
         } );
     } );
 
 } );
+

@@ -755,22 +755,33 @@
 	        return cookies[ name ];
 	    }
 
-	    const parts = document.cookie.split( '; ' );
-	    cookies = {};
+	    // In enketo-validate and perhaps other contexts, enketo-core is used in an empty page in a headless browser
+	    // In such a context document.cookie throws an 'Access is denied for this document' error.
+	    try {
+	        const parts = document.cookie.split( '; ' );
+	        cookies = {};
 
-	    for ( let i = parts.length - 1; i >= 0; i-- ) {
-	        const ck = parts[ i ].split( '=' );
-	        // decode URI
-	        ck[ 1 ] = decodeURIComponent( ck[ 1 ] );
-	        // if cookie is signed (using expressjs/cookie-parser/), extract value
-	        if ( ck[ 1 ].substr( 0, 2 ) === 's:' ) {
-	            ck[ 1 ] = ck[ 1 ].slice( 2 );
-	            ck[ 1 ] = ck[ 1 ].slice( 0, ck[ 1 ].lastIndexOf( '.' ) );
+	        for ( let i = parts.length - 1; i >= 0; i-- ) {
+	            const ck = parts[ i ].split( '=' );
+	            // decode URI
+	            ck[ 1 ] = decodeURIComponent( ck[ 1 ] );
+	            // if cookie is signed (using expressjs/cookie-parser/), extract value
+	            if ( ck[ 1 ].substr( 0, 2 ) === 's:' ) {
+	                ck[ 1 ] = ck[ 1 ].slice( 2 );
+	                ck[ 1 ] = ck[ 1 ].slice( 0, ck[ 1 ].lastIndexOf( '.' ) );
+	            }
+	            cookies[ ck[ 0 ] ] = decodeURIComponent( ck[ 1 ] );
 	        }
-	        cookies[ ck[ 0 ] ] = decodeURIComponent( ck[ 1 ] );
+
+	        return cookies[ name ];
+
+	    } catch( e ){
+	        console.error( 'Cookie error', e );
+
+	        return null;
 	    }
 
-	    return cookies[ name ];
+
 	}
 
 	/**
@@ -22371,9 +22382,7 @@
 	                instanceDoc.removeChild( secondaryInstanceChildren[ i ] );
 	            }
 	            let rootEl;
-	            // The instance.xml.constructor.name === 'Document' check is only supported for Enketo Validate.
-	            // Document instances are not supposed to be used otherwise as it could create problems.
-	            if ( instance.xml instanceof XMLDocument || instance.xml.constructor.name === 'Document' ) {
+	            if ( instance.xml instanceof XMLDocument ) {
 	                if ( window.navigator.userAgent.indexOf( 'Trident/' ) >= 0 ) {
 	                    // IE does not support importNode
 	                    rootEl = that.importNode( instance.xml.documentElement, true );
@@ -22407,7 +22416,7 @@
 	            // In the future, if there are more use cases for odk:xforms-version, we'll probably have to use a semver-parser
 	            // to do a comparison. In this case, the presence of the attribute is sufficient, as we know no older versions
 	            // than odk:xforms-version="1.0.0" exist. Previous versions had no number.
-	            this.noRepeatRefErrorExpected = this.evaluate( '/model/@odk:xforms-version', 'boolean', null, null, true );
+	            this.noRepeatRefErrorExpected = this.evaluate( `/model/@${this.getNamespacePrefix( ODK_XFORMS_NS )}:xforms-version`, 'boolean', null, null, true );
 
 	            // Check if instanceID is present
 	            if ( !this.getMetaNode( 'instanceID' ).getElement() ) {
@@ -49541,7 +49550,7 @@
 	    _showCommentModal() {
 	        const comment = this.question.cloneNode( true );
 	        const updateText = t( 'widget.comment.update' ) || 'Update';
-	        const input = comment.querySelector( 'input, textarea' );
+	        const input = comment.querySelector( 'input:not(.ignore), textarea:not(.ignore)' );
 
 	        comment.classList.remove( 'hide' );
 	        input.classList.add( 'ignore' );
@@ -49590,7 +49599,7 @@
 	             *
 	             * Note that with setting "validateContinously" set to "true" this means it will be validated twice.
 	             */
-	            this.options.helpers.input.validate( jquery( this.linkedQuestion.querySelector( 'input, select, textarea' ) ) );
+	            this.options.helpers.input.validate( jquery( this.linkedQuestion.querySelector( 'input:not(.ignore), select:not(.ignore), textarea:not(.ignore)' ) ) );
 	            ev.preventDefault();
 	            ev.stopPropagation();
 	        } );
@@ -53877,6 +53886,133 @@
 	 */
 	Form.requiredTransformerVersion = '1.40.2';
 
+	function addXPathExtensionsOc( XPathJS ) {
+
+	    const FUNCTIONS = {
+	        'comment-status': {
+
+	            fn( a ) {
+	                const curValue = a.toString();
+	                let status = '';
+	                let comment;
+
+	                if ( curValue ) {
+	                    try {
+	                        comment = JSON.parse( curValue );
+	                        if ( typeof comment !== 'object' || Array.isArray( comment ) ) {
+	                            throw new Error( 'Not an object.' );
+	                        }
+	                        comment.queries = Array.isArray( comment.queries ) ? comment.queries : [];
+
+	                        // duplicates _getCurrentStatus() in Dn.js
+	                        const commentsOrdered = comment.queries
+	                            .filter( item => item.type === 'comment' )
+	                            .sort( _datetimeDesc );
+	                        const threads = _getThreads( commentsOrdered );
+
+	                        [ 'new', 'updated', 'closed', 'closed-modified' ].some( st => {
+	                            if ( _existsThreadWithStatus( commentsOrdered, threads, st ) ) {
+	                                status = st;
+	                                return true;
+	                            }
+	                            return false;
+	                        } );
+
+	                    } catch ( e ) {
+	                        console.error( 'Could not parse JSON from', curValue );
+	                    }
+	                }
+
+	                return new XPathJS.customXPathFunction.type.StringType( status );
+	            },
+
+	            args: [
+	                { t: 'string' }
+	            ],
+
+	            ret: 'string'
+
+	        },
+
+	        'pad2': {
+
+	            fn( a ) {
+	                let val = a.toString();
+
+	                while ( val.length < 2 ) {
+	                    val = '0' + val;
+	                }
+
+	                return new XPathJS.customXPathFunction.type.StringType( val );
+	            },
+
+	            args: [
+	                { t: 'string' }
+	            ],
+
+	            ret: 'string'
+
+	        }
+	    };
+
+	    Object.keys( FUNCTIONS ).forEach( fnName => {
+	        XPathJS.customXPathFunction.add( fnName, FUNCTIONS[ fnName ] );
+	    } );
+
+	}
+	function _getThreads( commentsOrdered ) {
+	    let threads = [];
+
+	    // reverse is destructive, so we create copy
+	    [ ...commentsOrdered ].reverse()
+	        .forEach( item => {
+	            if ( !threads.includes( item.thread_id ) ) {
+	                threads.push( item.thread_id );
+	            }
+	        } );
+	    return threads;
+	}
+
+	function _datetimeDesc( a, b ) {
+	    const aDate = new Date( _getIsoDatetimeStr( a.date_time ) );
+	    const bDate = new Date( _getIsoDatetimeStr( b.date_time ) );
+	    if ( bDate.toString() === 'Invalid Date' || aDate > bDate ) {
+	        return -1;
+	    }
+	    if ( aDate.toString() === 'Invalid Date' || aDate < bDate ) {
+	        return 1;
+	    }
+	    return 0;
+	}
+
+	function _getIsoDatetimeStr( dateTimeStr ) {
+	    let parts;
+	    if ( typeof dateTimeStr === 'string' ) {
+	        parts = dateTimeStr.split( ' ' );
+	        return `${parts[ 0 ]}T${parts[ 1 ]}${parts[ 2 ]}`;
+	    }
+	    return dateTimeStr;
+	}
+
+	function _existsThreadWithStatus( commentsOrdered, threads, status ) {
+	    return threads.some( threadId => {
+	        return _getQueryThreadStatus( commentsOrdered, threadId ) === status;
+	    } );
+	}
+
+	function _getQueryThreadStatus( commentsOrdered, threadId ) {
+	    let status = '';
+	    commentsOrdered
+	        .some( item => {
+	            if ( item.thread_id === threadId && item.status ) {
+	                status = item.status;
+	                return true;
+	            }
+	            return false;
+	        } );
+	    return status;
+	}
+
 	/**
 	 * @class FormModel
 	 *
@@ -53886,5 +54022,6 @@
 	 */
 
 	window.FormModel = FormModel;
+	window.addXPathExtensionsOc = addXPathExtensionsOc;
 
 }());
