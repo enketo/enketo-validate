@@ -9,7 +9,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ##### Fixed
 - Binary builds for Mac OS and Linux
-- Some forms containing nodenames starting with an underscore fail to validate when they are valid.
+- Some forms containing nodenames starting with an underscore crash the app.
 
 [1.10.2] - 2020-05-28
 ---------------------

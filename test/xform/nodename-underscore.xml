@@ -30,7 +30,7 @@
             <label>Enter text</label>
         </input>
         <group ref="/data/_g">
-            <input ref="/data/g/_b_">
+            <input ref="/data/_g/_b_">
                 <label>Enter text</label>
             </input>
         </group>
