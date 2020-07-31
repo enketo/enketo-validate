@@ -2,10 +2,14 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
-[Unrleased]
+[Unreleased]
 ----------------------
+##### Changed
+- Switched to using puppeteer to evaluate XPath (major).
+
 ##### Fixed
 - Binary builds for Mac OS and Linux
+- Some forms containing nodenames starting with an underscore fail to validate when they are valid.
 
 [1.10.2] - 2020-05-28
 ---------------------
