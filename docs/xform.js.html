@@ -32,7 +32,7 @@
     
     <input type="text" id="nav-search" placeholder="Search" />
     
-    <h2><a href="index.html">Home</a></h2><h2><a href="https://github.com/enketo/enketo-validate" target="_blank" class="menu-item" id="repository" >Github repo</a></h2><h2><a href="https://github.com/enketo/enketo-validate/blob/master/CHANGELOG.md" target="_blank" class="menu-item" id="change-log" >Change log</a></h2><h3>Classes</h3><ul><li><a href="FormModel.html">FormModel</a></li><li><a href="XForm.html">XForm</a><ul class='methods'><li data-type='method'><a href="XForm.html#_cleanXmlDomParserError">_cleanXmlDomParserError</a></li><li data-type='method'><a href="XForm.html#_cleanXPathException">_cleanXPathException</a></li><li data-type='method'><a href="XForm.html#_extractModelStr">_extractModelStr</a></li><li data-type='method'><a href="XForm.html#_getDom">_getDom</a></li><li data-type='method'><a href="XForm.html#_getExternalDummyContent">_getExternalDummyContent</a></li><li data-type='method'><a href="XForm.html#_getWindow">_getWindow</a></li><li data-type='method'><a href="XForm.html#_nodeName">_nodeName</a></li><li data-type='method'><a href="XForm.html#_stripJrChoiceName">_stripJrChoiceName</a></li><li data-type='method'><a href="XForm.html#_withFormControl">_withFormControl</a></li><li data-type='method'><a href="XForm.html#_withoutFormControl">_withoutFormControl</a></li><li data-type='method'><a href="XForm.html#checkAppearances">checkAppearances</a></li><li data-type='method'><a href="XForm.html#checkBinds">checkBinds</a></li><li data-type='method'><a href="XForm.html#checkOpenClinicaRules">checkOpenClinicaRules</a></li><li data-type='method'><a href="XForm.html#checkStructure">checkStructure</a></li><li data-type='method'><a href="XForm.html#enketoEvaluate">enketoEvaluate</a></li><li data-type='method'><a href="XForm.html#findNode">findNode</a></li><li data-type='method'><a href="XForm.html#getBind">getBind</a></li><li data-type='method'><a href="XForm.html#nsPrefixResolver">nsPrefixResolver</a></li><li data-type='method'><a href="XForm.html#parseModel">parseModel</a></li></ul></li><li></li></ul><h3>Modules</h3><ul><li><a href="module-utils.html">utils</a><ul class='members'><li data-type='member'><a href="module-utils.html#.addXPathExtensionsOc">addXPathExtensionsOc</a></li><li data-type='member'><a href="module-utils.html#.parseFunctionFromExpression">parseFunctionFromExpression</a></li></ul></li><li><a href="module-validator.html">validator</a><ul class='methods'><li data-type='method'><a href="module-validator.html#.validate">validate</a></li></ul></li></ul>
+    <h2><a href="index.html">Home</a></h2><h2><a href="https://github.com/enketo/enketo-validate" target="_blank" class="menu-item" id="repository" >Github repo</a></h2><h2><a href="https://github.com/enketo/enketo-validate/blob/master/CHANGELOG.md" target="_blank" class="menu-item" id="change-log" >Change log</a></h2><h3>Classes</h3><ul><li><a href="FormModel.html">FormModel</a></li><li><a href="XForm.html">XForm</a><ul class='methods'><li data-type='method'><a href="XForm.html#_cleanXmlDomParserError">_cleanXmlDomParserError</a></li><li data-type='method'><a href="XForm.html#_cleanXPathException">_cleanXPathException</a></li><li data-type='method'><a href="XForm.html#_extractModelStr">_extractModelStr</a></li><li data-type='method'><a href="XForm.html#_getDom">_getDom</a></li><li data-type='method'><a href="XForm.html#_getExternalDataArray">_getExternalDataArray</a></li><li data-type='method'><a href="XForm.html#_nodeName">_nodeName</a></li><li data-type='method'><a href="XForm.html#_stripJrChoiceName">_stripJrChoiceName</a></li><li data-type='method'><a href="XForm.html#_withFormControl">_withFormControl</a></li><li data-type='method'><a href="XForm.html#_withoutFormControl">_withoutFormControl</a></li><li data-type='method'><a href="XForm.html#checkAppearances">checkAppearances</a></li><li data-type='method'><a href="XForm.html#checkBinds">checkBinds</a></li><li data-type='method'><a href="XForm.html#checkOpenClinicaRules">checkOpenClinicaRules</a></li><li data-type='method'><a href="XForm.html#checkStructure">checkStructure</a></li><li data-type='method'><a href="XForm.html#enketoEvaluate">enketoEvaluate</a></li><li data-type='method'><a href="XForm.html#getBind">getBind</a></li><li data-type='method'><a href="XForm.html#nodeExists">nodeExists</a></li><li data-type='method'><a href="XForm.html#nsPrefixResolver">nsPrefixResolver</a></li><li data-type='method'><a href="XForm.html#parseModel">parseModel</a></li></ul></li><li></li></ul><h3>Modules</h3><ul><li><a href="module-utils.html">utils</a><ul class='members'><li data-type='member'><a href="module-utils.html#.parseFunctionFromExpression">parseFunctionFromExpression</a></li></ul></li><li><a href="module-validator.html">validator</a><ul class='methods'><li data-type='method'><a href="module-validator.html#.validate">validate</a></li></ul></li></ul>
 </nav>
 
 <div id="main">
@@ -47,13 +47,9 @@
     
     <section>
         <article>
-            <pre class="prettyprint source linenums"><code>/* global __dirname */
-
-const jsdom = require( 'jsdom' );
-const { JSDOM } = jsdom;
-const utils = require( '../build/utils-cjs-bundle' );
-const fs = require( 'fs' );
-const path = require( 'path' );
+            <pre class="prettyprint source linenums"><code>const utils = require( '../build/utils-cjs-bundle' );
+const { JSDOM } = require( 'jsdom' );
+const puppeteer = require( 'puppeteer' );
 const libxslt = require( 'libxslt' );
 const libxmljs = libxslt.libxmljs;
 const sheets = require( 'enketo-transformer' ).sheets;
@@ -77,9 +73,45 @@ class XForm {
             throw 'Empty form.';
         }
         this.xformStr = xformStr;
-        this.dom = this._getDom();
-        this.doc = this.dom.window.document;
+
+        const dom = this._getDom();
+        this.doc = dom.window.document;
+        this.loadBrowserPage = puppeteer.launch( { headless: true, devtools: false } )
+            .then( browser => {
+                this.browser = browser;
+
+                return browser.newPage();
+            } )
+            .then( page => {
+
+                return page.addScriptTag( { path:'./build/FormModel-bundle.js' } )
+                    .then( () => page );
+            } );
     }
+
+    /*
+    init(){
+        return this.loadBrowserPage
+         .then( page => page.evaluateHandle( ( ) => new DOMParser() ) )
+            .then( parser => {
+                console.log( parser, parser );
+                console.log( 'doc', parser.parseFromString( this.xformStr ) );
+            } );
+            .then( page => page.evaluateHandle( xformStr => {
+                const doc = new DOMParser().parseFromString( xformStr, 'text/xml' );
+                console.log( 'doc', xformStr, doc );
+
+                return doc;//new XMLSerializer().serializeToString( doc );
+            }, this.xformStr ) )
+            .then( result  => result.$( '*' ) )
+            .then( value => {
+                console.log( 'DOMParser parsing result',value );
+                console.log( 'DOMParser parsing result',value.querySelector( '*' ) );
+                //this.doc = result.asElement();
+            } );
+
+        // TODO: check DOMParser result for XML parse errors and throw those using cleanXMLDOMParserError
+    }*/
 
     /**
      * @type {Array&lt;Node>}
@@ -173,6 +205,13 @@ class XForm {
         };
     }
 
+    exit(){
+        if ( this.browser ){
+
+            return this.browser.close();
+        }
+    }
+
     /**
      * Returns a `&lt;bind>` element with the provided nodeset attribute value.
      *
@@ -213,32 +252,65 @@ class XForm {
      */
     parseModel() {
         // Be careful here, the pkg module to create binaries is surprisingly sophisticated, but the paths cannot be dynamic.
-        const scriptContent = fs.readFileSync( path.join( __dirname, '../build/FormModel-bundle.js' ), { encoding: 'utf-8' } );
+        //const scriptContent = fs.readFileSync( path.join( __dirname, '../build/FormModel-bundle.js' ), { encoding: 'utf-8' } );
 
         // This window is not to be confused with this.dom.window which contains the XForm.
-        const window = this._getWindow( scriptContent );
+        //const window = this._getWindow( scriptContent );
 
         // Disable the jsdom evaluator
-        window.document.evaluate = undefined;
+        // window.document.evaluate = undefined;
+        let page;
 
-        // Get a serialized model with namespaces in locations that Enketo can deal with.
-        const modelStr = this._extractModelStr().root().get( '*' ).toString( false );
-        const external = this._getExternalDummyContent();
+        return this.loadBrowserPage
+            .then( p => {
+                page = p;
+                // Get a serialized model with namespaces in locations that Enketo can deal with.
+                const modelStr = this._extractModelStr().root().get( '*' ).toString( false );
+                const externalArr = this._getExternalDataArray();
 
-        // Instantiate an Enketo Core Form Model
-        this.model = new window.FormModel( { modelStr, external } );
+                // DEBUG
+                /*
+                page.on( 'console', msg => {
+                    for ( let i = 0; i &lt; msg.args().length; ++i )
+                        console.log( `${i}: ${msg.args()[i]}` );
+                } );
+*/
 
-        // Add custom XPath functions
-        if ( this.options.openclinica ) {
-            this.model.bindJsEvaluator( utils.addXPathExtensionsOc );
-        }
+                return page.evaluateHandle( ( modelStr,  externalArr, ocExtensions ) => {
+                    const parser = new DOMParser();
+                    const external = externalArr.map( instance => {
+                        instance.xml = parser.parseFromString( '&lt;something/>', 'text/xml' );
 
-        // Initialize form model
-        let loadErrors = this.model.init();
+                        return instance;
+                    } );
 
-        if ( loadErrors.length ) {
-            throw loadErrors;
-        }
+                    // Instantiate an Enketo Core Form Model
+                    const model = new window.FormModel( { modelStr, external } );
+                    // Add custom XPath functions
+                    if ( ocExtensions ) {
+                        model.bindJsEvaluator( window.addXPathExtensionsOc );
+                    }
+
+                    return model;
+                }, modelStr, externalArr, !!this.options.openclinica );
+            } )
+            .then( modelHandle => {
+
+                this.modelHandle = modelHandle;
+
+                return page.evaluateHandle( model => model.init(), modelHandle );
+            } )
+            .then( loadErrorsHandle => loadErrorsHandle.jsonValue() )
+            .then( loadErrors => {
+                if ( loadErrors.length ) {
+                    throw loadErrors;
+                }
+
+                return page;
+            } )
+            .catch( e => {
+                throw e;
+            } );
     }
 
     /**
@@ -247,37 +319,32 @@ class XForm {
      * @param {string} expr - The expression to evaluate.
      * @param {string} [type] - One of boolean, string, number, node, nodes.
      * @param {string} [contextPath] - Query selector.
+     * @param {boolean} tryNative - Whether it is safe to try the native evaluator (no date comparisons or calculations)
      * @return {Array&lt;Element>} an array of elements.
      */
-    enketoEvaluate( expr, type = 'string', contextPath = null ) {
-        try {
-            if ( !this.model ) {
-                //console.log( 'Unexpectedly, there is no model when enketoEvaluate is called, creating one.' );
-                this.parseModel();
-            }
-            // Note that the jsdom XPath evaluator was disabled in parseModel.
-            // So we are certain to be testing Enketo's own XPath evaluator.
-            let newExpr = this._stripJrChoiceName( expr );
+    enketoEvaluate( expr, type = 'string', contextPath = null, tryNative = false ) {
+        const newExpr = this._stripJrChoiceName( expr );
+        const getPage = this.modelHandle ? this.loadBrowserPage : this.parseModel();
 
-            return this.model.evaluate( newExpr, type, contextPath );
-        } catch ( e ) {
-            throw this._cleanXPathException( e );
-        }
+        return getPage
+            .then( page =>  page.evaluateHandle( ( model, newExpr, type, contextPath, tryNative ) => model.evaluate( newExpr, type, contextPath, null, tryNative ),  this.modelHandle, newExpr, type, contextPath, tryNative ) )
+            .then ( resultHandle => resultHandle.jsonValue() )
+            .catch( e => {
+                throw this._cleanXPathException( e );
+            } );
     }
 
     /**
      * Obtains a node from the model from its simple path.
      *
-     * @param {string} path
+     * @param {string} path - simple path to node
      * @return {Element|null} the result element or null if not found
      */
-    findNode( path ){
-        if ( !this.model ) {
-            //console.log( 'Unexpectedly, there is no model when enketoEvaluate is called, creating one.' );
-            this.parseModel();
-        }
-
-        return this.model.xml.querySelector( path.replace( '/', '' ).replace( /\//g, '>' ) );
+    nodeExists( path ){
+        return this.enketoEvaluate( path, 'node', null, true )
+            .then( element => {
+                return !!element;
+            } );
     }
 
     /**
@@ -559,44 +626,12 @@ class XForm {
     }
 
     /**
-     * Obtains an isolated "browser" window context and optionally, runs a script in this context.
-     *
-     * @param {string} [scriptContent] - Script to be run in the context of window.
-     */
-    _getWindow( scriptContent = '' ) {
-        // Let any logging by Enketo Core fall into the abyss.
-        const virtualConsole = new jsdom.VirtualConsole();
-
-        // virtualConsole.on( 'log', console.log );
-        // virtualConsole.on( 'error', console.error );
-
-        const { window } = new JSDOM( '', { runScripts: 'dangerously', virtualConsole: virtualConsole } );
-
-        // add polyfill for document.createRange
-        window.document.createRange = () => ( {
-            createContextualFragment: str => JSDOM.fragment( str )
-        } );
-
-        const scriptEl = window.document.createElement( 'script' );
-        scriptEl.textContent = scriptContent;
-        window.document.body.appendChild( scriptEl );
-
-        return window;
-    }
-
-    /**
      * Returns some dummy external data that can be used to instantiate a Form instance that requires external data.
      *
-     * @return {Array&lt;{id: string, xml: Document}>} external data object with dummy content
+     * @return {Array&lt;{id: string}>} external data object with dummy content
      */
-    _getExternalDummyContent() {
-        let external = [];
-        this.doc.querySelectorAll( 'instance[id][src]' ).forEach( instance => {
-            const { document } = ( new JSDOM( '&lt;something/>', { contentType: 'text/xml' } ) ).window;
-            external.push( { id: instance.id, xml: document } );
-        } );
-
-        return external;
+    _getExternalDataArray() {
+        return [ ...this.doc.querySelectorAll( 'instance[id][src]' ) ].map( instance => ( { id:instance.id } ) );
     }
 
     /**
@@ -648,6 +683,8 @@ class XForm {
         }
     }
 
+
+
     /**
      * Determines whether  a `&lt;bind>` element has corresponding input form control.
      *
@@ -691,6 +728,7 @@ class XForm {
      * @param {Error} error - Error object
      * @return {Error|string} cleaned up error message or original error object
      */
+
     _cleanXmlDomParserError( error ) {
         if ( this.options.debug ) {
             return error;
@@ -741,7 +779,7 @@ module.exports = {
 <br class="clear">
 
 <footer>
-    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.6.4</a> using the <a href="https://github.com/clenemt/docdash">docdash</a> theme.
+    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.6.5</a> using the <a href="https://github.com/clenemt/docdash">docdash</a> theme.
 </footer>
 
 <script>prettyPrint();</script>

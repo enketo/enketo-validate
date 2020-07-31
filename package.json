@@ -1,13 +1,13 @@
 {
     "name": "enketo-validate",
-    "version": "1.10.2",
+    "version": "1.11.0",
     "description": "An XForm validator around Enketo's form engine",
     "main": "src/validator.js",
     "bin": "./validate",
     "scripts": {
         "test": "mocha test/spec/*.spec.js --exit --timeout 7000 && npm run style-check",
         "build-docs": "rimraf docs && ./node_modules/.bin/jsdoc -c jsdoc.config.js",
-        "prepublish": "rollup --config && rollup --config rollup.utils.config.js",
+        "prepare": "rollup --config && rollup --config rollup.utils.config.js",
         "style-fix": "eslint *.js src/**/*.js test/**/*.js --fix",
         "style-check": "eslint *.js src/**/*.js test/**/*.js"
     },
