@@ -5,7 +5,7 @@
     "main": "src/validator.js",
     "bin": "./validate",
     "scripts": {
-        "test": "nyc mocha test/spec/*.spec.js --exit --timeout 5000 && npm run style-check && node update-readme-with-shield-badge.js",
+        "test": "mocha test/spec/*.spec.js --exit --timeout 5000 && npm run style-check",
         "build-docs": "rimraf docs && ./node_modules/.bin/jsdoc -c jsdoc.config.js",
         "prepublish": "rollup --config && rollup --config rollup.utils.config.js",
         "style-fix": "eslint *.js src/**/*.js test/**/*.js --fix",
@@ -44,7 +44,6 @@
         "istanbul-reporter-shield-badge": "^1.2.1",
         "jsdoc": "^3.6.5",
         "mocha": "^7.2.0",
-        "nyc": "^15.1.0",
         "pkg": "^4.4.9",
         "rimraf": "^3.0.2",
         "rollup": "^2.23.0",
