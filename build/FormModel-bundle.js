@@ -42672,7 +42672,7 @@
 	                            } else if ( that.$lat.val() && that.$lng.val() ) {
 	                                that._addPoint();
 	                                that._updateInputs( latLng, 'change.bymap' );
-	                            }
+	                            } else ;
 	                        }
 	                    } );
 
@@ -48375,7 +48375,7 @@
 	          if (curve && widths) {
 	            drawCurve(curve, widths, color);
 	          }
-	        }
+	        } else ;
 	      }
 	    } else {
 	      this._reset();
