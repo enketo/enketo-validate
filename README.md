@@ -27,7 +27,7 @@ Live demo web application (meant for testing purposes only) that uses Enketo Val
 
 To make the `enketo-validate` command available from any folder on your machine.
 ```bash
-$ npm install -g --production enketo-validate`
+$ npm install -g --production enketo-validate
 ```
 
 Alternatively, you can clone the repo and run `npm install --production`. This will make the `./validate` command available from within the clone folder. Running `npm link` makes the `enketo-validate` command available from any folder on your machine.

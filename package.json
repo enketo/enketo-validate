@@ -38,7 +38,7 @@
     "devDependencies": {
         "chai": "^4.2.0",
         "docdash": "^1.2.0",
-        "enketo-core": "enketo/enketo-core#826c0fd1",
+        "enketo-core": "~5.16.7",
         "eslint": "^7.5.0",
         "eslint-plugin-jsdoc": "^26.0.2",
         "istanbul-reporter-shield-badge": "^1.2.1",

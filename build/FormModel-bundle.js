@@ -780,8 +780,6 @@
 
 	        return null;
 	    }
-
-
 	}
 
 	/**
@@ -862,6 +860,37 @@
 	        };
 	        image.onerror = reject;
 	    } );
+	}
+
+	/**
+	 * Copied from: https://gist.github.com/creationix/7435851
+	 * Joins path segments.  Preserves initial "/" and resolves ".." and "."
+	 * Does not support using ".." to go above/outside the root.
+	 * This means that join("foo", "../../bar") will not resolve to "../bar"
+	 */
+	function joinPath( /* path segments */ ) {
+	    // Split the inputs into a list of path commands.
+	    let parts = [];
+	    for ( var i = 0, l = arguments.length; i < l; i++ ) {
+	        parts = parts.concat( arguments[i].split( '/' ) );
+	    }
+	    // Interpret the path commands to get the new resolved path.
+	    let newParts = [];
+	    for ( i = 0, l = parts.length; i < l; i++ ) {
+	        var part = parts[i];
+	        // Remove leading and trailing slashes
+	        // Also remove "." segments
+	        if ( !part || part === '.' ) continue;
+	        // Interpret ".." to pop the last segment
+	        if ( part === '..' ) newParts.pop();
+	        // Push new path segments.
+	        else newParts.push( part );
+	    }
+	    // Preserve the initial slash if there was one.
+	    if ( parts[0] === '' ) newParts.unshift( '' );
+
+	    // Turn back into a single string path.
+	    return newParts.join( '/' ) || ( newParts.length ? '/' : '.' );
 	}
 
 	var jquery = createCommonjsModule(function (module) {
@@ -25056,7 +25085,7 @@
 	            toCreate = Math.abs( toCreate ) >= numRepsInView ? -numRepsInView + (  0 ) : toCreate;
 	            for ( ; toCreate < 0; toCreate++ ) {
 	                const $last = jquery( repeatInfo ).siblings( '.or-repeat' ).last();
-	                this.remove( $last, 0 );
+	                this.remove( $last );
 	            }
 	        }
 	        // Now check the repeat counts of all the descendants of this repeat and its new siblings, level-by-level.
@@ -25169,25 +25198,22 @@
 
 	        return true;
 	    },
-	    remove( $repeat, delay ) {
+	    remove( $repeat ) {
 	        const that = this;
 	        const $next = $repeat.next( '.or-repeat, .or-repeat-info' );
 	        const repeatPath = $repeat.attr( 'name' );
 	        const repeatIndex = this.getIndex( $repeat[ 0 ] );
 	        const repeatInfo = $repeat.siblings( '.or-repeat-info' )[ 0 ];
 
-	        delay = typeof delay !== 'undefined' ? delay : 600;
+	        $repeat.remove();
+	        that.numberRepeats( repeatInfo );
+	        that.toggleButtons( repeatInfo );
+	        // Trigger the removerepeat on the next repeat or repeat-info(always present)
+	        // so that removerepeat handlers know where the repeat was removed
+	        $next[ 0 ].dispatchEvent( events.RemoveRepeat() );
+	        // Now remove the data node
+	        that.form.model.node( repeatPath, repeatIndex ).remove();
 
-	        $repeat.hide( delay, () => {
-	            $repeat.remove();
-	            that.numberRepeats( repeatInfo );
-	            that.toggleButtons( repeatInfo );
-	            // Trigger the removerepeat on the next repeat or repeat-info(always present)
-	            // so that removerepeat handlers know where the repeat was removed
-	            $next[ 0 ].dispatchEvent( events.RemoveRepeat() );
-	            // Now remove the data node
-	            that.form.model.node( repeatPath, repeatIndex ).remove();
-	        } );
 	    },
 	    fixRadioName( element ) {
 	        const random = Math.floor( ( Math.random() * 10000000 ) + 1 );
@@ -53044,11 +53070,14 @@
 
 	        // after radio button data-name setting (now done in XLST)
 	        // Set temporary event handler to ensure calculations in newly added repeats are run for the first time
-	        const tempHandler = event => this.calc.update( event.detail );
-	        this.view.html.addEventListener( events.AddRepeat().type, tempHandler );
+	        const tempHandlerAddRepeat = event => this.calc.update( event.detail );
+	        const tempHandlerRemoveRepeat = () => this.all = {};
+	        this.view.html.addEventListener( events.AddRepeat().type, tempHandlerAddRepeat );
+	        this.view.html.addEventListener( events.RemoveRepeat().type, tempHandlerRemoveRepeat );
 	        this.repeatsInitialized = true;
 	        this.repeats.init();
-	        this.view.html.removeEventListener( events.AddRepeat().type, tempHandler );
+	        this.view.html.removeEventListener( events.AddRepeat().type, tempHandlerAddRepeat );
+	        this.view.html.removeEventListener( events.RemoveRepeat().type, tempHandlerRemoveRepeat );
 
 	        // after repeats.init, but before itemset.update
 	        this.output.update();
@@ -53169,8 +53198,7 @@
 	 * @param {boolean} tryNative - whether to try the native evaluator, i.e. if there is no risk it would create an incorrect result such as with date comparisons
 	 * @return {string} updated expression
 	 */
-	Form.prototype.replaceChoiceNameFn = function( expr, resTypeStr, context, index, tryNative ) {
-	    const that = this;
+	Form.prototype.replaceChoiceNameFn = function( expr, resTypeStr, context, index, tryNative ){
 	    const choiceNames = parseFunctionFromExpression( expr, 'jr:choice-name' );
 
 	    choiceNames.forEach( choiceName => {
@@ -53178,23 +53206,32 @@
 
 	        if ( params.length === 2 ) {
 	            let label = '';
-	            const value = that.model.evaluate( params[ 0 ], resTypeStr, context, index, tryNative );
+	            const value = this.model.evaluate( params[ 0 ], resTypeStr, context, index, tryNative );
 	            const name = stripQuotes( params[ 1 ] ).trim();
-	            const $input = that.view.$.find( `[name="${name}"]` );
+	            const inputs = [ ...this.view.html.querySelectorAll( `[name="${name.startsWith( '/' ) ? name : joinPath( context, name )}"]` ) ];
+	            const nodeName = inputs.length ? inputs[0].nodeName.toLowerCase() : null;
 
-	            if ( !value ) {
+	            if ( !value || !inputs.length ) {
 	                label = '';
-	            } else if ( $input.length > 0 && $input.prop( 'nodeName' ).toLowerCase() === 'select' ) {
-	                label = $input.find( `[value="${value}"]` ).text();
-	            } else if ( $input.length > 0 && $input.prop( 'nodeName' ).toLowerCase() === 'input' ) {
-	                if ( !$input.attr( 'list' ) ) {
-	                    label = $input.filter( function() {
-	                        return jquery( this ).attr( 'value' ) === value;
-	                    } ).siblings( '.option-label.active' ).text();
+	            } else if (  nodeName === 'select' ) {
+	                const found = inputs.filter( input => input.querySelector( `[value="${value}"]` ) );
+	                label =  found ? found[0].querySelector( `[value="${value}"]` ).textContent : '';
+	            } else if (  nodeName === 'input' ) {
+	                const list = inputs[0].getAttribute( 'list' );
+
+	                if ( !list ){
+	                    const found = inputs.filter( input => input.getAttribute( 'value' ) === value );
+	                    const siblingLabelEls = getSiblingElements( found[0], '.option-label.active' );
+	                    label = siblingLabelEls.length ? siblingLabelEls[0].textContent : '';
 	                } else {
-	                    label = $input.siblings( `datalist#${$input.attr( 'list' )}` ).find( `[data-value="${value}"]` ).attr( 'value' );
+	                    const siblingListEls = getSiblingElements( inputs[0], `datalist#${list}` );
+	                    if ( siblingListEls.length ){
+	                        const optionEl = siblingListEls[0].querySelector( `[data-value="${value}"]` );
+	                        label = optionEl ? optionEl.getAttribute( 'value' ) : '';
+	                    }
 	                }
 	            }
+
 	            expr = expr.replace( choiceName[ 0 ], `"${label}"` );
 	        } else {
 	            throw new FormLogicError( `jr:choice-name function has incorrect number of parameters: ${choiceName[ 0 ]}` );
@@ -53884,7 +53921,7 @@
 	 * @type {string}
 	 * @default
 	 */
-	Form.requiredTransformerVersion = '1.40.2';
+	Form.requiredTransformerVersion = '1.40.3';
 
 	function addXPathExtensionsOc( XPathJS ) {
 
