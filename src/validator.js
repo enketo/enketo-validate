@@ -34,6 +34,7 @@ const { version } = require( '../package' );
  * @return {ValidateResult} validation results.
  */
 const validate = async( xformStr, options = {} ) => {
+    const start = Date.now();
     let warnings = [];
     let errors = [];
     let xform;
@@ -45,7 +46,9 @@ const validate = async( xformStr, options = {} ) => {
     }
 
     if ( !xform ){
-        return Promise.resolve( { warnings, errors, version } );
+        const duration = Date.now() - start;
+
+        return Promise.resolve( { warnings, errors, version, duration } );
     }
 
     xform.checkStructure( warnings, errors );
@@ -101,10 +104,11 @@ const validate = async( xformStr, options = {} ) => {
             }
         }
     }
+    const duration = Date.now() - start;
 
     await xform.exit();
 
-    return { warnings, errors, version };
+    return { warnings, errors, version, duration };
 };
 
 module.exports = { validate, version };

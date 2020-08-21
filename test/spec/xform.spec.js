@@ -9,6 +9,22 @@ const arrContains = ( arr, reg ) => arr.some( item => item.search( reg ) !== -1 
 
 describe( 'XForm', () => {
 
+    describe( 'that is valid', () => {
+        const xf =  loadXForm( 'model-only.xml' );
+        it( 'returns duration', async() => {
+            const result = await validator.validate( xf );
+            expect( result.duration ).to.be.above( 1 );
+        } );
+    } );
+
+    describe( 'that is invalid', () => {
+        const xf =  loadXForm( 'missing-closing-tag.xml' );
+        it( 'returns duration', async() => {
+            const result = await validator.validate( xf );
+            expect( result.duration ).to.be.above( 1 );
+        } );
+    } );
+
     describe( 'with bind that has no matching primary instance node (b)', () => {
         const xf = loadXForm( 'bind-not-binding.xml' );
 
