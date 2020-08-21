@@ -3,6 +3,7 @@ const { JSDOM } = require( 'jsdom' );
 const puppeteer = require( 'puppeteer' );
 const libxslt = require( 'libxslt' );
 const libxmljs = libxslt.libxmljs;
+const path = require( 'path' );
 const sheets = require( 'enketo-transformer' ).sheets;
 const xslModelSheet = libxslt.parse( sheets.xslModel );
 const appearanceRules = require( './appearances' );
@@ -35,7 +36,7 @@ class XForm {
             } )
             .then( page => {
 
-                return page.addScriptTag( { path:'./build/FormModel-bundle.js' } )
+                return page.addScriptTag( { path: path.join( __dirname, '../build/FormModel-bundle.js' ) } )
                     .then( () => page );
             } );
     }

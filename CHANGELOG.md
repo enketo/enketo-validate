@@ -2,6 +2,11 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+[Unreleased]
+---------------------
+##### Fixed
+- Path error when using library in an app such as enketo-validate-webapp.
+
 [1.11.0] - 2020-07-31
 ----------------------
 ##### Changed
