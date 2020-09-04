@@ -352,8 +352,7 @@ class XForm {
                 // the selector ":scope > label" fails with namespaced elements such as odk:rank
                 if ( ![ ...control.childNodes ].some( el => el.nodeName === 'label' ) ) {
                     const type = control.nodeName === 'item' || control.nodeName === 'itemset' ? 'Select option for question' : 'Question';
-                    const ref = control.getAttribute( 'ref' ) || control.parentElement.getAttribute( 'ref' ) || '?';
-                    const nodeName = ref.substring( ref.lastIndexOf( '/' ) + 1 ); // in XML model!
+                    const nodeName = this._nodeName( control,'ref' ) || this._nodeName( control.parentElement, 'ref' ) || '?';
                     errors.push( `${type} "${nodeName}" has no label.` );
                 }
             } );
@@ -422,8 +421,7 @@ class XForm {
                 const nodeset = repeat.getAttribute( 'nodeset' );
                 // This check will fail if relative nodesets are used (not supported in Enketo any more).
                 if ( repeatPaths.some( repeatPath => repeatPath.startsWith( nodeset + '/' ) ) ) {
-                    const name = nodeset.substring( nodeset.lastIndexOf( '/' ) + 1 );
-                    warnings.push( `Repeat "${name}" contains a nested repeat. This not recommended.` );
+                    warnings.push( `Repeat "${this._nodeName( nodeset )}" contains a nested repeat. This not recommended.` );
                 }
                 repeatPaths.push( nodeset );
             } );
@@ -433,8 +431,7 @@ class XForm {
             this.groups.forEach( group => {
                 const ref = group.getAttribute( 'ref' );
                 if ( group.getAttribute( 'intent' ) ){
-                    const name = ref.substring( ref.lastIndexOf( '/' ) + 1 );
-                    errors.push( `Group "${name}" has an unsupported "intent" attribute to launch an external app.` );
+                    errors.push( `Group "${this._nodeName( ref )}" has an unsupported "intent" attribute to launch an external app.` );
                 }
             } );
         }
@@ -495,7 +492,7 @@ class XForm {
 
                     return;
                 }
-                const nodeName = ref.substring( ref.lastIndexOf( '/' ) + 1 ); // in model!
+                const nodeName = this._nodeName( ref ); // in model!
                 const bindEl = this.getBind( ref );
                 let dataType = bindEl ? bindEl.getAttribute( 'type' ) : 'string';
                 // Convert ns prefix to properly evaluate XML Schema datatypes regardless of namespace prefix used in XForm.
@@ -594,7 +591,7 @@ class XForm {
                     bind.getAttributeNS( this.NAMESPACES.oc, 'external' ) !== 'clinicaldata';
             } )
             .map( this._nodeName.bind( this ) )
-            .forEach( nodeName => errors.push( `Found calculation for "${nodeName}" that refers to ` +
+            .forEach( nodeName => errors.push( `Found calculation for question "${nodeName}" that refers to ` +
                 'external clinicaldata without the required "external" attribute in the correct namespace.' ) );
 
         this.bindsWithCalc
@@ -605,8 +602,64 @@ class XForm {
                 return !calculation || !CLINICALDATA_REF.test( calculation );
             } )
             .map( this._nodeName.bind( this ) )
-            .forEach( nodeName => errors.push( `Found bind with clinicaldata attribute for "${nodeName}" that does not ` +
+            .forEach( nodeName => errors.push( `Found bind with clinicaldata attribute for question "${nodeName}" that does not ` +
                 'have a calculation referring to instance(\'clinicaldata\').' ) );
+
+        this.binds
+            .forEach( bind => {
+                const ocConstraints = [];
+                const ocConstraintMessages = [];
+                for ( const prop in bind.attributes ){
+                    const attribute = bind.attributes[prop];
+                    if ( attribute.namespaceURI === this.NAMESPACES.oc && attribute.localName.startsWith( 'constraint' ) ){
+                        const constraintName = attribute.localName;
+                        // helpful errors for likely most common errors
+                        if( constraintName === 'constraint' ) {
+                            errors.push( `Found unsupported oc:constraint without a number for question "${this._nodeName( bind )}".` );
+                            continue;
+                        }
+                        if( constraintName === 'constraintMsg' ){
+                            errors.push( `Found unsupported oc:constraintMsg without a number for question "${this._nodeName( bind )}".` );
+                            continue;
+                        }
+                        const match = constraintName.match( /^constraint([0-9]+)(Msg)?$/ );
+                        if ( match && ( match[1] < 1 || match[1] > 20 ) ){
+                            errors.push( `Found unsupported oc:constraint${match[1]}${match[2] || ''} for question "${this._nodeName( bind )}". Only numbers 1 to 20 are supported.` );
+
+                        } else if ( !match ) {
+                            const match = constraintName.match( /^constraint(.+)$/ );
+
+                            if ( match ){
+                                errors.push( `Found unsupported oc:constraint${match[1]} for question "${this._nodeName( bind )}". Only numbers 1 to 20 are supported.` );
+                            } else {
+                                // I don't think this code is reachable.
+                                console.error( 'Unhandled error' );
+                            }
+                        } else {
+                            if ( constraintName.endsWith( 'Msg' ) ){
+                                ocConstraintMessages.push( constraintName );
+                            } else {
+                                ocConstraints.push( constraintName );
+                            }
+                        }
+                    }
+                }
+
+                ocConstraints.filter( constraintName => {
+                    const match = constraintName.match( /^constraint[0-9]+$/ );
+
+                    return !ocConstraintMessages.includes( `${match[0]}Msg` );
+                } ).forEach( missing => errors.push( `Missing matching oc:${missing}Msg for oc:${missing} for question "${this._nodeName( bind )}".` ) );
+
+                ocConstraintMessages.forEach( constraintMsgName => {
+                    const match = constraintMsgName.match( /^(constraint[0-9]+)Msg$/ );
+
+                    if ( !ocConstraints.includes( `${match[1]}` ) ){
+                        errors.push( `Missing matching oc:${match[1]} for oc:${constraintMsgName} for question "${this._nodeName( bind )}".` );
+                    }
+                } );
+
+            } );
     }
 
     /**
@@ -667,8 +720,6 @@ class XForm {
         }
     }
 
-
-
     /**
      * Determines whether  a `<bind>` element has corresponding input form control.
      *
@@ -695,15 +746,22 @@ class XForm {
     }
 
     /**
-     * Returns the model node name that a provided `<bind>` element binds with.
+     * Returns the model node name that a provided element refers to.
      *
-     * @param {Element} bind - The XForm <bind> element.
-     * @return {string} the node name.
+     * @param {Element|string} thing - The XForm element or path.
+     * @param {string} attribute - The attribute that contains the path.
+     * @return {string|null} the node name.
      */
-    _nodeName( bind ) {
-        const path = bind.getAttribute( 'nodeset' );
+    _nodeName( thing, attribute = 'nodeset' ) {
+        let path;
 
-        return path.substring( path.lastIndexOf( '/' ) + 1 );
+        if ( typeof  thing === 'string' ){
+            path = thing;
+        } else {
+            path = thing.getAttribute( attribute );
+        }
+
+        return path ? path.substring( path.lastIndexOf( '/' ) + 1 ) : null;
     }
 
     /**

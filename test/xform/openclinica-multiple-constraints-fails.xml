@@ -1,0 +1,41 @@
+<?xml version="1.0"?>
+<h:html xmlns="http://www.w3.org/2002/xforms"
+    xmlns:ev="http://www.w3.org/2001/xml-events"
+    xmlns:h="http://www.w3.org/1999/xhtml"
+    xmlns:jr="http://openrosa.org/javarosa"
+    xmlns:orx="http://openrosa.org/xforms"
+    xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+    xmlns:oc="http://openclinica.org/xforms">
+    <h:head>
+        <h:title>oc-custom-multiple-constraint</h:title>
+        <model>
+            <instance>
+                <data id="data">
+                    <something/>
+                    <orx:meta>
+                        <orx:instanceID/>
+                    </orx:meta>
+                </data>
+            </instance>
+            <bind constraint="string-length(.) &gt; 10"
+                oc:constraint="ERROR"
+                oc:constraint1=". != 'a'"
+                oc:constraint2=". != 'b'"
+                oc:constraint20=". != 'c'"
+                oc:constraint22=". != 'c'"
+                jr:constraintMsg="msg0"
+                oc:constraintMsg="wrong"
+                oc:constraint18Msg="wrong"
+                oc:constraint21Msg="wrong"
+                oc:constraintABCMsg="wrong"
+                nodeset="/data/something"
+                type="string"/>
+            <bind nodeset="/data/orx:meta/orx:instanceID" readonly="true()" type="string"/>
+        </model>
+    </h:head>
+    <h:body>
+        <input ref="/data/something">
+            <label>something</label>
+        </input>
+    </h:body>
+</h:html>

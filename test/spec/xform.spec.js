@@ -45,7 +45,7 @@ describe( 'XForm', () => {
         } );
     } );
 
-    describe( 'with bind that has no nodeset', async() => {
+    describe( 'with bind that has no nodeset', () => {
         const xf = loadXForm( 'bind-without-nodeset.xml' );
         it( 'should return an error', async() => {
             const result = await validator.validate( xf );
@@ -148,22 +148,47 @@ describe( 'XForm', () => {
     } );
 
     describe( 'validated with custom OpenClinica rules', () => {
-        const validation = validator.validate( loadXForm( 'openclinica.xml' ), { openclinica: true } );
-        const ERRORS = 10;
 
-        it( `outputs ${ERRORS} errors`,async() => {
-            expect( ( await validation ).errors.length ).to.equal( ERRORS );
-        } );
 
-        it( 'outputs errors for calculations without form control that refer to external ' +
+        describe( 'forms with special clinicaldata extensions', () => {
+            const validation = validator.validate( loadXForm( 'openclinica.xml' ), { openclinica: true } );
+
+            it( 'outputs errors',async() => {
+                const result =  await validation;
+                expect( result.errors.length ).to.equal( 10 );
+            } );
+
+            it( 'outputs errors for calculations without form control that refer to external ' +
             'clinicaldata instance but do not have the oc:external="clinicaldata" bind',async() => {
-            expect( arrContains( ( await validation ).errors, /refers to external clinicaldata without the required "external" attribute/i ) ).to.equal( true );
+                const result =  await validation;
+                expect( arrContains( result.errors, /refers to external clinicaldata without the required "external" attribute/i ) ).to.equal( true );
+            } );
+
+            it( 'outputs errors for binds with oc:external="clinicaldata" that do not ' +
+            'do not have a calculation that refers to instance(\'clinicaldata\')', async() => {
+                const result =  await validation;
+                expect( arrContains( result.errors, /not .* calculation referring to instance\('clinicaldata'\)/i ) ).to.equal( true );
+            } );
         } );
 
-        it( 'outputs errors for binds with oc:external="clinicaldata" that do not ' +
-            'do not have a calculation that refers to instance(\'clinicaldata\')', async() => {
-            expect( arrContains( ( await validation ).errors, /not .* calculation referring to instance\('clinicaldata'\)/i ) ).to.equal( true );
+        describe( 'forms with special multiple constraints extensions', () => {
+            const validation = validator.validate( loadXForm( 'openclinica-multiple-constraints-fails.xml' ), { openclinica: true } );
+
+            it( 'outputs errors', async() => {
+                const result = await validation;
+                expect( result.errors.length ).to.equal( 9 );
+                expect( arrContains( result.errors, /unsupported oc:constraint .+ "something"/ ) ).to.equal( true );
+                expect( arrContains( result.errors, /unsupported oc:constraint22 .+ "something"/ ) ).to.equal( true );
+                expect( arrContains( result.errors, /unsupported oc:constraintMsg .+ "something"/ ) ).to.equal( true );
+                expect( arrContains( result.errors, /unsupported oc:constraint21Msg .+ "something"/ ) ).to.equal( true );
+                expect( arrContains( result.errors, /unsupported oc:constraintABCMsg .+ "something"/ ) ).to.equal( true );
+                expect( arrContains( result.errors, /matching oc:constraint1Msg .+ "something"/ ) ).to.equal( true );
+                expect( arrContains( result.errors, /matching oc:constraint2Msg .+ "something"/ ) ).to.equal( true );
+                expect( arrContains( result.errors, /matching oc:constraint18 .+ "something"/ ) ).to.equal( true );
+                expect( arrContains( result.errors, /matching oc:constraint20Msg .+ "something"/ ) ).to.equal( true );
+            } );
         } );
+
     } );
 
     describe( 'with incorrect appearance usage', () => {

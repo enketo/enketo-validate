@@ -79,7 +79,7 @@ const validate = async( xformStr, options = {} ) => {
             continue;
         }
 
-        const nodeName = path.substring( path.lastIndexOf( '/' ) + 1 );
+        const nodeName = xform._nodeName( path );
         // Note: using enketoEvaluate here, would be much slower
         const nodeExists = await xform.nodeExists( path );
 
