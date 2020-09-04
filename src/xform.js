@@ -420,6 +420,16 @@ class XForm {
             } );
         }
 
+        if ( this.groups.length ){
+            this.groups.forEach( group => {
+                const ref = group.getAttribute( 'ref' );
+                if ( group.getAttribute( 'intent' ) ){
+                    const name = ref.substring( ref.lastIndexOf( '/' ) + 1 );
+                    errors.push( `Group "${name}" has an unsupported "intent" attribute to launch an external app.` );
+                }
+            } );
+        }
+
         // ODK Build bug
         if ( bodyEl && bodyEl.querySelector( 'group:not([ref])' ) ) {
             warnings.push( 'Found <group> without ref attribute. This might be fine as long as the group has no relevant logic.' );
@@ -462,11 +472,40 @@ class XForm {
     checkAppearances( warnings, errors ) {
         this.formControls.concat( this.groups ).concat( this.repeats )
             .forEach( control => {
-                const appearanceVal = control.getAttribute( 'appearance' );
-                if ( !appearanceVal || appearanceVal.indexOf( 'ex:' ) === 0 ) {
+                let appearanceVal = control.getAttribute( 'appearance' );
+                if ( !appearanceVal || !appearanceVal.trim() ) {
                     return;
                 }
-                const appearances = appearanceVal.split( ' ' );
+
+                const controlNsPrefix = this.nsPrefixResolver( control.namespaceURI );
+                const controlName = controlNsPrefix && /:/.test( control.nodeName ) ? controlNsPrefix + ':' + control.nodeName.split( ':' )[ 1 ] : control.nodeName;
+                const pathAttr = controlName === 'repeat' ? 'nodeset' : 'ref';
+                const ref = control.getAttribute( pathAttr );
+                if ( !ref ) {
+                    errors.push( `Question found in body that has no ${pathAttr} attribute (${control.nodeName}).` );
+
+                    return;
+                }
+                const nodeName = ref.substring( ref.lastIndexOf( '/' ) + 1 ); // in model!
+                const bindEl = this.getBind( ref );
+                let dataType = bindEl ? bindEl.getAttribute( 'type' ) : 'string';
+                // Convert ns prefix to properly evaluate XML Schema datatypes regardless of namespace prefix used in XForm.
+                const typeValNs = /:/.test( dataType ) ? bindEl.lookupNamespaceURI( dataType.split( ':' )[ 0 ] ) : null;
+                dataType = typeValNs ? `${this.nsPrefixResolver( typeValNs )}:${dataType.split( ':' )[1]}` : dataType;
+
+                // Special error for use of ex;
+                if ( appearanceVal.trim().startsWith( 'ex:' ) ){
+                    errors.push( `Appearance "ex:" to launch an external app for question "${nodeName}" is not supported.` );
+
+                    return;
+                }
+                // Special search() error to avoid splitting space-separated parameters causing many unhelpful errors
+                const searchMatches = appearanceVal.match( /search\(.+\)/ );
+                if ( searchMatches ){
+                    appearanceVal = appearanceVal.replace( searchMatches[0], '' );
+                    errors.push( `Appearance "search" for question "${nodeName}" is not supported.` );
+                }
+                const appearances = appearanceVal.trim() ? appearanceVal.split( ' ' ) : [];
                 appearances.forEach( appearance => {
                     let rules = appearanceRules[ appearance ] || [];
 
@@ -477,24 +516,8 @@ class XForm {
                         rules = [ rules ];
                     }
                     if ( !Array.isArray( rules ) ){
-                        console.error( 'Appearance rules in expected format.' );
+                        console.error( 'Appearance rules not in expected format.' );
                     }
-
-                    const controlNsPrefix = this.nsPrefixResolver( control.namespaceURI );
-                    const controlName = controlNsPrefix && /:/.test( control.nodeName ) ? controlNsPrefix + ':' + control.nodeName.split( ':' )[ 1 ] : control.nodeName;
-                    const pathAttr = controlName === 'repeat' ? 'nodeset' : 'ref';
-                    const ref = control.getAttribute( pathAttr );
-                    if ( !ref ) {
-                        errors.push( `Question found in body that has no ${pathAttr} attribute (${control.nodeName}).` );
-
-                        return;
-                    }
-                    const nodeName = ref.substring( ref.lastIndexOf( '/' ) + 1 ); // in model!
-                    const bindEl = this.getBind( ref );
-                    let dataType = bindEl ? bindEl.getAttribute( 'type' ) : 'string';
-                    // Convert ns prefix to properly evaluate XML Schema datatypes regardless of namespace prefix used in XForm.
-                    const typeValNs = /:/.test( dataType ) ? bindEl.lookupNamespaceURI( dataType.split( ':' )[ 0 ] ) : null;
-                    dataType = typeValNs ? `${this.nsPrefixResolver( typeValNs )}:${dataType.split( ':' )[1]}` : dataType;
 
                     if ( rules.length === 0 ) {
                         warnings.push( `Appearance "${appearance}" for question "${nodeName}" is not supported.` );

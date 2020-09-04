@@ -138,11 +138,13 @@ describe( 'XForm', () => {
         const xf = loadXForm( 'appearances.xml' );
         const validation = validator.validate( xf );
         const validationOc = validator.validate( xf, { openclinica: true } );
-        const ISSUES = 14;
+        const WARNINGS = 14;
+        const ERRORS = 1;
 
         it( 'outputs warnings', async() => {
             const result = await validation;
-            expect( result.warnings.length ).to.equal( ISSUES );
+
+            expect( result.warnings.length ).to.equal( WARNINGS );
             expect( arrContains( result.warnings, /"minimal" for question "b"/i ) ).to.equal( true );
             expect( arrContains( result.warnings, /"compact-2" for question "b"/i ) ).to.equal( true );
             expect( arrContains( result.warnings, /"maximal" for question "c"/i ) ).to.equal( true );
@@ -159,20 +161,22 @@ describe( 'XForm', () => {
             expect( arrContains( result.warnings, /"field-list" for question "two"/i ) ).to.equal( true );
         } );
 
-        it( 'outputs no errors', async() => {
+        it( 'outputs 1 error', async() => {
             const result = await validation;
-            expect( result.errors.length ).to.equal( 0 );
+            expect( result.errors.length ).to.equal( ERRORS );
+            expect( arrContains( result.errors, /"search" for question "l"/i ) ).to.equal( true );
         } );
 
-        it( 'outputs no errors with --oc flag either', async() => {
+        it( 'outputs 1 error with --oc flag', async() => {
             const resultOc = await validationOc;
-            expect( resultOc.errors.length ).to.equal( 0 );
+            expect( resultOc.errors.length ).to.equal( ERRORS );
+            expect( arrContains( resultOc.errors, /"search" for question "l"/i ) ).to.equal( true );
         } );
 
         it( 'outputs warnings with --oc flag too', async() => {
             const resultOc = await validationOc;
             //expect( arrContains( result.warnings, /deprecated/ ) ).to.equal( false );
-            expect( resultOc.warnings.length ).to.equal( ISSUES );
+            expect( resultOc.warnings.length ).to.equal( WARNINGS );
         } );
 
         it( 'including the special case "horizontal" output warnings', async() => {
@@ -184,6 +188,21 @@ describe( 'XForm', () => {
             expect( arrContains( result.warnings, /"horizontal" for question "i".+not valid/i ) ).to.equal( true );
             expect( arrContains( result.warnings, /"horizontal" for question "one".+not valid.+\(group\)/i ) ).to.equal( true );
         } );
+
+    } );
+
+    describe( 'with unsupported external app launching syntax', () => {
+        const xf = loadXForm( 'external-app.xml' );
+        const validation = validator.validate( xf );
+
+        it( 'outputs warnings', async() => {
+            const result = await validation;
+
+            expect( result.errors.length ).to.equal( 2 );
+            expect( arrContains( result.errors, /"ex:" to launch an external app for question "counter"/i ) ).to.equal( true );
+            expect( arrContains( result.errors, /"intent" attribute to launch an external app/i ) ).to.equal( true );
+        } );
+
     } );
 
     describe( 'with missing <label> elements', () => {

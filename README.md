@@ -92,7 +92,7 @@ In it's current iteration, the validator does the following:
 * It checks whether required `<label>` elements exist.
 * It checks for duplicate question or group names.
 * It checks for nested repeats.
-* It checks for form controls that have a calculation but are not set as readonly.
+* It checks for form controls that have a calculation but is not set as readonly.
 
 \* Note, that `/path/to/a/nonexisting/node` is perfectly valid XPath.
 

@@ -1,0 +1,38 @@
+<?xml version="1.0"?>
+<h:html xmlns="http://www.w3.org/2002/xforms" xmlns:ev="http://www.w3.org/2001/xml-events" xmlns:h="http://www.w3.org/1999/xhtml" xmlns:jr="http://openrosa.org/javarosa" xmlns:odk="http://www.opendatakit.org/xforms" xmlns:orx="http://openrosa.org/xforms" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+    <h:head>
+        <h:title>external-app</h:title>
+        <model odk:xforms-version="1.0.0">
+            <instance>
+                <data id="external-app">
+                    <counter />
+                    <mygroup>
+                        <sometext />
+                        <someinteger />
+                    </mygroup>
+                    <meta>
+                        <instanceID />
+                    </meta>
+                </data>
+            </instance>
+            <bind nodeset="/data/counter" type="int" />
+            <bind nodeset="/data/mygroup/sometext" type="string" />
+            <bind nodeset="/data/mygroup/someinteger" type="int" />
+            <bind jr:preload="uid" nodeset="/data/meta/instanceID" readonly="true()" type="string" />
+        </model>
+    </h:head>
+    <h:body>
+        <input appearance="ex:org.opendatakit.counter(form_id='counter-form', form_name='Counter Form', question_id='1', question_name='Counter')" ref="/data/counter">
+            <label>Click launch to start the counter app</label>
+        </input>
+        <group appearance="field-list" intent="org.mycompany.myapp(my_text='Some text', uuid=/myform/meta/instanceID)" ref="/data/mygroup">
+            <label>Fields to populate</label>
+            <input ref="/data/mygroup/sometext">
+                <label>Some text</label>
+            </input>
+            <input ref="/data/mygroup/someinteger">
+                <label>Some integer</label>
+            </input>
+        </group>
+    </h:body>
+</h:html>

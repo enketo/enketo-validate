@@ -23,7 +23,6 @@ describe( 'XPath expressions', () => {
 
     describe( 'with function calls with an insufficient number of parameters', () => {
 
-
         it( 'should throw an error message for selected()', async() => {
             await parsing;
             const expr = 'selected(/data/a)';
@@ -86,7 +85,6 @@ describe( 'XPath expressions', () => {
         } );
 
     } );
-
 
     xdescribe( 'with expressions that refer to self when not allowed', () => {
         // There is an integration test in xform.spec.js

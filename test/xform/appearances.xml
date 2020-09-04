@@ -24,6 +24,7 @@
                         <i/>
                         <j/>
                         <k/>
+                        <l/>
                     </one>
                     <two/>
                     <meta>
@@ -96,6 +97,13 @@
                 <item>
                     <label>Alaska</label>
                     <value>AK</value>
+                </item>
+            </select1>
+            <select1 ref="/data/one/l" appearance="search('external-csv-search-produce', 'contains', 'name',  /data/produce_search )">
+                <label>label k</label>
+                <item>
+                    <label>label</label>
+                    <value>name</value>
                 </item>
             </select1>
         </group>

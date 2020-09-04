@@ -2,6 +2,12 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+[Unreleased]
+---------------------
+##### Added
+- A check for search() appearance usage.
+- A check for external app "ex:" appearance or intent attribute usage.
+
 [1.11.1] - 2020-08-21
 ---------------------
 ##### Added
