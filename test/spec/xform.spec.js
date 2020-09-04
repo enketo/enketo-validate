@@ -28,11 +28,11 @@ describe( 'XForm', () => {
     describe( 'with bind that has no matching primary instance node (b)', () => {
         const xf = loadXForm( 'bind-not-binding.xml' );
 
-        it( 'should return a warning', async() => {
+        it( 'should return an error', async() => {
             const result = await validator.validate( xf );
-            expect( result.errors.length ).to.equal( 0 );
-            expect( result.warnings.length ).to.equal( 1 );
-            expect( result.warnings[ 0 ] ).to.include( 'not exist' );
+            expect( result.warnings.length ).to.equal( 0 );
+            expect( result.errors.length ).to.equal( 1 );
+            expect( result.errors[ 0 ] ).to.include( 'not exist' );
         } );
     } );
 
@@ -47,10 +47,10 @@ describe( 'XForm', () => {
 
     describe( 'with bind that has no nodeset', async() => {
         const xf = loadXForm( 'bind-without-nodeset.xml' );
-        it( 'should return a warning', async() => {
+        it( 'should return an error', async() => {
             const result = await validator.validate( xf );
-            expect( result.warnings.length ).to.equal( 1 );
-            expect( result.warnings[ 0 ] ).to.include( 'without nodeset attribute' );
+            expect( result.errors.length ).to.equal( 1 );
+            expect( result.errors[ 0 ] ).to.include( 'without a nodeset attribute' );
         } );
     } );
 
@@ -113,6 +113,38 @@ describe( 'XForm', () => {
             const result4 = await validation4;
             expect( arrContains( result4.errors, /data root.*no id attribute/i ) ).to.equal( true );
         } );
+    } );
+
+    describe( 'with errors in relevant, constraint, calculate and required expressions', () => {
+        const validation = validator.validate( loadXForm( 'xpath-fails.xml' ) );
+
+        it( 'should be detected', async() => {
+            const result = await validation;
+            expect( result.errors.length ).to.equal( 7 );
+            expect( arrContains( result.errors, /Calculation formula for "calc1"/i ) ).to.equal( true );
+            expect( arrContains( result.errors, /Relevant formula for "calc1"/i ) ).to.equal( true );
+            expect( arrContains( result.errors, /Calculation formula for "calc11"/i ) ).to.equal( true );
+            expect( arrContains( result.errors, /Relevant formula for "calc11"/i ) ).to.equal( true );
+            expect( arrContains( result.errors, /Constraint formula for "cond1"/i ) ).to.equal( true );
+            expect( arrContains( result.errors, /Required formula for "cond1"/i ) ).to.equal( true );
+            expect( arrContains( result.errors, /Calculation formula for "instanceID"/i ) ).to.equal( true );
+        } );
+
+    } );
+
+    describe( 'with errors in setvalue expressions and attributes', () => {
+        const validation = validator.validate( loadXForm( 'setvalue-fails.xml' ) );
+
+        it( 'should be detected', async() => {
+            const result = await validation;
+            expect( result.errors.length ).to.equal( 5 );
+            expect( arrContains( result.errors, /setvalue without a ref attribute/i ) ).to.equal( true );
+            expect( arrContains( result.errors, /setvalue for "age_chang" that does not exist in the model/i ) ).to.equal( true );
+            expect( arrContains( result.errors, /default formula for "b"/i ) ).to.equal( true );
+            expect( arrContains( result.errors, /calculation formula for "my_age_changed"/i ) ).to.equal( true );
+            expect( arrContains( result.errors, /default formula for "age"/i ) ).to.equal( true );
+        } );
+
     } );
 
     describe( 'validated with custom OpenClinica rules', () => {

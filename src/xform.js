@@ -129,6 +129,15 @@ class XForm {
     /**
      * @type {Array<Node>}
      */
+    get setvalues() {
+        this._setvalues = this._setvalues || [ ...this.doc.querySelectorAll( 'setvalue',  ) ];
+
+        return this._setvalues;
+    }
+
+    /**
+     * @type {Array<Node>}
+     */
     get items() {
         // TODO: wrong to use h: namespace prefix without resolver here!
         // fix in JSDom might be forthcoming:

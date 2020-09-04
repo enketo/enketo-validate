@@ -66,13 +66,15 @@ const validate = async( xformStr, options = {} ) => {
         errors = errors.concat( ers );
     }
 
-    // Find binds
+    // Check logic
 
-    for( const bind of xform.binds ){
-        const path = bind.getAttribute( 'nodeset' );
+    for( const el of xform.binds.concat( xform.setvalues ) ){
+        const type = el.nodeName.toLowerCase();
+        const props = type === 'bind' ? { path: 'nodeset', logic: [ 'calculate', 'constraint', 'relevant', 'required' ]  } : { path: 'ref', logic: [ 'value' ] };
+        const path = el.getAttribute( props.path );
 
         if ( !path ) {
-            warnings.push( 'Found bind without nodeset attribute.' );
+            errors.push( `Found ${type} without a ${props.path} attribute.` );
 
             continue;
         }
@@ -82,17 +84,27 @@ const validate = async( xformStr, options = {} ) => {
         const nodeExists = await xform.nodeExists( path );
 
         if ( !nodeExists ) {
-            warnings.push( `Found bind for "${nodeName}" that does not exist in the model.` );
+            errors.push( `Found ${type} for "${nodeName}" that does not exist in the model.` );
 
             continue;
         }
 
-        for ( const logicName of [ 'calculate', 'constraint', 'relevant', 'required' ] ){
-            const logicExpr = bind.getAttribute( logicName );
+        for ( const logicName of props.logic ){
+            const logicExpr = el.getAttribute( logicName );
             const calculation = logicName === 'calculate';
 
             if ( logicExpr ) {
-                const friendlyLogicName = calculation ? 'Calculation' : logicName[ 0 ].toUpperCase() + logicName.substring( 1 );
+                let friendlyLogicName = logicName[ 0 ].toUpperCase() + logicName.substring( 1 );
+                if ( calculation ){
+                    friendlyLogicName = 'Calculation';
+                } else if ( type === 'setvalue' ){
+                    const event = el.getAttribute( 'event' );
+                    if ( !event ){
+                        errors.push( 'Found ${type} without event attribute.' );
+                        continue;
+                    }
+                    friendlyLogicName = event.split( ' ' ).includes( 'xforms-value-changed' ) ? 'Triggered calculation' : 'Dynamic default';
+                }
 
                 try {
                     await xform.enketoEvaluate( logicExpr, ( calculation ? 'string' : 'boolean' ), path );

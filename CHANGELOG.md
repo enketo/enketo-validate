@@ -7,6 +7,10 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 ##### Added
 - A check for search() appearance usage.
 - A check for external app "ex:" appearance or intent attribute usage.
+- A check for validity of setvalue logic.
+
+##### Changed
+- Some previously reported warnings are now reported as errors.
 
 [1.11.1] - 2020-08-21
 ---------------------
