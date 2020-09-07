@@ -1,6 +1,5 @@
-import { parseFunctionFromExpression } from 'enketo-core/src/js/utils';
+import { parseFunctionFromExpression, isNumber } from 'enketo-core/src/js/utils';
 import { getXPath } from 'enketo-core/src/js/dom-utils';
-
 
 /**
  * @module utils
@@ -13,5 +12,6 @@ module.exports = {
      * @see {@link https://enketo.github.io/enketo-core/module-utils.html#~parseFunctionFromExpression|parseFunctionFromExpression}
      */
     parseFunctionFromExpression,
+    isNumber,
     getXPath
 };

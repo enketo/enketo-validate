@@ -53,6 +53,15 @@ function parseFunctionFromExpression( expr, func ) {
 }
 
 /**
+ * @static
+ * @param {*} n - value
+ * @return {boolean} whether it is a number value
+ */
+function isNumber( n ) {
+    return !isNaN( parseFloat( n ) ) && isFinite( n );
+}
+
+/**
  * @module dom-utils
  */
 
@@ -131,5 +140,6 @@ module.exports = {
      * @see {@link https://enketo.github.io/enketo-core/module-utils.html#~parseFunctionFromExpression|parseFunctionFromExpression}
      */
     parseFunctionFromExpression,
+    isNumber,
     getXPath
 };

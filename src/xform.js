@@ -607,58 +607,35 @@ class XForm {
 
         this.binds
             .forEach( bind => {
-                const ocConstraints = [];
-                const ocConstraintMessages = [];
+                const question = this._nodeName( bind );
+                const missingAttributes = [];
+
                 for ( const prop in bind.attributes ){
                     const attribute = bind.attributes[prop];
                     if ( attribute.namespaceURI === this.NAMESPACES.oc && attribute.localName.startsWith( 'constraint' ) ){
                         const constraintName = attribute.localName;
-                        // helpful errors for likely most common errors
-                        if( constraintName === 'constraint' ) {
-                            errors.push( `Found unsupported oc:constraint without a number for question "${this._nodeName( bind )}".` );
-                            continue;
-                        }
-                        if( constraintName === 'constraintMsg' ){
-                            errors.push( `Found unsupported oc:constraintMsg without a number for question "${this._nodeName( bind )}".` );
-                            continue;
-                        }
-                        const match = constraintName.match( /^constraint([0-9]+)(Msg)?$/ );
-                        if ( match && ( match[1] < 1 || match[1] > 20 ) ){
-                            errors.push( `Found unsupported oc:constraint${match[1]}${match[2] || ''} for question "${this._nodeName( bind )}". Only numbers 1 to 20 are supported.` );
+                        const match = constraintName.match( /^constraint(.*)$/ );
+                        const msg = constraintName.endsWith( 'Msg' ) ? 'Msg' : '';
+                        const id = msg ? match[1].substring( 0, match[1].length - 3 ) : match[1];
 
-                        } else if ( !match ) {
-                            const match = constraintName.match( /^constraint(.+)$/ );
+                        if ( !utils.isNumber( id ) || id < 1 || id > 20 ){
+                            errors.push( `Found unsupported oc:constraint${id}${msg} for question "${question}". Only numbers 1 to 20 are supported.` );
 
-                            if ( match ){
-                                errors.push( `Found unsupported oc:constraint${match[1]} for question "${this._nodeName( bind )}". Only numbers 1 to 20 are supported.` );
-                            } else {
-                                // I don't think this code is reachable.
-                                console.error( 'Unhandled error' );
-                            }
                         } else {
-                            if ( constraintName.endsWith( 'Msg' ) ){
-                                ocConstraintMessages.push( constraintName );
+                            // Only check valid attributes for matching Msg attributes and vice versa
+                            const matchingAttribute = `constraint${id}${msg ? '' : 'Msg'}`;
+                            const foundIndex = missingAttributes.findIndex( arr => arr[0] === matchingAttribute );
+                            if ( foundIndex === -1 ){
+                                // presume missing until found
+                                missingAttributes.push( [ matchingAttribute, constraintName ] );
                             } else {
-                                ocConstraints.push( constraintName );
+                                missingAttributes.splice( foundIndex, 1 );
                             }
                         }
                     }
                 }
 
-                ocConstraints.filter( constraintName => {
-                    const match = constraintName.match( /^constraint[0-9]+$/ );
-
-                    return !ocConstraintMessages.includes( `${match[0]}Msg` );
-                } ).forEach( missing => errors.push( `Missing matching oc:${missing}Msg for oc:${missing} for question "${this._nodeName( bind )}".` ) );
-
-                ocConstraintMessages.forEach( constraintMsgName => {
-                    const match = constraintMsgName.match( /^(constraint[0-9]+)Msg$/ );
-
-                    if ( !ocConstraints.includes( `${match[1]}` ) ){
-                        errors.push( `Missing matching oc:${match[1]} for oc:${constraintMsgName} for question "${this._nodeName( bind )}".` );
-                    }
-                } );
-
+                missingAttributes.forEach( arr => errors.push( `Missing matching oc:${arr[0]} for oc:${arr[1]} for question "${question}".` ) );
             } );
     }
 
