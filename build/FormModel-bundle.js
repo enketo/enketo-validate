@@ -893,6 +893,14 @@
 	    return newParts.join( '/' ) || ( newParts.length ? '/' : '.' );
 	}
 
+
+	function getScript( url ) {
+	    const scriptTag = document.createElement( 'script' );
+	    const firstScriptTag = document.getElementsByTagName( 'script' )[0];
+	    scriptTag.src = url;
+	    firstScriptTag.parentNode.insertBefore( scriptTag, firstScriptTag );
+	}
+
 	var jquery = createCommonjsModule(function (module) {
 	/*!
 	 * jQuery JavaScript Library v3.5.1
@@ -23017,7 +23025,7 @@
 	};
 
 	/**
-	 * Extracts all templates from the model and stores them in a Javascript object poperties as Jquery collections.
+	 * Extracts all templates from the model and stores them in a Javascript object.
 	 */
 	FormModel.prototype.extractTemplates = function() {
 	    const that = this;
@@ -23027,7 +23035,7 @@
 	        const xPath = getXPath( templateEl, 'instance' );
 	        that.addTemplate( xPath, templateEl );
 	        /*
-	         * Nested repeats that have a template attribute are correctly add to that.templates.
+	         * Nested repeats that have a template attribute are correctly added to the templates object.
 	         * The template of the repeat ancestor of the nested repeat contains the correct comment.
 	         * However, since the ancestor repeat (template)
 	         */
@@ -23912,9 +23920,12 @@
 	    return Promise.resolve()
 	        .then( () => types[ xmlDataType.toLowerCase() ].validate( value ) )
 	        .then( typeValid => {
-	            const exprValid = ( typeof expr !== 'undefined' && expr !== null && expr.length > 0 ) ? that.model.evaluate( expr, 'boolean', that.originalSelector, that.index ) : true;
+	            if ( !typeValid ){
+	                return false;
+	            }
+	            const exprValid = expr ? that.model.evaluate( expr, 'boolean', that.originalSelector, that.index ) : true;
 
-	            return ( typeValid && exprValid );
+	            return exprValid;
 	        } );
 	};
 
@@ -24156,14 +24167,14 @@
 	    },
 	    /**
 	     * @param {Element} control - form control HTML element
-	     * @return {string} element constraint
+	     * @return {string} constraint expression
 	     */
 	    getConstraint( control ) {
 	        return control.dataset.constraint;
 	    },
 	    /**
 	     * @param {Element} control - form control HTML element
-	     * @return {string|undefined} element required
+	     * @return {string|undefined} required expression
 	     */
 	    getRequired( control ) {
 	        // only return value if input is not a table heading input
@@ -24173,7 +24184,7 @@
 	    },
 	    /**
 	     * @param {Element} control - form control HTML element
-	     * @return {string} element relevant
+	     * @return {string} relevant expression
 	     */
 	    getRelevant( control ) {
 	        return control.dataset.relevant;
@@ -24187,21 +24198,21 @@
 	    },
 	    /**
 	     * @param {Element} control - form control HTML element
-	     * @return {string} element calculate
+	     * @return {string} calculate expression
 	     */
 	    getCalculation( control ) {
 	        return control.dataset.calculate;
 	    },
 	    /**
 	     * @param {Element} control - form control HTML element
-	     * @return {string} element XML type
+	     * @return {string} XML type
 	     */
 	    getXmlType( control ) {
 	        return ( control.dataset.typeXml || 'string' ).toLowerCase();
 	    },
 	    /**
 	     * @param {Element} control - form control HTML element
-	     * @return {string} element name
+	     * @return {string} name
 	     */
 	    getName( control ) {
 	        const name = control.dataset.name || control.getAttribute( 'name' );
@@ -42825,7 +42836,7 @@
 	                // make the request for the Google Maps script asynchronously
 	                apiKeyQueryParam =  '';
 	                loadUrl = `https://maps.google.com/maps/api/js?v=3.exp${apiKeyQueryParam}&libraries=places&callback=gmapsLoaded`;
-	                jquery.getScript( loadUrl );
+	                getScript( loadUrl );
 	            } );
 	        }
 
@@ -49176,7 +49187,7 @@
 	     */
 	    _stepsBetweenHtmlStr( props ) {
 	        let html = '';
-	        if ( props.distress ) {
+	        if ( props.showScale ) {
 	            const stepsCount = ( props.max - props.min ) / props.step;
 	            if ( stepsCount <= 10 && ( props.max - props.min ) % props.step === 0 ) {
 	                for ( let i = props.min + props.step; i < props.max; i += props.step ) {
@@ -49243,7 +49254,7 @@
 	        props.step = Number( step );
 	        props.vertical = props.appearances.includes( 'vertical' ) || distress;
 	        props.ticks = !props.appearances.includes( 'no-ticks' );
-	        props.distress = distress;
+	        props.showScale = distress;
 	        props.maxTicks = 50;
 
 	        return props;
@@ -49395,11 +49406,15 @@
 	    get props() {
 	        const props = this._props;
 	        props.touch = support.touch;
-	        props.min = isNumber( this.element.getAttribute( 'min' ) ) ? this.element.getAttribute( 'min' ) : 0;
-	        props.max = isNumber( this.element.getAttribute( 'max' ) ) ? this.element.getAttribute( 'max' ) : 100;
-	        props.step = isNumber( this.element.getAttribute( 'step' ) ) ? this.element.getAttribute( 'step' ) : 1; //( props.type === 'decimal' ? 0.1 : 1 );
 	        props.vertical = !props.appearances.includes( 'horizontal' );
 	        props.ticks = !props.appearances.includes( 'no-ticks' );
+	        props.showScale = props.appearances.includes( 'show-scale' ) && props.vertical && props.ticks;
+	        const min = isNumber( this.element.getAttribute( 'min' ) ) ? this.element.getAttribute( 'min' ) : 0;
+	        const max = isNumber( this.element.getAttribute( 'max' ) ) ? this.element.getAttribute( 'max' ) : 100;
+	        const step = isNumber( this.element.getAttribute( 'step' ) ) ? this.element.getAttribute( 'step' ) : ( props.showScale ? 10 : 1 ); //( props.type === 'decimal' ? 0.1 : 1 );
+	        props.min = Number( min );
+	        props.max = Number( max );
+	        props.step = Number( step );
 	        props.maxTicks = 10;
 
 	        return props;
@@ -52973,6 +52988,18 @@
 	    /**
 	     * @type {Array<string>}
 	     */
+	    get constraintClassesInvalid() {
+	        return Form.constraintNames.map( n => `.invalid-${n}` );
+	    },
+	    /**
+	     * @type {Array<string>}
+	     */
+	    get constraintAttributes() {
+	        return Form.constraintNames.map( n => `data-${n}` );
+	    },
+	    /**
+	     * @type {Array<string>}
+	     */
 	    get languages() {
 	        return this.langs.languagesUsed;
 	    }
@@ -53386,7 +53413,7 @@
 	        const wrapper = control.type === 'radio' || control.type === 'checkbox' ? closestAncestorUntil( control, '.option-wrapper', '.question' ) : null;
 	        // Filter out duplicate radiobuttons and checkboxes
 	        if ( wrapper ) {
-	            if ( wrappers.indexOf( wrapper ) !== -1 ) {
+	            if ( wrappers.includes( wrapper ) ) {
 	                return false;
 	            }
 	            wrappers.push( wrapper );
@@ -53499,7 +53526,7 @@
 	 *
 	 * @param {UpdatedDataNodes} updated - object that contains information on updated nodes
 	 */
-	Form.prototype.validationUpdate = function( updated ) {
+	Form.prototype.validationUpdate = function( updated = {} ) {
 	};
 
 	/**
@@ -53602,22 +53629,63 @@
 	};
 
 	/**
-	 * @param {Element} node - form control HTML element
+	 * Removes an invalid mark on a question in the form UI.
+	 *
+	 * @param {Element} control - form control HTML element
 	 * @param {string} [type] - One of "constraint", "required" and "relevant".
 	 */
-	Form.prototype.setValid = function( node, type ) {
-	    const classes =  type ? [ `invalid-${type}` ] : [ 'invalid-constraint', 'invalid-required', 'invalid-relevant' ];
-	    this.input.getWrapNode( node ).classList.remove( ...classes );
+	Form.prototype.setValid = function( control, type ) {
+	    const wrap = this.input.getWrapNode( control );
+
+	    if ( !wrap ){
+	        // TODO: this condition occurs, at least in tests for itemsets, but we need find out how.
+	        return;
+	    }
+
+	    const classes = type ? [ `invalid-${type}` ] : [ ...wrap.classList ].filter( cl => cl.indexOf( 'invalid-' ) === 0 );
+	    wrap.classList.remove( ...classes );
 	};
 
 	/**
-	 * @param {Element} node - form control HTML element
+	 * Marks a question as invalid in the form UI.
+	 *
+	 * @param {Element} control - form control HTML element
 	 * @param {string} [type] - One of "constraint", "required" and "relevant".
 	 */
-	Form.prototype.setInvalid = function( node, type ) {
-	    type = type || 'constraint';
+	Form.prototype.setInvalid = function( control, type = 'constraint' ) {
+	    const wrap = this.input.getWrapNode( control );
 
-	    this.input.getWrapNode( node ).classList.add( `invalid-${type}` );
+	    if ( !wrap ){
+	        // TODO: this condition occurs, at least in tests for itemsets, but we need find out how.
+	        return;
+	    }
+
+	    wrap.classList.add( `invalid-${type}` );
+	};
+
+	/**
+	 *
+	 * @param {*} control - form control HTML element
+	 * @param {*} result - result object obtained from Nodeset.validate
+	 */
+	Form.prototype.updateValidityInUi = function( control, result ){
+	    const passed = result.requiredValid !== false && result.constraintValid !== false;
+
+	    // Update UI
+	    if ( result.requiredValid === false ) {
+	        this.setValid( control, 'constraint' );
+	        this.setInvalid( control, 'required' );
+	    } else if ( result.constraintValid === false ) {
+	        this.setValid( control, 'required' );
+	        this.setInvalid( control, 'constraint' );
+	    } else {
+	        this.setValid( control, 'constraint' );
+	        this.setValid( control, 'required' );
+	    }
+
+	    if ( !passed ){
+	        control.dispatchEvent( events.Invalidated() );
+	    }
 	};
 
 	/**
@@ -53640,14 +53708,15 @@
 	 * @return {!boolean} Whether the question/form is not marked as invalid.
 	 */
 	Form.prototype.isValid = function( node ) {
+	    const invalidSelectors = [ '.invalid-required', '.invalid-relevant' ].concat( this.constraintClassesInvalid );
 	    if ( node ) {
 	        const question = this.input.getWrapNode( node );
 	        const cls = question.classList;
 
-	        return !cls.contains( 'invalid-required' ) && !cls.contains( 'invalid-constraint' ) && !cls.contains( 'invalid-relevant' );
+	        return !invalidSelectors.some( selector => cls.contains( selector ) );
 	    }
 
-	    return this.view.html.querySelector( '.invalid-required, .invalid-constraint, .invalid-relevant' ) === null;
+	    return !this.view.html.querySelector( invalidSelectors.join( ', ' ) );
 	};
 
 	/**
@@ -53690,8 +53759,8 @@
 	 * @return {Promise} wrapping {boolean} whether the container contains any errors
 	 */
 	Form.prototype.validateContent = function( $container ) {
-	    let $firstError;
 	    const that = this;
+	    const invalidSelector = [ '.invalid-required', '.invalid-relevant' ].concat( this.constraintClassesInvalid ).join( ', ' );
 
 	    //can't fire custom events on disabled elements therefore we set them all as valid
 	    $container.find( 'fieldset:disabled input, fieldset:disabled select, fieldset:disabled textarea, ' +
@@ -53712,16 +53781,14 @@
 
 	    return Promise.all( validations )
 	        .then( () => {
-	            $firstError = $container
-	                .find( '.invalid-required, .invalid-constraint, .invalid-relevant' )
-	                .addBack( '.invalid-required, .invalid-constraint, .invalid-relevant' )
-	                .eq( 0 );
+	            const container = $container[ 0 ];
+	            const firstError = container.matches( invalidSelector ) ? container : container.querySelector( invalidSelector );
 
-	            if ( $firstError.length > 0 ) {
-	                that.goToTarget( $firstError[ 0 ] );
+	            if ( firstError ) {
+	                that.goToTarget( firstError );
 	            }
 
-	            return $firstError.length === 0;
+	            return !firstError;
 	        } )
 	        .catch( () => // fail whole-form validation if any of the question
 	            // validations threw.
@@ -53764,7 +53831,7 @@
 	    }
 	    const that = this;
 	    let getValidationResult;
-	    // All relevant properties, except for the **very expensive** index property
+	    // All properties, except for the **very expensive** index property
 	    // There is some scope for performance improvement by determining other properties when they
 	    // are needed, but that may not be so significant.
 	    const n = {
@@ -53798,33 +53865,11 @@
 
 	    return getValidationResult
 	        .then( result => {
-	            let previouslyInvalid = false;
-	            const passed = result.requiredValid !== false && result.constraintValid !== false;
-
 	            if ( n.inputType !== 'hidden' ) {
-
-	                // Check current UI state
-	                n.q = that.input.getWrapNode( control );
-	                previouslyInvalid = n.q.classList.contains( 'invalid-required' ) || n.q.classList.contains( 'invalid-constraint' );
-
-	                // Update UI
-	                if ( result.requiredValid === false ) {
-	                    that.setValid( control, 'constraint' );
-	                    that.setInvalid( control, 'required' );
-	                } else if ( result.constraintValid === false ) {
-	                    that.setValid( control, 'required' );
-	                    that.setInvalid( control, 'constraint' );
-	                } else {
-	                    that.setValid( control, 'constraint' );
-	                    that.setValid( control, 'required' );
-	                }
-	            }
-	            // Send invalidated event
-	            if ( !passed && !previouslyInvalid ) {
-	                control.dispatchEvent( events.Invalidated() );
+	                this.updateValidityInUi( control, result );
 	            }
 
-	            return passed;
+	            return result;
 	        } )
 	        .catch( e => {
 	            console.error( 'validation error', e );
@@ -53916,12 +53961,20 @@
 	};
 
 	/**
-	 * Static method to obtain required enketo-transform version direct from class.
+	 * Static property with required enketo-transformer version.
 	 *
 	 * @type {string}
 	 * @default
 	 */
-	Form.requiredTransformerVersion = '1.40.3';
+	Form.requiredTransformerVersion = '1.41.1';
+
+	/**
+	 * Static property with supported constraint names (for custom solutions that allow multiple constraints).
+	 *
+	 * @type {string}
+	 * @default
+	 */
+	Form.constraintNames = [ 'constraint' ];
 
 	function addXPathExtensionsOc( XPathJS ) {
 
