@@ -8,7 +8,8 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 - A check for search() appearance usage.
 - A check for external app "ex:" appearance or intent attribute usage.
 - A check for validity of setvalue logic.
-- Openclinica mode checks for validity of custom multiple constraints.
+- OpenClinica mode checks for validity of custom multiple constraints.
+- A check for new analog-scale disallowed appearance combinations.
 
 ##### Changed
 - Some previously reported warnings are now reported as errors.

@@ -22,7 +22,6 @@
                         <g/>
                         <h/>
                         <i/>
-                        <j/>
                         <k/>
                         <l/>
                     </one>
@@ -41,7 +40,6 @@
             <bind nodeset="/data/one/g" type="int"/>
             <bind nodeset="/data/one/h" type="xsdddd:string"/>
             <bind nodeset="/data/one/i" type="string"/>
-            <bind nodeset="/data/one/j" type="int" />
             <bind nodeset="/data/meta/instanceID" type="string"/>
         </model>
     </h:head>
@@ -89,9 +87,6 @@
                     <value>AK</value>
                 </item>
             </odkkkkkk:rank>
-            <input ref="/data/one/j" appearance="analog-scale no-ticks">
-                <label>label j</label>
-            </input>
             <select1 ref="/data/one/k" appearance="horizontal-compact">
                 <label>label k</label>
                 <item>

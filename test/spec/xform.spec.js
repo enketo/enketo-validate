@@ -149,7 +149,6 @@ describe( 'XForm', () => {
 
     describe( 'validated with custom OpenClinica rules', () => {
 
-
         describe( 'forms with special clinicaldata extensions', () => {
             const validation = validator.validate( loadXForm( 'openclinica.xml' ), { openclinica: true } );
 
@@ -244,6 +243,13 @@ describe( 'XForm', () => {
             expect( arrContains( result.warnings, /"horizontal" for question "f" .+ deprecated.+"columns"/i ) ).to.equal( true );
             expect( arrContains( result.warnings, /"horizontal" for question "i".+not valid/i ) ).to.equal( true );
             expect( arrContains( result.warnings, /"horizontal" for question "one".+not valid.+\(group\)/i ) ).to.equal( true );
+        } );
+
+        it ( 'for custom analog-scale widgets', async() => {
+            const result = await validator.validate( loadXForm( 'openclinica-analog-scale.xml' ) );
+            expect( result.warnings.length ).to.equal( 2 );
+            expect( arrContains( result.warnings, /"show-scale" for question "d" .+ combination .+no-ticks/i ) ).to.equal( true );
+            expect( arrContains( result.warnings, /"show-scale" for question "e" .+ combination .+horizontal/i ) ).to.equal( true );
         } );
 
     } );

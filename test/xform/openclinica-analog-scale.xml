@@ -1,0 +1,54 @@
+<?xml version="1.0"?>
+<h:html xmlns="http://www.w3.org/2002/xforms"
+    xmlns:ev="http://www.w3.org/2001/xml-events"
+    xmlns:h="http://www.w3.org/1999/xhtml"
+    xmlns:jr="http://openrosa.org/javarosa"
+    xmlns:oc="http://openclinica.org/xforms"
+    xmlns:odkkkkkk="http://www.opendatakit.org/xforms"
+    xmlns:orxxxx="http://openrosa.org/xforms"
+    xmlns:xsdddd="http://www.w3.org/2001/XMLSchema">
+    <h:head>
+        <h:title>appearances</h:title>
+        <model>
+            <instance>
+                <data id="data">
+                    <one>
+                        <a/>
+                        <b/>
+                        <c/>
+                        <d/>
+                        <e/>
+                    </one>
+                    <meta>
+                        <instanceID/>
+                    </meta>
+                </data>
+            </instance>
+            <bind nodeset="/data/one/a" type="int" />
+            <bind nodeset="/data/one/b" type="int" />
+            <bind nodeset="/data/one/c" type="int" />
+            <bind nodeset="/data/one/d" type="int" />
+            <bind nodeset="/data/one/e" type="int" />
+            <bind nodeset="/data/meta/instanceID" type="string"/>
+        </model>
+    </h:head>
+    <h:body>
+        <group ref="/data/one" apperance="field-list">
+            <input ref="/data/one/a" appearance="analog-scale"> <!-- correct -->
+                <label>label j</label>
+            </input>
+            <input ref="/data/one/b" appearance="analog-scale no-ticks"> <!-- correct -->
+                <label>label j</label>
+            </input>
+            <input ref="/data/one/c" appearance="analog-scale horizontal"> <!-- correct -->
+                <label>label j</label>
+            </input>
+            <input ref="/data/one/d" appearance="analog-scale no-ticks show-scale">
+                <label>label j</label>
+            </input>
+            <input ref="/data/one/e" appearance="analog-scale show-scale horizontal">
+                <label>label j</label>
+            </input>
+        </group>
+    </h:body>
+</h:html>

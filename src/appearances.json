@@ -180,6 +180,10 @@
     "no-ticks": {
         "appearances": [ "analog-scale" ]
     },
+    "show-scale": {
+        "appearances": [ "analog-scale" ],
+        "appearancesConflict": [ "horizontal", "no-ticks" ]
+    },
     "comment": {
         "types": [ "string", "xsd:string" ]
     },

@@ -554,10 +554,17 @@ class XForm {
                         || rules[0];
 
                     if ( applicableRule && applicableRule.appearances && !applicableRule.appearances.some( appearanceMatch => appearances.includes( appearanceMatch ) ) ) {
-                        warnings.push( `Appearance "${appearance}" for question "${nodeName}" requires any of these appearances: ${rules.appearances}.` );
+                        warnings.push( `Appearance "${appearance}" for question "${nodeName}" requires any of these appearances: "${this._join( applicableRule.appearances )}".` );
 
                         return;
                     }
+
+                    if ( applicableRule && applicableRule.appearancesConflict && applicableRule.appearancesConflict.some( appearanceMatch => appearances.includes( appearanceMatch ) ) ) {
+                        warnings.push( `Appearance "${appearance}" for question "${nodeName}" cannot be used in combination with any of these appearances: "${this._join( applicableRule.appearancesConflict )}".` );
+
+                        return;
+                    }
+
 
                     if ( applicableRule && applicableRule.preferred ) {
                         warnings.push( `Appearance "${appearance}" for question "${nodeName}" is deprecated, use "${applicableRule.preferred}" instead.` );
@@ -779,6 +786,17 @@ class XForm {
         return parts.join( ', ' ).replace( /\.\s*,/g, ',' );
     }
 
+    /**
+     * Joins an array of strings into a readable string.
+     *
+     * @param {Array<string>} arr - array of strings
+     */
+    _join( arr ) {
+        const words = Array.from( arr );
+        const last = words.length > 1 ? `, and ${words.pop()}` : '';
+
+        return `${words.join( ', ' )}${last}`;
+    }
 }
 
 module.exports = {
