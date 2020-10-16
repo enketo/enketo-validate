@@ -15,7 +15,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 - Some previously reported warnings are now reported as errors.
 
 ##### Fixed
-- The 'calculation-without-readonly' error does not show question name (shows "null").
+- The 'calculation-without-readonly' error message shows "null" as question name.
 
 [1.11.1] - 2020-08-21
 ---------------------

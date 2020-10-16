@@ -619,7 +619,7 @@ class XForm {
 
                 for ( const prop in bind.attributes ){
                     const attribute = bind.attributes[prop];
-                    if ( attribute.namespaceURI === this.NAMESPACES.oc && attribute.localName.startsWith( 'constraint' ) ){
+                    if ( attribute.namespaceURI === this.NAMESPACES.oc && attribute.localName !== 'constraint-type' && attribute.localName.startsWith( 'constraint' ) ){
                         const constraintName = attribute.localName;
                         const match = constraintName.match( /^constraint(.*)$/ );
                         const msg = constraintName.endsWith( 'Msg' ) ? 'Msg' : '';

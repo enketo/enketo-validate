@@ -28,6 +28,7 @@
                 oc:constraint18Msg="wrong"
                 oc:constraint21Msg="wrong"
                 oc:constraintABCMsg="wrong"
+                oc:constraint-type="strict"
                 nodeset="/data/something"
                 type="string"/>
             <bind nodeset="/data/orx:meta/orx:instanceID" readonly="true()" type="string"/>
