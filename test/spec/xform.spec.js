@@ -147,6 +147,15 @@ describe( 'XForm', () => {
 
     } );
 
+    describe( 'with calculations on a form control that are not set to readonly', () => {
+        const validation = validator.validate( loadXForm( 'calculation-not-readonly.xml' ) );
+
+        it( 'outputs errors',async() => {
+            const result =  await validation;
+            expect( arrContains( result.errors, /"a" has a calculation that is not set to readonly/i ) ).to.equal( true );
+        } );
+    } );
+
     describe( 'validated with custom OpenClinica rules', () => {
 
         describe( 'forms with special clinicaldata extensions', () => {

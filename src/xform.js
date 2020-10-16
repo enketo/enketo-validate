@@ -465,7 +465,7 @@ class XForm {
                 // using XPath boolean conversion rules.
                 return !readonly || readonly.trim() !== 'true()';
             } )
-            .map( this._nodeName.bind( this ) )
+            .map( bind => this._nodeName( bind ) )
             .forEach( nodeName => errors.push( `Question "${nodeName}" has a calculation that is not set to readonly.` ) );
     }
 
