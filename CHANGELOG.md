@@ -2,7 +2,7 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
-[Unreleased]
+[1.12.0] - 2020-10-16
 ---------------------
 ##### Added
 - A check for search() appearance usage.

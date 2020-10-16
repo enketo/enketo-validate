@@ -720,23 +720,6 @@
 	}
 
 	/**
-	 * Converts NodeLists or DOMtokenLists to an array.
-	 *
-	 * @static
-	 * @param {NodeList|DOMTokenList} list - a Nodelist or DOMTokenList
-	 * @return {Array} list converted to array
-	 */
-	function toArray( list ) {
-	    const array = [];
-	    // iterate backwards ensuring that length is an UInt32
-	    for ( let i = list.length >>> 0; i--; ) {
-	        array[ i ] = list[ i ];
-	    }
-
-	    return array;
-	}
-
-	/**
 	 * @static
 	 * @param {*} n - value
 	 * @return {boolean} whether it is a number value
@@ -900,6 +883,1074 @@
 	    scriptTag.src = url;
 	    firstScriptTag.parentNode.insertBefore( scriptTag, firstScriptTag );
 	}
+
+	/**
+	 * @module dom-utils
+	 */
+
+	/**
+	 * Gets siblings that match selector and self _in DOM order_.
+	 *
+	 * @static
+	 * @param {Node} element - Target element.
+	 * @param {string} [selector] - A CSS selector.
+	 * @return {Array<Node>} Array of sibling nodes plus target element.
+	 */
+	function getSiblingElementsAndSelf( element, selector ) {
+	    return _getSiblingElements( element, selector, [ element ] );
+	}
+
+	/**
+	 * Gets siblings that match selector _in DOM order_.
+	 *
+	 * @static
+	 * @param {Node} element - Target element.
+	 * @param {string} [selector] - A CSS selector.
+	 * @return {Array<Node>} Array of sibling nodes.
+	 */
+	function getSiblingElements( element, selector ) {
+	    return _getSiblingElements( element, selector );
+	}
+
+	/**
+	 * Gets siblings that match selector _in DOM order_.
+	 *
+	 * @param {Node} element - Target element.
+	 * @param {string} [selector] - A CSS selector.
+	 * @param {Array<Node>} [startArray] - Array of nodes to start with.
+	 * @return {Array<Node>} Array of sibling nodes.
+	 */
+	function _getSiblingElements( element, selector = '*', startArray = [] ) {
+	    const siblings = startArray;
+	    let prev = element.previousElementSibling;
+	    let next = element.nextElementSibling;
+
+	    while ( prev ) {
+	        if ( prev.matches( selector ) ) {
+	            siblings.unshift( prev );
+	        }
+	        prev = prev.previousElementSibling;
+	    }
+
+	    while ( next ) {
+	        if ( next.matches( selector ) ) {
+	            siblings.push( next );
+	        }
+	        next = next.nextElementSibling;
+	    }
+
+	    return siblings;
+	}
+
+	/**
+	 * Gets ancestors that match selector _in DOM order_.
+	 *
+	 * @static
+	 * @param {Node} element - Target element.
+	 * @param {string} [filterSelector] - A CSS selector.
+	 * @param {string} [endSelector] - A CSS selector indicating where to stop. It will include this element if matched by the filter.
+	 * @return {Array<Node>} Array of ancestors.
+	 */
+	function getAncestors( element, filterSelector = '*', endSelector ) {
+	    const ancestors = [];
+	    let parent = element.parentElement;
+
+	    while ( parent ) {
+	        if ( parent.matches( filterSelector ) ) {
+	            // document order
+	            ancestors.unshift( parent );
+	        }
+	        parent = endSelector && parent.matches( endSelector ) ? null : parent.parentElement;
+	    }
+
+	    return ancestors;
+	}
+
+	/**
+	 * Gets closest ancestor that match selector until the end selector.
+	 *
+	 * @static
+	 * @param {Node} element - Target element.
+	 * @param {string} filterSelector - A CSS selector.
+	 * @param {string} [endSelector] - A CSS selector indicating where to stop. It will include this element if matched by the filter.
+	 * @return {Node} Closest ancestor.
+	 */
+	function closestAncestorUntil( element, filterSelector = '*', endSelector ) {
+	    let parent = element.parentElement;
+	    let found = null;
+
+	    while ( parent && !found ) {
+	        if ( parent.matches( filterSelector ) ) {
+	            found = parent;
+	        }
+	        parent = endSelector && parent.matches( endSelector ) ? null : parent.parentElement;
+	    }
+
+	    return found;
+	}
+
+	function getChildren( element, selector = '*' ) {
+	    return [ ...element.children ]
+	        .filter( el => el.matches( selector ) );
+	}
+
+	/**
+	 * Removes all children elements.
+	 *
+	 * @static
+	 * @param {Node} element - Target element.
+	 * @return {undefined}
+	 */
+	function empty( element ) {
+	    [ ...element.children ].forEach( el => el.remove() );
+	}
+
+	/**
+	 * @param {Element} el - Target node
+	 * @return {boolean} Whether previous sibling has same node name
+	 */
+	function hasPreviousSiblingElementSameName( el ) {
+	    let found = false;
+	    const nodeName = el.nodeName;
+	    el = el.previousSibling;
+
+	    while ( el ) {
+	        // Ignore any sibling text and comment nodes (e.g. whitespace with a newline character)
+	        // also deal with repeats that have non-repeat siblings in between them, event though that would be a bug.
+	        if ( el.nodeName && el.nodeName === nodeName ) {
+	            found = true;
+	            break;
+	        }
+	        el = el.previousSibling;
+	    }
+
+	    return found;
+	}
+
+	/**
+	 * @param {Element} node - Target node
+	 * @param {string} content - Text content to look for
+	 * @return {boolean} Whether previous comment sibling has given text content
+	 */
+	function hasPreviousCommentSiblingWithContent( node, content ) {
+	    let found = false;
+	    node = node.previousSibling;
+
+	    while ( node ) {
+	        if ( node.nodeType === Node.COMMENT_NODE && node.textContent === content ) {
+	            found = true;
+	            break;
+	        }
+	        node = node.previousSibling;
+	    }
+
+	    return found;
+	}
+
+
+	/**
+	 * Creates an XPath from a node
+	 *
+	 * @param {Element} node - XML node
+	 * @param {string} [rootNodeName] - Defaults to #document
+	 * @param {boolean} [includePosition] - Whether or not to include the positions `/path/to/repeat[2]/node`
+	 * @return {string} XPath
+	 */
+	function getXPath( node, rootNodeName = '#document', includePosition = false ) {
+	    let index;
+	    const steps = [];
+	    let position = '';
+	    if ( !node || node.nodeType !== 1 ) {
+	        return null;
+	    }
+	    const nodeName = node.nodeName;
+	    let parent = node.parentElement;
+	    let parentName = parent ? parent.nodeName : null;
+
+	    if ( includePosition ) {
+	        index = getRepeatIndex( node );
+	        if ( index > 0 ) {
+	            position = `[${index + 1}]`;
+	        }
+	    }
+
+	    steps.push( nodeName + position );
+
+	    while ( parent && parentName !== rootNodeName && parentName !== '#document' ) {
+	        if ( includePosition ) {
+	            index = getRepeatIndex( parent );
+	            position = ( index > 0 ) ? `[${index + 1}]` : '';
+	        }
+	        steps.push( parentName + position );
+	        parent = parent.parentElement;
+	        parentName = parent ? parent.nodeName : null;
+	    }
+
+	    return `/${steps.reverse().join( '/' )}`;
+	}
+
+	/**
+	 * Obtains the index of a repeat instance within its own series.
+	 *
+	 * @param {Element} node - XML node
+	 * @return {number} index
+	 */
+	function getRepeatIndex( node ) {
+	    let index = 0;
+	    const nodeName = node.nodeName;
+	    let prevSibling = node.previousSibling;
+
+	    while ( prevSibling ) {
+	        // ignore any sibling text and comment nodes (e.g. whitespace with a newline character)
+	        if ( prevSibling.nodeName && prevSibling.nodeName === nodeName ) {
+	            index++;
+	        }
+	        prevSibling = prevSibling.previousSibling;
+	    }
+
+	    return index;
+	}
+
+	/**
+	 * Adapted from https://stackoverflow.com/a/46522991/3071529
+	 *
+	 * A storage solution aimed at replacing jQuerys data function.
+	 * Implementation Note: Elements are stored in a (WeakMap)[https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WeakMap].
+	 * This makes sure the data is garbage collected when the node is removed.
+	 *
+	 * @namespace
+	 */
+	const elementDataStore = {
+	    /**
+	     * @type {WeakMap}
+	     */
+	    _storage: new WeakMap(),
+	    /**
+	     * Adds object to element storage. Ensures that element storage exist.
+	     *
+	     * @param {Node} element - target element
+	     * @param {string} key - name of the stored data
+	     * @param {object} obj - stored data
+	     */
+	    put: function( element, key, obj ) {
+	        if ( !this._storage.has( element ) ) {
+	            this._storage.set( element, new Map() );
+	        }
+	        this._storage.get( element ).set( key, obj );
+	    },
+	    /**
+	     * Return object from element storage.
+	     *
+	     * @param {Node} element - target element
+	     * @param {string} key - name of the stored data
+	     * @return {object} stored data object
+	     */
+	    get: function( element, key ) {
+	        const item = this._storage.get( element );
+
+	        return item ? item.get( key ) : item;
+	    },
+	    /**
+	     * Checkes whether element has given storage item.
+	     *
+	     * @param {Node} element - target element
+	     * @param {string} key - name of the stored data
+	     * @return {boolean} whether data is present
+	     */
+	    has: function( element, key ) {
+	        const item = this._storage.get( element );
+
+	        return item && item.has( key );
+	    },
+	    /**
+	     * Removes item from element storage. Removes element storage if empty.
+	     *
+	     * @param {Node} element - target element
+	     * @param {string} key - name of the stored data
+	     * @return {object} removed data object
+	     */
+	    remove: function( element, key ) {
+	        var ret = this._storage.get( element ).delete( key );
+	        if ( !this._storage.get( key ).size === 0 ) {
+	            this._storage.delete( element );
+	        }
+
+	        return ret;
+	    }
+	};
+
+	/**
+	 * A custom error type for form logic
+	 *
+	 * @class
+	 * @augments Error
+	 * @param {string} message - Optional message.
+	 */
+	function FormLogicError( message ) {
+	    this.message = message || 'unknown';
+	    this.name = 'FormLogicError';
+	    this.stack = ( new Error() ).stack;
+	}
+
+	FormLogicError.prototype = Object.create( Error.prototype );
+	FormLogicError.prototype.constructor = FormLogicError;
+
+	var config = {
+	    'maps': [ {
+	        'tiles': [ 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png' ],
+	        'name': 'streets',
+	        'attribution': '© <a href=\'http://openstreetmap.org\'>OpenStreetMap</a> | <a href=\'www.openstreetmap.org/copyright\'>Terms</a>'
+	    }, {
+	        'tiles': 'GOOGLE_SATELLITE',
+	        'name': 'satellite'
+	    } ],
+	    'googleApiKey': '',
+	    'repeatOrdinals': false,
+	    'validateContinuously': false,
+	    'validatePage': true,
+	    'swipePage': true,
+	    'textMaxChars': 2000
+	};
+
+	/**
+	 * @module format
+	 */
+
+	let _locale = navigator.language;
+	const NUMBER = '0-9\u0660-\u0669';
+	const TIME_PART = `[:${NUMBER}]+`;
+	const MERIDIAN_PART = `[^: ${NUMBER}]+`;
+	const HAS_MERIDIAN = new RegExp( `^(${TIME_PART} ?(${MERIDIAN_PART}))|((${MERIDIAN_PART}) ?${TIME_PART})$` );
+
+	/**
+	 * Transforms time to a cleaned-up localized time.
+	 *
+	 * @param {Date} dt - date object
+	 * @return {string} cleaned-up localized time
+	 */
+	function _getCleanLocalTime( dt ) {
+	    dt = typeof dt == 'undefined' ? new Date() : dt;
+
+	    return _cleanSpecialChars( dt.toLocaleTimeString( _locale ) );
+	}
+
+	/**
+	 * Remove unneeded and problematic special characters in (date)time string.
+	 *
+	 * @param {string} timeStr - (date)time string to clean up
+	 * @return {string} transformed (date)time string with removed unneeded special characters that cause issues
+	 */
+	function _cleanSpecialChars( timeStr ) {
+	    return timeStr.replace( /[\u200E\u200F]/g, '' );
+	}
+
+	/**
+	 * @namespace time
+	 */
+	const time = {
+	    // For now we just look at a subset of numbers in Arabic and Latin. There are actually over 20 number scripts and :digit: doesn't work in browsers
+	    /**
+	     * @type {string}
+	     */
+	    get hour12() {
+	        return this.hasMeridian( _getCleanLocalTime() );
+	    },
+	    /**
+	     * @type {string}
+	     */
+	    get pmNotation() {
+	        return this.meridianNotation( new Date( 2000, 1, 1, 23, 0, 0 ) );
+	    },
+	    /**
+	     * @type {string}
+	     */
+	    get amNotation() {
+	        return this.meridianNotation( new Date( 2000, 1, 1, 1, 0, 0 ) );
+	    },
+	    /**
+	     * @type {Function}
+	     * @param {Date} dt - datetime string
+	     */
+	    meridianNotation( dt ) {
+	        let matches = _getCleanLocalTime( dt ).match( HAS_MERIDIAN );
+	        if ( matches && matches.length ) {
+	            matches = matches.filter( item => !!item );
+
+	            return matches[ matches.length - 1 ].trim();
+	        }
+
+	        return null;
+	    },
+	    /**
+	     * Whether time string has meridian parts
+	     *
+	     * @type {Function}
+	     * @param {string} time - Time string
+	     */
+	    hasMeridian( time ) {
+	        return HAS_MERIDIAN.test( _cleanSpecialChars( time ) );
+	    }
+	};
+
+	/**
+	 * XML types
+	 *
+	 * @module types
+	 */
+
+	/**
+	 * @namespace types
+	 */
+	const types = {
+	    /**
+	     * @namespace
+	     */
+	    'string': {
+	        /**
+	         * @param {string} x - value
+	         * @return {string} converted value
+	         */
+	        convert( x ) {
+	            return x.replace( /^\s+$/, '' );
+	        },
+	        //max length of type string is 255 chars.Convert( truncate ) silently ?
+	        /**
+	         * @return {boolean} always `true`
+	         */
+	        validate() {
+	            return true;
+	        }
+	    },
+	    /**
+	     * @namespace
+	     */
+	    'select': {
+	        /**
+	         * @return {boolean} always `true`
+	         */
+	        validate() {
+	            return true;
+	        }
+	    },
+	    /**
+	     * @namespace
+	     */
+	    'select1': {
+	        /**
+	         * @return {boolean} always `true`
+	         */
+	        validate() {
+	            return true;
+	        }
+	    },
+	    /**
+	     * @namespace
+	     */
+	    'decimal': {
+	        /**
+	         * @param {number|string} x - value
+	         * @return {number} converted value
+	         */
+	        convert( x ) {
+	            const num = Number( x );
+	            if ( isNaN( num ) || num === Number.POSITIVE_INFINITY || num === Number.NEGATIVE_INFINITY ) {
+	                // Comply with XML schema decimal type that has no special values. '' is our only option.
+	                return '';
+	            }
+
+	            return num;
+	        },
+	        /**
+	         * @param {number|string} x - value
+	         * @return {boolean} whether value is valid
+	         */
+	        validate( x ) {
+	            const num = Number( x );
+
+	            return !isNaN( num ) && num !== Number.POSITIVE_INFINITY && num !== Number.NEGATIVE_INFINITY;
+	        }
+	    },
+	    /**
+	     * @namespace
+	     */
+	    'int': {
+	        /**
+	         * @param {number|string} x - value
+	         * @return {number} converted value
+	         */
+	        convert( x ) {
+	            const num = Number( x );
+	            if ( isNaN( num ) || num === Number.POSITIVE_INFINITY || num === Number.NEGATIVE_INFINITY ) {
+	                // Comply with XML schema int type that has no special values. '' is our only option.
+	                return '';
+	            }
+
+	            return ( num >= 0 ) ? Math.floor( num ) : -Math.floor( Math.abs( num ) );
+	        },
+	        /**
+	         * @param {number|string} x - value
+	         * @return {boolean} whether value is valid
+	         */
+	        validate( x ) {
+	            const num = Number( x );
+
+	            return !isNaN( num ) && num !== Number.POSITIVE_INFINITY && num !== Number.NEGATIVE_INFINITY && Math.round( num ) === num && num.toString() === x.toString();
+	        }
+	    },
+	    /**
+	     * @namespace
+	     */
+	    'date': {
+	        /**
+	         * @param {string} x - value
+	         * @return {boolean} whether value is valid
+	         */
+	        validate( x ) {
+	            const pattern = /^([0-9]{4})-([0-9]{2})-([0-9]{2})$/;
+	            const segments = pattern.exec( x );
+	            if ( segments && segments.length === 4 ) {
+	                const year = Number( segments[ 1 ] );
+	                const month = Number( segments[ 2 ] ) - 1;
+	                const day = Number( segments[ 3 ] );
+	                const date = new Date( year, month, day );
+
+	                // Do not approve automatic JavaScript conversion of invalid dates such as 2017-12-32
+	                return date.getFullYear() === year && date.getMonth() === month && date.getDate() === day;
+	            }
+
+	            return false;
+	        },
+	        /**
+	         * @param {number|string} x - value
+	         * @return {string} converted value
+	         */
+	        convert( x ) {
+	            if ( isNumber( x ) ) {
+	                // The XPath expression "2012-01-01" + 2 returns a number of days in XPath.
+	                const date = new Date( x * 24 * 60 * 60 * 1000 );
+
+	                return date.toString() === 'Invalid Date' ?
+	                    '' : `${date.getFullYear().toString().pad( 4 )}-${( date.getMonth() + 1 ).toString().pad( 2 )}-${date.getDate().toString().pad( 2 )}`;
+	            } else {
+	                // For both dates and datetimes
+	                // If it's a datetime, we can quite safely assume it's in the local timezone, and therefore we can simply chop off
+	                // the time component.
+	                if ( /[0-9]T[0-9]/.test( x ) ) {
+	                    x = x.split( 'T' )[ 0 ];
+	                }
+
+	                return this.validate( x ) ? x : '';
+	            }
+	        }
+	    },
+	    /**
+	     * @namespace
+	     */
+	    'datetime': {
+	        /**
+	         * @param {string} x - value
+	         * @return {boolean} whether value is valid
+	         */
+	        validate( x ) {
+	            const parts = x.split( 'T' );
+	            if ( parts.length === 2 ) {
+	                return types.date.validate( parts[ 0 ] ) && types.time.validate( parts[ 1 ], false );
+	            }
+
+	            return types.date.validate( parts[ 0 ] );
+	        },
+	        /**
+	         * @param {number|string} x - value
+	         * @return {string} converted value
+	         */
+	        convert( x ) {
+	            let date = 'Invalid Date';
+	            const parts = x.split( 'T' );
+	            if ( isNumber( x ) ) {
+	                // The XPath expression "2012-01-01T01:02:03+01:00" + 2 returns a number of days in XPath.
+	                date = new Date( x * 24 * 60 * 60 * 1000 );
+	            } else if ( /[0-9]T[0-9]/.test( x ) && parts.length === 2 ) {
+	                const convertedDate = types.date.convert( parts[ 0 ] );
+	                // The milliseconds are optional for datetime (and shouldn't be added)
+	                const convertedTime = types.time.convert( parts[ 1 ], false );
+	                if ( convertedDate && convertedTime ) {
+	                    return `${convertedDate}T${convertedTime}`;
+	                }
+	            } else {
+	                const convertedDate = types.date.convert( parts[ 0 ] );
+	                if ( convertedDate ) {
+	                    return `${convertedDate}T00:00:00.000${( new Date() ).getTimezoneOffsetAsTime()}`;
+	                }
+	            }
+
+	            return date.toString() !== 'Invalid Date' ? date.toISOLocalString() : '';
+	        }
+	    },
+	    /**
+	     * @namespace
+	     */
+	    'time': {
+	        // Note that it's okay if the validate function is stricter than the spec,
+	        // (for timezone offset), as long as the convertor automatically converts
+	        // to a valid time.
+	        /**
+	         * @param {string} x - value
+	         * @param {boolean} [requireMillis] - whether milliseconds are required
+	         * @return {boolean} whether value is valid
+	         */
+	        validate( x, requireMillis ) {
+	            let m = x.match( /^(\d\d):(\d\d):(\d\d)\.\d\d\d(\+|-)(\d\d):(\d\d)$/ );
+
+	            requireMillis = typeof requireMillis !== 'boolean' ? true : requireMillis;
+
+	            if ( !m && !requireMillis ) {
+	                m = x.match( /^(\d\d):(\d\d):(\d\d)(\+|-)(\d\d):(\d\d)$/ );
+	            }
+
+	            if ( !m ) {
+	                return false;
+	            }
+
+	            // no need to convert to numbers since we know they are number strings
+	            return m[ 1 ] < 24 && m[ 1 ] >= 0 &&
+	                m[ 2 ] < 60 && m[ 2 ] >= 0 &&
+	                m[ 3 ] < 60 && m[ 3 ] >= 0 &&
+	                m[ 5 ] < 24 && m[ 5 ] >= 0 && // this could be tighter
+	                m[ 6 ] < 60 && m[ 6 ] >= 0; // this is probably either 0 or 30
+	        },
+	        /**
+	         * @param {string} x - value
+	         * @param {boolean} [requireMillis] - whether milliseconds are required
+	         * @return {string} converted value
+	         */
+	        convert( x, requireMillis ) {
+	            let date;
+	            const o = {};
+	            let parts;
+	            let time;
+	            let secs;
+	            let tz;
+	            let offset;
+	            const timeAppearsCorrect = /^[0-9]{1,2}:[0-9]{1,2}(:[0-9.]*)?/;
+
+	            requireMillis = typeof requireMillis !== 'boolean' ? true : requireMillis;
+
+	            if ( !timeAppearsCorrect.test( x ) ) {
+	                // An XPath expression would return a datetime string since there is no way to request a timeValue.
+	                // We can test this by trying to convert to a date.
+	                date = new Date( x );
+	                if ( date.toString() !== 'Invalid Date' ) {
+	                    x = `${date.getHours()}:${date.getMinutes()}:${date.getSeconds()}.${date.getMilliseconds()}${date.getTimezoneOffsetAsTime()}`;
+	                } else {
+	                    return '';
+	                }
+	            }
+
+	            parts = x.toString().split( /(\+|-|Z)/ );
+	            // We're using a 'capturing group' here, so the + or - is included!.
+	            if ( parts.length < 1 ) {
+	                return '';
+	            }
+
+	            time = parts[ 0 ].split( ':' );
+	            tz = parts[ 2 ] ? [ parts[ 1 ] ].concat( parts[ 2 ].split( ':' ) ) : ( parts[ 1 ] === 'Z' ? [ '+', '00', '00' ] : [] );
+
+	            o.hours = time[ 0 ].pad( 2 );
+	            o.minutes = time[ 1 ].pad( 2 );
+
+	            secs = time[ 2 ] ? time[ 2 ].split( '.' ) : [ '00' ];
+
+	            o.seconds = secs[ 0 ];
+	            o.milliseconds = secs[ 1 ] || ( requireMillis ? '000' : undefined );
+
+	            if ( tz.length === 0 ) {
+	                offset = new Date().getTimezoneOffsetAsTime();
+	            } else {
+	                offset = `${tz[0] + tz[1].pad( 2 )}:${tz[2] ? tz[2].pad( 2 ) : '00'}`;
+	            }
+
+	            x = `${o.hours}:${o.minutes}:${o.seconds}${o.milliseconds ? `.${o.milliseconds}` : ''}${offset}`;
+
+	            return this.validate( x, requireMillis ) ? x : '';
+	        },
+	        /**
+	         * converts "11:30 AM", and "11:30 ", and "11:30 上午" to: "11:30"
+	         * converts "11:30 PM", and "11:30 下午" to: "23:30"
+	         *
+	         * @param {string} x - value
+	         * @return {string} converted value
+	         */
+	        convertMeridian( x ) {
+	            x = x.trim();
+	            if ( time.hasMeridian( x ) ) {
+	                const parts = x.split( ' ' );
+	                const timeParts = parts[ 0 ].split( ':' );
+	                if ( parts.length > 0 ) {
+	                    // This will only work for latin numbers but that should be fine because that's what the widget supports.
+	                    if ( parts[ 1 ] === time.pmNotation ) {
+	                        timeParts[ 0 ] = ( ( Number( timeParts[ 0 ] ) % 12 ) + 12 ).toString().pad( 2 );
+	                    } else if ( parts[ 1 ] === time.amNotation ) {
+	                        timeParts[ 0 ] = ( Number( timeParts[ 0 ] ) % 12 ).toString().pad( 2 );
+	                    }
+	                    x = timeParts.join( ':' );
+	                }
+	            }
+
+	            return x;
+	        }
+	    },
+	    /**
+	     * @namespace
+	     */
+	    'barcode': {
+	        /**
+	         * @return {boolean} always `true`
+	         */
+	        validate() {
+	            return true;
+	        }
+	    },
+	    /**
+	     * @namespace
+	     */
+	    'geopoint': {
+	        /**
+	         * @param {string} x - value
+	         * @return {boolean} whether value is valid
+	         */
+	        validate( x ) {
+	            const coords = x.toString().trim().split( ' ' );
+
+	            // Note that longitudes from -180 to 180 are problematic when recording points close to the international
+	            // dateline. They are therefore set from -360  to 360 (circumventing Earth twice, I think) which is
+	            // an arbitrary limit. https://github.com/kobotoolbox/enketo-express/issues/1033
+	            return ( coords[ 0 ] !== '' && coords[ 0 ] >= -90 && coords[ 0 ] <= 90 ) &&
+	                ( coords[ 1 ] !== '' && coords[ 1 ] >= -360 && coords[ 1 ] <= 360 ) &&
+	                ( typeof coords[ 2 ] === 'undefined' || !isNaN( coords[ 2 ] ) ) &&
+	                ( typeof coords[ 3 ] === 'undefined' || ( !isNaN( coords[ 3 ] ) && coords[ 3 ] >= 0 ) );
+	        },
+	        /**
+	         * @param {string} x - value
+	         * @return {string} converted value
+	         */
+	        convert( x ) {
+	            return x.toString().trim();
+	        }
+	    },
+	    /**
+	     * @namespace
+	     */
+	    'geotrace': {
+	        /**
+	         * @param {string} x - value
+	         * @return {boolean} whether value is valid
+	         */
+	        validate( x ) {
+	            const geopoints = x.toString().split( ';' );
+
+	            return geopoints.length >= 2 && geopoints.every( geopoint => types.geopoint.validate( geopoint ) );
+	        },
+	        /**
+	         * @param {string} x - value
+	         * @return {string} converted value
+	         */
+	        convert( x ) {
+	            return x.toString().trim();
+	        }
+	    },
+	    /**
+	     * @namespace
+	     */
+	    'geoshape': {
+	        /**
+	         * @param {string} x - value
+	         * @return {boolean} whether value is valid
+	         */
+	        validate( x ) {
+	            const geopoints = x.toString().split( ';' );
+
+	            return geopoints.length >= 4 && ( geopoints[ 0 ] === geopoints[ geopoints.length - 1 ] ) && geopoints.every( geopoint => types.geopoint.validate( geopoint ) );
+	        },
+	        /**
+	         * @param {string} x - value
+	         * @return {string} converted value
+	         */
+	        convert( x ) {
+	            return x.toString().trim();
+	        }
+	    },
+	    /**
+	     * @namespace
+	     */
+	    'binary': {
+	        /**
+	         * @return {boolean} always `true`
+	         */
+	        validate() {
+	            return true;
+	        }
+	    }
+	};
+
+	/**
+	 * @module event
+	 */
+	// TODO: add second "propagate" parameter to constructors to add .enketo namespace to event.
+
+	/**
+	 * Data update event.
+	 *
+	 * @static
+	 * @param {*} detail - Data to be passed with event
+	 * @return {CustomEvent} Custom "dataupdate" event
+	 */
+	function DataUpdate( detail ) {
+	    return new CustomEvent( 'dataupdate', { detail } );
+	}
+
+	/**
+	 * Fake focus event.
+	 *
+	 * @return {CustomEvent} Custom "fakefocus" event (bubbling)
+	 */
+	function FakeFocus() {
+	    return new CustomEvent( 'fakefocus', { bubbles: true } );
+	}
+
+	/**
+	 * Apply focus event.
+	 *
+	 * @return {CustomEvent} Custom "applyfocus" event
+	 */
+	function ApplyFocus() {
+	    return new CustomEvent( 'applyfocus' );
+	}
+
+	/**
+	 * Page flip event.
+	 *
+	 * @return {CustomEvent} Custom "pageflip" event (bubbling)
+	 */
+	function PageFlip() {
+	    return new CustomEvent( 'pageflip', { bubbles: true } );
+	}
+
+	/**
+	 * Removed event.
+	 *
+	 * @param {*} detail - Data to be passed with event
+	 * @return {CustomEvent} Custom "removed" event (bubbling)
+	 */
+	function Removed( detail ) {
+	    return new CustomEvent( 'removed', { detail, bubbles: true } );
+	}
+
+	/**
+	 * The odk-instance-first-load event as defined in the ODK XForms spec.
+	 *
+	 * @see https://opendatakit.github.io/xforms-spec/#event:odk-instance-first-load
+	 *@return {CustomEvent} Custom "odk-instance-first-load" event (bubbling)
+	 */
+	function InstanceFirstLoad() {
+	    return new CustomEvent( 'odk-instance-first-load', { bubbles: true } );
+	}
+
+	/**
+	 * The odk-new-repeat event as defined in the ODK XForms spec.
+	 *
+	 * @see https://opendatakit.github.io/xforms-spec/#event:odk-new-repeat
+	 * @param {{repeatPath: string, repeatIndex: number, trigger: string}} detail - Data to be passed with event.
+	 * @return {CustomEvent} Custom "odk-new-repeat" event (bubbling)
+	 */
+	function NewRepeat( detail ) {
+	    return new CustomEvent( 'odk-new-repeat', { detail, bubbles: true } );
+	}
+
+	/**
+	 * The addrepeat event is similar but fired under different circumstances.
+	 *
+	 * @param {{repeatPath: string, repeatIndex: number, trigger: string}} detail - Data to be passed with event.
+	 * @return {CustomEvent} Custom "odk-new-repeat" event (bubbling)
+	 */
+	function AddRepeat( detail ) {
+	    return new CustomEvent( 'addrepeat', { detail, bubbles: true } );
+	}
+
+	/**
+	 * Remove repeat event.
+	 *
+	 * @return {CustomEvent} Custom "removerepeat" event (bubbling)
+	 */
+	function RemoveRepeat() {
+	    return new CustomEvent( 'removerepeat', { bubbles: true } );
+	}
+
+	/**
+	 * Change language event.
+	 *
+	 * @return {CustomEvent} Custom "changelanguage" event (bubbling)
+	 */
+	function ChangeLanguage() {
+	    return new CustomEvent( 'changelanguage', { bubbles: true } );
+	}
+
+	/**
+	 * Change event.
+	 *
+	 * @return {Event} The regular HTML "change" event (bubbling)
+	 */
+	function Change() {
+	    return new Event( 'change', { bubbles: true } );
+	}
+
+	/**
+	 * Xforms-value-changed event as defined in the ODK XForms spec.
+	 *
+	 * @see https://opendatakit.github.io/xforms-spec/#event:xforms-value-changed
+	 * @param {{repeatIndex: number}} detail - Data to be passed with event.
+	 * @return {CustomEvent} Custom "xforms-value-changed" event (bubbling).
+	 */
+	function XFormsValueChanged( detail ) {
+	    return new CustomEvent( 'xforms-value-changed', { detail, bubbles: true } );
+	}
+
+	/**
+	 * Input event.
+	 *
+	 * @return {Event} "input" event (bubbling)
+	 */
+	function Input() {
+	    return new Event( 'input', { bubbles: true } );
+	}
+
+	/**
+	 * Input update event.
+	 *
+	 * @return {CustomEvent} Custom "inputupdate" event (bubbling)
+	 */
+	function InputUpdate() {
+	    return new CustomEvent( 'inputupdate', { bubbles: true } );
+	}
+
+	/**
+	 * Edited event.
+	 *
+	 * @return {CustomEvent} Custom "edited" event (bubbling)
+	 */
+	function Edited() {
+	    return new CustomEvent( 'edited', { bubbles: true } );
+	}
+
+
+	/**
+	 * Before save event.
+	 *
+	 * @return {CustomEvent} Custom "edited" event (bubbling)
+	 */
+	function BeforeSave() {
+	    return new CustomEvent( 'before-save', { bubbles: true } );
+	}
+
+	/**
+	 * Validation complete event.
+	 *
+	 * @return {CustomEvent} Custom "validationcomplete" event (bubbling)
+	 */
+	function ValidationComplete() {
+	    return new CustomEvent( 'validation-complete', { bubbles: true } );
+	}
+
+	/**
+	 * Invalidated event.
+	 *
+	 * @return {CustomEvent} Custom "invalidated" event (bubbling)
+	 */
+	function Invalidated() {
+	    return new CustomEvent( 'invalidated', { bubbles: true } );
+	}
+
+	/**
+	 * Progress update event.
+	 *
+	 * @param {*} detail - Data to be passed with event
+	 * @return {CustomEvent} Custom "progressupdate" event (bubbling)
+	 */
+	function ProgressUpdate( detail ) {
+	    return new CustomEvent( 'progress-update', { detail, bubbles: true } );
+	}
+
+	/**
+	 * Go to hidden event fired when the goto target is not relevant.
+	 *
+	 * @return {CustomEvent} Custom "gotoirrelevant" event (bubbling)
+	 */
+	function GoToIrrelevant() {
+	    return new CustomEvent( 'goto-irrelevant', { bubbles: true } );
+	}
+
+	/**
+	 * Go to invisible event fired when the target has no form control.
+	 * This is event has prevalence of the "go to hidden" event.
+	 *
+	 * @return {CustomEvent} Custom "gotoinvisible" event (bubbling)
+	 */
+	function GoToInvisible() {
+	    return new CustomEvent( 'goto-invisible', { bubbles: true } );
+	}
+
+	function ChangeOption() {
+	    return new CustomEvent( 'change-option', { bubbles: true } );
+	}
+
+	/**
+	 * Go to printify text event.
+	 *
+	 * @return {CustomEvent} Custom "printify" event (bubbling)
+	 */
+	function Printify() {
+	    return new CustomEvent( 'printify', { bubbles: true } );
+	}
+
+	/**
+	 * Go to deprintify text event.
+	 *
+	 * @return {CustomEvent} Custom "deprintify" event (bubbling)
+	 */
+	function DePrintify() {
+	    return new CustomEvent( 'deprintify', { bubbles: true } );
+	}
+
+	function UpdateMaxSize() {
+	    return new CustomEvent( 'update-max-size', { bubbles: true } );
+	}
+
+	var events = {
+	    DataUpdate,
+	    FakeFocus,
+	    ApplyFocus,
+	    PageFlip,
+	    Removed,
+	    InstanceFirstLoad,
+	    NewRepeat,
+	    AddRepeat,
+	    RemoveRepeat,
+	    ChangeLanguage,
+	    Change,
+	    Input,
+	    InputUpdate,
+	    Edited,
+	    BeforeSave,
+	    ValidationComplete,
+	    Invalidated,
+	    ProgressUpdate,
+	    GoToIrrelevant,
+	    GoToInvisible,
+	    XFormsValueChanged,
+	    ChangeOption,
+	    Printify,
+	    DePrintify,
+	    UpdateMaxSize
+	};
 
 	var jquery = createCommonjsModule(function (module) {
 	/*!
@@ -11745,1071 +12796,341 @@
 	});
 
 	/**
-	 * @module dom-utils
+	 * @typedef NodesetFilter
+	 * @property {boolean} onlyLeaf
+	 * @property {boolean} noEmpty
 	 */
 
 	/**
-	 * Gets siblings that match selector and self _in DOM order_.
-	 *
-	 * @static
-	 * @param {Node} element - Target element.
-	 * @param {string} [selector] - A CSS selector.
-	 * @return {Array<Node>} Array of sibling nodes plus target element.
-	 */
-	function getSiblingElementsAndSelf( element, selector ) {
-	    return _getSiblingElements( element, selector, [ element ] );
-	}
-
-	/**
-	 * Gets siblings that match selector _in DOM order_.
-	 *
-	 * @static
-	 * @param {Node} element - Target element.
-	 * @param {string} [selector] - A CSS selector.
-	 * @return {Array<Node>} Array of sibling nodes.
-	 */
-	function getSiblingElements( element, selector ) {
-	    return _getSiblingElements( element, selector );
-	}
-
-	/**
-	 * Gets siblings that match selector _in DOM order_.
-	 *
-	 * @param {Node} element - Target element.
-	 * @param {string} [selector] - A CSS selector.
-	 * @param {Array<Node>} [startArray] - Array of nodes to start with.
-	 * @return {Array<Node>} Array of sibling nodes.
-	 */
-	function _getSiblingElements( element, selector = '*', startArray = [] ) {
-	    const siblings = startArray;
-	    let prev = element.previousElementSibling;
-	    let next = element.nextElementSibling;
-
-	    while ( prev ) {
-	        if ( prev.matches( selector ) ) {
-	            siblings.unshift( prev );
-	        }
-	        prev = prev.previousElementSibling;
-	    }
-
-	    while ( next ) {
-	        if ( next.matches( selector ) ) {
-	            siblings.push( next );
-	        }
-	        next = next.nextElementSibling;
-	    }
-
-	    return siblings;
-	}
-
-	/**
-	 * Gets ancestors that match selector _in DOM order_.
-	 *
-	 * @static
-	 * @param {Node} element - Target element.
-	 * @param {string} [filterSelector] - A CSS selector.
-	 * @param {string} [endSelector] - A CSS selector indicating where to stop. It will include this element if matched by the filter.
-	 * @return {Array<Node>} Array of ancestors.
-	 */
-	function getAncestors( element, filterSelector = '*', endSelector ) {
-	    const ancestors = [];
-	    let parent = element.parentElement;
-
-	    while ( parent ) {
-	        if ( parent.matches( filterSelector ) ) {
-	            // document order
-	            ancestors.unshift( parent );
-	        }
-	        parent = endSelector && parent.matches( endSelector ) ? null : parent.parentElement;
-	    }
-
-	    return ancestors;
-	}
-
-	/**
-	 * Gets closest ancestor that match selector until the end selector.
-	 *
-	 * @static
-	 * @param {Node} element - Target element.
-	 * @param {string} filterSelector - A CSS selector.
-	 * @param {string} [endSelector] - A CSS selector indicating where to stop. It will include this element if matched by the filter.
-	 * @return {Node} Closest ancestor.
-	 */
-	function closestAncestorUntil( element, filterSelector = '*', endSelector ) {
-	    let parent = element.parentElement;
-	    let found = null;
-
-	    while ( parent && !found ) {
-	        if ( parent.matches( filterSelector ) ) {
-	            found = parent;
-	        }
-	        parent = endSelector && parent.matches( endSelector ) ? null : parent.parentElement;
-	    }
-
-	    return found;
-	}
-
-	function getChildren( element, selector = '*' ) {
-	    return [ ...element.children ]
-	        .filter( el => el.matches( selector ) );
-	}
-
-	/**
-	 * Removes all children elements.
-	 *
-	 * @static
-	 * @param {Node} element - Target element.
-	 * @return {undefined}
-	 */
-	function empty( element ) {
-	    [ ...element.children ].forEach( el => el.remove() );
-	}
-
-	/**
-	 * @param {Element} el - Target node
-	 * @return {boolean} Whether previous sibling has same node name
-	 */
-	function hasPreviousSiblingElementSameName( el ) {
-	    let found = false;
-	    const nodeName = el.nodeName;
-	    el = el.previousSibling;
-
-	    while ( el ) {
-	        // Ignore any sibling text and comment nodes (e.g. whitespace with a newline character)
-	        // also deal with repeats that have non-repeat siblings in between them, event though that would be a bug.
-	        if ( el.nodeName && el.nodeName === nodeName ) {
-	            found = true;
-	            break;
-	        }
-	        el = el.previousSibling;
-	    }
-
-	    return found;
-	}
-
-	/**
-	 * @param {Element} node - Target node
-	 * @param {string} content - Text content to look for
-	 * @return {boolean} Whether previous comment sibling has given text content
-	 */
-	function hasPreviousCommentSiblingWithContent( node, content ) {
-	    let found = false;
-	    node = node.previousSibling;
-
-	    while ( node ) {
-	        if ( node.nodeType === Node.COMMENT_NODE && node.textContent === content ) {
-	            found = true;
-	            break;
-	        }
-	        node = node.previousSibling;
-	    }
-
-	    return found;
-	}
-
-
-	/**
-	 * Creates an XPath from a node
-	 *
-	 * @param {Element} node - XML node
-	 * @param {string} [rootNodeName] - Defaults to #document
-	 * @param {boolean} [includePosition] - Whether or not to include the positions `/path/to/repeat[2]/node`
-	 * @return {string} XPath
-	 */
-	function getXPath( node, rootNodeName = '#document', includePosition = false ) {
-	    let index;
-	    const steps = [];
-	    let position = '';
-	    if ( !node || node.nodeType !== 1 ) {
-	        return null;
-	    }
-	    const nodeName = node.nodeName;
-	    let parent = node.parentElement;
-	    let parentName = parent ? parent.nodeName : null;
-
-	    if ( includePosition ) {
-	        index = getRepeatIndex( node );
-	        if ( index > 0 ) {
-	            position = `[${index + 1}]`;
-	        }
-	    }
-
-	    steps.push( nodeName + position );
-
-	    while ( parent && parentName !== rootNodeName && parentName !== '#document' ) {
-	        if ( includePosition ) {
-	            index = getRepeatIndex( parent );
-	            position = ( index > 0 ) ? `[${index + 1}]` : '';
-	        }
-	        steps.push( parentName + position );
-	        parent = parent.parentElement;
-	        parentName = parent ? parent.nodeName : null;
-	    }
-
-	    return `/${steps.reverse().join( '/' )}`;
-	}
-
-	/**
-	 * Obtains the index of a repeat instance within its own series.
-	 *
-	 * @param {Element} node - XML node
-	 * @return {number} index
-	 */
-	function getRepeatIndex( node ) {
-	    let index = 0;
-	    const nodeName = node.nodeName;
-	    let prevSibling = node.previousSibling;
-
-	    while ( prevSibling ) {
-	        // ignore any sibling text and comment nodes (e.g. whitespace with a newline character)
-	        if ( prevSibling.nodeName && prevSibling.nodeName === nodeName ) {
-	            index++;
-	        }
-	        prevSibling = prevSibling.previousSibling;
-	    }
-
-	    return index;
-	}
-
-	/**
-	 * Adapted from https://stackoverflow.com/a/46522991/3071529
-	 *
-	 * A storage solution aimed at replacing jQuerys data function.
-	 * Implementation Note: Elements are stored in a (WeakMap)[https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WeakMap].
-	 * This makes sure the data is garbage collected when the node is removed.
-	 *
-	 * @namespace
-	 */
-	const elementDataStore = {
-	    /**
-	     * @type {WeakMap}
-	     */
-	    _storage: new WeakMap(),
-	    /**
-	     * Adds object to element storage. Ensures that element storage exist.
-	     *
-	     * @param {Node} element - target element
-	     * @param {string} key - name of the stored data
-	     * @param {object} obj - stored data
-	     */
-	    put: function( element, key, obj ) {
-	        if ( !this._storage.has( element ) ) {
-	            this._storage.set( element, new Map() );
-	        }
-	        this._storage.get( element ).set( key, obj );
-	    },
-	    /**
-	     * Return object from element storage.
-	     *
-	     * @param {Node} element - target element
-	     * @param {string} key - name of the stored data
-	     * @return {object} stored data object
-	     */
-	    get: function( element, key ) {
-	        const item = this._storage.get( element );
-
-	        return item ? item.get( key ) : item;
-	    },
-	    /**
-	     * Checkes whether element has given storage item.
-	     *
-	     * @param {Node} element - target element
-	     * @param {string} key - name of the stored data
-	     * @return {boolean} whether data is present
-	     */
-	    has: function( element, key ) {
-	        const item = this._storage.get( element );
-
-	        return item && item.has( key );
-	    },
-	    /**
-	     * Removes item from element storage. Removes element storage if empty.
-	     *
-	     * @param {Node} element - target element
-	     * @param {string} key - name of the stored data
-	     * @return {object} removed data object
-	     */
-	    remove: function( element, key ) {
-	        var ret = this._storage.get( element ).delete( key );
-	        if ( !this._storage.get( key ).size === 0 ) {
-	            this._storage.delete( element );
-	        }
-
-	        return ret;
-	    }
-	};
-
-	/**
-	 * A custom error type for form logic
+	 * Class dealing with nodes and nodesets of the XML instance
 	 *
 	 * @class
-	 * @augments Error
-	 * @param {string} message - Optional message.
+	 * @param {string} [selector] - SimpleXPath or jQuery selector
+	 * @param {number} [index] - The index of the target node with that selector
+	 * @param {NodesetFilter} [filter] - Filter object for the result nodeset
+	 * @param {FormModel} model - Instance of FormModel
 	 */
-	function FormLogicError( message ) {
-	    this.message = message || 'unknown';
-	    this.name = 'FormLogicError';
-	    this.stack = ( new Error() ).stack;
-	}
+	const Nodeset = function( selector, index, filter, model ) {
+	    const defaultSelector = model.hasInstance ? '/model/instance[1]//*' : '//*';
 
-	FormLogicError.prototype = Object.create( Error.prototype );
-	FormLogicError.prototype.constructor = FormLogicError;
-
-	var config = {
-	    'maps': [ {
-	        'tiles': [ 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png' ],
-	        'name': 'streets',
-	        'attribution': '© <a href=\'http://openstreetmap.org\'>OpenStreetMap</a> | <a href=\'www.openstreetmap.org/copyright\'>Terms</a>'
-	    }, {
-	        'tiles': 'GOOGLE_SATELLITE',
-	        'name': 'satellite'
-	    } ],
-	    'googleApiKey': '',
-	    'repeatOrdinals': false,
-	    'validateContinuously': false,
-	    'validatePage': true,
-	    'swipePage': true,
-	    'textMaxChars': 2000
+	    this.model = model;
+	    this.originalSelector = selector;
+	    this.selector = ( typeof selector === 'string' && selector.length > 0 ) ? selector : defaultSelector;
+	    filter = ( typeof filter !== 'undefined' && filter !== null ) ? filter : {};
+	    this.filter = filter;
+	    this.filter.onlyLeaf = ( typeof filter.onlyLeaf !== 'undefined' ) ? filter.onlyLeaf : false;
+	    this.filter.noEmpty = ( typeof filter.noEmpty !== 'undefined' ) ? filter.noEmpty : false;
+	    this.index = index;
 	};
 
 	/**
-	 * @module format
+	 * @return {Element} Single node
 	 */
-
-	let _locale = navigator.language;
-	const NUMBER = '0-9\u0660-\u0669';
-	const TIME_PART = `[:${NUMBER}]+`;
-	const MERIDIAN_PART = `[^: ${NUMBER}]+`;
-	const HAS_MERIDIAN = new RegExp( `^(${TIME_PART} ?(${MERIDIAN_PART}))|((${MERIDIAN_PART}) ?${TIME_PART})$` );
+	Nodeset.prototype.getElement = function() {
+	    return this.getElements()[ 0 ];
+	};
 
 	/**
-	 * Transforms time to a cleaned-up localized time.
-	 *
-	 * @param {Date} dt - date object
-	 * @return {string} cleaned-up localized time
+	 * @return {Array<Element>} List of nodes
 	 */
-	function _getCleanLocalTime( dt ) {
-	    dt = typeof dt == 'undefined' ? new Date() : dt;
+	Nodeset.prototype.getElements = function() {
+	    let nodes;
+	    let /** @type {string} */ val;
 
-	    return _cleanSpecialChars( dt.toLocaleTimeString( _locale ) );
-	}
+	    // cache evaluation result
+	    if ( !this._nodes ) {
+	        this._nodes = this.model.evaluate( this.selector, 'nodes', null, null, true );
+	        // noEmpty automatically excludes non-leaf nodes
+	        if ( this.filter.noEmpty === true ) {
+	            this._nodes = this._nodes
+	                .filter( node => {
+	                    val = node.textContent;
 
-	/**
-	 * Remove unneeded and problematic special characters in (date)time string.
-	 *
-	 * @param {string} timeStr - (date)time string to clean up
-	 * @return {string} transformed (date)time string with removed unneeded special characters that cause issues
-	 */
-	function _cleanSpecialChars( timeStr ) {
-	    return timeStr.replace( /[\u200E\u200F]/g, '' );
-	}
-
-	/**
-	 * @namespace time
-	 */
-	const time = {
-	    // For now we just look at a subset of numbers in Arabic and Latin. There are actually over 20 number scripts and :digit: doesn't work in browsers
-	    /**
-	     * @type {string}
-	     */
-	    get hour12() {
-	        return this.hasMeridian( _getCleanLocalTime() );
-	    },
-	    /**
-	     * @type {string}
-	     */
-	    get pmNotation() {
-	        return this.meridianNotation( new Date( 2000, 1, 1, 23, 0, 0 ) );
-	    },
-	    /**
-	     * @type {string}
-	     */
-	    get amNotation() {
-	        return this.meridianNotation( new Date( 2000, 1, 1, 1, 0, 0 ) );
-	    },
-	    /**
-	     * @type {Function}
-	     * @param {Date} dt - datetime string
-	     */
-	    meridianNotation( dt ) {
-	        let matches = _getCleanLocalTime( dt ).match( HAS_MERIDIAN );
-	        if ( matches && matches.length ) {
-	            matches = matches.filter( item => !!item );
-
-	            return matches[ matches.length - 1 ].trim();
+	                    return node.children.length === 0 && val.trim().length > 0;
+	                } );
 	        }
+	        // this may still contain empty leaf nodes
+	        else if ( this.filter.onlyLeaf === true ) {
+	            this._nodes = this._nodes
+	                .filter( node => node.children.length === 0 );
+	        }
+	    }
+
+	    nodes = this._nodes;
+
+	    if ( typeof this.index !== 'undefined' && this.index !== null ) {
+	        nodes = typeof nodes[ this.index ] === 'undefined' ? [] : [ nodes[ this.index ] ];
+	    }
+
+	    return nodes;
+	};
+
+	/**
+	 * Sets the index of the Nodeset instance
+	 *
+	 * @param {number} [index] - The 0-based index
+	 */
+	Nodeset.prototype.setIndex = function( index ) {
+	    this.index = index;
+	};
+
+	/**
+	 * Sets data node values.
+	 *
+	 * @param {(string|Array<string>)} [newVals] - The new value of the node.
+	 * @param {string} [xmlDataType] - XML data type of the node
+	 *
+	 * @return {null|UpdatedDataNodes} `null` is returned when the node is not found or multiple nodes were selected,
+	 *                       otherwise an object with update information is returned.
+	 */
+	Nodeset.prototype.setVal = function( newVals, xmlDataType ) {
+	    let /**@type {string}*/ newVal;
+	    let updated;
+	    let customData;
+
+	    const curVal = this.getVal();
+
+	    if ( typeof newVals !== 'undefined' && newVals !== null ) {
+	        newVal = ( Array.isArray( newVals ) ) ? newVals.join( ' ' ) : newVals.toString();
+	    } else {
+	        newVal = '';
+	    }
+
+	    newVal = this.convert( newVal, xmlDataType );
+	    const targets = this.getElements();
+
+	    if ( targets.length === 1 && newVal.toString() !== curVal.toString() ) {
+	        const target = targets[ 0 ];
+	        // first change the value so that it can be evaluated in XPath (validated)
+	        target.textContent = newVal.toString();
+	        // then return validation result
+	        updated = this.getClosestRepeat();
+	        updated.nodes = [ target.nodeName ];
+
+	        customData = this.model.getUpdateEventData( target, xmlDataType );
+	        updated = ( customData ) ? jquery.extend( {}, updated, customData ) : updated;
+
+	        this.model.events.dispatchEvent( events.DataUpdate( updated ) );
+
+	        //add type="file" attribute for file references
+	        if ( xmlDataType === 'binary' ) {
+	            if ( newVal.length > 0 ) {
+	                target.setAttribute( 'type', 'file' );
+	                // The src attribute if for default binary values (added by enketo-transformer)
+	                // As soon as the value changes this attribute can be removed to clean up.
+	                target.removeAttribute( 'src' );
+	            } else {
+	                target.removeAttribute( 'type' );
+	            }
+	        }
+
+	        return updated;
+	    }
+	    if ( targets.length > 1 ) {
+	        console.error( 'nodeset.setVal expected nodeset with one node, but received multiple' );
 
 	        return null;
-	    },
-	    /**
-	     * Whether time string has meridian parts
-	     *
-	     * @type {Function}
-	     * @param {string} time - Time string
-	     */
-	    hasMeridian( time ) {
-	        return HAS_MERIDIAN.test( _cleanSpecialChars( time ) );
+	    }
+	    if ( targets.length === 0 ) {
+	        console.warn( `Data node: ${this.selector} with null-based index: ${this.index} not found. Ignored.` );
+
+	        return null;
+	    }
+
+	    return null;
+	};
+
+	/**
+	 * Obtains the data value of the first node.
+	 *
+	 * @return {string|undefined} data value of first node or `undefined` if zero nodes
+	 */
+	Nodeset.prototype.getVal = function() {
+	    const nodes = this.getElements();
+
+	    return nodes.length ? nodes[ 0 ].textContent : undefined;
+	};
+
+	/**
+	 * Note: If repeats have not been cloned yet, they are not considered a repeat by this function
+	 *
+	 * @return {{repeatPath: string, repeatIndex: number}|{}} Empty object for nothing found
+	 */
+	Nodeset.prototype.getClosestRepeat = function() {
+	    let el = this.getElement();
+	    let nodeName = el.nodeName;
+
+	    while ( nodeName && nodeName !== 'instance' && !( el.nextElementSibling && el.nextElementSibling.nodeName === nodeName ) && !( el.previousElementSibling && el.previousElementSibling.nodeName === nodeName ) ) {
+	        el = el.parentElement;
+	        nodeName = el ? el.nodeName : null;
+	    }
+
+	    return ( !nodeName || nodeName === 'instance' ) ? {} : {
+	        repeatPath: getXPath( el, 'instance' ),
+	        repeatIndex: this.model.determineIndex( el )
+	    };
+	};
+
+	/**
+	 * Remove a repeat node
+	 */
+	Nodeset.prototype.remove = function() {
+	    const dataNode = this.getElement();
+
+	    if ( dataNode ) {
+	        const nodeName = dataNode.nodeName;
+	        const repeatPath = getXPath( dataNode, 'instance' );
+	        let repeatIndex = this.model.determineIndex( dataNode );
+	        const removalEventData = this.model.getRemovalEventData( dataNode );
+
+	        if ( !this.model.templates[ repeatPath ] ) {
+	            // This allows the model itseldataNodeout requiring the controller to call .extractFakeTemplates()
+	            // to extract non-jr:templates by assuming that node.remove() would only called for a repeat.
+	            this.model.extractFakeTemplates( [ repeatPath ] );
+	        }
+	        // warning: jQuery.next() to be avoided to support dots in the nodename
+	        let nextNode = dataNode.nextElementSibling;
+
+	        dataNode.remove();
+	        this._nodes = null;
+
+	        // For internal use
+	        this.model.events.dispatchEvent( events.DataUpdate( {
+	            nodes: null,
+	            repeatPath,
+	            repeatIndex
+	        } ) );
+
+	        // For all next sibling repeats to update formulas that use e.g. position(..)
+	        // For internal use
+	        while ( nextNode && nextNode.nodeName == nodeName ) {
+	            nextNode = nextNode.nextElementSibling;
+
+	            this.model.events.dispatchEvent( events.DataUpdate( {
+	                nodes: null,
+	                repeatPath,
+	                repeatIndex: repeatIndex++
+	            } ) );
+	        }
+
+	        // For external use, if required with custom data.
+	        this.model.events.dispatchEvent( events.Removed( removalEventData ) );
+
+	    } else {
+	        console.error( `could not find node ${this.selector} with index ${this.index} to remove ` );
 	    }
 	};
 
 	/**
-	 * XML types
+	 * Convert a value to a specified data type (though always stringified)
 	 *
-	 * @module types
+	 * @param {string} [x] - Value to convert
+	 * @param {string} [xmlDataType] - XML data type
+	 * @return {string} - String representation of converted value
 	 */
+	Nodeset.prototype.convert = ( x, xmlDataType ) => {
+	    if ( x.toString() === '' ) {
+	        return x;
+	    }
+	    if ( typeof xmlDataType !== 'undefined' && xmlDataType !== null &&
+	        typeof types[ xmlDataType.toLowerCase() ] !== 'undefined' &&
+	        typeof types[ xmlDataType.toLowerCase() ].convert !== 'undefined' ) {
+	        return types[ xmlDataType.toLowerCase() ].convert( x );
+	    }
+
+	    return x;
+	};
 
 	/**
-	 * @namespace types
+	 * @param {string} constraintExpr - The XPath expression
+	 * @param {string} requiredExpr - The XPath expression
+	 * @param {string} xmlDataType - XML data type
+	 * @return {Promise} promise that resolves with a ValidateInputResolution object
 	 */
-	const types = {
-	    /**
-	     * @namespace
-	     */
-	    'string': {
-	        /**
-	         * @param {string} x - value
-	         * @return {string} converted value
-	         */
-	        convert( x ) {
-	            return x.replace( /^\s+$/, '' );
-	        },
-	        //max length of type string is 255 chars.Convert( truncate ) silently ?
-	        /**
-	         * @return {boolean} always `true`
-	         */
-	        validate() {
-	            return true;
-	        }
-	    },
-	    /**
-	     * @namespace
-	     */
-	    'select': {
-	        /**
-	         * @return {boolean} always `true`
-	         */
-	        validate() {
-	            return true;
-	        }
-	    },
-	    /**
-	     * @namespace
-	     */
-	    'select1': {
-	        /**
-	         * @return {boolean} always `true`
-	         */
-	        validate() {
-	            return true;
-	        }
-	    },
-	    /**
-	     * @namespace
-	     */
-	    'decimal': {
-	        /**
-	         * @param {number|string} x - value
-	         * @return {number} converted value
-	         */
-	        convert( x ) {
-	            const num = Number( x );
-	            if ( isNaN( num ) || num === Number.POSITIVE_INFINITY || num === Number.NEGATIVE_INFINITY ) {
-	                // Comply with XML schema decimal type that has no special values. '' is our only option.
-	                return '';
-	            }
+	Nodeset.prototype.validate = function( constraintExpr, requiredExpr, xmlDataType ) {
+	    const that = this;
+	    const result = {};
 
-	            return num;
-	        },
-	        /**
-	         * @param {number|string} x - value
-	         * @return {boolean} whether value is valid
-	         */
-	        validate( x ) {
-	            const num = Number( x );
+	    // Avoid checking constraint if required is invalid
+	    return this.validateRequired( requiredExpr )
+	        .then( passed => {
+	            result.requiredValid = passed;
 
-	            return !isNaN( num ) && num !== Number.POSITIVE_INFINITY && num !== Number.NEGATIVE_INFINITY;
-	        }
-	    },
-	    /**
-	     * @namespace
-	     */
-	    'int': {
-	        /**
-	         * @param {number|string} x - value
-	         * @return {number} converted value
-	         */
-	        convert( x ) {
-	            const num = Number( x );
-	            if ( isNaN( num ) || num === Number.POSITIVE_INFINITY || num === Number.NEGATIVE_INFINITY ) {
-	                // Comply with XML schema int type that has no special values. '' is our only option.
-	                return '';
-	            }
+	            return ( passed === false ) ? null : that.validateConstraintAndType( constraintExpr, xmlDataType );
+	        } )
+	        .then( passed => {
+	            result.constraintValid = passed;
 
-	            return ( num >= 0 ) ? Math.floor( num ) : -Math.floor( Math.abs( num ) );
-	        },
-	        /**
-	         * @param {number|string} x - value
-	         * @return {boolean} whether value is valid
-	         */
-	        validate( x ) {
-	            const num = Number( x );
+	            return result;
+	        } );
+	};
 
-	            return !isNaN( num ) && num !== Number.POSITIVE_INFINITY && num !== Number.NEGATIVE_INFINITY && Math.round( num ) === num && num.toString() === x.toString();
-	        }
-	    },
-	    /**
-	     * @namespace
-	     */
-	    'date': {
-	        /**
-	         * @param {string} x - value
-	         * @return {boolean} whether value is valid
-	         */
-	        validate( x ) {
-	            const pattern = /^([0-9]{4})-([0-9]{2})-([0-9]{2})$/;
-	            const segments = pattern.exec( x );
-	            if ( segments && segments.length === 4 ) {
-	                const year = Number( segments[ 1 ] );
-	                const month = Number( segments[ 2 ] ) - 1;
-	                const day = Number( segments[ 3 ] );
-	                const date = new Date( year, month, day );
+	/**
+	 * Validate a value with an XPath Expression and /or xml data type
+	 *
+	 * @param {string} [expr] - The XPath expression
+	 * @param {string} [xmlDataType] - XML data type
+	 * @return {Promise} wrapping a boolean indicating if the value is valid or not; error also indicates invalid field, or problem validating it
+	 */
+	Nodeset.prototype.validateConstraintAndType = function( expr, xmlDataType ) {
+	    const that = this;
+	    let value;
 
-	                // Do not approve automatic JavaScript conversion of invalid dates such as 2017-12-32
-	                return date.getFullYear() === year && date.getMonth() === month && date.getDate() === day;
-	            }
+	    if ( !xmlDataType || typeof types[ xmlDataType.toLowerCase() ] === 'undefined' ) {
+	        xmlDataType = 'string';
+	    }
 
-	            return false;
-	        },
-	        /**
-	         * @param {number|string} x - value
-	         * @return {string} converted value
-	         */
-	        convert( x ) {
-	            if ( isNumber( x ) ) {
-	                // The XPath expression "2012-01-01" + 2 returns a number of days in XPath.
-	                const date = new Date( x * 24 * 60 * 60 * 1000 );
+	    // This one weird trick results in a small validation performance increase.
+	    // Do not obtain *the value* if the expr is empty and data type is string, select, select1, binary knowing that this will always return true.
+	    if ( !expr && ( xmlDataType === 'string' || xmlDataType === 'select' || xmlDataType === 'select1' || xmlDataType === 'binary' ) ) {
+	        return Promise.resolve( true );
+	    }
 
-	                return date.toString() === 'Invalid Date' ?
-	                    '' : `${date.getFullYear().toString().pad( 4 )}-${( date.getMonth() + 1 ).toString().pad( 2 )}-${date.getDate().toString().pad( 2 )}`;
-	            } else {
-	                // For both dates and datetimes
-	                // If it's a datetime, we can quite safely assume it's in the local timezone, and therefore we can simply chop off
-	                // the time component.
-	                if ( /[0-9]T[0-9]/.test( x ) ) {
-	                    x = x.split( 'T' )[ 0 ];
-	                }
+	    value = that.getVal();
 
-	                return this.validate( x ) ? x : '';
-	            }
-	        }
-	    },
-	    /**
-	     * @namespace
-	     */
-	    'datetime': {
-	        /**
-	         * @param {string} x - value
-	         * @return {boolean} whether value is valid
-	         */
-	        validate( x ) {
-	            const parts = x.split( 'T' );
-	            if ( parts.length === 2 ) {
-	                return types.date.validate( parts[ 0 ] ) && types.time.validate( parts[ 1 ], false );
-	            }
+	    if ( value.toString() === '' ) {
+	        return Promise.resolve( true );
+	    }
 
-	            return types.date.validate( parts[ 0 ] );
-	        },
-	        /**
-	         * @param {number|string} x - value
-	         * @return {string} converted value
-	         */
-	        convert( x ) {
-	            let date = 'Invalid Date';
-	            const parts = x.split( 'T' );
-	            if ( isNumber( x ) ) {
-	                // The XPath expression "2012-01-01T01:02:03+01:00" + 2 returns a number of days in XPath.
-	                date = new Date( x * 24 * 60 * 60 * 1000 );
-	            } else if ( /[0-9]T[0-9]/.test( x ) && parts.length === 2 ) {
-	                const convertedDate = types.date.convert( parts[ 0 ] );
-	                // The milliseconds are optional for datetime (and shouldn't be added)
-	                const convertedTime = types.time.convert( parts[ 1 ], false );
-	                if ( convertedDate && convertedTime ) {
-	                    return `${convertedDate}T${convertedTime}`;
-	                }
-	            } else {
-	                const convertedDate = types.date.convert( parts[ 0 ] );
-	                if ( convertedDate ) {
-	                    return `${convertedDate}T00:00:00.000${( new Date() ).getTimezoneOffsetAsTime()}`;
-	                }
-	            }
-
-	            return date.toString() !== 'Invalid Date' ? date.toISOLocalString() : '';
-	        }
-	    },
-	    /**
-	     * @namespace
-	     */
-	    'time': {
-	        // Note that it's okay if the validate function is stricter than the spec,
-	        // (for timezone offset), as long as the convertor automatically converts
-	        // to a valid time.
-	        /**
-	         * @param {string} x - value
-	         * @param {boolean} [requireMillis] - whether milliseconds are required
-	         * @return {boolean} whether value is valid
-	         */
-	        validate( x, requireMillis ) {
-	            let m = x.match( /^(\d\d):(\d\d):(\d\d)\.\d\d\d(\+|-)(\d\d):(\d\d)$/ );
-
-	            requireMillis = typeof requireMillis !== 'boolean' ? true : requireMillis;
-
-	            if ( !m && !requireMillis ) {
-	                m = x.match( /^(\d\d):(\d\d):(\d\d)(\+|-)(\d\d):(\d\d)$/ );
-	            }
-
-	            if ( !m ) {
+	    return Promise.resolve()
+	        .then( () => types[ xmlDataType.toLowerCase() ].validate( value ) )
+	        .then( typeValid => {
+	            if ( !typeValid ){
 	                return false;
 	            }
+	            const exprValid = expr ? that.model.evaluate( expr, 'boolean', that.originalSelector, that.index ) : true;
 
-	            // no need to convert to numbers since we know they are number strings
-	            return m[ 1 ] < 24 && m[ 1 ] >= 0 &&
-	                m[ 2 ] < 60 && m[ 2 ] >= 0 &&
-	                m[ 3 ] < 60 && m[ 3 ] >= 0 &&
-	                m[ 5 ] < 24 && m[ 5 ] >= 0 && // this could be tighter
-	                m[ 6 ] < 60 && m[ 6 ] >= 0; // this is probably either 0 or 30
-	        },
-	        /**
-	         * @param {string} x - value
-	         * @param {boolean} [requireMillis] - whether milliseconds are required
-	         * @return {string} converted value
-	         */
-	        convert( x, requireMillis ) {
-	            let date;
-	            const o = {};
-	            let parts;
-	            let time;
-	            let secs;
-	            let tz;
-	            let offset;
-	            const timeAppearsCorrect = /^[0-9]{1,2}:[0-9]{1,2}(:[0-9.]*)?/;
+	            return exprValid;
+	        } );
+	};
 
-	            requireMillis = typeof requireMillis !== 'boolean' ? true : requireMillis;
-
-	            if ( !timeAppearsCorrect.test( x ) ) {
-	                // An XPath expression would return a datetime string since there is no way to request a timeValue.
-	                // We can test this by trying to convert to a date.
-	                date = new Date( x );
-	                if ( date.toString() !== 'Invalid Date' ) {
-	                    x = `${date.getHours()}:${date.getMinutes()}:${date.getSeconds()}.${date.getMilliseconds()}${date.getTimezoneOffsetAsTime()}`;
-	                } else {
-	                    return '';
-	                }
-	            }
-
-	            parts = x.toString().split( /(\+|-|Z)/ );
-	            // We're using a 'capturing group' here, so the + or - is included!.
-	            if ( parts.length < 1 ) {
-	                return '';
-	            }
-
-	            time = parts[ 0 ].split( ':' );
-	            tz = parts[ 2 ] ? [ parts[ 1 ] ].concat( parts[ 2 ].split( ':' ) ) : ( parts[ 1 ] === 'Z' ? [ '+', '00', '00' ] : [] );
-
-	            o.hours = time[ 0 ].pad( 2 );
-	            o.minutes = time[ 1 ].pad( 2 );
-
-	            secs = time[ 2 ] ? time[ 2 ].split( '.' ) : [ '00' ];
-
-	            o.seconds = secs[ 0 ];
-	            o.milliseconds = secs[ 1 ] || ( requireMillis ? '000' : undefined );
-
-	            if ( tz.length === 0 ) {
-	                offset = new Date().getTimezoneOffsetAsTime();
-	            } else {
-	                offset = `${tz[0] + tz[1].pad( 2 )}:${tz[2] ? tz[2].pad( 2 ) : '00'}`;
-	            }
-
-	            x = `${o.hours}:${o.minutes}:${o.seconds}${o.milliseconds ? `.${o.milliseconds}` : ''}${offset}`;
-
-	            return this.validate( x, requireMillis ) ? x : '';
-	        },
-	        /**
-	         * converts "11:30 AM", and "11:30 ", and "11:30 上午" to: "11:30"
-	         * converts "11:30 PM", and "11:30 下午" to: "23:30"
-	         *
-	         * @param {string} x - value
-	         * @return {string} converted value
-	         */
-	        convertMeridian( x ) {
-	            x = x.trim();
-	            if ( time.hasMeridian( x ) ) {
-	                const parts = x.split( ' ' );
-	                const timeParts = parts[ 0 ].split( ':' );
-	                if ( parts.length > 0 ) {
-	                    // This will only work for latin numbers but that should be fine because that's what the widget supports.
-	                    if ( parts[ 1 ] === time.pmNotation ) {
-	                        timeParts[ 0 ] = ( ( Number( timeParts[ 0 ] ) % 12 ) + 12 ).toString().pad( 2 );
-	                    } else if ( parts[ 1 ] === time.amNotation ) {
-	                        timeParts[ 0 ] = ( Number( timeParts[ 0 ] ) % 12 ).toString().pad( 2 );
-	                    }
-	                    x = timeParts.join( ':' );
-	                }
-	            }
-
-	            return x;
-	        }
-	    },
-	    /**
-	     * @namespace
-	     */
-	    'barcode': {
-	        /**
-	         * @return {boolean} always `true`
-	         */
-	        validate() {
-	            return true;
-	        }
-	    },
-	    /**
-	     * @namespace
-	     */
-	    'geopoint': {
-	        /**
-	         * @param {string} x - value
-	         * @return {boolean} whether value is valid
-	         */
-	        validate( x ) {
-	            const coords = x.toString().trim().split( ' ' );
-
-	            // Note that longitudes from -180 to 180 are problematic when recording points close to the international
-	            // dateline. They are therefore set from -360  to 360 (circumventing Earth twice, I think) which is
-	            // an arbitrary limit. https://github.com/kobotoolbox/enketo-express/issues/1033
-	            return ( coords[ 0 ] !== '' && coords[ 0 ] >= -90 && coords[ 0 ] <= 90 ) &&
-	                ( coords[ 1 ] !== '' && coords[ 1 ] >= -360 && coords[ 1 ] <= 360 ) &&
-	                ( typeof coords[ 2 ] === 'undefined' || !isNaN( coords[ 2 ] ) ) &&
-	                ( typeof coords[ 3 ] === 'undefined' || ( !isNaN( coords[ 3 ] ) && coords[ 3 ] >= 0 ) );
-	        },
-	        /**
-	         * @param {string} x - value
-	         * @return {string} converted value
-	         */
-	        convert( x ) {
-	            return x.toString().trim();
-	        }
-	    },
-	    /**
-	     * @namespace
-	     */
-	    'geotrace': {
-	        /**
-	         * @param {string} x - value
-	         * @return {boolean} whether value is valid
-	         */
-	        validate( x ) {
-	            const geopoints = x.toString().split( ';' );
-
-	            return geopoints.length >= 2 && geopoints.every( geopoint => types.geopoint.validate( geopoint ) );
-	        },
-	        /**
-	         * @param {string} x - value
-	         * @return {string} converted value
-	         */
-	        convert( x ) {
-	            return x.toString().trim();
-	        }
-	    },
-	    /**
-	     * @namespace
-	     */
-	    'geoshape': {
-	        /**
-	         * @param {string} x - value
-	         * @return {boolean} whether value is valid
-	         */
-	        validate( x ) {
-	            const geopoints = x.toString().split( ';' );
-
-	            return geopoints.length >= 4 && ( geopoints[ 0 ] === geopoints[ geopoints.length - 1 ] ) && geopoints.every( geopoint => types.geopoint.validate( geopoint ) );
-	        },
-	        /**
-	         * @param {string} x - value
-	         * @return {string} converted value
-	         */
-	        convert( x ) {
-	            return x.toString().trim();
-	        }
-	    },
-	    /**
-	     * @namespace
-	     */
-	    'binary': {
-	        /**
-	         * @return {boolean} always `true`
-	         */
-	        validate() {
-	            return true;
-	        }
-	    }
+	// TODO: rename to isTrue?
+	/**
+	 * @param {string} [expr] - The XPath expression
+	 * @return {boolean} Whether node is required
+	 */
+	Nodeset.prototype.isRequired = function( expr ) {
+	    return !expr || expr.trim() === 'false()' ? false : expr.trim() === 'true()' || this.model.evaluate( expr, 'boolean', this.originalSelector, this.index );
 	};
 
 	/**
-	 * @module event
-	 */
-	// TODO: add second "propagate" parameter to constructors to add .enketo namespace to event.
-
-	/**
-	 * Data update event.
+	 * Validates if requiredness is fulfilled.
 	 *
-	 * @static
-	 * @param {*} detail - Data to be passed with event
-	 * @return {CustomEvent} Custom "dataupdate" event
+	 * @param {string} [expr] - The XPath expression
+	 * @return {Promise<boolean>} Promise that resolves with a boolean
 	 */
-	function DataUpdate( detail ) {
-	    return new CustomEvent( 'dataupdate', { detail } );
-	}
+	Nodeset.prototype.validateRequired = function( expr ) {
+	    const that = this;
 
-	/**
-	 * Fake focus event.
-	 *
-	 * @return {CustomEvent} Custom "fakefocus" event (bubbling)
-	 */
-	function FakeFocus() {
-	    return new CustomEvent( 'fakefocus', { bubbles: true } );
-	}
+	    // if the node has a value or there is no required expression
+	    if ( !expr || this.getVal() ) {
+	        return Promise.resolve( true );
+	    }
 
-	/**
-	 * Apply focus event.
-	 *
-	 * @return {CustomEvent} Custom "applyfocus" event
-	 */
-	function ApplyFocus() {
-	    return new CustomEvent( 'applyfocus' );
-	}
-
-	/**
-	 * Page flip event.
-	 *
-	 * @return {CustomEvent} Custom "pageflip" event (bubbling)
-	 */
-	function PageFlip() {
-	    return new CustomEvent( 'pageflip', { bubbles: true } );
-	}
-
-	/**
-	 * Removed event.
-	 *
-	 * @param {*} detail - Data to be passed with event
-	 * @return {CustomEvent} Custom "removed" event (bubbling)
-	 */
-	function Removed( detail ) {
-	    return new CustomEvent( 'removed', { detail, bubbles: true } );
-	}
-
-	/**
-	 * The odk-instance-first-load event as defined in the ODK XForms spec.
-	 *
-	 * @see https://opendatakit.github.io/xforms-spec/#event:odk-instance-first-load
-	 *@return {CustomEvent} Custom "odk-instance-first-load" event (bubbling)
-	 */
-	function InstanceFirstLoad() {
-	    return new CustomEvent( 'odk-instance-first-load', { bubbles: true } );
-	}
-
-	/**
-	 * The odk-new-repeat event as defined in the ODK XForms spec.
-	 *
-	 * @see https://opendatakit.github.io/xforms-spec/#event:odk-new-repeat
-	 * @param {{repeatPath: string, repeatIndex: number, trigger: string}} detail - Data to be passed with event.
-	 * @return {CustomEvent} Custom "odk-new-repeat" event (bubbling)
-	 */
-	function NewRepeat( detail ) {
-	    return new CustomEvent( 'odk-new-repeat', { detail, bubbles: true } );
-	}
-
-	/**
-	 * The addrepeat event is similar but fired under different circumstances.
-	 *
-	 * @param {{repeatPath: string, repeatIndex: number, trigger: string}} detail - Data to be passed with event.
-	 * @return {CustomEvent} Custom "odk-new-repeat" event (bubbling)
-	 */
-	function AddRepeat( detail ) {
-	    return new CustomEvent( 'addrepeat', { detail, bubbles: true } );
-	}
-
-	/**
-	 * Remove repeat event.
-	 *
-	 * @return {CustomEvent} Custom "removerepeat" event (bubbling)
-	 */
-	function RemoveRepeat() {
-	    return new CustomEvent( 'removerepeat', { bubbles: true } );
-	}
-
-	/**
-	 * Change language event.
-	 *
-	 * @return {CustomEvent} Custom "changelanguage" event (bubbling)
-	 */
-	function ChangeLanguage() {
-	    return new CustomEvent( 'changelanguage', { bubbles: true } );
-	}
-
-	/**
-	 * Change event.
-	 *
-	 * @return {Event} The regular HTML "change" event (bubbling)
-	 */
-	function Change() {
-	    return new Event( 'change', { bubbles: true } );
-	}
-
-	/**
-	 * Xforms-value-changed event as defined in the ODK XForms spec.
-	 *
-	 * @see https://opendatakit.github.io/xforms-spec/#event:xforms-value-changed
-	 * @param {{repeatIndex: number}} detail - Data to be passed with event.
-	 * @return {CustomEvent} Custom "xforms-value-changed" event (bubbling).
-	 */
-	function XFormsValueChanged( detail ) {
-	    return new CustomEvent( 'xforms-value-changed', { detail, bubbles: true } );
-	}
-
-	/**
-	 * Input event.
-	 *
-	 * @return {Event} "input" event (bubbling)
-	 */
-	function Input() {
-	    return new Event( 'input', { bubbles: true } );
-	}
-
-	/**
-	 * Input update event.
-	 *
-	 * @return {CustomEvent} Custom "inputupdate" event (bubbling)
-	 */
-	function InputUpdate() {
-	    return new CustomEvent( 'inputupdate', { bubbles: true } );
-	}
-
-	/**
-	 * Edited event.
-	 *
-	 * @return {CustomEvent} Custom "edited" event (bubbling)
-	 */
-	function Edited() {
-	    return new CustomEvent( 'edited', { bubbles: true } );
-	}
-
-
-	/**
-	 * Before save event.
-	 *
-	 * @return {CustomEvent} Custom "edited" event (bubbling)
-	 */
-	function BeforeSave() {
-	    return new CustomEvent( 'before-save', { bubbles: true } );
-	}
-
-	/**
-	 * Validation complete event.
-	 *
-	 * @return {CustomEvent} Custom "validationcomplete" event (bubbling)
-	 */
-	function ValidationComplete() {
-	    return new CustomEvent( 'validation-complete', { bubbles: true } );
-	}
-
-	/**
-	 * Invalidated event.
-	 *
-	 * @return {CustomEvent} Custom "invalidated" event (bubbling)
-	 */
-	function Invalidated() {
-	    return new CustomEvent( 'invalidated', { bubbles: true } );
-	}
-
-	/**
-	 * Progress update event.
-	 *
-	 * @param {*} detail - Data to be passed with event
-	 * @return {CustomEvent} Custom "progressupdate" event (bubbling)
-	 */
-	function ProgressUpdate( detail ) {
-	    return new CustomEvent( 'progress-update', { detail, bubbles: true } );
-	}
-
-	/**
-	 * Go to hidden event fired when the goto target is not relevant.
-	 *
-	 * @return {CustomEvent} Custom "gotoirrelevant" event (bubbling)
-	 */
-	function GoToIrrelevant() {
-	    return new CustomEvent( 'goto-irrelevant', { bubbles: true } );
-	}
-
-	/**
-	 * Go to invisible event fired when the target has no form control.
-	 * This is event has prevalence of the "go to hidden" event.
-	 *
-	 * @return {CustomEvent} Custom "gotoinvisible" event (bubbling)
-	 */
-	function GoToInvisible() {
-	    return new CustomEvent( 'goto-invisible', { bubbles: true } );
-	}
-
-	function ChangeOption() {
-	    return new CustomEvent( 'change-option', { bubbles: true } );
-	}
-
-	/**
-	 * Go to printify text event.
-	 *
-	 * @return {CustomEvent} Custom "printify" event (bubbling)
-	 */
-	function Printify() {
-	    return new CustomEvent( 'printify', { bubbles: true } );
-	}
-
-	/**
-	 * Go to deprintify text event.
-	 *
-	 * @return {CustomEvent} Custom "deprintify" event (bubbling)
-	 */
-	function DePrintify() {
-	    return new CustomEvent( 'deprintify', { bubbles: true } );
-	}
-
-	function UpdateMaxSize() {
-	    return new CustomEvent( 'update-max-size', { bubbles: true } );
-	}
-
-	var events = {
-	    DataUpdate,
-	    FakeFocus,
-	    ApplyFocus,
-	    PageFlip,
-	    Removed,
-	    InstanceFirstLoad,
-	    NewRepeat,
-	    AddRepeat,
-	    RemoveRepeat,
-	    ChangeLanguage,
-	    Change,
-	    Input,
-	    InputUpdate,
-	    Edited,
-	    BeforeSave,
-	    ValidationComplete,
-	    Invalidated,
-	    ProgressUpdate,
-	    GoToIrrelevant,
-	    GoToInvisible,
-	    XFormsValueChanged,
-	    ChangeOption,
-	    Printify,
-	    DePrintify,
-	    UpdateMaxSize
+	    // if the node does not have a value and there is a required expression
+	    return Promise.resolve()
+	        .then( () => // if the expression evaluates to true, the field is required, and the function returns false.
+	            !that.isRequired( expr ) );
 	};
 
 	/**
@@ -22312,8 +22633,6 @@
 	const ODK_XFORMS_NS = 'http://www.opendatakit.org/xforms';
 
 	const parser$1 = new DOMParser();
-	let FormModel;
-	let Nodeset;
 
 	/**
 	 * Class dealing with the XML Model of a form
@@ -22323,7 +22642,7 @@
 	 * @param {object=} options - FormModel options
 	 * @param {string=} options.full - Whether to initialize the full model or only the primary instance.
 	 */
-	FormModel = function( data, options ) {
+	const FormModel = function( data, options ) {
 
 	    if ( typeof data === 'string' ) {
 	        data = {
@@ -23620,343 +23939,6 @@
 	    }
 	};
 
-	/**
-	 * @typedef NodesetFilter
-	 * @property {boolean} onlyLeaf
-	 * @property {boolean} noEmpty
-	 */
-
-	/**
-	 * Class dealing with nodes and nodesets of the XML instance
-	 *
-	 * @class
-	 * @param {string} [selector] - SimpleXPath or jQuery selector
-	 * @param {number} [index] - The index of the target node with that selector
-	 * @param {NodesetFilter} [filter] - Filter object for the result nodeset
-	 * @param {FormModel} model - Instance of FormModel
-	 */
-	Nodeset = function( selector, index, filter, model ) {
-	    const defaultSelector = model.hasInstance ? '/model/instance[1]//*' : '//*';
-
-	    this.model = model;
-	    this.originalSelector = selector;
-	    this.selector = ( typeof selector === 'string' && selector.length > 0 ) ? selector : defaultSelector;
-	    filter = ( typeof filter !== 'undefined' && filter !== null ) ? filter : {};
-	    this.filter = filter;
-	    this.filter.onlyLeaf = ( typeof filter.onlyLeaf !== 'undefined' ) ? filter.onlyLeaf : false;
-	    this.filter.noEmpty = ( typeof filter.noEmpty !== 'undefined' ) ? filter.noEmpty : false;
-	    this.index = index;
-	};
-
-	/**
-	 * @return {Element} Single node
-	 */
-	Nodeset.prototype.getElement = function() {
-	    return this.getElements()[ 0 ];
-	};
-
-	/**
-	 * @return {Array<Element>} List of nodes
-	 */
-	Nodeset.prototype.getElements = function() {
-	    let nodes;
-	    let /** @type {string} */ val;
-
-	    // cache evaluation result
-	    if ( !this._nodes ) {
-	        this._nodes = this.model.evaluate( this.selector, 'nodes', null, null, true );
-	        // noEmpty automatically excludes non-leaf nodes
-	        if ( this.filter.noEmpty === true ) {
-	            this._nodes = this._nodes
-	                .filter( node => {
-	                    val = node.textContent;
-
-	                    return node.children.length === 0 && val.trim().length > 0;
-	                } );
-	        }
-	        // this may still contain empty leaf nodes
-	        else if ( this.filter.onlyLeaf === true ) {
-	            this._nodes = this._nodes
-	                .filter( node => node.children.length === 0 );
-	        }
-	    }
-
-	    nodes = this._nodes;
-
-	    if ( typeof this.index !== 'undefined' && this.index !== null ) {
-	        nodes = typeof nodes[ this.index ] === 'undefined' ? [] : [ nodes[ this.index ] ];
-	    }
-
-	    return nodes;
-	};
-
-	/**
-	 * Sets the index of the Nodeset instance
-	 *
-	 * @param {number} [index] - The 0-based index
-	 */
-	Nodeset.prototype.setIndex = function( index ) {
-	    this.index = index;
-	};
-
-	/**
-	 * Sets data node values.
-	 *
-	 * @param {(string|Array<string>)} [newVals] - The new value of the node.
-	 * @param {string} [xmlDataType] - XML data type of the node
-	 *
-	 * @return {null|UpdatedDataNodes} `null` is returned when the node is not found or multiple nodes were selected,
-	 *                       otherwise an object with update information is returned.
-	 */
-	Nodeset.prototype.setVal = function( newVals, xmlDataType ) {
-	    let /**@type {string}*/ newVal;
-	    let updated;
-	    let customData;
-
-	    const curVal = this.getVal();
-
-	    if ( typeof newVals !== 'undefined' && newVals !== null ) {
-	        newVal = ( Array.isArray( newVals ) ) ? newVals.join( ' ' ) : newVals.toString();
-	    } else {
-	        newVal = '';
-	    }
-
-	    newVal = this.convert( newVal, xmlDataType );
-	    const targets = this.getElements();
-
-	    if ( targets.length === 1 && newVal.toString() !== curVal.toString() ) {
-	        const target = targets[ 0 ];
-	        // first change the value so that it can be evaluated in XPath (validated)
-	        target.textContent = newVal.toString();
-	        // then return validation result
-	        updated = this.getClosestRepeat();
-	        updated.nodes = [ target.nodeName ];
-
-	        customData = this.model.getUpdateEventData( target, xmlDataType );
-	        updated = ( customData ) ? jquery.extend( {}, updated, customData ) : updated;
-
-	        this.model.events.dispatchEvent( events.DataUpdate( updated ) );
-
-	        //add type="file" attribute for file references
-	        if ( xmlDataType === 'binary' ) {
-	            if ( newVal.length > 0 ) {
-	                target.setAttribute( 'type', 'file' );
-	                // The src attribute if for default binary values (added by enketo-transformer)
-	                // As soon as the value changes this attribute can be removed to clean up.
-	                target.removeAttribute( 'src' );
-	            } else {
-	                target.removeAttribute( 'type' );
-	            }
-	        }
-
-	        return updated;
-	    }
-	    if ( targets.length > 1 ) {
-	        console.error( 'nodeset.setVal expected nodeset with one node, but received multiple' );
-
-	        return null;
-	    }
-	    if ( targets.length === 0 ) {
-	        console.warn( `Data node: ${this.selector} with null-based index: ${this.index} not found. Ignored.` );
-
-	        return null;
-	    }
-
-	    return null;
-	};
-
-	/**
-	 * Obtains the data value of the first node.
-	 *
-	 * @return {string|undefined} data value of first node or `undefined` if zero nodes
-	 */
-	Nodeset.prototype.getVal = function() {
-	    const nodes = this.getElements();
-
-	    return nodes.length ? nodes[ 0 ].textContent : undefined;
-	};
-
-	/**
-	 * Note: If repeats have not been cloned yet, they are not considered a repeat by this function
-	 *
-	 * @return {{repeatPath: string, repeatIndex: number}|{}} Empty object for nothing found
-	 */
-	Nodeset.prototype.getClosestRepeat = function() {
-	    let el = this.getElement();
-	    let nodeName = el.nodeName;
-
-	    while ( nodeName && nodeName !== 'instance' && !( el.nextElementSibling && el.nextElementSibling.nodeName === nodeName ) && !( el.previousElementSibling && el.previousElementSibling.nodeName === nodeName ) ) {
-	        el = el.parentElement;
-	        nodeName = el ? el.nodeName : null;
-	    }
-
-	    return ( !nodeName || nodeName === 'instance' ) ? {} : {
-	        repeatPath: getXPath( el, 'instance' ),
-	        repeatIndex: this.model.determineIndex( el )
-	    };
-	};
-
-	/**
-	 * Remove a repeat node
-	 */
-	Nodeset.prototype.remove = function() {
-	    const dataNode = this.getElement();
-
-	    if ( dataNode ) {
-	        const nodeName = dataNode.nodeName;
-	        const repeatPath = getXPath( dataNode, 'instance' );
-	        let repeatIndex = this.model.determineIndex( dataNode );
-	        const removalEventData = this.model.getRemovalEventData( dataNode );
-
-	        if ( !this.model.templates[ repeatPath ] ) {
-	            // This allows the model itseldataNodeout requiring the controller to call .extractFakeTemplates()
-	            // to extract non-jr:templates by assuming that node.remove() would only called for a repeat.
-	            this.model.extractFakeTemplates( [ repeatPath ] );
-	        }
-	        // warning: jQuery.next() to be avoided to support dots in the nodename
-	        let nextNode = dataNode.nextElementSibling;
-
-	        dataNode.remove();
-	        this._nodes = null;
-
-	        // For internal use
-	        this.model.events.dispatchEvent( events.DataUpdate( {
-	            nodes: null,
-	            repeatPath,
-	            repeatIndex
-	        } ) );
-
-	        // For all next sibling repeats to update formulas that use e.g. position(..)
-	        // For internal use
-	        while ( nextNode && nextNode.nodeName == nodeName ) {
-	            nextNode = nextNode.nextElementSibling;
-
-	            this.model.events.dispatchEvent( events.DataUpdate( {
-	                nodes: null,
-	                repeatPath,
-	                repeatIndex: repeatIndex++
-	            } ) );
-	        }
-
-	        // For external use, if required with custom data.
-	        this.model.events.dispatchEvent( events.Removed( removalEventData ) );
-
-	    } else {
-	        console.error( `could not find node ${this.selector} with index ${this.index} to remove ` );
-	    }
-	};
-
-	/**
-	 * Convert a value to a specified data type (though always stringified)
-	 *
-	 * @param {string} [x] - Value to convert
-	 * @param {string} [xmlDataType] - XML data type
-	 * @return {string} - String representation of converted value
-	 */
-	Nodeset.prototype.convert = ( x, xmlDataType ) => {
-	    if ( x.toString() === '' ) {
-	        return x;
-	    }
-	    if ( typeof xmlDataType !== 'undefined' && xmlDataType !== null &&
-	        typeof types[ xmlDataType.toLowerCase() ] !== 'undefined' &&
-	        typeof types[ xmlDataType.toLowerCase() ].convert !== 'undefined' ) {
-	        return types[ xmlDataType.toLowerCase() ].convert( x );
-	    }
-
-	    return x;
-	};
-
-	/**
-	 * @param {string} constraintExpr - The XPath expression
-	 * @param {string} requiredExpr - The XPath expression
-	 * @param {string} xmlDataType - XML data type
-	 * @return {Promise} promise that resolves with a ValidateInputResolution object
-	 */
-	Nodeset.prototype.validate = function( constraintExpr, requiredExpr, xmlDataType ) {
-	    const that = this;
-	    const result = {};
-
-	    // Avoid checking constraint if required is invalid
-	    return this.validateRequired( requiredExpr )
-	        .then( passed => {
-	            result.requiredValid = passed;
-
-	            return ( passed === false ) ? null : that.validateConstraintAndType( constraintExpr, xmlDataType );
-	        } )
-	        .then( passed => {
-	            result.constraintValid = passed;
-
-	            return result;
-	        } );
-	};
-
-	/**
-	 * Validate a value with an XPath Expression and /or xml data type
-	 *
-	 * @param {string} [expr] - The XPath expression
-	 * @param {string} [xmlDataType] - XML data type
-	 * @return {Promise} wrapping a boolean indicating if the value is valid or not; error also indicates invalid field, or problem validating it
-	 */
-	Nodeset.prototype.validateConstraintAndType = function( expr, xmlDataType ) {
-	    const that = this;
-	    let value;
-
-	    if ( !xmlDataType || typeof types[ xmlDataType.toLowerCase() ] === 'undefined' ) {
-	        xmlDataType = 'string';
-	    }
-
-	    // This one weird trick results in a small validation performance increase.
-	    // Do not obtain *the value* if the expr is empty and data type is string, select, select1, binary knowing that this will always return true.
-	    if ( !expr && ( xmlDataType === 'string' || xmlDataType === 'select' || xmlDataType === 'select1' || xmlDataType === 'binary' ) ) {
-	        return Promise.resolve( true );
-	    }
-
-	    value = that.getVal();
-
-	    if ( value.toString() === '' ) {
-	        return Promise.resolve( true );
-	    }
-
-	    return Promise.resolve()
-	        .then( () => types[ xmlDataType.toLowerCase() ].validate( value ) )
-	        .then( typeValid => {
-	            if ( !typeValid ){
-	                return false;
-	            }
-	            const exprValid = expr ? that.model.evaluate( expr, 'boolean', that.originalSelector, that.index ) : true;
-
-	            return exprValid;
-	        } );
-	};
-
-	// TODO: rename to isTrue?
-	/**
-	 * @param {string} [expr] - The XPath expression
-	 * @return {boolean} Whether node is required
-	 */
-	Nodeset.prototype.isRequired = function( expr ) {
-	    return !expr || expr.trim() === 'false()' ? false : expr.trim() === 'true()' || this.model.evaluate( expr, 'boolean', this.originalSelector, this.index );
-	};
-
-	/**
-	 * Validates if requiredness is fulfilled.
-	 *
-	 * @param {string} [expr] - The XPath expression
-	 * @return {Promise<boolean>} Promise that resolves with a boolean
-	 */
-	Nodeset.prototype.validateRequired = function( expr ) {
-	    const that = this;
-
-	    // if the node has a value or there is no required expression
-	    if ( !expr || this.getVal() ) {
-	        return Promise.resolve( true );
-	    }
-
-	    // if the node does not have a value and there is a required expression
-	    return Promise.resolve()
-	        .then( () => // if the expression evaluates to true, the field is required, and the function returns false.
-	            !that.isRequired( expr ) );
-	};
 
 	/**
 	 * Placeholder function meant to be overwritten
@@ -42641,7 +42623,8 @@
 	            this.loadMap
 	                .then( () => {
 	                    that._updateDynamicMapView( latLng, zoom );
-	                } );
+	                } )
+	                .catch( () => {} );
 
 	        }
 	    }
@@ -42828,14 +42811,12 @@
 
 	                // create a global callback to be called by the Google Maps script once this has loaded
 	                window.gmapsLoaded = () => {
-	                    // clean up the global function
-	                    delete window.gmapsLoaded;
 	                    // resolve the deferred object
 	                    resolve();
 	                };
 	                // make the request for the Google Maps script asynchronously
 	                apiKeyQueryParam =  '';
-	                loadUrl = `https://maps.google.com/maps/api/js?v=3.exp${apiKeyQueryParam}&libraries=places&callback=gmapsLoaded`;
+	                loadUrl = `https://maps.google.com/maps/api/js?v=weekly${apiKeyQueryParam}&libraries=places&callback=gmapsLoaded`;
 	                getScript( loadUrl );
 	            } );
 	        }
@@ -45805,8 +45786,8 @@
 	/*!
 	 * Timepicker
 	 *
-	 * Forked from https://github.com/jdewit/bootstrap-timepicker: 
-	 * 
+	 * Forked from https://github.com/jdewit/bootstrap-timepicker:
+	 *
 	 * Copyright 2013 Joris de Wit and timepicker contributors
 	 *
 	 * Contributors https://github.com/jdewit/bootstrap-timepicker/graphs/contributors
@@ -46793,8 +46774,6 @@
 
 	        updateElement() {
 	            this.$element.val( this.getTime() );
-	            // this.$element.change() method does not fire an event that can be 
-	            // caught with el.addEventListener('change', () => {})
 	            this.$element[ 0 ].dispatchEvent( events.Change() );
 	        },
 
@@ -49318,7 +49297,7 @@
 	        const fragment = document.createRange().createContextualFragment( '<div class="label-content widget"></div>' );
 	        const wrapper = fragment.querySelector( '.label-content' );
 
-	        this.question.querySelectorAll( '.question-label, .or-hint, .or-required-msg, .or-constraint-msg' )
+	        this.question.querySelectorAll( '.question-label, .or-hint, .or-required-msg, [class*="or-constraint"]' )
 	            .forEach( el => wrapper.append( el ) );
 
 	        this.question.prepend( fragment );
@@ -52693,7 +52672,7 @@
 	                }
 
 	                event.target.value =  '';
-	                event.target.dispatchEvent( new Event( 'change' ) );
+	                event.target.dispatchEvent( events.Change() );
 
 	                event.preventDefault();
 	                event.stopPropagation();
@@ -52986,16 +52965,20 @@
 	        return this.view.html.id;
 	    },
 	    /**
+	     * To facilitate forks that support multiple constraints per question
+	     *
 	     * @type {Array<string>}
 	     */
 	    get constraintClassesInvalid() {
-	        return Form.constraintNames.map( n => `.invalid-${n}` );
+	        return [ 'invalid-constraint' ];
 	    },
 	    /**
+	     * To facilitate forks that support multiple constraints per question
+	     *
 	     * @type {Array<string>}
 	     */
 	    get constraintAttributes() {
-	        return Form.constraintNames.map( n => `data-${n}` );
+	        return [ 'data-constraint' ];
 	    },
 	    /**
 	     * @type {Array<string>}
@@ -53122,7 +53105,6 @@
 	        this.options.input = this.input;
 	        this.options.pathToAbsolute = this.pathToAbsolute.bind( this );
 	        this.options.evaluate = this.model.evaluate.bind( this.model );
-	        this.options.formClasses = toArray( this.view.html.classList );
 	        this.options.getModelValue = this.getModelValue.bind( this );
 	        this.widgetsInitialized = this.widgets.init( null, this.options );
 
@@ -53708,7 +53690,7 @@
 	 * @return {!boolean} Whether the question/form is not marked as invalid.
 	 */
 	Form.prototype.isValid = function( node ) {
-	    const invalidSelectors = [ '.invalid-required', '.invalid-relevant' ].concat( this.constraintClassesInvalid );
+	    const invalidSelectors = [ '.invalid-required', '.invalid-relevant' ].concat(  this.constraintClassesInvalid.map( cls => `.${cls}` ) );
 	    if ( node ) {
 	        const question = this.input.getWrapNode( node );
 	        const cls = question.classList;
@@ -53760,7 +53742,7 @@
 	 */
 	Form.prototype.validateContent = function( $container ) {
 	    const that = this;
-	    const invalidSelector = [ '.invalid-required', '.invalid-relevant' ].concat( this.constraintClassesInvalid ).join( ', ' );
+	    const invalidSelector = [ '.invalid-required', '.invalid-relevant' ].concat( this.constraintClassesInvalid.map( cls => `.${cls}` ) ).join( ', ' );
 
 	    //can't fire custom events on disabled elements therefore we set them all as valid
 	    $container.find( 'fieldset:disabled input, fieldset:disabled select, fieldset:disabled textarea, ' +
@@ -53967,14 +53949,6 @@
 	 * @default
 	 */
 	Form.requiredTransformerVersion = '1.41.1';
-
-	/**
-	 * Static property with supported constraint names (for custom solutions that allow multiple constraints).
-	 *
-	 * @type {string}
-	 * @default
-	 */
-	Form.constraintNames = [ 'constraint' ];
 
 	function addXPathExtensionsOc( XPathJS ) {
 

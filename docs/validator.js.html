@@ -32,7 +32,7 @@
     
     <input type="text" id="nav-search" placeholder="Search" />
     
-    <h2><a href="index.html">Home</a></h2><h2><a href="https://github.com/enketo/enketo-validate" target="_blank" class="menu-item" id="repository" >Github repo</a></h2><h2><a href="https://github.com/enketo/enketo-validate/blob/master/CHANGELOG.md" target="_blank" class="menu-item" id="change-log" >Change log</a></h2><h3>Classes</h3><ul><li><a href="FormModel.html">FormModel</a></li><li><a href="XForm.html">XForm</a><ul class='methods'><li data-type='method'><a href="XForm.html#_cleanXmlDomParserError">_cleanXmlDomParserError</a></li><li data-type='method'><a href="XForm.html#_cleanXPathException">_cleanXPathException</a></li><li data-type='method'><a href="XForm.html#_extractModelStr">_extractModelStr</a></li><li data-type='method'><a href="XForm.html#_getDom">_getDom</a></li><li data-type='method'><a href="XForm.html#_getExternalDataArray">_getExternalDataArray</a></li><li data-type='method'><a href="XForm.html#_nodeName">_nodeName</a></li><li data-type='method'><a href="XForm.html#_stripJrChoiceName">_stripJrChoiceName</a></li><li data-type='method'><a href="XForm.html#_withFormControl">_withFormControl</a></li><li data-type='method'><a href="XForm.html#_withoutFormControl">_withoutFormControl</a></li><li data-type='method'><a href="XForm.html#checkAppearances">checkAppearances</a></li><li data-type='method'><a href="XForm.html#checkBinds">checkBinds</a></li><li data-type='method'><a href="XForm.html#checkOpenClinicaRules">checkOpenClinicaRules</a></li><li data-type='method'><a href="XForm.html#checkStructure">checkStructure</a></li><li data-type='method'><a href="XForm.html#enketoEvaluate">enketoEvaluate</a></li><li data-type='method'><a href="XForm.html#getBind">getBind</a></li><li data-type='method'><a href="XForm.html#nodeExists">nodeExists</a></li><li data-type='method'><a href="XForm.html#nsPrefixResolver">nsPrefixResolver</a></li><li data-type='method'><a href="XForm.html#parseModel">parseModel</a></li></ul></li><li></li></ul><h3>Modules</h3><ul><li><a href="module-utils.html">utils</a><ul class='members'><li data-type='member'><a href="module-utils.html#.parseFunctionFromExpression">parseFunctionFromExpression</a></li></ul></li><li><a href="module-validator.html">validator</a><ul class='methods'><li data-type='method'><a href="module-validator.html#.validate">validate</a></li></ul></li></ul>
+    <h2><a href="index.html">Home</a></h2><h2><a href="https://github.com/enketo/enketo-validate" target="_blank" class="menu-item" id="repository" >Github repo</a></h2><h2><a href="https://github.com/enketo/enketo-validate/blob/master/CHANGELOG.md" target="_blank" class="menu-item" id="change-log" >Change log</a></h2><h3>Classes</h3><ul><li><a href="FormModel.html">FormModel</a></li><li><a href="XForm.html">XForm</a><ul class='methods'><li data-type='method'><a href="XForm.html#_cleanXmlDomParserError">_cleanXmlDomParserError</a></li><li data-type='method'><a href="XForm.html#_cleanXPathException">_cleanXPathException</a></li><li data-type='method'><a href="XForm.html#_extractModelStr">_extractModelStr</a></li><li data-type='method'><a href="XForm.html#_getDom">_getDom</a></li><li data-type='method'><a href="XForm.html#_getExternalDataArray">_getExternalDataArray</a></li><li data-type='method'><a href="XForm.html#_join">_join</a></li><li data-type='method'><a href="XForm.html#_nodeName">_nodeName</a></li><li data-type='method'><a href="XForm.html#_stripJrChoiceName">_stripJrChoiceName</a></li><li data-type='method'><a href="XForm.html#_withFormControl">_withFormControl</a></li><li data-type='method'><a href="XForm.html#_withoutFormControl">_withoutFormControl</a></li><li data-type='method'><a href="XForm.html#checkAppearances">checkAppearances</a></li><li data-type='method'><a href="XForm.html#checkBinds">checkBinds</a></li><li data-type='method'><a href="XForm.html#checkOpenClinicaRules">checkOpenClinicaRules</a></li><li data-type='method'><a href="XForm.html#checkStructure">checkStructure</a></li><li data-type='method'><a href="XForm.html#enketoEvaluate">enketoEvaluate</a></li><li data-type='method'><a href="XForm.html#getBind">getBind</a></li><li data-type='method'><a href="XForm.html#nodeExists">nodeExists</a></li><li data-type='method'><a href="XForm.html#nsPrefixResolver">nsPrefixResolver</a></li><li data-type='method'><a href="XForm.html#parseModel">parseModel</a></li></ul></li><li></li></ul><h3>Modules</h3><ul><li><a href="module-utils.html">utils</a><ul class='members'><li data-type='member'><a href="module-utils.html#.parseFunctionFromExpression">parseFunctionFromExpression</a></li></ul></li><li><a href="module-validator.html">validator</a><ul class='methods'><li data-type='method'><a href="module-validator.html#.validate">validate</a></li></ul></li></ul>
 </nav>
 
 <div id="main">
@@ -115,33 +115,45 @@ const validate = async( xformStr, options = {} ) => {
         errors = errors.concat( ers );
     }
 
-    // Find binds
+    // Check logic
 
-    for( const bind of xform.binds ){
-        const path = bind.getAttribute( 'nodeset' );
+    for( const el of xform.binds.concat( xform.setvalues ) ){
+        const type = el.nodeName.toLowerCase();
+        const props = type === 'bind' ? { path: 'nodeset', logic: [ 'calculate', 'constraint', 'relevant', 'required' ]  } : { path: 'ref', logic: [ 'value' ] };
+        const path = el.getAttribute( props.path );
 
         if ( !path ) {
-            warnings.push( 'Found bind without nodeset attribute.' );
+            errors.push( `Found ${type} without a ${props.path} attribute.` );
 
             continue;
         }
 
-        const nodeName = path.substring( path.lastIndexOf( '/' ) + 1 );
+        const nodeName = xform._nodeName( path );
         // Note: using enketoEvaluate here, would be much slower
         const nodeExists = await xform.nodeExists( path );
 
         if ( !nodeExists ) {
-            warnings.push( `Found bind for "${nodeName}" that does not exist in the model.` );
+            errors.push( `Found ${type} for "${nodeName}" that does not exist in the model.` );
 
             continue;
         }
 
-        for ( const logicName of [ 'calculate', 'constraint', 'relevant', 'required' ] ){
-            const logicExpr = bind.getAttribute( logicName );
+        for ( const logicName of props.logic ){
+            const logicExpr = el.getAttribute( logicName );
             const calculation = logicName === 'calculate';
 
             if ( logicExpr ) {
-                const friendlyLogicName = calculation ? 'Calculation' : logicName[ 0 ].toUpperCase() + logicName.substring( 1 );
+                let friendlyLogicName = logicName[ 0 ].toUpperCase() + logicName.substring( 1 );
+                if ( calculation ){
+                    friendlyLogicName = 'Calculation';
+                } else if ( type === 'setvalue' ){
+                    const event = el.getAttribute( 'event' );
+                    if ( !event ){
+                        errors.push( 'Found ${type} without event attribute.' );
+                        continue;
+                    }
+                    friendlyLogicName = event.split( ' ' ).includes( 'xforms-value-changed' ) ? 'Triggered calculation' : 'Dynamic default';
+                }
 
                 try {
                     await xform.enketoEvaluate( logicExpr, ( calculation ? 'string' : 'boolean' ), path );
@@ -175,7 +187,7 @@ module.exports = { validate, version };
 <br class="clear">
 
 <footer>
-    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.6.5</a> using the <a href="https://github.com/clenemt/docdash">docdash</a> theme.
+    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.6.6</a> using the <a href="https://github.com/clenemt/docdash">docdash</a> theme.
 </footer>
 
 <script>prettyPrint();</script>
