@@ -67,7 +67,6 @@ const validate = async( xformStr, options = {} ) => {
     }
 
     // Check logic
-
     for( const el of xform.binds.concat( xform.setvalues ) ){
         const type = el.nodeName.toLowerCase();
         const props = type === 'bind' ? { path: 'nodeset', logic: [ 'calculate', 'constraint', 'relevant', 'required' ]  } : { path: 'ref', logic: [ 'value' ] };
@@ -80,11 +79,10 @@ const validate = async( xformStr, options = {} ) => {
         }
 
         const nodeName = xform._nodeName( path );
-        // Note: using enketoEvaluate here, would be much slower
         const nodeExists = await xform.nodeExists( path );
 
         if ( !nodeExists ) {
-            errors.push( `Found ${type} for "${nodeName}" that does not exist in the model.` );
+            errors.push( `Found ${type} for "${nodeName}" that does not exist in the model. (path: ${path})` );
 
             continue;
         }

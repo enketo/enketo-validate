@@ -218,11 +218,15 @@ class XForm {
         // This window is not to be confused with this.dom.window which contains the XForm.
         //const window = this._getWindow( scriptContent );
 
+        if ( this.modelParsing ){
+            return this.modelParsing;
+        }
+
         // Disable the jsdom evaluator
         // window.document.evaluate = undefined;
         let page;
 
-        return this.loadBrowserPage
+        this.modelParsing = this.loadBrowserPage
             .then( p => {
                 page = p;
                 // Get a serialized model with namespaces in locations that Enketo can deal with.
@@ -235,8 +239,7 @@ class XForm {
                     for ( let i = 0; i < msg.args().length; ++i )
                         console.log( `${i}: ${msg.args()[i]}` );
                 } );
-*/
-
+                */
                 return page.evaluateHandle( ( modelStr,  externalArr, ocExtensions ) => {
                     const parser = new DOMParser();
                     const external = externalArr.map( instance => {
@@ -245,21 +248,24 @@ class XForm {
                         return instance;
                     } );
 
-                    // Instantiate an Enketo Core Form Model
+                    // Instantiate an Enketo FormModel
                     const model = new window.FormModel( { modelStr, external } );
+
                     // Add custom XPath functions
                     if ( ocExtensions ) {
-                        model.bindJsEvaluator( window.addXPathExtensionsOc );
+                        window.FormModel.prototype.bindJsEvaluator = () => {
+                            window.bindOcJsXpathEvaluator.call( null, model.xml );
+                        };
                     }
 
+                    // Instantiate an Enketo Core Form Model
                     return model;
-                }, modelStr, externalArr, !!this.options.openclinica );
+                }, modelStr, externalArr ,!!this.options.openclinica );
             } )
             .then( modelHandle => {
-
                 this.modelHandle = modelHandle;
 
-                return page.evaluateHandle( model => model.init(), modelHandle );
+                return page.evaluateHandle( model => model.init(), modelHandle,  );
             } )
             .then( loadErrorsHandle => loadErrorsHandle.jsonValue() )
             .then( loadErrors => {
@@ -272,6 +278,8 @@ class XForm {
             .catch( e => {
                 throw e;
             } );
+
+        return this.modelParsing;
     }
 
     /**

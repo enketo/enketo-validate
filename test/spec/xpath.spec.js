@@ -40,8 +40,8 @@ describe( 'XPath expressions', () => {
     } );
 
     describe( 'with function calls with an excessive number of parameters', async() => {
-
-        it( 'should throw an error message for selected()', async() => {
+        // TODO: re-enable when https://github.com/enketo/openrosa-xpath-evaluator/issues/66 is fixed
+        xit( 'should throw an error message for selected()', async() => {
             await parsing;
             const expr = 'selected(/data/a, /data/b, 4)';
             const thrown = await testThrownEvaluation( xf, expr );
