@@ -2,6 +2,11 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+[ Unreleased ]
+---------------------
+##### Fixed
+- Detection of duplicate nodeName failed to find sibling duplicate leaf nodes as children of root.
+
 [1.12.0] - 2020-10-16
 ---------------------
 ##### Added
