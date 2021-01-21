@@ -414,14 +414,9 @@ class XForm {
                 dataNodes.forEach( el => {
                     const nodeName = el.nodeName;
                     const index = dataNodeNames.indexOf( nodeName );
-                    if ( index !== -1 ) {
-                        // Save XPath determination for when necessary, to not negatively affect performance.
-                        const path1 = utils.getXPath( dataNodes[ index ], 'instance' );
-                        const path2 = utils.getXPath( el, 'instance' );
-                        // Guess whether this could be repeat
-                        if ( path1 !== path2 || ( path1.split( '/' ).length < 4 && el.children.length === 0 )  )  {
-                            warnings.push( `Duplicate question or group name "${nodeName}" found. Unique names are recommended` );
-                        }
+                    // Save XPath determination for when necessary, to not negatively affect performance.
+                    if ( index !== -1 && utils.getXPath( dataNodes[ index ], 'instance' ) !== utils.getXPath( el, 'instance' ) ) {
+                        warnings.push( `Duplicate question or group name "${nodeName}" found. Unique names are recommended` );
                     }
                     dataNodeNames.push( nodeName );
                 } );

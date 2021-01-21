@@ -302,8 +302,7 @@ describe( 'XForm', () => {
 
         it( 'outputs warnings', async() => {
             const result = await validator.validate( loadXForm( 'duplicate-nodename.xml' ) );
-            expect( result.warnings.length ).to.equal( 3 );
-            expect( arrContains( result.warnings, /Duplicate .* name "c" found/i ) ).to.equal( true );
+            expect( result.warnings.length ).to.equal( 2 );
             expect( arrContains( result.warnings, /Duplicate .* name "a" found/i ) ).to.equal( true );
             expect( arrContains( result.warnings, /Duplicate .* name "g" found/i ) ).to.equal( true );
             expect( arrContains( result.warnings, /Duplicate .* name "b" found/i ) ).to.equal( false );
