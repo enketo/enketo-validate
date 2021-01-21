@@ -159,24 +159,29 @@ describe( 'XForm', () => {
     describe( 'validated with custom OpenClinica rules', () => {
 
         describe( 'forms with special clinicaldata extensions', () => {
-            const validation = validator.validate( loadXForm( 'openclinica.xml' ), { openclinica: true } );
+            const validation = validator.validate( loadXForm( 'openclinica-clinicaldata.xml' ), { openclinica: true } );
 
             it( 'outputs errors',async() => {
                 const result =  await validation;
-                expect( result.errors.length ).to.equal( 10 );
+                expect( result.errors.length ).to.equal( 6 );
             } );
 
             it( 'outputs errors for calculations without form control that refer to external ' +
             'clinicaldata instance but do not have the oc:external="clinicaldata" bind',async() => {
                 const result =  await validation;
-                expect( arrContains( result.errors, /refers to external clinicaldata without the required "external" attribute/i ) ).to.equal( true );
+                expect( arrContains( result.errors, /"invalid1" .* to external clinicaldata without the required "external" attribute/i ) ).to.equal( true );
+                expect( arrContains( result.errors, /"invalid2" .* to external clinicaldata without the required "external" attribute/i ) ).to.equal( true );
+                expect( arrContains( result.errors, /"invalid3" .* to external clinicaldata without the required "external" attribute/i ) ).to.equal( true );
             } );
 
             it( 'outputs errors for binds with oc:external="clinicaldata" that do not ' +
             'do not have a calculation that refers to instance(\'clinicaldata\')', async() => {
                 const result =  await validation;
-                expect( arrContains( result.errors, /not .* calculation referring to instance\('clinicaldata'\)/i ) ).to.equal( true );
+                expect( arrContains( result.errors, /"invalid4" .* not .* calculation referring to instance\('clinicaldata'\)/i ) ).to.equal( true );
+                expect( arrContains( result.errors, /"invalid5" .* not .* calculation referring to instance\('clinicaldata'\)/i ) ).to.equal( true );
+                expect( arrContains( result.errors, /"invalid6" .* not .* calculation referring to instance\('clinicaldata'\)/i ) ).to.equal( true );
             } );
+
         } );
 
         describe( 'forms with special multiple constraints extensions', () => {

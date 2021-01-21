@@ -1,0 +1,61 @@
+<?xml version="1.0"?>
+<h:html xmlns="http://www.w3.org/2002/xforms" xmlns:ev="http://www.w3.org/2001/xml-events" xmlns:h="http://www.w3.org/1999/xhtml" xmlns:jr="http://openrosa.org/javarosa" xmlns:oc="http://openclinica.org/xforms" xmlns:odk="http://www.opendatakit.org/xforms" xmlns:orx="http://openrosa.org/xforms" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+    <h:head>
+        <h:title>openclinica-clinicaldata</h:title>
+        <model odk:xforms-version="1.0.0">
+            <instance>
+                <data id="openclinica-clinicaldata">
+                    <one>
+                        <txt />
+                        <valid1 />
+                        <valid2 />
+                        <valid3 />
+                        <valid4 />
+                        <valid5 />
+                        <invalid1 />
+                        <invalid2 />
+                        <invalid3 />
+                        <invalid4 />
+                        <invalid5 />
+                        <invalid6 />
+                    </one>
+                    <meta>
+                        <instanceID />
+                    </meta>
+                </data>
+            </instance>
+            <instance id="clinicaldata" src="jr://file/clinicaldata.xml" />
+            <bind nodeset="/data/one/txt" type="string" />
+            <bind calculate="instance('clinicaldata')/path/to/node" nodeset="/data/one/valid1" oc:external="clinicaldata" type="string" />
+            <bind nodeset="/data/one/valid2" oc:external="clinicaldata" type="string" />
+            <setvalue event="odk-instance-first-load" ref="/data/one/valid2" value="instance(&quot;clinicaldata&quot;)/path/to/node" />
+            <bind nodeset="/data/one/valid3" oc:external="clinicaldata" type="string" />
+            <bind calculate="instance( &quot;clinicaldata&quot; )/path/to/node" nodeset="/data/one/valid4" oc:external="clinicaldata" type="string" />
+            <setvalue event="odk-instance-first-load" ref="/data/one/valid4" value="instance(&quot;clinicaldata&quot;)/path/to/node" />
+            <bind calculate="instance('clinicaldata')/path/to/node" nodeset="/data/one/valid5" readonly="true()" type="string" />
+            <bind calculate="instance('clinicaldata')/path/to/node" nodeset="/data/one/invalid1" type="string" />
+            <bind nodeset="/data/one/invalid2" type="string" />
+            <setvalue event="odk-instance-first-load" ref="/data/one/invalid2" value="instance(&quot;clinicaldata&quot;)/path/to/node" />
+            <bind nodeset="/data/one/invalid3" type="string" />
+            <bind calculate="1+1" nodeset="/data/one/invalid4" oc:external="clinicaldata" type="string" />
+            <bind nodeset="/data/one/invalid5" oc:external="clinicaldata" type="string" />
+            <setvalue event="odk-instance-first-load" ref="/data/one/invalid5" value="1+1" />
+            <bind nodeset="/data/one/invalid6" oc:external="clinicaldata" type="string" />
+            <bind jr:preload="uid" nodeset="/data/meta/instanceID" readonly="true()" type="string" />
+        </model>
+    </h:head>
+    <h:body>
+        <group ref="/data/one">
+            <label>Group with clinicaldata</label>
+            <input ref="/data/one/txt">
+                <label>Enter text</label>
+                <setvalue event="xforms-value-changed" ref="/data/one/valid3" value="instance( &quot;clinicaldata&quot; )/path/to/node" />
+                <setvalue event="xforms-value-changed" ref="/data/one/invalid3" value="instance( &quot;clinicaldata&quot; )/path/to/node" />
+                <setvalue event="xforms-value-changed" ref="/data/one/invalid6" value="1+1" />
+            </input>
+            <input ref="/data/one/valid5">
+                <label>Valid because it has a form control</label>
+            </input>
+        </group>
+    </h:body>
+</h:html>

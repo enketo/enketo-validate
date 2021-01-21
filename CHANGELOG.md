@@ -4,8 +4,11 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 [Unreleased]
 ---------------------
+##### Changed
+- In OpenClinica mode, `instance('clinicaldata')` queries as part of a setvalue action are also considered valid.
+
 ##### Fixed
-- Some OpenClinica mode errors output question "null" instead of the question name.
+- In OpenClinica mode, some errors output question "null" instead of the question name.
 
 [1.12.0] - 2020-10-16
 ---------------------

@@ -184,6 +184,16 @@ class XForm {
     }
 
     /**
+     * Returns a `<setvalue>` element with the provided ref attribute value.
+     *
+     * @param {string} ref - ref attribute value
+     * @return {Node} setvalue element matching the nodeset value
+     */
+    getSetvalue( ref ) {
+        return this.doc.querySelector( `setvalue[ref="${ref}"]` );
+    }
+
+    /**
      * Returns namespace prefix for given namespace.
      *
      * @param {string} ns - One of predefined {@link XForm#NAMESPACES|NAMESPACES}.
@@ -590,23 +600,33 @@ class XForm {
         const CLINICALDATA_REF = /instance\(\s*(["'])((?:(?!\1)clinicaldata))\1\s*\)/;
 
         // Check for use of external data in instance "clinicaldata"
-        this.bindsWithCalc
+        this.binds
             .filter( this._withoutFormControl.bind( this ) )
             .filter( bind => {
-                // If both are true we have found an error (in an efficient manner)
-                return CLINICALDATA_REF.test( bind.getAttribute( 'calculate' ) ) &&
+                const path = bind.getAttribute( 'nodeset' );
+                const setvalue = this.getSetvalue( path );
+                const calculation = bind.getAttribute( 'calculate' );
+                const value = setvalue && setvalue.getAttribute( 'value' );
+
+                return ( CLINICALDATA_REF.test( calculation ) || CLINICALDATA_REF.test( value ) ) &&
                     bind.getAttributeNS( this.NAMESPACES.oc, 'external' ) !== 'clinicaldata';
             } )
             .map( bind => this._nodeName( bind ) )
+
             .forEach( nodeName => errors.push( `Found calculation for question "${nodeName}" that refers to ` +
                 'external clinicaldata without the required "external" attribute in the correct namespace.' ) );
 
-        this.bindsWithCalc
+        this.binds
             .filter( bind => bind.getAttributeNS( this.NAMESPACES.oc, 'external' ) === 'clinicaldata' )
             .filter( bind => {
+                const path = bind.getAttribute( 'nodeset' );
+                const setvalue = this.getSetvalue( path );
                 const calculation = bind.getAttribute( 'calculate' );
+                const value = setvalue && setvalue.getAttribute( 'value' );
 
-                return !calculation || !CLINICALDATA_REF.test( calculation );
+                return ( !calculation && !value ) ||
+                    ( calculation && !CLINICALDATA_REF.test( calculation ) ) ||
+                    ( value && !CLINICALDATA_REF.test( value ) ) ;
             } )
             .map( bind => this._nodeName( bind ) )
             .forEach( nodeName => errors.push( `Found bind with clinicaldata attribute for question "${nodeName}" that does not ` +
