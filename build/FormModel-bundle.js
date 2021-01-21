@@ -884,6 +884,14 @@
 	    firstScriptTag.parentNode.insertBefore( scriptTag, firstScriptTag );
 	}
 
+	function encodeHtmlEntities( text ){
+	    return text
+	        .replace( /&/g, '&amp;' )
+	        .replace( /</g, '&lt;' )
+	        .replace( />/g, '&gt;' )
+	        .replace( /"/g, '&quot;' );
+	}
+
 	/**
 	 * @module dom-utils
 	 */
@@ -1430,7 +1438,7 @@
 	                const date = new Date( x * 24 * 60 * 60 * 1000 );
 
 	                return date.toString() === 'Invalid Date' ?
-	                    '' : `${date.getFullYear().toString().pad( 4 )}-${( date.getMonth() + 1 ).toString().pad( 2 )}-${date.getDate().toString().pad( 2 )}`;
+	                    '' : `${date.getFullYear().toString().padStart( 4, '0' )}-${( date.getMonth() + 1 ).toString().padStart( 2, '0' )}-${date.getDate().toString().padStart( 2, '0' )}`;
 	            } else {
 	                // For both dates and datetimes
 	                // If it's a datetime, we can quite safely assume it's in the local timezone, and therefore we can simply chop off
@@ -1555,8 +1563,8 @@
 	            time = parts[ 0 ].split( ':' );
 	            tz = parts[ 2 ] ? [ parts[ 1 ] ].concat( parts[ 2 ].split( ':' ) ) : ( parts[ 1 ] === 'Z' ? [ '+', '00', '00' ] : [] );
 
-	            o.hours = time[ 0 ].pad( 2 );
-	            o.minutes = time[ 1 ].pad( 2 );
+	            o.hours = time[ 0 ].padStart( 2, '0' );
+	            o.minutes = time[ 1 ].padStart( 2, '0' );
 
 	            secs = time[ 2 ] ? time[ 2 ].split( '.' ) : [ '00' ];
 
@@ -1566,7 +1574,7 @@
 	            if ( tz.length === 0 ) {
 	                offset = new Date().getTimezoneOffsetAsTime();
 	            } else {
-	                offset = `${tz[0] + tz[1].pad( 2 )}:${tz[2] ? tz[2].pad( 2 ) : '00'}`;
+	                offset = `${tz[0] + tz[1].padStart( 2, '0' )}:${tz[2] ? tz[2].padStart( 2, '0' ) : '00'}`;
 	            }
 
 	            x = `${o.hours}:${o.minutes}:${o.seconds}${o.milliseconds ? `.${o.milliseconds}` : ''}${offset}`;
@@ -1588,9 +1596,9 @@
 	                if ( parts.length > 0 ) {
 	                    // This will only work for latin numbers but that should be fine because that's what the widget supports.
 	                    if ( parts[ 1 ] === time.pmNotation ) {
-	                        timeParts[ 0 ] = ( ( Number( timeParts[ 0 ] ) % 12 ) + 12 ).toString().pad( 2 );
+	                        timeParts[ 0 ] = ( ( Number( timeParts[ 0 ] ) % 12 ) + 12 ).toString().padStart( 2, '0' );
 	                    } else if ( parts[ 1 ] === time.amNotation ) {
-	                        timeParts[ 0 ] = ( Number( timeParts[ 0 ] ) % 12 ).toString().pad( 2 );
+	                        timeParts[ 0 ] = ( Number( timeParts[ 0 ] ) % 12 ).toString().padStart( 2, '0' );
 	                    }
 	                    x = timeParts.join( ':' );
 	                }
@@ -1748,7 +1756,7 @@
 	/**
 	 * The odk-instance-first-load event as defined in the ODK XForms spec.
 	 *
-	 * @see https://opendatakit.github.io/xforms-spec/#event:odk-instance-first-load
+	 * @see https://getodk.github.io/xforms-spec/#event:odk-instance-first-load
 	 *@return {CustomEvent} Custom "odk-instance-first-load" event (bubbling)
 	 */
 	function InstanceFirstLoad() {
@@ -1758,7 +1766,7 @@
 	/**
 	 * The odk-new-repeat event as defined in the ODK XForms spec.
 	 *
-	 * @see https://opendatakit.github.io/xforms-spec/#event:odk-new-repeat
+	 * @see https://getodk.github.io/xforms-spec/#event:odk-new-repeat
 	 * @param {{repeatPath: string, repeatIndex: number, trigger: string}} detail - Data to be passed with event.
 	 * @return {CustomEvent} Custom "odk-new-repeat" event (bubbling)
 	 */
@@ -1806,7 +1814,7 @@
 	/**
 	 * Xforms-value-changed event as defined in the ODK XForms spec.
 	 *
-	 * @see https://opendatakit.github.io/xforms-spec/#event:xforms-value-changed
+	 * @see https://getodk.github.io/xforms-spec/#event:xforms-value-changed
 	 * @param {{repeatIndex: number}} detail - Data to be passed with event.
 	 * @return {CustomEvent} Custom "xforms-value-changed" event (bubbling).
 	 */
@@ -1824,7 +1832,7 @@
 	}
 
 	/**
-	 * Input update event.
+	 * Input update event which fires when a form control value is updated programmatically.
 	 *
 	 * @return {CustomEvent} Custom "inputupdate" event (bubbling)
 	 */
@@ -13177,31 +13185,7 @@
 	    return direction + hours + ':' + minutes;
 	};
 
-	// Extend native objects, aka monkey patching ..... really I see no harm!
-
-	/**
-	 * The built in string object.
-	 *
-	 * @external String
-	 * @see {@link https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String|String}
-	 */
-
-	/**
-	 * Pads a string with prefixed zeros until the requested string length is achieved.
-	 *
-	 * @function external:String#pad
-	 * @param  {number} digits - The desired string length.
-	 * @return {string} - Padded string.
-	 */
-	String.prototype.pad = function( digits ) {
-	    let x = this;
-	    while ( x.length < digits ) {
-	        x = `0${x}`;
-	    }
-
-	    return x;
-	};
-
+	// Extend native objects... Bad.
 
 	if ( typeof console.deprecate === 'undefined' ) {
 	    console.deprecate = ( bad, good ) => {
@@ -22730,7 +22714,7 @@
 
 	        // Add external data to model
 	        this.data.external.forEach( instance => {
-	            id = `instance "${instance.id}"` || 'instance unknown';
+	            id = instance.id ? `instance "${instance.id}"` : 'instance "unknown"';
 	            instanceDoc = that.getSecondaryInstance( instance.id );
 	            // remove any existing content that is just an XLSForm hack to pass ODK Validate
 	            secondaryInstanceChildren = instanceDoc.children;
@@ -22839,7 +22823,7 @@
 	    }
 
 	    sessObj = ( typeof sessObj === 'object' ) ? sessObj : {};
-	    instance = model.querySelector( `instance[id="${id}"]` );
+	    instance = model.querySelector( `instance#${CSS.escape( id )}` );
 
 	    if ( !instance ) {
 	        instance = parser$1.parseFromString( `<instance id="${id}"/>`, 'text/xml' ).documentElement;
@@ -23637,7 +23621,7 @@
 	    let prefix;
 	    const that = this;
 
-	    // TODO: would be more consistent to use utls.parseFunctionFromExpression() and utils.stripQuotes
+	    // TODO: would be more consistent to use utils.parseFunctionFromExpression() and utils.stripQuotes
 	    return expr.replace( INSTANCE, ( match, quote, id ) => {
 	        prefix = `/model/instance[@id="${id}"]`;
 	        // check if referred instance exists in model
@@ -23655,7 +23639,7 @@
 	 * Doing this here instead of adding a current() function to the XPath evaluator, means we can keep using
 	 * the much faster native evaluator in most cases!
 	 *
-	 * Root will be shifted, and repeat positions injected, **later on**, so it's not included here.
+	 * Root will be shifted later, and repeat positions are already injected into context selector.
 	 *
 	 * @param {string} expr - Original expression
 	 * @param {string} contextSelector - Context selector
@@ -24352,7 +24336,7 @@
                     } ).replace( /\u200E/g, '' )} ${value.replace( /(\d\d:\d\d:\d\d)(\.\d{1,3})(\s?((\+|-)\d\d))(:)?(\d\d)?/, '$1 GMT$3$7' )}`;
 	                    const d = new Date( ds );
 	                    if ( d.toString() !== 'Invalid Date' ) {
-	                        value = `${d.getHours().toString().pad( 2 )}:${d.getMinutes().toString().pad( 2 )}`;
+	                        value = `${d.getHours().toString().padStart( 2, '0' )}:${d.getMinutes().toString().padStart( 2, '0' )}`;
 	                    } else {
 	                        console.error( 'could not parse time:', value );
 	                    }
@@ -24404,11 +24388,33 @@
 	                // don't trigger on all radiobuttons/checkboxes
 	                if ( event ) {
 	                    inputs[ 0 ].dispatchEvent( event );
+	                    // Ensure that any calculations with form controls that serve as setvalue triggers
+	                    // the action.
+	                    if ( event.type === events.InputUpdate().type ){
+	                        inputs[0].dispatchEvent( events.XFormsValueChanged() );
+	                    }
 	                }
 	            }
 	        }
 
 	        return inputs[ 0 ];
+	    },
+	    /**
+	     * Clears form input fields and triggers events when doing this.
+	     *
+	     * @param grp - Element whose DESCENDANT form controls to clear
+	     * @param event1 - first event to trigger
+	     * @param event2 - second event to trigger
+	     */
+	    clear( grp, event1, event2 ){
+	        // See original pre-December 2020 plugin.js for some additional stuff with file-preview, loadedFileName and selectedIndex
+	        // which I think was no longer necessary, or should be moved to the widgets instead
+	        grp.querySelectorAll( 'input:not(.ignore), select:not(.ignore), textarea:not(.ignore)' ).forEach( control => {
+	            this.setVal( control, '', event1 );
+	            if ( event2 ){
+	                control.dispatchEvent( event2 );
+	            }
+	        } );
 	    },
 	    /**
 	     * @param {Element} control - form control HTML element
@@ -24917,6 +24923,9 @@
 	            const xPath = templateEl.getAttribute( 'name' );
 	            this.remove();
 	            jquery( templateEl ).removeClass( 'contains-current current' ).find( '.current' ).removeClass( 'current' );
+	            // Clear all values (this is required for setvalue/odk-instance-first-load populated values)
+	            // The default values will be added anyway in the repeats.add function.
+	            that.form.input.clear( templateEl );
 	            that.templates[ xPath ] = templateEl;
 	        } );
 
@@ -25445,7 +25454,7 @@
 	 * Dual licensed under the MIT or GPL Version 2 licenses.
 	 *
 	 */
-	!function(factory){factory(module.exports?jquery:jQuery);}(function($){function init(options){return !options||void 0!==options.allowPageScroll||void 0===options.swipe&&void 0===options.swipeStatus||(options.allowPageScroll=NONE),void 0!==options.click&&void 0===options.tap&&(options.tap=options.click),options||(options={}),options=$.extend({},$.fn.swipe.defaults,options),this.each(function(){var $this=$(this),plugin=$this.data(PLUGIN_NS);plugin||(plugin=new TouchSwipe(this,options),$this.data(PLUGIN_NS,plugin));})}function TouchSwipe(element,options){function touchStart(jqEvent){if(!(getTouchInProgress()||$(jqEvent.target).closest(options.excludedElements,$element).length>0)){var event=jqEvent.originalEvent?jqEvent.originalEvent:jqEvent;if(!event.pointerType||"mouse"!=event.pointerType||0!=options.fallbackToMouseEvents){var ret,touches=event.touches,evt=touches?touches[0]:event;return phase=PHASE_START,touches?fingerCount=touches.length:options.preventDefaultEvents!==!1&&jqEvent.preventDefault(),distance=0,direction=null,currentDirection=null,pinchDirection=null,duration=0,startTouchesDistance=0,endTouchesDistance=0,pinchZoom=1,pinchDistance=0,maximumsMap=createMaximumsData(),cancelMultiFingerRelease(),createFingerData(0,evt),!touches||fingerCount===options.fingers||options.fingers===ALL_FINGERS||hasPinches()?(startTime=getTimeStamp(),2==fingerCount&&(createFingerData(1,touches[1]),startTouchesDistance=endTouchesDistance=calculateTouchesDistance(fingerData[0].start,fingerData[1].start)),(options.swipeStatus||options.pinchStatus)&&(ret=triggerHandler(event,phase))):ret=!1,ret===!1?(phase=PHASE_CANCEL,triggerHandler(event,phase),ret):(options.hold&&(holdTimeout=setTimeout($.proxy(function(){$element.trigger("hold",[event.target]),options.hold&&(ret=options.hold.call($element,event,event.target));},this),options.longTapThreshold)),setTouchInProgress(!0),null)}}}function touchMove(jqEvent){var event=jqEvent.originalEvent?jqEvent.originalEvent:jqEvent;if(phase!==PHASE_END&&phase!==PHASE_CANCEL&&!inMultiFingerRelease()){var ret,touches=event.touches,evt=touches?touches[0]:event,currentFinger=updateFingerData(evt);if(endTime=getTimeStamp(),touches&&(fingerCount=touches.length),options.hold&&clearTimeout(holdTimeout),phase=PHASE_MOVE,2==fingerCount&&(0==startTouchesDistance?(createFingerData(1,touches[1]),startTouchesDistance=endTouchesDistance=calculateTouchesDistance(fingerData[0].start,fingerData[1].start)):(updateFingerData(touches[1]),endTouchesDistance=calculateTouchesDistance(fingerData[0].end,fingerData[1].end),pinchDirection=calculatePinchDirection(fingerData[0].end,fingerData[1].end)),pinchZoom=calculatePinchZoom(startTouchesDistance,endTouchesDistance),pinchDistance=Math.abs(startTouchesDistance-endTouchesDistance)),fingerCount===options.fingers||options.fingers===ALL_FINGERS||!touches||hasPinches()){if(direction=calculateDirection(currentFinger.start,currentFinger.end),currentDirection=calculateDirection(currentFinger.last,currentFinger.end),validateDefaultEvent(jqEvent,currentDirection),distance=calculateDistance(currentFinger.start,currentFinger.end),duration=calculateDuration(),setMaxDistance(direction,distance),ret=triggerHandler(event,phase),!options.triggerOnTouchEnd||options.triggerOnTouchLeave){var inBounds=!0;if(options.triggerOnTouchLeave){var bounds=getbounds(this);inBounds=isInBounds(currentFinger.end,bounds);}!options.triggerOnTouchEnd&&inBounds?phase=getNextPhase(PHASE_MOVE):options.triggerOnTouchLeave&&!inBounds&&(phase=getNextPhase(PHASE_END)),phase!=PHASE_CANCEL&&phase!=PHASE_END||triggerHandler(event,phase);}}else phase=PHASE_CANCEL,triggerHandler(event,phase);ret===!1&&(phase=PHASE_CANCEL,triggerHandler(event,phase));}}function touchEnd(jqEvent){var event=jqEvent.originalEvent?jqEvent.originalEvent:jqEvent,touches=event.touches;if(touches){if(touches.length&&!inMultiFingerRelease())return startMultiFingerRelease(event),!0;if(touches.length&&inMultiFingerRelease())return !0}return inMultiFingerRelease()&&(fingerCount=fingerCountAtRelease),endTime=getTimeStamp(),duration=calculateDuration(),didSwipeBackToCancel()||!validateSwipeDistance()?(phase=PHASE_CANCEL,triggerHandler(event,phase)):options.triggerOnTouchEnd||options.triggerOnTouchEnd===!1&&phase===PHASE_MOVE?(options.preventDefaultEvents!==!1&&jqEvent.cancelable!==!1&&jqEvent.preventDefault(),phase=PHASE_END,triggerHandler(event,phase)):!options.triggerOnTouchEnd&&hasTap()?(phase=PHASE_END,triggerHandlerForGesture(event,phase,TAP)):phase===PHASE_MOVE&&(phase=PHASE_CANCEL,triggerHandler(event,phase)),setTouchInProgress(!1),null}function touchCancel(){fingerCount=0,endTime=0,startTime=0,startTouchesDistance=0,endTouchesDistance=0,pinchZoom=1,cancelMultiFingerRelease(),setTouchInProgress(!1);}function touchLeave(jqEvent){var event=jqEvent.originalEvent?jqEvent.originalEvent:jqEvent;options.triggerOnTouchLeave&&(phase=getNextPhase(PHASE_END),triggerHandler(event,phase));}function removeListeners(){$element.off(START_EV,touchStart),$element.off(CANCEL_EV,touchCancel),$element.off(MOVE_EV,touchMove),$element.off(END_EV,touchEnd),LEAVE_EV&&$element.off(LEAVE_EV,touchLeave),setTouchInProgress(!1);}function getNextPhase(currentPhase){var nextPhase=currentPhase,validTime=validateSwipeTime(),validDistance=validateSwipeDistance(),didCancel=didSwipeBackToCancel();return !validTime||didCancel?nextPhase=PHASE_CANCEL:!validDistance||currentPhase!=PHASE_MOVE||options.triggerOnTouchEnd&&!options.triggerOnTouchLeave?!validDistance&&currentPhase==PHASE_END&&options.triggerOnTouchLeave&&(nextPhase=PHASE_CANCEL):nextPhase=PHASE_END,nextPhase}function triggerHandler(event,phase){var ret,touches=event.touches;return (didSwipe()||hasSwipes())&&(ret=triggerHandlerForGesture(event,phase,SWIPE)),(didPinch()||hasPinches())&&ret!==!1&&(ret=triggerHandlerForGesture(event,phase,PINCH)),didDoubleTap()&&ret!==!1?ret=triggerHandlerForGesture(event,phase,DOUBLE_TAP):didLongTap()&&ret!==!1?ret=triggerHandlerForGesture(event,phase,LONG_TAP):didTap()&&ret!==!1&&(ret=triggerHandlerForGesture(event,phase,TAP)),phase===PHASE_CANCEL&&touchCancel(),phase===PHASE_END&&(touches?touches.length||touchCancel():touchCancel()),ret}function triggerHandlerForGesture(event,phase,gesture){var ret;if(gesture==SWIPE){if($element.trigger("swipeStatus",[phase,direction||null,distance||0,duration||0,fingerCount,fingerData,currentDirection]),options.swipeStatus&&(ret=options.swipeStatus.call($element,event,phase,direction||null,distance||0,duration||0,fingerCount,fingerData,currentDirection),ret===!1))return !1;if(phase==PHASE_END&&validateSwipe()){if(clearTimeout(singleTapTimeout),clearTimeout(holdTimeout),$element.trigger("swipe",[direction,distance,duration,fingerCount,fingerData,currentDirection]),options.swipe&&(ret=options.swipe.call($element,event,direction,distance,duration,fingerCount,fingerData,currentDirection),ret===!1))return !1;switch(direction){case LEFT:$element.trigger("swipeLeft",[direction,distance,duration,fingerCount,fingerData,currentDirection]),options.swipeLeft&&(ret=options.swipeLeft.call($element,event,direction,distance,duration,fingerCount,fingerData,currentDirection));break;case RIGHT:$element.trigger("swipeRight",[direction,distance,duration,fingerCount,fingerData,currentDirection]),options.swipeRight&&(ret=options.swipeRight.call($element,event,direction,distance,duration,fingerCount,fingerData,currentDirection));break;case UP:$element.trigger("swipeUp",[direction,distance,duration,fingerCount,fingerData,currentDirection]),options.swipeUp&&(ret=options.swipeUp.call($element,event,direction,distance,duration,fingerCount,fingerData,currentDirection));break;case DOWN:$element.trigger("swipeDown",[direction,distance,duration,fingerCount,fingerData,currentDirection]),options.swipeDown&&(ret=options.swipeDown.call($element,event,direction,distance,duration,fingerCount,fingerData,currentDirection));}}}if(gesture==PINCH){if($element.trigger("pinchStatus",[phase,pinchDirection||null,pinchDistance||0,duration||0,fingerCount,pinchZoom,fingerData]),options.pinchStatus&&(ret=options.pinchStatus.call($element,event,phase,pinchDirection||null,pinchDistance||0,duration||0,fingerCount,pinchZoom,fingerData),ret===!1))return !1;if(phase==PHASE_END&&validatePinch())switch(pinchDirection){case IN:$element.trigger("pinchIn",[pinchDirection||null,pinchDistance||0,duration||0,fingerCount,pinchZoom,fingerData]),options.pinchIn&&(ret=options.pinchIn.call($element,event,pinchDirection||null,pinchDistance||0,duration||0,fingerCount,pinchZoom,fingerData));break;case OUT:$element.trigger("pinchOut",[pinchDirection||null,pinchDistance||0,duration||0,fingerCount,pinchZoom,fingerData]),options.pinchOut&&(ret=options.pinchOut.call($element,event,pinchDirection||null,pinchDistance||0,duration||0,fingerCount,pinchZoom,fingerData));}}return gesture==TAP?phase!==PHASE_CANCEL&&phase!==PHASE_END||(clearTimeout(singleTapTimeout),clearTimeout(holdTimeout),hasDoubleTap()&&!inDoubleTap()?(doubleTapStartTime=getTimeStamp(),singleTapTimeout=setTimeout($.proxy(function(){doubleTapStartTime=null,$element.trigger("tap",[event.target]),options.tap&&(ret=options.tap.call($element,event,event.target));},this),options.doubleTapThreshold)):(doubleTapStartTime=null,$element.trigger("tap",[event.target]),options.tap&&(ret=options.tap.call($element,event,event.target)))):gesture==DOUBLE_TAP?phase!==PHASE_CANCEL&&phase!==PHASE_END||(clearTimeout(singleTapTimeout),clearTimeout(holdTimeout),doubleTapStartTime=null,$element.trigger("doubletap",[event.target]),options.doubleTap&&(ret=options.doubleTap.call($element,event,event.target))):gesture==LONG_TAP&&(phase!==PHASE_CANCEL&&phase!==PHASE_END||(clearTimeout(singleTapTimeout),doubleTapStartTime=null,$element.trigger("longtap",[event.target]),options.longTap&&(ret=options.longTap.call($element,event,event.target)))),ret}function validateSwipeDistance(){var valid=!0;return null!==options.threshold&&(valid=distance>=options.threshold),valid}function didSwipeBackToCancel(){var cancelled=!1;return null!==options.cancelThreshold&&null!==direction&&(cancelled=getMaxDistance(direction)-distance>=options.cancelThreshold),cancelled}function validatePinchDistance(){return null!==options.pinchThreshold?pinchDistance>=options.pinchThreshold:!0}function validateSwipeTime(){var result;return result=options.maxTimeThreshold?!(duration>=options.maxTimeThreshold):!0}function validateDefaultEvent(jqEvent,direction){if(options.preventDefaultEvents!==!1)if(options.allowPageScroll===NONE)jqEvent.preventDefault();else {var auto=options.allowPageScroll===AUTO;switch(direction){case LEFT:(options.swipeLeft&&auto||!auto&&options.allowPageScroll!=HORIZONTAL)&&jqEvent.preventDefault();break;case RIGHT:(options.swipeRight&&auto||!auto&&options.allowPageScroll!=HORIZONTAL)&&jqEvent.preventDefault();break;case UP:(options.swipeUp&&auto||!auto&&options.allowPageScroll!=VERTICAL)&&jqEvent.preventDefault();break;case DOWN:(options.swipeDown&&auto||!auto&&options.allowPageScroll!=VERTICAL)&&jqEvent.preventDefault();break;}}}function validatePinch(){var hasCorrectFingerCount=validateFingers(),hasEndPoint=validateEndPoint(),hasCorrectDistance=validatePinchDistance();return hasCorrectFingerCount&&hasEndPoint&&hasCorrectDistance}function hasPinches(){return !!(options.pinchStatus||options.pinchIn||options.pinchOut)}function didPinch(){return !(!validatePinch()||!hasPinches())}function validateSwipe(){var hasValidTime=validateSwipeTime(),hasValidDistance=validateSwipeDistance(),hasCorrectFingerCount=validateFingers(),hasEndPoint=validateEndPoint(),didCancel=didSwipeBackToCancel(),valid=!didCancel&&hasEndPoint&&hasCorrectFingerCount&&hasValidDistance&&hasValidTime;return valid}function hasSwipes(){return !!(options.swipe||options.swipeStatus||options.swipeLeft||options.swipeRight||options.swipeUp||options.swipeDown)}function didSwipe(){return !(!validateSwipe()||!hasSwipes())}function validateFingers(){return fingerCount===options.fingers||options.fingers===ALL_FINGERS||!SUPPORTS_TOUCH}function validateEndPoint(){return 0!==fingerData[0].end.x}function hasTap(){return !!options.tap}function hasDoubleTap(){return !!options.doubleTap}function hasLongTap(){return !!options.longTap}function validateDoubleTap(){if(null==doubleTapStartTime)return !1;var now=getTimeStamp();return hasDoubleTap()&&now-doubleTapStartTime<=options.doubleTapThreshold}function inDoubleTap(){return validateDoubleTap()}function validateTap(){return (1===fingerCount||!SUPPORTS_TOUCH)&&(isNaN(distance)||distance<options.threshold)}function validateLongTap(){return duration>options.longTapThreshold&&DOUBLE_TAP_THRESHOLD>distance}function didTap(){return !(!validateTap()||!hasTap())}function didDoubleTap(){return !(!validateDoubleTap()||!hasDoubleTap())}function didLongTap(){return !(!validateLongTap()||!hasLongTap())}function startMultiFingerRelease(event){previousTouchEndTime=getTimeStamp(),fingerCountAtRelease=event.touches.length+1;}function cancelMultiFingerRelease(){previousTouchEndTime=0,fingerCountAtRelease=0;}function inMultiFingerRelease(){var withinThreshold=!1;if(previousTouchEndTime){var diff=getTimeStamp()-previousTouchEndTime;diff<=options.fingerReleaseThreshold&&(withinThreshold=!0);}return withinThreshold}function getTouchInProgress(){return !($element.data(PLUGIN_NS+"_intouch")!==!0)}function setTouchInProgress(val){$element&&(val===!0?($element.on(MOVE_EV,touchMove),$element.on(END_EV,touchEnd),LEAVE_EV&&$element.on(LEAVE_EV,touchLeave)):($element.off(MOVE_EV,touchMove,!1),$element.off(END_EV,touchEnd,!1),LEAVE_EV&&$element.off(LEAVE_EV,touchLeave,!1)),$element.data(PLUGIN_NS+"_intouch",val===!0));}function createFingerData(id,evt){var f={start:{x:0,y:0},last:{x:0,y:0},end:{x:0,y:0}};return f.start.x=f.last.x=f.end.x=evt.pageX||evt.clientX,f.start.y=f.last.y=f.end.y=evt.pageY||evt.clientY,fingerData[id]=f,f}function updateFingerData(evt){var id=void 0!==evt.identifier?evt.identifier:0,f=getFingerData(id);return null===f&&(f=createFingerData(id,evt)),f.last.x=f.end.x,f.last.y=f.end.y,f.end.x=evt.pageX||evt.clientX,f.end.y=evt.pageY||evt.clientY,f}function getFingerData(id){return fingerData[id]||null}function setMaxDistance(direction,distance){direction!=NONE&&(distance=Math.max(distance,getMaxDistance(direction)),maximumsMap[direction].distance=distance);}function getMaxDistance(direction){return maximumsMap[direction]?maximumsMap[direction].distance:void 0}function createMaximumsData(){var maxData={};return maxData[LEFT]=createMaximumVO(LEFT),maxData[RIGHT]=createMaximumVO(RIGHT),maxData[UP]=createMaximumVO(UP),maxData[DOWN]=createMaximumVO(DOWN),maxData}function createMaximumVO(dir){return {direction:dir,distance:0}}function calculateDuration(){return endTime-startTime}function calculateTouchesDistance(startPoint,endPoint){var diffX=Math.abs(startPoint.x-endPoint.x),diffY=Math.abs(startPoint.y-endPoint.y);return Math.round(Math.sqrt(diffX*diffX+diffY*diffY))}function calculatePinchZoom(startDistance,endDistance){var percent=endDistance/startDistance*1;return percent.toFixed(2)}function calculatePinchDirection(){return 1>pinchZoom?OUT:IN}function calculateDistance(startPoint,endPoint){return Math.round(Math.sqrt(Math.pow(endPoint.x-startPoint.x,2)+Math.pow(endPoint.y-startPoint.y,2)))}function calculateAngle(startPoint,endPoint){var x=startPoint.x-endPoint.x,y=endPoint.y-startPoint.y,r=Math.atan2(y,x),angle=Math.round(180*r/Math.PI);return 0>angle&&(angle=360-Math.abs(angle)),angle}function calculateDirection(startPoint,endPoint){if(comparePoints(startPoint,endPoint))return NONE;var angle=calculateAngle(startPoint,endPoint);return 45>=angle&&angle>=0?LEFT:360>=angle&&angle>=315?LEFT:angle>=135&&225>=angle?RIGHT:angle>45&&135>angle?DOWN:UP}function getTimeStamp(){var now=new Date;return now.getTime()}function getbounds(el){el=$(el);var offset=el.offset(),bounds={left:offset.left,right:offset.left+el.outerWidth(),top:offset.top,bottom:offset.top+el.outerHeight()};return bounds}function isInBounds(point,bounds){return point.x>bounds.left&&point.x<bounds.right&&point.y>bounds.top&&point.y<bounds.bottom}function comparePoints(pointA,pointB){return pointA.x==pointB.x&&pointA.y==pointB.y}var options=$.extend({},options),useTouchEvents=SUPPORTS_TOUCH||SUPPORTS_POINTER||!options.fallbackToMouseEvents,START_EV=useTouchEvents?SUPPORTS_POINTER?SUPPORTS_POINTER_IE10?"MSPointerDown":"pointerdown":"touchstart":"mousedown",MOVE_EV=useTouchEvents?SUPPORTS_POINTER?SUPPORTS_POINTER_IE10?"MSPointerMove":"pointermove":"touchmove":"mousemove",END_EV=useTouchEvents?SUPPORTS_POINTER?SUPPORTS_POINTER_IE10?"MSPointerUp":"pointerup":"touchend":"mouseup",LEAVE_EV=useTouchEvents?SUPPORTS_POINTER?"mouseleave":null:"mouseleave",CANCEL_EV=SUPPORTS_POINTER?SUPPORTS_POINTER_IE10?"MSPointerCancel":"pointercancel":"touchcancel",distance=0,direction=null,currentDirection=null,duration=0,startTouchesDistance=0,endTouchesDistance=0,pinchZoom=1,pinchDistance=0,pinchDirection=0,maximumsMap=null,$element=$(element),phase="start",fingerCount=0,fingerData={},startTime=0,endTime=0,previousTouchEndTime=0,fingerCountAtRelease=0,doubleTapStartTime=0,singleTapTimeout=null,holdTimeout=null;try{$element.on(START_EV,touchStart),$element.on(CANCEL_EV,touchCancel);}catch(e){$.error("events not supported "+START_EV+","+CANCEL_EV+" on jQuery.swipe");}this.enable=function(){return this.disable(),$element.on(START_EV,touchStart),$element.on(CANCEL_EV,touchCancel),$element},this.disable=function(){return removeListeners(),$element},this.destroy=function(){removeListeners(),$element.data(PLUGIN_NS,null),$element=null;},this.option=function(property,value){if("object"==typeof property)options=$.extend(options,property);else if(void 0!==options[property]){if(void 0===value)return options[property];options[property]=value;}else {if(!property)return options;$.error("Option "+property+" does not exist on jQuery.swipe.options");}return null};}var VERSION="1.6.18",LEFT="left",RIGHT="right",UP="up",DOWN="down",IN="in",OUT="out",NONE="none",AUTO="auto",SWIPE="swipe",PINCH="pinch",TAP="tap",DOUBLE_TAP="doubletap",LONG_TAP="longtap",HORIZONTAL="horizontal",VERTICAL="vertical",ALL_FINGERS="all",DOUBLE_TAP_THRESHOLD=10,PHASE_START="start",PHASE_MOVE="move",PHASE_END="end",PHASE_CANCEL="cancel",SUPPORTS_TOUCH="ontouchstart"in window,SUPPORTS_POINTER_IE10=window.navigator.msPointerEnabled&&!window.PointerEvent&&!SUPPORTS_TOUCH,SUPPORTS_POINTER=(window.PointerEvent||window.navigator.msPointerEnabled)&&!SUPPORTS_TOUCH,PLUGIN_NS="TouchSwipe",defaults={fingers:1,threshold:75,cancelThreshold:null,pinchThreshold:20,maxTimeThreshold:null,fingerReleaseThreshold:250,longTapThreshold:500,doubleTapThreshold:200,swipe:null,swipeLeft:null,swipeRight:null,swipeUp:null,swipeDown:null,swipeStatus:null,pinchIn:null,pinchOut:null,pinchStatus:null,click:null,tap:null,doubleTap:null,longTap:null,hold:null,triggerOnTouchEnd:!0,triggerOnTouchLeave:!1,allowPageScroll:"auto",fallbackToMouseEvents:!0,excludedElements:".noSwipe",preventDefaultEvents:!0};$.fn.swipe=function(method){var $this=$(this),plugin=$this.data(PLUGIN_NS);if(plugin&&"string"==typeof method){if(plugin[method])return plugin[method].apply(plugin,Array.prototype.slice.call(arguments,1));$.error("Method "+method+" does not exist on jQuery.swipe");}else if(plugin&&"object"==typeof method)plugin.option.apply(plugin,arguments);else if(!(plugin||"object"!=typeof method&&method))return init.apply(this,arguments);return $this},$.fn.swipe.version=VERSION,$.fn.swipe.defaults=defaults,$.fn.swipe.phases={PHASE_START:PHASE_START,PHASE_MOVE:PHASE_MOVE,PHASE_END:PHASE_END,PHASE_CANCEL:PHASE_CANCEL},$.fn.swipe.directions={LEFT:LEFT,RIGHT:RIGHT,UP:UP,DOWN:DOWN,IN:IN,OUT:OUT},$.fn.swipe.pageScroll={NONE:NONE,HORIZONTAL:HORIZONTAL,VERTICAL:VERTICAL,AUTO:AUTO},$.fn.swipe.fingers={ONE:1,TWO:2,THREE:3,FOUR:4,FIVE:5,ALL:ALL_FINGERS};});
+	!function(factory){factory(module.exports?jquery:jQuery);}(function($){function init(options){return !options||void 0!==options.allowPageScroll||void 0===options.swipe&&void 0===options.swipeStatus||(options.allowPageScroll=NONE),void 0!==options.click&&void 0===options.tap&&(options.tap=options.click),options||(options={}),options=$.extend({},$.fn.swipe.defaults,options),this.each(function(){var $this=$(this),plugin=$this.data(PLUGIN_NS);plugin||(plugin=new TouchSwipe(this,options),$this.data(PLUGIN_NS,plugin));})}function TouchSwipe(element,options){function touchStart(jqEvent){if(!(getTouchInProgress()||$(jqEvent.target).closest(options.excludedElements,$element).length>0)){var event=jqEvent.originalEvent?jqEvent.originalEvent:jqEvent;if(!event.pointerType||"mouse"!=event.pointerType||0!=options.fallbackToMouseEvents){var ret,touches=event.touches,evt=touches?touches[0]:event;return phase=PHASE_START,touches?fingerCount=touches.length:options.preventDefaultEvents!==!1&&jqEvent.preventDefault(),distance=0,direction=null,currentDirection=null,pinchDirection=null,duration=0,startTouchesDistance=0,endTouchesDistance=0,pinchZoom=1,pinchDistance=0,maximumsMap=createMaximumsData(),cancelMultiFingerRelease(),createFingerData(0,evt),!touches||fingerCount===options.fingers||options.fingers===ALL_FINGERS||hasPinches()?(startTime=getTimeStamp(),2==fingerCount&&(createFingerData(1,touches[1]),startTouchesDistance=endTouchesDistance=calculateTouchesDistance(fingerData[0].start,fingerData[1].start)),(options.swipeStatus||options.pinchStatus)&&(ret=triggerHandler(event,phase))):ret=!1,ret===!1?(phase=PHASE_CANCEL,triggerHandler(event,phase),ret):(options.hold&&(holdTimeout=setTimeout($.proxy(function(){$element.trigger("hold",[event.target]),options.hold&&(ret=options.hold.call($element,event,event.target));},this),options.longTapThreshold)),setTouchInProgress(!0),null)}}}function touchMove(jqEvent){var event=jqEvent.originalEvent?jqEvent.originalEvent:jqEvent;if(phase!==PHASE_END&&phase!==PHASE_CANCEL&&!inMultiFingerRelease()){var ret,touches=event.touches,evt=touches?touches[0]:event,currentFinger=updateFingerData(evt);if(endTime=getTimeStamp(),touches&&(fingerCount=touches.length),options.hold&&clearTimeout(holdTimeout),phase=PHASE_MOVE,2==fingerCount&&(0==startTouchesDistance?(createFingerData(1,touches[1]),startTouchesDistance=endTouchesDistance=calculateTouchesDistance(fingerData[0].start,fingerData[1].start)):(updateFingerData(touches[1]),endTouchesDistance=calculateTouchesDistance(fingerData[0].end,fingerData[1].end),pinchDirection=calculatePinchDirection(fingerData[0].end,fingerData[1].end)),pinchZoom=calculatePinchZoom(startTouchesDistance,endTouchesDistance),pinchDistance=Math.abs(startTouchesDistance-endTouchesDistance)),fingerCount===options.fingers||options.fingers===ALL_FINGERS||!touches||hasPinches()){if(direction=calculateDirection(currentFinger.start,currentFinger.end),currentDirection=calculateDirection(currentFinger.last,currentFinger.end),validateDefaultEvent(jqEvent,currentDirection),distance=calculateDistance(currentFinger.start,currentFinger.end),duration=calculateDuration(),setMaxDistance(direction,distance),ret=triggerHandler(event,phase),!options.triggerOnTouchEnd||options.triggerOnTouchLeave){var inBounds=!0;if(options.triggerOnTouchLeave){var bounds=getbounds(this);inBounds=isInBounds(currentFinger.end,bounds);}!options.triggerOnTouchEnd&&inBounds?phase=getNextPhase(PHASE_MOVE):options.triggerOnTouchLeave&&!inBounds&&(phase=getNextPhase(PHASE_END)),phase!=PHASE_CANCEL&&phase!=PHASE_END||triggerHandler(event,phase);}}else phase=PHASE_CANCEL,triggerHandler(event,phase);ret===!1&&(phase=PHASE_CANCEL,triggerHandler(event,phase));}}function touchEnd(jqEvent){var event=jqEvent.originalEvent?jqEvent.originalEvent:jqEvent,touches=event.touches;if(touches){if(touches.length&&!inMultiFingerRelease())return startMultiFingerRelease(event),!0;if(touches.length&&inMultiFingerRelease())return !0}return inMultiFingerRelease()&&(fingerCount=fingerCountAtRelease),endTime=getTimeStamp(),duration=calculateDuration(),didSwipeBackToCancel()||!validateSwipeDistance()?(phase=PHASE_CANCEL,triggerHandler(event,phase)):options.triggerOnTouchEnd||options.triggerOnTouchEnd===!1&&phase===PHASE_MOVE?(options.preventDefaultEvents!==!1&&jqEvent.cancelable!==!1&&jqEvent.preventDefault(),phase=PHASE_END,triggerHandler(event,phase)):!options.triggerOnTouchEnd&&hasTap()?(phase=PHASE_END,triggerHandlerForGesture(event,phase,TAP)):phase===PHASE_MOVE&&(phase=PHASE_CANCEL,triggerHandler(event,phase)),setTouchInProgress(!1),null}function touchCancel(){fingerCount=0,endTime=0,startTime=0,startTouchesDistance=0,endTouchesDistance=0,pinchZoom=1,cancelMultiFingerRelease(),setTouchInProgress(!1);}function touchLeave(jqEvent){var event=jqEvent.originalEvent?jqEvent.originalEvent:jqEvent;options.triggerOnTouchLeave&&(phase=getNextPhase(PHASE_END),triggerHandler(event,phase));}function removeListeners(){$element.off(START_EV,touchStart),$element.off(CANCEL_EV,touchCancel),$element.off(MOVE_EV,touchMove),$element.off(END_EV,touchEnd),LEAVE_EV&&$element.off(LEAVE_EV,touchLeave),setTouchInProgress(!1);}function getNextPhase(currentPhase){var nextPhase=currentPhase,validTime=validateSwipeTime(),validDistance=validateSwipeDistance(),didCancel=didSwipeBackToCancel();return !validTime||didCancel?nextPhase=PHASE_CANCEL:!validDistance||currentPhase!=PHASE_MOVE||options.triggerOnTouchEnd&&!options.triggerOnTouchLeave?!validDistance&&currentPhase==PHASE_END&&options.triggerOnTouchLeave&&(nextPhase=PHASE_CANCEL):nextPhase=PHASE_END,nextPhase}function triggerHandler(event,phase){var ret,touches=event.touches;return (didSwipe()||hasSwipes())&&(ret=triggerHandlerForGesture(event,phase,SWIPE)),(didPinch()||hasPinches())&&ret!==!1&&(ret=triggerHandlerForGesture(event,phase,PINCH)),didDoubleTap()&&ret!==!1?ret=triggerHandlerForGesture(event,phase,DOUBLE_TAP):didLongTap()&&ret!==!1?ret=triggerHandlerForGesture(event,phase,LONG_TAP):didTap()&&ret!==!1&&(ret=triggerHandlerForGesture(event,phase,TAP)),phase===PHASE_CANCEL&&touchCancel(),phase===PHASE_END&&(touches?touches.length||touchCancel():touchCancel()),ret}function triggerHandlerForGesture(event,phase,gesture){var ret;if(gesture==SWIPE){if($element.trigger("swipeStatus",[phase,direction||null,distance||0,duration||0,fingerCount,fingerData,currentDirection]),options.swipeStatus&&(ret=options.swipeStatus.call($element,event,phase,direction||null,distance||0,duration||0,fingerCount,fingerData,currentDirection),ret===!1))return !1;if(phase==PHASE_END&&validateSwipe()){if(clearTimeout(singleTapTimeout),clearTimeout(holdTimeout),$element.trigger("swipe",[direction,distance,duration,fingerCount,fingerData,currentDirection]),options.swipe&&(ret=options.swipe.call($element,event,direction,distance,duration,fingerCount,fingerData,currentDirection),ret===!1))return !1;switch(direction){case LEFT:$element.trigger("swipeLeft",[direction,distance,duration,fingerCount,fingerData,currentDirection]),options.swipeLeft&&(ret=options.swipeLeft.call($element,event,direction,distance,duration,fingerCount,fingerData,currentDirection));break;case RIGHT:$element.trigger("swipeRight",[direction,distance,duration,fingerCount,fingerData,currentDirection]),options.swipeRight&&(ret=options.swipeRight.call($element,event,direction,distance,duration,fingerCount,fingerData,currentDirection));break;case UP:$element.trigger("swipeUp",[direction,distance,duration,fingerCount,fingerData,currentDirection]),options.swipeUp&&(ret=options.swipeUp.call($element,event,direction,distance,duration,fingerCount,fingerData,currentDirection));break;case DOWN:$element.trigger("swipeDown",[direction,distance,duration,fingerCount,fingerData,currentDirection]),options.swipeDown&&(ret=options.swipeDown.call($element,event,direction,distance,duration,fingerCount,fingerData,currentDirection));}}}if(gesture==PINCH){if($element.trigger("pinchStatus",[phase,pinchDirection||null,pinchDistance||0,duration||0,fingerCount,pinchZoom,fingerData]),options.pinchStatus&&(ret=options.pinchStatus.call($element,event,phase,pinchDirection||null,pinchDistance||0,duration||0,fingerCount,pinchZoom,fingerData),ret===!1))return !1;if(phase==PHASE_END&&validatePinch())switch(pinchDirection){case IN:$element.trigger("pinchIn",[pinchDirection||null,pinchDistance||0,duration||0,fingerCount,pinchZoom,fingerData]),options.pinchIn&&(ret=options.pinchIn.call($element,event,pinchDirection||null,pinchDistance||0,duration||0,fingerCount,pinchZoom,fingerData));break;case OUT:$element.trigger("pinchOut",[pinchDirection||null,pinchDistance||0,duration||0,fingerCount,pinchZoom,fingerData]),options.pinchOut&&(ret=options.pinchOut.call($element,event,pinchDirection||null,pinchDistance||0,duration||0,fingerCount,pinchZoom,fingerData));}}return gesture==TAP?phase!==PHASE_CANCEL&&phase!==PHASE_END||(clearTimeout(singleTapTimeout),clearTimeout(holdTimeout),hasDoubleTap()&&!inDoubleTap()?(doubleTapStartTime=getTimeStamp(),singleTapTimeout=setTimeout($.proxy(function(){doubleTapStartTime=null,$element.trigger("tap",[event.target]),options.tap&&(ret=options.tap.call($element,event,event.target));},this),options.doubleTapThreshold)):(doubleTapStartTime=null,$element.trigger("tap",[event.target]),options.tap&&(ret=options.tap.call($element,event,event.target)))):gesture==DOUBLE_TAP?phase!==PHASE_CANCEL&&phase!==PHASE_END||(clearTimeout(singleTapTimeout),clearTimeout(holdTimeout),doubleTapStartTime=null,$element.trigger("doubletap",[event.target]),options.doubleTap&&(ret=options.doubleTap.call($element,event,event.target))):gesture==LONG_TAP&&(phase!==PHASE_CANCEL&&phase!==PHASE_END||(clearTimeout(singleTapTimeout),doubleTapStartTime=null,$element.trigger("longtap",[event.target]),options.longTap&&(ret=options.longTap.call($element,event,event.target)))),ret}function validateSwipeDistance(){var valid=!0;return null!==options.threshold&&(valid=distance>=options.threshold),valid}function didSwipeBackToCancel(){var cancelled=!1;return null!==options.cancelThreshold&&null!==direction&&(cancelled=getMaxDistance(direction)-distance>=options.cancelThreshold),cancelled}function validatePinchDistance(){return null!==options.pinchThreshold?pinchDistance>=options.pinchThreshold:!0}function validateSwipeTime(){return options.maxTimeThreshold?!(duration>=options.maxTimeThreshold):!0}function validateDefaultEvent(jqEvent,direction){if(options.preventDefaultEvents!==!1)if(options.allowPageScroll===NONE)jqEvent.preventDefault();else {var auto=options.allowPageScroll===AUTO;switch(direction){case LEFT:(options.swipeLeft&&auto||!auto&&options.allowPageScroll!=HORIZONTAL)&&jqEvent.preventDefault();break;case RIGHT:(options.swipeRight&&auto||!auto&&options.allowPageScroll!=HORIZONTAL)&&jqEvent.preventDefault();break;case UP:(options.swipeUp&&auto||!auto&&options.allowPageScroll!=VERTICAL)&&jqEvent.preventDefault();break;case DOWN:(options.swipeDown&&auto||!auto&&options.allowPageScroll!=VERTICAL)&&jqEvent.preventDefault();break;}}}function validatePinch(){var hasCorrectFingerCount=validateFingers(),hasEndPoint=validateEndPoint(),hasCorrectDistance=validatePinchDistance();return hasCorrectFingerCount&&hasEndPoint&&hasCorrectDistance}function hasPinches(){return !!(options.pinchStatus||options.pinchIn||options.pinchOut)}function didPinch(){return !(!validatePinch()||!hasPinches())}function validateSwipe(){var hasValidTime=validateSwipeTime(),hasValidDistance=validateSwipeDistance(),hasCorrectFingerCount=validateFingers(),hasEndPoint=validateEndPoint(),didCancel=didSwipeBackToCancel(),valid=!didCancel&&hasEndPoint&&hasCorrectFingerCount&&hasValidDistance&&hasValidTime;return valid}function hasSwipes(){return !!(options.swipe||options.swipeStatus||options.swipeLeft||options.swipeRight||options.swipeUp||options.swipeDown)}function didSwipe(){return !(!validateSwipe()||!hasSwipes())}function validateFingers(){return fingerCount===options.fingers||options.fingers===ALL_FINGERS||!SUPPORTS_TOUCH}function validateEndPoint(){return 0!==fingerData[0].end.x}function hasTap(){return !!options.tap}function hasDoubleTap(){return !!options.doubleTap}function hasLongTap(){return !!options.longTap}function validateDoubleTap(){if(null==doubleTapStartTime)return !1;var now=getTimeStamp();return hasDoubleTap()&&now-doubleTapStartTime<=options.doubleTapThreshold}function inDoubleTap(){return validateDoubleTap()}function validateTap(){return (1===fingerCount||!SUPPORTS_TOUCH)&&(isNaN(distance)||distance<options.threshold)}function validateLongTap(){return duration>options.longTapThreshold&&DOUBLE_TAP_THRESHOLD>distance}function didTap(){return !(!validateTap()||!hasTap())}function didDoubleTap(){return !(!validateDoubleTap()||!hasDoubleTap())}function didLongTap(){return !(!validateLongTap()||!hasLongTap())}function startMultiFingerRelease(event){previousTouchEndTime=getTimeStamp(),fingerCountAtRelease=event.touches.length+1;}function cancelMultiFingerRelease(){previousTouchEndTime=0,fingerCountAtRelease=0;}function inMultiFingerRelease(){var withinThreshold=!1;if(previousTouchEndTime){var diff=getTimeStamp()-previousTouchEndTime;diff<=options.fingerReleaseThreshold&&(withinThreshold=!0);}return withinThreshold}function getTouchInProgress(){return !($element.data(PLUGIN_NS+"_intouch")!==!0)}function setTouchInProgress(val){$element&&(val===!0?($element.on(MOVE_EV,touchMove),$element.on(END_EV,touchEnd),LEAVE_EV&&$element.on(LEAVE_EV,touchLeave)):($element.off(MOVE_EV,touchMove,!1),$element.off(END_EV,touchEnd,!1),LEAVE_EV&&$element.off(LEAVE_EV,touchLeave,!1)),$element.data(PLUGIN_NS+"_intouch",val===!0));}function createFingerData(id,evt){var f={start:{x:0,y:0},last:{x:0,y:0},end:{x:0,y:0}};return f.start.x=f.last.x=f.end.x=evt.pageX||evt.clientX,f.start.y=f.last.y=f.end.y=evt.pageY||evt.clientY,fingerData[id]=f,f}function updateFingerData(evt){var id=void 0!==evt.identifier?evt.identifier:0,f=getFingerData(id);return null===f&&(f=createFingerData(id,evt)),f.last.x=f.end.x,f.last.y=f.end.y,f.end.x=evt.pageX||evt.clientX,f.end.y=evt.pageY||evt.clientY,f}function getFingerData(id){return fingerData[id]||null}function setMaxDistance(direction,distance){direction!=NONE&&(distance=Math.max(distance,getMaxDistance(direction)),maximumsMap[direction].distance=distance);}function getMaxDistance(direction){return maximumsMap[direction]?maximumsMap[direction].distance:void 0}function createMaximumsData(){var maxData={};return maxData[LEFT]=createMaximumVO(LEFT),maxData[RIGHT]=createMaximumVO(RIGHT),maxData[UP]=createMaximumVO(UP),maxData[DOWN]=createMaximumVO(DOWN),maxData}function createMaximumVO(dir){return {direction:dir,distance:0}}function calculateDuration(){return endTime-startTime}function calculateTouchesDistance(startPoint,endPoint){var diffX=Math.abs(startPoint.x-endPoint.x),diffY=Math.abs(startPoint.y-endPoint.y);return Math.round(Math.sqrt(diffX*diffX+diffY*diffY))}function calculatePinchZoom(startDistance,endDistance){var percent=endDistance/startDistance*1;return percent.toFixed(2)}function calculatePinchDirection(){return 1>pinchZoom?OUT:IN}function calculateDistance(startPoint,endPoint){return Math.round(Math.sqrt(Math.pow(endPoint.x-startPoint.x,2)+Math.pow(endPoint.y-startPoint.y,2)))}function calculateAngle(startPoint,endPoint){var x=startPoint.x-endPoint.x,y=endPoint.y-startPoint.y,r=Math.atan2(y,x),angle=Math.round(180*r/Math.PI);return 0>angle&&(angle=360-Math.abs(angle)),angle}function calculateDirection(startPoint,endPoint){if(comparePoints(startPoint,endPoint))return NONE;var angle=calculateAngle(startPoint,endPoint);return 45>=angle&&angle>=0?LEFT:360>=angle&&angle>=315?LEFT:angle>=135&&225>=angle?RIGHT:angle>45&&135>angle?DOWN:UP}function getTimeStamp(){var now=new Date;return now.getTime()}function getbounds(el){el=$(el);var offset=el.offset(),bounds={left:offset.left,right:offset.left+el.outerWidth(),top:offset.top,bottom:offset.top+el.outerHeight()};return bounds}function isInBounds(point,bounds){return point.x>bounds.left&&point.x<bounds.right&&point.y>bounds.top&&point.y<bounds.bottom}function comparePoints(pointA,pointB){return pointA.x==pointB.x&&pointA.y==pointB.y}var options=$.extend({},options),useTouchEvents=SUPPORTS_TOUCH||SUPPORTS_POINTER||!options.fallbackToMouseEvents,START_EV=useTouchEvents?SUPPORTS_POINTER?SUPPORTS_POINTER_IE10?"MSPointerDown":"pointerdown":"touchstart":"mousedown",MOVE_EV=useTouchEvents?SUPPORTS_POINTER?SUPPORTS_POINTER_IE10?"MSPointerMove":"pointermove":"touchmove":"mousemove",END_EV=useTouchEvents?SUPPORTS_POINTER?SUPPORTS_POINTER_IE10?"MSPointerUp":"pointerup":"touchend":"mouseup",LEAVE_EV=useTouchEvents?SUPPORTS_POINTER?"mouseleave":null:"mouseleave",CANCEL_EV=SUPPORTS_POINTER?SUPPORTS_POINTER_IE10?"MSPointerCancel":"pointercancel":"touchcancel",distance=0,direction=null,currentDirection=null,duration=0,startTouchesDistance=0,endTouchesDistance=0,pinchZoom=1,pinchDistance=0,pinchDirection=0,maximumsMap=null,$element=$(element),phase="start",fingerCount=0,fingerData={},startTime=0,endTime=0,previousTouchEndTime=0,fingerCountAtRelease=0,doubleTapStartTime=0,singleTapTimeout=null,holdTimeout=null;try{$element.on(START_EV,touchStart),$element.on(CANCEL_EV,touchCancel);}catch(e){$.error("events not supported "+START_EV+","+CANCEL_EV+" on jQuery.swipe");}this.enable=function(){return this.disable(),$element.on(START_EV,touchStart),$element.on(CANCEL_EV,touchCancel),$element},this.disable=function(){return removeListeners(),$element},this.destroy=function(){removeListeners(),$element.data(PLUGIN_NS,null),$element=null;},this.option=function(property,value){if("object"==typeof property)options=$.extend(options,property);else if(void 0!==options[property]){if(void 0===value)return options[property];options[property]=value;}else {if(!property)return options;$.error("Option "+property+" does not exist on jQuery.swipe.options");}return null};}var VERSION="1.6.18",LEFT="left",RIGHT="right",UP="up",DOWN="down",IN="in",OUT="out",NONE="none",AUTO="auto",SWIPE="swipe",PINCH="pinch",TAP="tap",DOUBLE_TAP="doubletap",LONG_TAP="longtap",HORIZONTAL="horizontal",VERTICAL="vertical",ALL_FINGERS="all",DOUBLE_TAP_THRESHOLD=10,PHASE_START="start",PHASE_MOVE="move",PHASE_END="end",PHASE_CANCEL="cancel",SUPPORTS_TOUCH="ontouchstart"in window,SUPPORTS_POINTER_IE10=window.navigator.msPointerEnabled&&!window.PointerEvent&&!SUPPORTS_TOUCH,SUPPORTS_POINTER=(window.PointerEvent||window.navigator.msPointerEnabled)&&!SUPPORTS_TOUCH,PLUGIN_NS="TouchSwipe",defaults={fingers:1,threshold:75,cancelThreshold:null,pinchThreshold:20,maxTimeThreshold:null,fingerReleaseThreshold:250,longTapThreshold:500,doubleTapThreshold:200,swipe:null,swipeLeft:null,swipeRight:null,swipeUp:null,swipeDown:null,swipeStatus:null,pinchIn:null,pinchOut:null,pinchStatus:null,click:null,tap:null,doubleTap:null,longTap:null,hold:null,triggerOnTouchEnd:!0,triggerOnTouchLeave:!1,allowPageScroll:"auto",fallbackToMouseEvents:!0,excludedElements:".noSwipe",preventDefaultEvents:!0};$.fn.swipe=function(method){var $this=$(this),plugin=$this.data(PLUGIN_NS);if(plugin&&"string"==typeof method){if(plugin[method])return plugin[method].apply(plugin,Array.prototype.slice.call(arguments,1));$.error("Method "+method+" does not exist on jQuery.swipe");}else if(plugin&&"object"==typeof method)plugin.option.apply(plugin,arguments);else if(!(plugin||"object"!=typeof method&&method))return init.apply(this,arguments);return $this},$.fn.swipe.version=VERSION,$.fn.swipe.defaults=defaults,$.fn.swipe.phases={PHASE_START:PHASE_START,PHASE_MOVE:PHASE_MOVE,PHASE_END:PHASE_END,PHASE_CANCEL:PHASE_CANCEL},$.fn.swipe.directions={LEFT:LEFT,RIGHT:RIGHT,UP:UP,DOWN:DOWN,IN:IN,OUT:OUT},$.fn.swipe.pageScroll={NONE:NONE,HORIZONTAL:HORIZONTAL,VERTICAL:VERTICAL,AUTO:AUTO},$.fn.swipe.fingers={ONE:1,TWO:2,THREE:3,FOUR:4,FIVE:5,ALL:ALL_FINGERS};});
 	});
 
 	/**
@@ -25877,59 +25886,45 @@
 	     * @param {UpdatedDataNodes} [updated] - The object containing info on updated data nodes.
 	     * @param {boolean} forceClearNonRelevant -  whether to empty the values of non-relevant nodes
 	     */
-	    update( updated, forceClearNonRelevant ) {
-	        let $nodes;
+	    update( updated, forceClearNonRelevant = false ) {
 
 	        if ( !this.form ) {
 	            throw new Error( 'Branch module not correctly instantiated with form property.' );
 	        }
 
-	        $nodes = this.form.getRelatedNodes( 'data-relevant', '', updated );
+	        const nodes = this.form.getRelatedNodes( 'data-relevant', '', updated ).get();
 
-	        this.updateNodes( $nodes, forceClearNonRelevant );
+	        this.updateNodes( nodes, forceClearNonRelevant );
 	    },
 	    /**
-	     * @param {jQuery} $nodes - Nodes to update
+	     * @param {Array<Element>} nodes - Nodes to update
 	     * @param {boolean} forceClearNonRelevant - whether to empty the values of non-relevant nodes
 	     */
-	    updateNodes( $nodes, forceClearNonRelevant ) {
-	        let p;
-	        let $branchNode;
-	        let result;
-	        let insideRepeat;
-	        let insideRepeatClone;
-	        let cacheIndex;
+	    updateNodes( nodes, forceClearNonRelevant = false ) {
+	        let branchChange = false;
 	        const relevantCache = {};
 	        const alreadyCovered = [];
-	        let branchChange = false;
-	        const that = this;
 	        const clonedRepeatsPresent = this.form.repeatsPresent && this.form.view.html.querySelector( '.or-repeat.clone' );
 
-	        $nodes.each( function() {
-	            const $node = jquery( this );
-	            const node = this;
-	            let context;
-	            let $parentGroups;
-	            let pathParts;
-	            let parentPath;
+	        nodes.forEach( node => {
 
-	            //note that $(this).attr('name') is not the same as p.path for repeated radiobuttons!
-	            if ( alreadyCovered.indexOf( $node.attr( 'name' ) ) !== -1 ) {
+	            // Note that node.getAttribute('name') is not the same as p.path for repeated radiobuttons!
+	            if ( alreadyCovered.indexOf( node.getAttribute( 'name' ) ) !== -1 ) {
 	                return;
 	            }
 
-	            // since this result is almost certainly not empty, closest() is the most efficient
-	            $branchNode = $node.closest( '.or-branch' );
+	            // Since this result is almost certainly not empty, closest() is the most efficient
+	            const branchNode = node.closest( '.or-branch' );
 
-	            p = {};
-	            cacheIndex = null;
+	            const p = {};
+	            let cacheIndex = null;
 
-	            p.relevant = that.form.input.getRelevant( node );
-	            p.path = that.form.input.getName( node );
+	            p.relevant = this.form.input.getRelevant( node );
+	            p.path = this.form.input.getName( node );
 
-	            if ( $branchNode.length !== 1 ) {
-	                if ( $node.parentsUntil( '.or', '#or-calculated-items' ).length === 0 ) {
-	                    console.error( 'could not find branch node for ', this );
+	            if ( !branchNode ) {
+	                if ( !closestAncestorUntil( node.parentsUntil( node, '#or-calculated-items', '.or' ) ) ) {
+	                    console.error( 'could not find branch node for ', node );
 	                }
 
 	                return;
@@ -25938,19 +25933,15 @@
 	            /*
 	             * Check if the (calculate without form control) node is part of a repeat that has no instances
 	             */
-	            pathParts = p.path.split( '/' );
+	            const pathParts = p.path.split( '/' );
 	            if ( pathParts.length > 3 ) {
-	                parentPath = pathParts.splice( 0, pathParts.length - 1 ).join( '/' );
-	                $parentGroups = that.form.view.$.find( `.or-group[name="${parentPath}"],.or-group-data[name="${parentPath}"]` )
+	                const parentPath = pathParts.splice( 0, pathParts.length - 1 ).join( '/' );
+	                const parentGroups = [ ...this.form.view.html.querySelectorAll( `.or-group[name="${parentPath}"],.or-group-data[name="${parentPath}"]` ) ]
 	                    // now remove the groups that have a repeat-info child without repeat instance siblings
-	                    .filter( function() {
-	                        const $g = jquery( this );
-
-	                        return $g.children( '.or-repeat' ).length > 0 || $g.children( '.or-repeat-info' ).length === 0;
-	                    } ); //.eq( index )
+	                    .filter( group => getChildren( group, '.or-repeat' ).length > 0 || getChildren( group, '.or-repeat-info' ).length === 0 );
 	                // If the parent doesn't exist in the DOM it means there is a repeat ancestor and there are no instances of that repeat.
 	                // Hence that relevant does not need to be evaluated (and would fail otherwise because the context doesn't exist).
-	                if ( $parentGroups.length === 0 ) {
+	                if ( parentGroups.length === 0 ) {
 	                    return;
 	                }
 	            }
@@ -25962,23 +25953,23 @@
 	             * (6-7 seconds of loading time on the bench6 form)
 	             */
 	            // TODO: these checks fail miserably for calculated items that do not have a form control
-	            insideRepeat = clonedRepeatsPresent && $branchNode.parentsUntil( '.or', '.or-repeat' ).length > 0;
-	            insideRepeatClone = clonedRepeatsPresent && $branchNode.parentsUntil( '.or', '.or-repeat.clone' ).length > 0;
+	            const insideRepeat = clonedRepeatsPresent && closestAncestorUntil( branchNode, '.or-repeat', '.or',  );
+	            const insideRepeatClone = clonedRepeatsPresent && closestAncestorUntil( branchNode, '.or-repeat.clone', '.or' );
 
 	            /*
 	             * If the relevant is placed on a group and that group contains repeats with the same name,
 	             * but currently has 0 repeats, the context will not be available. This same logic is applied in output.js.
 	             */
-	            if ( $node.children( `.or-repeat-info[data-name="${p.path}"]` ).length && !$node.children( `.or-repeat[name="${p.path}"]` ).length ) {
+	            let context = p.path;
+	            if ( getChildren( node, `.or-repeat-info[data-name="${p.path}"]` ).length && !getChildren( node,  `.or-repeat[name="${p.path}"]` ).length ) {
 	                context = null;
-	            } else {
-	                context = p.path;
 	            }
+
 	            /*
 	             * Determining the index is expensive, so we only do this when the branch is inside a cloned repeat.
 	             * It can be safely set to 0 for other branches.
 	             */
-	            p.ind = ( context && insideRepeatClone ) ? that.form.input.getIndex( node ) : 0;
+	            p.ind = ( context && insideRepeatClone ) ? this.form.input.getIndex( node ) : 0;
 	            /*
 	             * Caching is only possible for expressions that do not contain relative paths to nodes.
 	             * So, first do a *very* aggresive check to see if the expression contains a relative path.
@@ -25995,18 +25986,19 @@
 	                    cacheIndex = `${p.relevant}__${p.path.substring( 0, p.path.lastIndexOf( '/' ) )}__${p.ind}`;
 	                }
 	            }
+	            let result;
 	            if ( cacheIndex && typeof relevantCache[ cacheIndex ] !== 'undefined' ) {
 	                result = relevantCache[ cacheIndex ];
 	            } else {
-	                result = that.evaluate( p.relevant, context, p.ind );
+	                result = this.evaluate( p.relevant, context, p.ind );
 	                relevantCache[ cacheIndex ] = result;
 	            }
 
 	            if ( !insideRepeat ) {
-	                alreadyCovered.push( this.getAttribute( 'name' ) );
+	                alreadyCovered.push( node.getAttribute( 'name' ) );
 	            }
 
-	            if ( that.process( $branchNode, p.path, result, forceClearNonRelevant ) === true ) {
+	            if ( this.process( branchNode, p.path, result, forceClearNonRelevant ) === true ) {
 	                branchChange = true;
 	            }
 	        } );
@@ -26031,42 +26023,42 @@
 	    /**
 	     * Processes the evaluation result for a branch
 	     *
-	     * @param {jQuery} $branchNode - branch node
+	     * @param {Element} branchNode - branch node
 	     * @param {string} path - path of branch node
 	     * @param {boolean} result - result of relevant evaluation
 	     * @param {boolean} forceClearNonRelevant - whether to empty the values of non-relevant nodes
 	     */
-	    process( $branchNode, path, result, forceClearNonRelevant ) {
+	    process( branchNode, path, result, forceClearNonRelevant = false ) {
 	        if ( result === true ) {
-	            return this.enable( $branchNode, path );
+	            return this.enable( branchNode, path );
 	        } else {
-	            return this.disable( $branchNode, path, forceClearNonRelevant );
+	            return this.disable( branchNode, path, forceClearNonRelevant );
 	        }
 	    },
 
 	    /**
 	     * Checks whether branch currently has 'relevant' state
 	     *
-	     * @param {jQuery} $branchNode - branch node
+	     * @param {Element} branchNode - branch node
 	     * @return {boolean} whether branch is currently relevant
 	     */
-	    selfRelevant( $branchNode ) {
-	        return !$branchNode.hasClass( 'disabled' ) && !$branchNode.hasClass( 'pre-init' );
+	    selfRelevant( branchNode ) {
+	        return !branchNode.classList.contains( 'disabled' ) && !branchNode.classList.contains( 'pre-init' );
 	    },
 
 	    /**
 	     * Enables and reveals a branch node/group
 	     *
-	     * @param {jQuery} $branchNode - The jQuery object to reveal and enable
+	     * @param {Element} branchNode - The Element to reveal and enable
 	     * @param {string} path - path of branch node
 	     * @return {boolean} whether the relevant changed as a result of this action
 	     */
-	    enable( $branchNode, path ) {
+	    enable( branchNode, path ) {
 	        let change = false;
 
-	        if ( !this.selfRelevant( $branchNode ) ) {
+	        if ( !this.selfRelevant( branchNode ) ) {
 	            change = true;
-	            $branchNode.removeClass( 'disabled pre-init' );
+	            branchNode.classList.remove( 'disabled', 'pre-init' );
 	            // Update calculated items, both individual question or descendants of group
 	            this.form.calc.update( {
 	                relevantPath: path
@@ -26077,8 +26069,8 @@
 	            // Update outputs that are children of branch
 	            // TODO this re-evaluates all outputs in the form which is not efficient!
 	            this.form.output.update();
-	            this.form.widgets.enable( $branchNode[ 0 ] );
-	            this.activate( $branchNode );
+	            this.form.widgets.enable( branchNode );
+	            this.activate( branchNode );
 	        }
 
 	        return change;
@@ -26087,85 +26079,80 @@
 	    /**
 	     * Disables and hides a branch node/group
 	     *
-	     * @param {jQuery} $branchNode - The jQuery object to hide and disable
+	     * @param {Element} branchNode - The element to hide and disable
 	     * @param {string} path - path of branch node
 	     * @param {boolean} forceClearNonRelevant - whether to empty the values of non-relevant nodes
-	     * @return {boolean} whether the relevant changed as a result of this action
+	     * @return {boolean} whether the relevancy changed as a result of this action
 	     */
-	    disable( $branchNode, path, forceClearNonRelevant ) {
-	        const virgin = $branchNode.hasClass( 'pre-init' );
-	        let change = false;
+	    disable( branchNode, path, forceClearNonRelevant ) {
+	        const neverEnabled = branchNode.classList.contains( 'pre-init' );
+	        let changed = false;
 
-	        if ( virgin || this.selfRelevant( $branchNode ) || forceClearNonRelevant ) {
-	            change = true;
-	            // if the branch was previously enabled, keep any default values
-	            if ( !virgin ) {
-	                if ( forceClearNonRelevant ) {
-	                    this.clear( $branchNode, path );
-	                }
-	            } else {
-	                $branchNode.removeClass( 'pre-init' );
+	        if ( neverEnabled || this.selfRelevant( branchNode ) || forceClearNonRelevant ) {
+	            changed = true;
+	            if ( forceClearNonRelevant ) {
+	                this.clear( branchNode, path );
 	            }
 
-	            this.deactivate( $branchNode );
+	            this.deactivate( branchNode );
 	        }
 
-	        return change;
+	        return changed;
 	    },
 	    /**
 	     * Clears values from branchnode.
 	     * This function is separated so it can be overridden in custom apps.
 	     *
-	     * @param {jQuery} $branchNode - branch node
+	     * @param {Element} branchNode - branch node
 	     * @param {string} path - path of branch node
 	     */
-	    clear( $branchNode, path ) {
+	    clear( branchNode, path ) {
 	        // A change event ensures the model is updated
 	        // An inputupdate event is required to update widgets
-	        $branchNode.clearInputs( 'change', events.InputUpdate().type );
+	        this.form.input.clear( branchNode, events.Change(), events.InputUpdate() );
 	        // Update calculated items if branch is a group
 	        // We exclude question branches here because those will have been cleared already in the previous line.
-	        if ( $branchNode.is( '.or-group, .or-group-data' ) ) {
+	        if ( branchNode.matches( '.or-group, .or-group-data' ) ) {
 	            this.form.calc.update( {
 	                relevantPath: path
-	            } );
+	            }, '', true );
 	        }
 	    },
 	    /**
-	     * @param {jQuery} $branchNode - branch node
+	     * @param {Element} branchNode - branch node
 	     * @param {boolean} bool - value to set disabled property to
 	     */
-	    setDisabledProperty( $branchNode, bool ) {
-	        const type = $branchNode.prop( 'nodeName' ).toLowerCase();
+	    setDisabledProperty( branchNode, bool ) {
+	        const type = branchNode.nodeName.toLowerCase();
 
 	        if ( type === 'label' ) {
-	            $branchNode.children( 'input, select, textarea' ).prop( 'disabled', bool );
+	            getChildren( branchNode,  'input, select, textarea' ).forEach( el => el.disabled = bool );
 	        } else if ( type === 'fieldset' || type === 'section' ) {
 	            // TODO: a <section> cannot be disabled like this
-	            $branchNode.prop( 'disabled', bool );
+	            branchNode.disabled = bool;
 	        } else {
-	            $branchNode.find( 'fieldset, input, select, textarea' ).prop( 'disabled', bool );
+	            branchNode.querySelectorAll( 'fieldset, input, select, textarea' ).forEach( el => el.disabled = bool );
 	        }
 	    },
 	    /**
 	     * Activates form controls.
 	     * This function is separated so it can be overridden in custom apps.
 	     *
-	     * @param {jQuery} $branchNode - branch node
+	     * @param {Element} branchNode - branch node
 	     */
-	    activate( $branchNode ) {
-	        this.setDisabledProperty( $branchNode, false );
+	    activate( branchNode ) {
+	        this.setDisabledProperty( branchNode, false );
 	    },
 	    /**
 	     * Deactivates form controls.
 	     * This function is separated so it can be overridden in custom apps.
 	     *
-	     * @param {jQuery} $branchNode - branch node
+	     * @param {Element} branchNode - branch node
 	     */
-	    deactivate( $branchNode ) {
-	        $branchNode.addClass( 'disabled' );
-	        this.form.widgets.disable( $branchNode[ 0 ] );
-	        this.setDisabledProperty( $branchNode, true );
+	    deactivate( branchNode ) {
+	        branchNode.classList.add( 'disabled' );
+	        this.form.widgets.disable( branchNode );
+	        this.setDisabledProperty( branchNode, true );
 	    }
 	};
 
@@ -26445,7 +26432,7 @@
 	     * @type {string}
 	     **/
 	    get ios() {
-	        // in iOS13, the default Safari setting is 'Request Desktop Site' to be On. 
+	        // in iOS13, the default Safari setting is 'Request Desktop Site' to be On.
 	        // The platform and useragent no longer show iPad/iPhone/iPod
 	        // so we use a trick that will work for a while until MacOs gets touchscreen support.
 	        return /iPad|iPhone|iPod/i.test( pf ) || ( /Mac/i.test( pf ) && document.documentElement.ontouchstart !== undefined );
@@ -26455,6 +26442,25 @@
 	     **/
 	    get android() {
 	        return /android/i.test( ua );
+	    },
+	    /**
+	     * @type {string}
+	     **/
+	    get macos() {
+	        return /Mac/.test( ua );
+	    },
+	};
+
+
+	/**
+	 * @namespace browser
+	 **/
+	const browser = {
+	    /**ua
+	     * @type {string}
+	     **/
+	    get safari() {
+	        return /^((?!chrome|android).)*safari/i.test( ua );
 	    }
 	};
 
@@ -26758,8 +26764,8 @@
                         <li ${checkedLiAttr}>
                             <a class="option-wrapper" tabindex="-1" href="#">
                                 <label>
-                                    <input class="ignore" ${inputAttr}${checkedInputAttr} value="${value}" />
-                                    <span class="option-label">${label}</span>
+                                    <input class="ignore" ${inputAttr}${checkedInputAttr} value="${encodeHtmlEntities( value )}" />
+                                    <span class="option-label">${encodeHtmlEntities( label )}</span>
                                 </label>
                             </a>
                         </li>`;
@@ -27231,9 +27237,9 @@
 
 	        if ( getSiblingElements( this.element, 'datalist' ).length === 0 ) {
 	            const infos = getSiblingElements( this.element.closest( '.or-repeat' ), '.or-repeat-info' );
-	            this.options = infos.length ? [ ...infos[ 0 ].querySelectorAll( `datalist#${listId} > option` ) ] : [];
+	            this.options = infos.length ? [ ...infos[ 0 ].querySelectorAll( `datalist#${CSS.escape( listId )} > option` ) ] : [];
 	        } else {
-	            this.options = [ ...this.question.querySelectorAll( `datalist#${listId} > option` ) ];
+	            this.options = [ ...this.question.querySelectorAll( `datalist#${CSS.escape( listId )} > option` ) ];
 	        }
 
 	        // This value -> data-value change is not slow, so no need to move to enketo-xslt as that would
@@ -42214,9 +42220,10 @@
 	                .find( '.leaflet-google-layer' ).remove();
 	            if ( that.map ) {
 	                that.map.remove();
-	                that.map = null;
-	                that.polygon = null;
-	                that.polyline = null;
+	                that.map = undefined;
+	                this.loadMap = undefined;
+	                that.polygon = undefined;
+	                that.polyline = undefined;
 	            }
 
 	            return false;
@@ -47175,8 +47182,17 @@
 
 	    update() {
 	        const $dateTimeI = jquery( this.element );
-	        const val = ( $dateTimeI.val().length > 0 ) ? new Date( $dateTimeI.val() ).toISOLocalString() : '';
-
+	        let val = ( $dateTimeI.val().length > 0 ) ? new Date( $dateTimeI.val() ).toISOLocalString() : '';
+	        /**
+	         * fix a bug which is only on safari (#745)
+	         * If the local timezone is +08:00, for a date value of new Date('2020-10-10T13:10:10') will be:
+	         * *** in chrome, the value is: Sat Oct 10 2020 13:10:10 GMT+0800 (China Standard Time)
+	         * *** but in safari, the value is: Sat Oct 10 2020 21:10:10 GMT+0800 (CST)
+	         * so we have to append the timezone here
+	         */
+	        if ( os.macos && browser.safari ) {
+	            val = ( $dateTimeI.val().length > 0 ) ? ( new Date( $dateTimeI.val() + new Date().timezoneOffsetAsTime() ) ).toISOLocalString() : '';
+	        }
 	        if ( val !== this.value ) {
 	            const vals = val.split( 'T' );
 	            const dateVal = vals[ 0 ];
@@ -49818,7 +49834,7 @@
 	     * @return {Element} input element with matching ID
 	     */
 	    _getInput( id ) {
-	        return this.question.querySelector( `input[value="${id}"]` );
+	        return this.question.querySelector( `input[value="${CSS.escape( id )}"]` );
 	    }
 
 	    /**
@@ -49898,7 +49914,7 @@
 	        values.forEach( value => {
 	            if ( value ) {
 	                // if multiple values have the same id, change all of them (e.g. a province that is not contiguous)
-	                this.svg.querySelectorAll( `path#${value},g#${value},circle#${value}` ).forEach( el => el.setAttribute( 'or-selected', '' ) );
+	                this.svg.querySelectorAll( `path#${CSS.escape( value )},g#${CSS.escape( value )},circle#${CSS.escape( value )}` ).forEach( el => el.setAttribute( 'or-selected', '' ) );
 	            }
 	        } );
 	    }
@@ -52168,9 +52184,9 @@
 
 	        if ( o.curVal.length === 0 ) {
 	            today = new Date( this.form.model.evaluate( 'today()', 'string' ) );
-	            year = today.getFullYear().toString().pad( 4 );
-	            month = ( today.getMonth() + 1 ).toString().pad( 2 );
-	            day = today.getDate().toString().pad( 2 );
+	            year = today.getFullYear().toString().padStart( 4, '0' );
+	            month = ( today.getMonth() + 1 ).toString().padStart( 2, '0' );
+	            day = today.getDate().toString().padStart( 2, '0' );
 
 	            return `${year}-${month}-${day}`;
 	        }
@@ -52329,9 +52345,10 @@
 	     * Updates calculated items.
 	     *
 	     * @param {UpdatedDataNodes} updated - the object containing info on updated data nodes
-	     * @param {string} [filter] - CSS selector filter.
+	     * @param {string} [filter] - CSS selector filter
+	     * @param {boolean} [emptyNonRelevant] - Whether to empty non-relevant calculation nodes
 	     */
-	    update( updated = {}, filter = '' ) {
+	    update( updated = {}, filter = '', emptyNonRelevant = false ) {
 	        let nodes;
 
 	        if ( !this.form ) {
@@ -52368,7 +52385,7 @@
 
 	            if ( dataNodes.length > 1 ) {
 
-	                if ( updated.repeatPath && name.indexOf( updated.repeatPath + '/' ) !== -1 ) {
+	                if ( updated.repeatPath && name.indexOf( updated.repeatPath + '/' ) !== -1 && dataNodes[updated.repeatIndex] ) {
 	                    /*
 	                     * If the update was triggered by a datanode inside a repeat
 	                     * and the dependent node is inside the same repeat, we can prevent the expensive index determination
@@ -52376,7 +52393,7 @@
 	                    const dataNodeName = ( name.lastIndexOf( '/' ) !== -1 ) ? name.substring( name.lastIndexOf( '/' ) + 1 ) : name;
 	                    const dataNode = this.form.model.node( updated.repeatPath, updated.repeatIndex ).getElement().querySelector( dataNodeName );
 	                    props.index = dataNodes.indexOf( dataNode );
-	                    this._updateCalc( control, props );
+	                    this._updateCalc( control, props, emptyNonRelevant );
 	                } else if ( control.type === 'hidden' ) {
 	                    /*
 	                     * This case is the consequence of the  decision to place calculated items without a visible form control,
@@ -52386,7 +52403,7 @@
 	                    dataNodes.forEach( ( el, index ) => {
 	                        const obj = Object.create( props );
 	                        obj.index = index;
-	                        this._updateCalc( control, obj );
+	                        this._updateCalc( control, obj, emptyNonRelevant );
 	                    } );
 	                } else {
 	                    /*
@@ -52396,11 +52413,11 @@
 	                    const repeatSiblings = getSiblingElementsAndSelf( control.closest( '.or-repeat' ), '.or-repeat' );
 	                    if ( repeatSiblings.length === dataNodes.length ) {
 	                        props.index = repeatSiblings.indexOf( control.closest( '.or-repeat' ) );
-	                        this._updateCalc( control, props );
+	                        this._updateCalc( control, props, emptyNonRelevant );
 	                    }
 	                }
 	            } else if ( dataNodes.length === 1 ) {
-	                this._updateCalc( control, props );
+	                this._updateCalc( control, props, emptyNonRelevant );
 	            }
 
 	        } );
@@ -52412,7 +52429,6 @@
 	     * @param {CustomEvent} [event] - the event type that triggered the setvalue action.
 	     */
 	    setValue( event ) {
-	        let ignoreRelevance = false;
 	        let index = 0;
 
 	        if ( !event ) {
@@ -52427,10 +52443,14 @@
 
 	        if ( event.type === new events.InstanceFirstLoad().type ) {
 	            // We ignore relevance for the data-instance-first-load, as that will likely never be what users want for a default value.
-	            ignoreRelevance = true;
 	            // Do not use getRelatedNodes here, because the obtaining (and caching) of nodes inside repeats is (and should be) disabled at the
 	            // time this event fires.
-	            nodes = this.form.filterRadioCheckSiblings( [ ...this.form.view.html.querySelectorAll( `[data-setvalue][data-event*="${event.type}"]` ) ] );
+	            //
+	            // We change the order by first evaluating the non-formcontrol setvalue directives (in document order), and then
+	            // the ones with form controls.
+	            // https://github.com/OpenClinica/enketo-express-oc/issues/355#issuecomment-725640823
+	            nodes = [ ...this.form.view.html.querySelectorAll( `.setvalue [data-setvalue][data-event*="${event.type}"]` ) ].concat(
+	                this.form.filterRadioCheckSiblings( [ ...this.form.view.html.querySelectorAll( `.question [data-setvalue][data-event*="${event.type}"]` ) ] ) );
 	        } else if ( event.type === new events.NewRepeat().type ) {
 	            // Only this event requires specific index targeting through the "updated" object
 	            nodes = this.form.getRelatedNodes( 'data-setvalue', `[data-event*="${event.type}"]`, event.detail ).get();
@@ -52450,7 +52470,8 @@
 	                dataType: this.form.input.getXmlType( setvalueControl ),
 	                relevantExpr: this.form.input.getRelevant( setvalueControl ),
 	                index: event.detail && typeof event.detail.repeatIndex !== 'undefined' ? event.detail.repeatIndex : 0,
-	                dataNodesObj
+	                dataNodesObj,
+	                type: 'setvalue'
 	            };
 
 	            if ( dataNodes.length > 1 && event.type !== new events.NewRepeat().type && event.type !== new events.XFormsValueChanged().type ) {
@@ -52464,35 +52485,41 @@
 	                    const obj = Object.create( props );
 	                    const control = setvalueControl;
 	                    obj.index = index;
-	                    this._updateCalc( control, obj, ignoreRelevance );
+	                    this._updateCalc( control, obj );
 	                } );
 
 	            } else if ( event.type === new events.XFormsValueChanged().type ) {
 	                // control for xforms-value-changed is located elsewhere, or does not exist.
 	                const control = this.form.input.find( props.name, props.index );
-	                this._updateCalc( control, props, ignoreRelevance );
+	                this._updateCalc( control, props );
 	            } else if ( dataNodes[ index ] ) {
 	                const control = setvalueControl;
-	                this._updateCalc( control, props, ignoreRelevance );
+	                this._updateCalc( control, props );
 	            } else {
 	                console.error( 'SetValue called for node that does not exist in model.' );
 	            }
 	        } );
 	    },
-
-	    _updateCalc( control, props, ignoreRelevance = false ) {
-	        let relevant = true;
-
-	        if ( !ignoreRelevance ) {
-	            relevant = this._isRelevant( props );
+	    /**
+	     * Updates a calculation.
+	     *
+	     * @param {Element} control - view element containing calculation
+	     * @param {*} props - properties of a calculation element
+	     * @param {boolean} [emptyNonRelevant] - Whether to set the calculation result to empty if non-relevant
+	     */
+	    _updateCalc( control, props, emptyNonRelevant ) {
+	        if ( !emptyNonRelevant && props.type !== 'setvalue' && this._hasNeverBeenRelevant( control, props ) && !this._isRelevant( props ) ){
+	            return;
 	        }
+
+	        const empty = emptyNonRelevant ? !this._isRelevant( props ) : false;
 
 	        // Not sure if using 'string' is always correct
 	        const newExpr = this.form.replaceChoiceNameFn( props.expr, 'string', props.name, props.index );
 
 	        // It is possible that the fixed expr is '' which causes an error in XPath
 	        // const xpathType = this.form.input.getInputType( control ) === 'number' ? 'number' : 'string';
-	        const result = relevant && newExpr ? this.form.model.evaluate( newExpr, 'string', props.name, props.index ) : '';
+	        const result =  !empty && newExpr ? this.form.model.evaluate( newExpr, 'string', props.name, props.index ) : '';
 
 	        // Filter the result set to only include the target node
 	        props.dataNodesObj.setIndex( props.index );
@@ -52574,6 +52601,36 @@
 	        }
 
 	        return relevant;
+	    },
+
+	    _hasNeverBeenRelevant( control, props ){
+	        if ( control && control.closest( '.pre-init' ) ){
+	            return true;
+	        }
+	        // Check parents including when the calculation has no form control.
+	        const pathParts = props.name.split( '/' );
+	        /*
+	             * First determine immediate group parent of node, which will always be in correct location in DOM. This is where
+	             * we can use the index to be guaranteed to get the correct node.
+	             * (also for nodes in #calculated-items).
+	             *
+	             * Then get all the group parents of that node.
+	             *
+	             * TODO: determine index at every level to properly support repeats and nested repeats
+	             *
+	             * Note: getting the parents of control wouldn't work for nodes inside #calculated-items!
+	             */
+	        const parentPath = pathParts.splice( 0, pathParts.length - 1 ).join( '/' );
+	        let startElement;
+
+	        if ( props.index === 0 ) {
+	            startElement = this.form.view.html.querySelector( `.or-group[name="${parentPath}"],.or-group-data[name="${parentPath}"]` );
+	        } else {
+	            startElement = this.form.view.html.querySelectorAll( `.or-repeat[name="${parentPath}"]` )[ props.index ] ||
+	                    this.form.view.html.querySelectorAll( `.or-group[name="${parentPath}"],.or-group-data[name="${parentPath}"]` )[ props.index ];
+	        }
+
+	        return startElement ? !!startElement.closest( '.pre-init' ) : false;
 	    }
 
 	};
@@ -52732,13 +52789,17 @@
 	     * @param {UpdatedDataNodes} [updated] - The object containing info on updated data nodes.
 	     */
 	    update( updated ) {
-	        const $nodes = this.form.getRelatedNodes( 'readonly', '', updated );
-	        $nodes.each( function() {
-	            jquery( this ).closest( '.question' ).addClass( 'readonly' );
+	        const nodes = this.form.getRelatedNodes( 'readonly', '', updated ).get();
+	        nodes.forEach( node =>  {
+	            node.closest( '.question' ).classList.add( 'readonly' );
+
+	            const path = this.form.input.getName( node );
+	            const setValue = this.form.view.html.querySelector( `[data-setvalue][data-event="xforms-value-changed"][name="${path}"]` );
+
 	            // Note: the readonly-forced class is added for special readonly views of a form.
-	            if ( !this.value && !this.dataset.calculate && !this.classList.contains( 'readonly-forced' ) ) {
-	                this.classList.add( 'empty' );
-	            }
+	            const empty = !node.value && !node.dataset.calculate && !setValue && !node.classList.contains( 'readonly-forced' );
+
+	            node.classList.toggle( 'empty', empty );
 	        } );
 	    }
 	};
@@ -52747,78 +52808,6 @@
 	 * @external jQuery
 	 */
 
-	/**
-	 * Clears form input fields and triggers events when doing this. If formelement is cloned but not yet added to DOM
-	 * (and not synchronized with data object), the desired event is probably 'edit' (default). If it is already added
-	 * to the DOM (and synchronized with data object) a regular change event should be fired
-	 *
-	 * @function external:jQuery#clearInputs
-	 * @param {string} [ev1] - Event to be triggered when a value is cleared
-	 * @param {string} [ev2] - Event to be triggered when a value is cleared
-	 * @return {jQuery} original jQuery-wrapped elements
-	 */
-	jquery.fn.clearInputs = function( ev1, ev2 ) {
-	    ev1 = ev1 || 'edit';
-	    ev2 = ev2 || '';
-
-	    return this.each( function() {
-	        //remove media previews
-	        jquery( this ).find( '.file-preview' ).remove();
-	        //remove input values
-	        jquery( this ).find( 'input, select, textarea' ).not( '.ignore' ).each( function() {
-	            const $node = jquery( this );
-	            let type = $node.attr( 'type' );
-	            let loadedFilename;
-
-	            if ( $node.prop( 'nodeName' ).toUpperCase() === 'SELECT' ) {
-	                type = 'select';
-	            }
-	            if ( $node.prop( 'nodeName' ).toUpperCase() === 'TEXTAREA' ) {
-	                type = 'textarea';
-	            }
-	            switch ( type ) {
-	                case 'file':
-	                    loadedFilename = this.dataset.loadedFileName;
-	                    delete this.dataset.loadedFileName;
-	                    /* falls through */
-	                case 'date':
-	                case 'datetime-local':
-	                case 'month':
-	                case 'time':
-	                case 'number':
-	                case 'search':
-	                case 'color':
-	                case 'range':
-	                case 'url':
-	                case 'email':
-	                case 'password':
-	                case 'text':
-	                case 'tel':
-	                case 'hidden':
-	                case 'textarea':
-	                    if ( $node.val() !== '' || loadedFilename ) {
-	                        $node.val( '' ).trigger( ev1 ).trigger( ev2 );
-	                    }
-	                    break;
-	                case 'radio':
-	                case 'checkbox':
-	                    if ( $node.prop( 'checked' ) ) {
-	                        $node.prop( 'checked', false );
-	                        $node.trigger( ev1 ).trigger( ev2 );
-	                    }
-	                    break;
-	                case 'select':
-	                    if ( $node[ 0 ].selectedIndex > 0 ) {
-	                        $node[ 0 ].selectedIndex = 0;
-	                        $node.trigger( ev1 ).trigger( ev2 );
-	                    }
-	                    break;
-	                default:
-	                    console.error( 'Unrecognized input type found when trying to reset', this );
-	            }
-	        } );
-	    } );
-	};
 
 	/**
 	 * Reverses a jQuery collection
@@ -53167,8 +53156,7 @@
 	 * @param {{include: boolean}} [include] - Optional object items to exclude if false
 	 * @return {string} XML string of primary instance
 	 */
-	Form.prototype.getDataStr = function( include ) {
-	    include = ( typeof include !== 'object' || include === null ) ? {} : include;
+	Form.prototype.getDataStr = function( include = {} ) {
 	    // By default everything is included
 	    if ( include.irrelevant === false ) {
 	        return this.getDataStrWithoutIrrelevantNodes();
@@ -53216,8 +53204,9 @@
 	        if ( params.length === 2 ) {
 	            let label = '';
 	            const value = this.model.evaluate( params[ 0 ], resTypeStr, context, index, tryNative );
-	            const name = stripQuotes( params[ 1 ] ).trim();
-	            const inputs = [ ...this.view.html.querySelectorAll( `[name="${name.startsWith( '/' ) ? name : joinPath( context, name )}"]` ) ];
+	            let name = stripQuotes( params[ 1 ] ).trim();
+	            name = name.startsWith( '/' ) ? name : joinPath( context, name );
+	            const inputs = [ ...this.view.html.querySelectorAll( `[name="${name}"], [data-name="${name}"]` ) ];
 	            const nodeName = inputs.length ? inputs[0].nodeName.toLowerCase() : null;
 
 	            if ( !value || !inputs.length ) {
@@ -53233,7 +53222,7 @@
 	                    const siblingLabelEls = getSiblingElements( found[0], '.option-label.active' );
 	                    label = siblingLabelEls.length ? siblingLabelEls[0].textContent : '';
 	                } else {
-	                    const siblingListEls = getSiblingElements( inputs[0], `datalist#${list}` );
+	                    const siblingListEls = getSiblingElements( inputs[0], `datalist#${CSS.escape( list )}` );
 	                    if ( siblingListEls.length ){
 	                        const optionEl = siblingListEls[0].querySelector( `[data-value="${value}"]` );
 	                        label = optionEl ? optionEl.getAttribute( 'value' ) : '';
@@ -53559,7 +53548,7 @@
 	            if ( updated ) {
 	                that.validateInput( input )
 	                    .then( () => {
-	                        // propagate event externally after internal processing is completed
+	                        // after internal processing is completed
 	                        input.dispatchEvent( events.XFormsValueChanged( { repeatIndex: n.index } ) );
 	                    } );
 	            }
@@ -53716,7 +53705,7 @@
 	 */
 	Form.prototype.validateAll = function() {
 	    const that = this;
-	    // to not delay validation unneccessarily we only clear irrelevants if necessary
+	    // to not delay validation unnecessarily we only clear non-relevants if necessary
 	    this.clearNonRelevant();
 
 	    return this.validateContent( this.view.$ )
@@ -53948,7 +53937,7 @@
 	 * @type {string}
 	 * @default
 	 */
-	Form.requiredTransformerVersion = '1.41.1';
+	Form.requiredTransformerVersion = '1.41.3';
 
 	function addXPathExtensionsOc( XPathJS ) {
 
