@@ -2,6 +2,11 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+[Unreleased]
+---------------------
+##### Fixed
+- Some OpenClinica mode errors output question "null" instead of the question name.
+
 [1.12.0] - 2020-10-16
 ---------------------
 ##### Added

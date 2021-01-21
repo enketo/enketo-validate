@@ -597,7 +597,7 @@ class XForm {
                 return CLINICALDATA_REF.test( bind.getAttribute( 'calculate' ) ) &&
                     bind.getAttributeNS( this.NAMESPACES.oc, 'external' ) !== 'clinicaldata';
             } )
-            .map( this._nodeName.bind( this ) )
+            .map( bind => this._nodeName( bind ) )
             .forEach( nodeName => errors.push( `Found calculation for question "${nodeName}" that refers to ` +
                 'external clinicaldata without the required "external" attribute in the correct namespace.' ) );
 
@@ -608,7 +608,7 @@ class XForm {
 
                 return !calculation || !CLINICALDATA_REF.test( calculation );
             } )
-            .map( this._nodeName.bind( this ) )
+            .map( bind => this._nodeName( bind ) )
             .forEach( nodeName => errors.push( `Found bind with clinicaldata attribute for question "${nodeName}" that does not ` +
                 'have a calculation referring to instance(\'clinicaldata\').' ) );
 
