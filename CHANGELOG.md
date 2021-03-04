@@ -2,6 +2,12 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+
+[1.12.2] - 2021-03-04
+---------------------
+##### Changed
+- Temporarily allow missing `<label>` element if a hint is present.
+
 [1.12.1] - 2021-01-21
 ---------------------
 ##### Changed
