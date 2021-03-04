@@ -359,8 +359,9 @@ class XForm {
         // These are the elements we expect to have a label though we're going slightly beyond spec requirement here.
         this.formControls.concat( this.items )
             .forEach( control => {
-                // the selector ":scope > label" fails with namespaced elements such as odk:rank
-                if ( ![ ...control.childNodes ].some( el => el.nodeName === 'label' ) ) {
+                // The selector ":scope > label" fails with namespaced elements such as odk:rank
+                // TODO: after https://github.com/XLSForm/pyxform/issues/439 has been implemented remove "|| el.nodeName === 'hint'".
+                if ( ![ ...control.childNodes ].some( el => el.nodeName === 'label' || el.nodeName === 'hint' ) ) {
                     const type = control.nodeName === 'item' || control.nodeName === 'itemset' ? 'Select option for question' : 'Question';
                     const nodeName = this._nodeName( control,'ref' ) || this._nodeName( control.parentElement, 'ref' ) || '?';
                     errors.push( `${type} "${nodeName}" has no label.` );
