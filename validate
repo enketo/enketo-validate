@@ -33,13 +33,13 @@ program
     .version( pkg.version )
     .option( '-m, --me', 'get personal validation' )
     .option( '-d, --debug', 'output raw errors' )
-    .option( '-o, --oc', 'run additional custom OpenClinica validation rules and use a custom XPath evaluator' )
+    .option( '-oc, --openclinica', 'run additional custom OpenClinica validation rules and use a custom XPath evaluator' )
     .parse( process.argv );
 
 const xformFile = program.args[ 0 ];
-const options = { debug: program.debug, openclinica: program.oc };
+const options = program.opts();
 
-if ( program.me ) {
+if ( options.me ) {
     console.log( 'You are correct.\nYour feelings matter.\nYou are wonderful and the world is better with you in it.' );
     process.exit( 0 );
 } else if ( xformFile ) {

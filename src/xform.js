@@ -259,7 +259,9 @@ class XForm {
                     const model = new window.FormModel( { modelStr, external } );
                     // Add custom XPath functions
                     if ( ocExtensions ) {
-                        model.bindJsEvaluator( window.addXPathExtensionsOc );
+                        model.bindJsEvaluator = () => {
+                            model.xml.jsEvaluate = window.ocXPathEvaluator.evaluate;
+                        };
                     }
 
                     return model;

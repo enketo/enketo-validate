@@ -28,26 +28,26 @@
     },
     "homepage": "https://github.com/enketo/enketo-validate#readme",
     "dependencies": {
-        "commander": "^7.1.0",
-        "enketo-transformer": "^1.41.6",
-        "enketo-xpath-extensions-oc": "git+https://github.com/OpenClinica/enketo-xpath-extensions-oc.git#efa9830",
-        "jsdom": "^16.4.0",
+        "commander": "^7.2.0",
+        "enketo-transformer": "^1.42.0",
+        "enketo-xpath-extensions-oc": "git+https://github.com/OpenClinica/enketo-xpath-extensions-oc.git#727803c",
+        "jsdom": "^16.5.2",
         "libxslt": "0.9.x",
         "puppeteer": "^8.0.0"
     },
     "devDependencies": {
-        "chai": "^4.3.3",
+        "chai": "^4.3.4",
         "docdash": "^1.2.0",
-        "enketo-core": "5.16.16",
-        "eslint": "^7.21.0",
-        "eslint-plugin-jsdoc": "^32.2.0",
+        "enketo-core": "5.17.4",
+        "eslint": "^7.23.0",
+        "eslint-plugin-jsdoc": "^32.3.0",
         "istanbul-reporter-shield-badge": "^1.2.1",
         "jsdoc": "^3.6.6",
-        "mocha": "^8.3.0",
-        "pkg": "^4.4.9",
+        "mocha": "^8.3.2",
+        "pkg": "^4.5.1",
         "rimraf": "^3.0.2",
-        "rollup": "^2.40.0",
-        "rollup-plugin-commonjs": "^10.1.x",
-        "rollup-plugin-node-resolve": "^5.2.x"
+        "rollup": "^2.44.0",
+        "rollup-plugin-commonjs": "^10.1.0",
+        "rollup-plugin-node-resolve": "^5.2.0"
     }
 }

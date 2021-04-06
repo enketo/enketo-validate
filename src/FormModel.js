@@ -8,11 +8,16 @@
 
 import { FormModel } from 'enketo-core';
 
+import OpenRosaXPath from 'openrosa-xpath-evaluator';
+
 /**
  * @type {Function}
- * @see {@link https://github.com/OpenClinica/enketo-xpath-extensions-oc|addXPathExtensionsOc}
+ * @see {@link https://github.com/OpenClinica/enketo-xpath-extensions-oc|extendXPath}
  */
-import addXPathExtensionsOc from 'enketo-xpath-extensions-oc';
+import extendXPath from 'enketo-xpath-extensions-oc';
 
+const evaluatorOc = OpenRosaXPath();
+extendXPath( evaluatorOc );
+
+window.ocXPathEvaluator = evaluatorOc;
 window.FormModel = FormModel;
-window.addXPathExtensionsOc = addXPathExtensionsOc;
