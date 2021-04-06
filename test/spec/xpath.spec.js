@@ -41,7 +41,7 @@ describe( 'XPath expressions', () => {
 
     describe( 'with function calls with an excessive number of parameters', async() => {
 
-        it( 'should throw an error message for selected()', async() => {
+        xit( 'should throw an error message for selected()', async() => {
             await parsing;
             const expr = 'selected(/data/a, /data/b, 4)';
             const thrown = await testThrownEvaluation( xf, expr );
