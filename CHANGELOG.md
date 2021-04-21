@@ -2,6 +2,12 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+
+[1.13.1] - 2021-04-21
+---------------------
+##### Fixed
+- Various XPath issues by updating enketo-core.
+
 [1.13.0] - 2021-04-06
 ---------------------
 ##### Changed

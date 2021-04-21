@@ -905,7 +905,7 @@
 	 *
 	 * @static
 	 * @param {Node} element - Target element.
-	 * @param {string} [selector] - A CSS selector.
+	 * @param {string} [selector] - A CSS selector for siblings (not for self).
 	 * @return {Array<Node>} Array of sibling nodes plus target element.
 	 */
 	function getSiblingElementsAndSelf( element, selector ) {
@@ -925,6 +925,27 @@
 	}
 
 	/**
+	 * Returns first sibling element (in DOM order) that optionally matches the provided selector.
+	 *
+	 * @param {Node} element - Target element.
+	 * @param {string} [selector] - A CSS selector.
+	 * @return {Node} First sibling element in DOM order
+	 */
+	function getSiblingElement( element, selector = '*' ){
+	    let found;
+	    let current = element.parentElement.firstElementChild;
+
+	    while ( current && !found ) {
+	        if ( current !== element && current.matches( selector ) ) {
+	            found = current;
+	        }
+	        current = current.nextElementSibling;
+	    }
+
+	    return found;
+	}
+
+	/**
 	 * Gets siblings that match selector _in DOM order_.
 	 *
 	 * @param {Node} element - Target element.
@@ -936,7 +957,7 @@
 	    const siblings = startArray;
 	    let prev = element.previousElementSibling;
 	    let next = element.nextElementSibling;
-
+	    // TODO: check if iteration approach used by getSiblingElement is faster. It would be more elegant.
 	    while ( prev ) {
 	        if ( prev.matches( selector ) ) {
 	            siblings.unshift( prev );
@@ -1001,9 +1022,28 @@
 	    return found;
 	}
 
+	/**
+	 * Gets child elements, that (optionally) match a selector.
+	 *
+	 * @param {Node} element - Target element.
+	 * @param {string} selector - A CSS selector.
+	 * @return {Array<Node>} Array of child elements.
+	 */
 	function getChildren( element, selector = '*' ) {
 	    return [ ...element.children ]
 	        .filter( el => el.matches( selector ) );
+	}
+
+	/**
+	 * Gets first child element, that (optionally) matches a selector.
+	 *
+	 * @param {Node} element - Target element.
+	 * @param {string} selector - A CSS selector.
+	 * @return {Node} - First child element.
+	 */
+	function getChild( element, selector = '*' ) {
+	    return [ ...element.children ]
+	        .find( el => el.matches( selector ) );
 	}
 
 	/**
@@ -13947,7 +13987,13 @@
 	          if(cur.dead) {
 	            pushToken(D$1);
 	          } else if(cur.v) {
-	            pushToken(callFn(cur.v, cur.tokens));
+	            if(cur.v.charAt(0) === '/') {
+	              if(cur.tokens.length) err('Unexpected args for node test function!');
+	              cur.v += '()';
+	              handleXpathExpr();
+	            } else {
+	              pushToken(callFn(cur.v, cur.tokens));
+	            }
 	          } else { // bracketed expression
 	            if(cur.tokens.length !== 1) err('Expected one token, but found: ' + cur.tokens.length);
 	            pushToken(cur.tokens[0]);
@@ -13995,6 +14041,10 @@
 	              if(cur.v) handleXpathExpr();
 	              pushOp(EQ$1);
 	          }
+	          break;
+	        case '!':
+	          if(cur.v) handleXpathExpr();
+	          cur.v = c;
 	          break;
 	        case '>':
 	        case '<':
@@ -43455,7 +43505,7 @@
 	    date: function(it) {
 	      return xpr.date(asDate(it));
 	    },
-	    'decimal-date': function(date) {
+	    'decimal-date-time': function(date) {
 	      if(arguments.length > 1) throw TOO_MANY_ARGS;
 	      const res = Date.parse(asString$1(date)) / MILLIS_PER_DAY;
 	      return xpr.number(res);
@@ -43463,7 +43513,7 @@
 	    'decimal-time': function(r) {
 	      if(arguments.length > 1) throw TOO_MANY_ARGS;
 	      if(r.t === 'num') return xpr.number(NaN);
-	      const time = r.v;
+	      const time = asString$1(r);
 	      // There is no Time type, and so far we don't need it so we do all validation
 	      // and conversion here, manually.
 	      const m = time.match(/^(\d\d):(\d\d):(\d\d)(\.\d\d?\d?)?(\+|-)(\d\d):(\d\d)$/);
@@ -43494,8 +43544,8 @@
 	      if(arguments.length === 0) throw TOO_FEW_ARGS;
 	      return xpr.number(distance(asGeopoints(r)));
 	    },
-	    exp: function(r) { return xpr.number(Math.exp(r.v)); },
-	    exp10: function(r) { return xpr.number(Math.pow(10, r.v)); },
+	    exp: function(r) { return xpr.number(Math.exp(asNumber$1(r))); },
+	    exp10: function(r) { return xpr.number(Math.pow(10, asNumber$1(r))); },
 	    'false': function() {
 	      if(arguments.length) throw TOO_MANY_ARGS;
 	      return xpr.boolean(false);
@@ -43509,7 +43559,7 @@
 	    'ends-with': function(a, b) {
 	      if(arguments.length > 2) throw TOO_MANY_ARGS;
 	      if(arguments.length < 2) throw TOO_FEW_ARGS;
-	      return xpr.boolean(a.v.endsWith(b.v));
+	      return xpr.boolean(asString$1(a).endsWith(asString$1(b)));
 	    },
 	    int: function(v) {
 	      return xpr.number(asInteger(v));
@@ -43538,8 +43588,8 @@
 	      // See: https://www.w3.org/TR/1999/REC-xpath-19991116/#function-name
 	      return xpr.string(getNodeName(this, r));
 	    },
-	    log: function(r) { return xpr.number(Math.log(r.v)); },
-	    log10: function(r) { return xpr.number(Math.log10(r.v)); },
+	    log: function(r) { return xpr.number(Math.log(asNumber$1(r))); },
+	    log10: function(r) { return xpr.number(Math.log10(asNumber$1(r))); },
 	    max: function(...args) {
 	      const nums = mapFn(asNumber$1, ...args);
 	      if(!nums.length || nums.some(v => isNaN(v))) return xpr.number(NaN);
@@ -43587,7 +43637,7 @@
 	    not: function(r) {
 	      if(arguments.length === 0) throw TOO_FEW_ARGS;
 	      if(arguments.length > 1) throw TOO_MANY_ARGS;
-	      return xpr.boolean(!r.v);
+	      return xpr.boolean(!asBoolean$1(r));
 	    },
 	    now: function() {
 	      return xpr.date(new Date());
@@ -43642,6 +43692,8 @@
 	    randomize: function(r, seed) {
 	      if(!arguments.length) throw TOO_FEW_ARGS;//only rT passed
 	      if(arguments.length > 2) throw TOO_MANY_ARGS;
+	      if(!r || r.t !== 'arr') throw new Error('randomize() must be called on a nodeset');
+
 
 	      seed = seed && asNumber$1(seed);
 
@@ -43672,7 +43724,7 @@
 	      return xpr.string(asString$1(list).split(' ')[asInteger(index)] || '');
 	    },
 	    sin: function(r) { return xpr.number(Math.sin(asNumber$1(r))); },
-	    sqrt: function(r) { return xpr.number(Math.sqrt(r.v)); },
+	    sqrt: function(r) { return xpr.number(Math.sqrt(asNumber$1(r))); },
 	    string: function(r) {
 	      if(arguments.length > 1) throw new Error(`string() passed wrong arg count (expected 0 or 1, but got ${arguments.length})`);
 	      return xpr.string(asString$1(r || this.cN));
@@ -43698,7 +43750,7 @@
 	      return xpr.boolean(true);
 	    },
 	    uuid: function(r) {
-	      if(r && r.v) return xpr.string(randomToken(r.v));
+	      if(r) return xpr.string(randomToken(asNumber$1(r)));
 	      return xpr.string(uuid());
 	    },
 	    'weighted-checklist': function(min, max, ...list) {
@@ -43725,7 +43777,6 @@
 
 	  // function aliases
 	  func['date-time'] = func.date;
-	  func['decimal-date-time'] = func['decimal-date'];
 	  func['format-date-time'] = func['format-date'];
 
 	  const process = {
@@ -44042,7 +44093,7 @@
 	     * @type {string}
 	     */
 	    get version() {
-	        return this.evaluate( '/node()/@version', 'string', null, null, true );
+	        return this.evaluate( '/*/@version', 'string', null, null, true );
 	    },
 	    /**
 	     * @type {string}
@@ -45085,7 +45136,7 @@
 	    const versions = parseFunctionFromExpression( expr, 'version' );
 
 	    versions.forEach( versionPart => {
-	        version = version || that.evaluate( '/node()/@version', 'string', null, 0, true );
+	        version = version || that.evaluate( '/*/@version', 'string', null, 0, true );
 	        // ignore arguments
 	        expr = expr.replace( versionPart[ 0 ], `"${version}"` );
 	    } );
@@ -45946,12 +45997,12 @@
 
 	            let input;
 	            if ( templateNodeName === 'label' ) {
-	                const optionInput = getChildren( template, 'input' )[ 0 ];
+	                const optionInput = getChild( template, 'input' );
 	                [].slice.call( optionInput.attributes ).forEach( attr => {
 	                    inputAttributes[ attr.name ] = attr.value;
 	                } );
 	                // If this is a ranking widget:
-	                input = optionInput.classList.contains( 'ignore' ) ? getSiblingElements( optionInput.closest( '.option-wrapper' ), 'input.rank' )[ 0 ] : optionInput;
+	                input = optionInput.classList.contains( 'ignore' ) ? getSiblingElement( optionInput.closest( '.option-wrapper' ), 'input.rank' ) : optionInput;
 	            } else if ( list && list.nodeName.toLowerCase() === 'select' ) {
 	                input = list;
 	            } else if ( list && list.nodeName.toLowerCase() === 'datalist' ) {
@@ -45959,11 +46010,11 @@
 	                    // only the first input, is that okay?
 	                    input = that.form.view.html.querySelector( `input[name="${list.dataset.name}"]` );
 	                } else {
-	                    input = getSiblingElements( list, 'input:not(.widget)' )[ 0 ];
+	                    input = getSiblingElement( list, 'input:not(.widget)' );
 	                }
 	            }
 
-	            const labelsContainer = getSiblingElements( template.closest( 'label, select, datalist' ), '.itemset-labels' )[ 0 ];
+	            const labelsContainer = getSiblingElement( template.closest( 'label, select, datalist' ), '.itemset-labels' );
 	            const itemsXpath = template.dataset.itemsPath;
 	            let labelType = labelsContainer.dataset.labelType;
 	            let labelRef = labelsContainer.dataset.labelRef;
@@ -46623,8 +46674,7 @@
 	                this.fixDatalistId( datalist );
 	            } else {
 	                const id = datalist.id;
-	                const inputs = getSiblingElements( datalist, 'input[list]' );
-	                const input = inputs.length ? inputs[ 0 ] : null;
+	                const input = getSiblingElement( datalist, 'input[list]' );
 
 	                if ( input ) {
 	                    // For very long static datalists, a huge performance improvement can be achieved, by using the
@@ -46707,7 +46757,7 @@
 	                        // or-repeat-info is only considered a page by itself if it has no sibling repeats
 	                        // When there are siblings repeats, we use CSS trickery to show the + button underneath the last
 	                        // repeat.
-	                        ( tocEl.matches( '.or-repeat-info' ) && getSiblingElements( tocEl, '.or-repeat' ).length === 0 ) );
+	                        ( tocEl.matches( '.or-repeat-info' ) && !getSiblingElement( tocEl, '.or-repeat' ) ) );
 	            } )
 	            .filter( tocEl => !tocEl.classList.contains( 'or-repeat-info' ) );
 	        tocElements.forEach( ( element, index ) => {
@@ -46890,6 +46940,7 @@
 	                this.$btnFirst = this.$formFooter.find( '.first-page' );
 	                this.$btnPrev = this.$formFooter.find( '.previous-page' );
 	                this.$btnNext = this.$formFooter.find( '.next-page' );
+	                this.$btnNext.attr( 'tabindex', 2 );
 	                this.$btnLast = this.$formFooter.find( '.last-page' );
 	                this.$toc = jquery( formWrapper.querySelector( '.pages-toc__list' ) );
 	                this._updateAllActive( allPages );
@@ -47098,7 +47149,7 @@
 	                    // or-repeat-info is only considered a page by itself if it has no sibling repeats
 	                    // When there are siblings repeats, we use CSS trickery to show the + button underneath the last
 	                    // repeat.
-	                    ( el.matches( '.or-repeat-info' ) && getSiblingElements( el, '.or-repeat' ).length === 0 ) );
+	                    ( el.matches( '.or-repeat-info' ) && !getSiblingElement( el, '.or-repeat' ) ) );
 	        } );
 	        this._updateToc();
 	    },
@@ -47202,6 +47253,7 @@
 	            this._focusOnFirstQuestion( pageEl );
 	            this._toggleButtons( newIndex );
 	            pageEl.dispatchEvent( events.PageFlip() );
+	            pageEl.setAttribute( 'tabindex', 1 );
 	        }
 	    },
 	    /**
@@ -47233,6 +47285,9 @@
 	            .find( 'input, select, textarea' )
 	            .eq( 0 )
 	            .trigger( 'fakefocus' );
+
+	        // focus on element
+	        pageEl.focus();
 
 	        pageEl.scrollIntoView();
 	    },
@@ -47323,7 +47378,7 @@
 	                const parentPath = pathParts.splice( 0, pathParts.length - 1 ).join( '/' );
 	                const parentGroups = [ ...this.form.view.html.querySelectorAll( `.or-group[name="${parentPath}"],.or-group-data[name="${parentPath}"]` ) ]
 	                    // now remove the groups that have a repeat-info child without repeat instance siblings
-	                    .filter( group => getChildren( group, '.or-repeat' ).length > 0 || getChildren( group, '.or-repeat-info' ).length === 0 );
+	                    .filter( group => getChild( group, '.or-repeat' ) || !getChild( group, '.or-repeat-info' ) );
 	                // If the parent doesn't exist in the DOM it means there is a repeat ancestor and there are no instances of that repeat.
 	                // Hence that relevant does not need to be evaluated (and would fail otherwise because the context doesn't exist).
 	                if ( parentGroups.length === 0 ) {
@@ -47346,7 +47401,7 @@
 	             * but currently has 0 repeats, the context will not be available. This same logic is applied in output.js.
 	             */
 	            let context = p.path;
-	            if ( getChildren( node, `.or-repeat-info[data-name="${p.path}"]` ).length && !getChildren( node,  `.or-repeat[name="${p.path}"]` ).length ) {
+	            if ( getChild( node, `.or-repeat-info[data-name="${p.path}"]` ) && !getChild( node,  `.or-repeat[name="${p.path}"]` ) ) {
 	                context = null;
 	            }
 
@@ -48620,9 +48675,9 @@
 	    _init() {
 	        const listId = this.element.getAttribute( 'list' );
 
-	        if ( getSiblingElements( this.element, 'datalist' ).length === 0 ) {
-	            const infos = getSiblingElements( this.element.closest( '.or-repeat' ), '.or-repeat-info' );
-	            this.options = infos.length ? [ ...infos[ 0 ].querySelectorAll( `datalist#${CSS.escape( listId )} > option` ) ] : [];
+	        if ( !getSiblingElement( this.element, 'datalist' ) ) {
+	            const info = getSiblingElement( this.element.closest( '.or-repeat' ), '.or-repeat-info' );
+	            this.options = info ? [ ...info.querySelectorAll( `datalist#${CSS.escape( listId )} > option` ) ] : [];
 	        } else {
 	            this.options = [ ...this.question.querySelectorAll( `datalist#${CSS.escape( listId )} > option` ) ];
 	        }
@@ -68976,7 +69031,7 @@
 
 	    _init() {
 	        this.element.querySelectorAll( '.option-label' ).forEach( function( optionLabel ) {
-	            if ( getSiblingElements( optionLabel, 'img, video, audio' ).length > 0 ) {
+	            if ( getSiblingElement( optionLabel, 'img, video, audio' ) ) {
 	                optionLabel.style.display = 'none';
 	            }
 	        } );
@@ -71558,8 +71613,8 @@
 	        this.svg.querySelectorAll( SELECTORS ).forEach( el => {
 	            el.addEventListener( 'mouseenter', ev => {
 	                const id = ev.target.id || ev.target.closest( 'g[id]' ).id;
-	                const labels = getSiblingElements( this._getInput( id ), '.option-label.active' );
-	                const optionLabel = labels && labels.length ? labels[0].textContent : '';
+	                const label = getSiblingElement( this._getInput( id ), '.option-label.active' );
+	                const optionLabel = label ? label.textContent : '';
 	                this.tooltip.textContent = optionLabel;
 	            } );
 	            el.addEventListener( 'mouseleave', ev => {
@@ -73802,7 +73857,7 @@
 	        translations.forEach( el => el.classList.remove( 'active' ) );
 	        translations
 	            .filter( el => el.matches( `[lang="${lang}"], [lang=""]` ) &&
-	                ( !el.classList.contains( 'or-form-short' ) || ( el.classList.contains( 'or-form-short' ) && getSiblingElements( el, '.or-form-long' ).length === 0 ) ) )
+	                ( !el.classList.contains( 'or-form-short' ) || ( el.classList.contains( 'or-form-short' ) && !getSiblingElement( el, '.or-form-long' ) ) ) )
 	            .forEach( el => el.classList.add(
 	                'active'
 	            ) );
@@ -74548,6 +74603,12 @@
 	            const empty = !node.value && !node.dataset.calculate && !setValue && !node.classList.contains( 'readonly-forced' );
 
 	            node.classList.toggle( 'empty', empty );
+
+	            if( empty ){
+	                node.setAttribute( 'aria-hidden', 'true' );
+	            }else {
+	                node.removeAttribute( 'aria-hidden' );
+	            }
 	        } );
 	    }
 	};
@@ -74966,19 +75027,19 @@
 	            if ( !value || !inputs.length ) {
 	                label = '';
 	            } else if (  nodeName === 'select' ) {
-	                const found = inputs.filter( input => input.querySelector( `[value="${value}"]` ) );
-	                label =  found.length ? found[0].querySelector( `[value="${value}"]` ).textContent : '';
+	                const found = inputs.find( input => input.querySelector( `[value="${value}"]` ) );
+	                label =  found ? found.querySelector( `[value="${value}"]` ).textContent : '';
 	            } else if (  nodeName === 'input' ) {
 	                const list = inputs[0].getAttribute( 'list' );
 
 	                if ( !list ){
-	                    const found = inputs.filter( input => input.getAttribute( 'value' ) === value );
-	                    const siblingLabelEls = found.length ? getSiblingElements( found[0], '.option-label.active' ) : [];
-	                    label = siblingLabelEls.length ? siblingLabelEls[0].textContent : '';
+	                    const found = inputs.find( input => input.getAttribute( 'value' ) === value );
+	                    const firstSiblingLabelEl = found ? getSiblingElement( found, '.option-label.active' ) : [];
+	                    label = firstSiblingLabelEl ? firstSiblingLabelEl.textContent : '';
 	                } else {
-	                    const siblingListEls = getSiblingElements( inputs[0], `datalist#${CSS.escape( list )}` );
-	                    if ( siblingListEls.length ){
-	                        const optionEl = siblingListEls[0].querySelector( `[data-value="${value}"]` );
+	                    const firstSiblingListEl = getSiblingElement( inputs[0], `datalist#${CSS.escape( list )}` );
+	                    if ( firstSiblingListEl ){
+	                        const optionEl = firstSiblingListEl.querySelector( `[data-value="${value}"]` );
 	                        label = optionEl ? optionEl.getAttribute( 'value' ) : '';
 	                    }
 	                }
@@ -75200,7 +75261,7 @@
 	         * If the relevant is placed on a group and that group contains repeats with the same name,
 	         * but currently has 0 repeats, the context will not be available.
 	         */
-	        if ( getChildren( node, `.or-repeat-info[data-name="${path}"]` ).length && !getChildren( node,  `.or-repeat[name="${path}"]` ).length ) {
+	        if ( getChild( node, `.or-repeat-info[data-name="${path}"]` ) && !getChild( node,  `.or-repeat[name="${path}"]` ) ) {
 	            target = null;
 	        } else {
 	            // If a calculation without a form control (i.e. in .calculated-items) inside a repeat
@@ -75315,6 +75376,7 @@
 	        // update the form progress status
 	        this.progress.update( event.target );
 	    } );
+
 	    this.view.html.addEventListener( events.FakeFocus().type, event => {
 	        // update the form progress status
 	        this.progress.update( event.target );

@@ -1,6 +1,6 @@
 {
     "name": "enketo-validate",
-    "version": "1.13.0",
+    "version": "1.13.1",
     "description": "An XForm validator around Enketo's form engine",
     "main": "src/validator.js",
     "bin": "./validate",
@@ -38,7 +38,7 @@
     "devDependencies": {
         "chai": "^4.3.4",
         "docdash": "^1.2.0",
-        "enketo-core": "5.17.4",
+        "enketo-core": "5.17.6",
         "eslint": "^7.23.0",
         "eslint-plugin-jsdoc": "^32.3.0",
         "istanbul-reporter-shield-badge": "^1.2.1",
