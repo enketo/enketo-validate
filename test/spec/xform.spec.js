@@ -10,18 +10,18 @@ const arrContains = ( arr, reg ) => arr.some( item => item.search( reg ) !== -1 
 describe( 'XForm', () => {
 
     describe( 'that is valid', () => {
-        const xf =  loadXForm( 'model-only.xml' );
+        const xf = loadXForm( 'model-only.xml' );
         it( 'returns duration', async() => {
             const result = await validator.validate( xf );
-            expect( result.duration ).to.be.above( 1 );
+            expect( result.duration ).to.be.above( 0 );
         } );
     } );
 
     describe( 'that is invalid', () => {
-        const xf =  loadXForm( 'missing-closing-tag.xml' );
+        const xf = loadXForm( 'missing-closing-tag.xml' );
         it( 'returns duration', async() => {
             const result = await validator.validate( xf );
-            expect( result.duration ).to.be.above( 1 );
+            expect( result.duration ).to.be.above( 0 );
         } );
     } );
 
@@ -32,7 +32,7 @@ describe( 'XForm', () => {
             const result = await validator.validate( xf );
             expect( result.warnings.length ).to.equal( 0 );
             expect( result.errors.length ).to.equal( 1 );
-            expect( result.errors[ 0 ] ).to.include( 'not exist' );
+            expect( result.errors[0] ).to.include( 'not exist' );
         } );
     } );
 
@@ -41,7 +41,7 @@ describe( 'XForm', () => {
         it( 'should return a error', async() => {
             const result = await validator.validate( xf );
             expect( result.errors.length ).to.equal( 1 );
-            expect( result.errors[ 0 ] ).to.include( 'instanceID' );
+            expect( result.errors[0] ).to.include( 'instanceID' );
         } );
     } );
 
@@ -50,7 +50,7 @@ describe( 'XForm', () => {
         it( 'should return an error', async() => {
             const result = await validator.validate( xf );
             expect( result.errors.length ).to.equal( 1 );
-            expect( result.errors[ 0 ] ).to.include( 'without a nodeset attribute' );
+            expect( result.errors[0] ).to.include( 'without a nodeset attribute' );
         } );
     } );
 
@@ -85,7 +85,7 @@ describe( 'XForm', () => {
             const result2 = await validation2;
             expect( arrContains( result2.errors, /head.*namespace/i ) ).to.equal( true );
         } );
-        it( 'should return a body not found error',async() => {
+        it( 'should return a body not found error', async() => {
             const result2 = await validation2;
             expect( arrContains( result2.errors, /body/i ) ).to.equal( true );
         } );
@@ -150,8 +150,8 @@ describe( 'XForm', () => {
     describe( 'with calculations on a form control that are not set to readonly', () => {
         const validation = validator.validate( loadXForm( 'calculation-not-readonly.xml' ) );
 
-        it( 'outputs errors',async() => {
-            const result =  await validation;
+        it( 'outputs errors', async() => {
+            const result = await validation;
             expect( arrContains( result.errors, /"a" has a calculation that is not set to readonly/i ) ).to.equal( true );
         } );
     } );
@@ -159,24 +159,26 @@ describe( 'XForm', () => {
     describe( 'validated with custom OpenClinica rules', () => {
 
         describe( 'forms with special clinicaldata extensions', () => {
-            const validation = validator.validate( loadXForm( 'openclinica-clinicaldata.xml' ), { openclinica: true } );
+            const validation = validator.validate( loadXForm( 'openclinica-clinicaldata.xml' ), {
+                openclinica: true
+            } );
 
-            it( 'outputs errors',async() => {
-                const result =  await validation;
+            it( 'outputs errors', async() => {
+                const result = await validation;
                 expect( result.errors.length ).to.equal( 6 );
             } );
 
             it( 'outputs errors for calculations without form control that refer to external ' +
-            'clinicaldata instance but do not have the oc:external="clinicaldata" bind',async() => {
-                const result =  await validation;
+                'clinicaldata instance but do not have the oc:external="clinicaldata" bind', async() => {
+                const result = await validation;
                 expect( arrContains( result.errors, /"invalid1" .* to external clinicaldata without the required "external" attribute/i ) ).to.equal( true );
                 expect( arrContains( result.errors, /"invalid2" .* to external clinicaldata without the required "external" attribute/i ) ).to.equal( true );
                 expect( arrContains( result.errors, /"invalid3" .* to external clinicaldata without the required "external" attribute/i ) ).to.equal( true );
             } );
 
             it( 'outputs errors for binds with oc:external="clinicaldata" that do not ' +
-            'do not have a calculation that refers to instance(\'clinicaldata\')', async() => {
-                const result =  await validation;
+                'do not have a calculation that refers to instance(\'clinicaldata\')', async() => {
+                const result = await validation;
                 expect( arrContains( result.errors, /"invalid4" .* not .* calculation referring to instance\('clinicaldata'\)/i ) ).to.equal( true );
                 expect( arrContains( result.errors, /"invalid5" .* not .* calculation referring to instance\('clinicaldata'\)/i ) ).to.equal( true );
                 expect( arrContains( result.errors, /"invalid6" .* not .* calculation referring to instance\('clinicaldata'\)/i ) ).to.equal( true );
@@ -185,7 +187,9 @@ describe( 'XForm', () => {
         } );
 
         describe( 'forms with special multiple constraints extensions', () => {
-            const validation = validator.validate( loadXForm( 'openclinica-multiple-constraints-fails.xml' ), { openclinica: true } );
+            const validation = validator.validate( loadXForm( 'openclinica-multiple-constraints-fails.xml' ), {
+                openclinica: true
+            } );
 
             it( 'outputs errors', async() => {
                 const result = await validation;
@@ -202,12 +206,36 @@ describe( 'XForm', () => {
             } );
         } );
 
+        describe( 'forms using the special last-saved instance', () => {
+            const validation = validator.validate( loadXForm( 'last-saved.xml' ), {
+                openclinica: true
+            } );
+
+            it( 'outputs an error', async() => {
+                const result = await validation;
+                expect( result.errors.length ).to.equal( 1 );
+                expect( arrContains( result.errors, /last-saved\s+not supported/ ) );
+            } );
+        } );
+
+    } );
+
+    // This test is to confirm the opposite behavior of the behavior in OpenClinica mode to ensure that behavior is isolated.
+    describe( 'forms using the special last-saved instance', () => {
+        const validation = validator.validate( loadXForm( 'last-saved.xml' ) );
+
+        it( 'does not output an error', async() => {
+            const result = await validation;
+            expect( result.errors.length ).to.equal( 0 );
+        } );
     } );
 
     describe( 'with incorrect appearance usage', () => {
         const xf = loadXForm( 'appearances.xml' );
         const validation = validator.validate( xf );
-        const validationOc = validator.validate( xf, { openclinica: true } );
+        const validationOc = validator.validate( xf, {
+            openclinica: true
+        } );
         const WARNINGS = 14;
         const ERRORS = 1;
 
@@ -259,7 +287,7 @@ describe( 'XForm', () => {
             expect( arrContains( result.warnings, /"horizontal" for question "one".+not valid.+\(group\)/i ) ).to.equal( true );
         } );
 
-        it ( 'for custom analog-scale widgets', async() => {
+        it( 'for custom analog-scale widgets', async() => {
             const result = await validator.validate( loadXForm( 'openclinica-analog-scale.xml' ) );
             expect( result.warnings.length ).to.equal( 2 );
             expect( arrContains( result.warnings, /"show-scale" for question "d" .+ combination .+no-ticks/i ) ).to.equal( true );
@@ -350,7 +378,9 @@ describe( 'XForm', () => {
 
 describe( 'XForm Class', () => {
     it( 'should throw if XForm string not provided', () => {
-        let failure = () => { new XForm(); };
+        let failure = () => {
+            new XForm();
+        };
         expect( failure ).to.throw();
     } );
 
