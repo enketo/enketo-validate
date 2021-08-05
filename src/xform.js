@@ -68,6 +68,15 @@ class XForm {
     /**
      * @type {Array<Node>}
      */
+    get instances() {
+        this._instances = this._instances || [ ...this.doc.querySelectorAll( 'model > instance' ) ];
+
+        return this._instances;
+    }
+
+    /**
+     * @type {Array<Node>}
+     */
     get binds() {
         this._binds = this._binds || [ ...this.doc.querySelectorAll( 'bind' ) ];
 
@@ -666,6 +675,16 @@ class XForm {
                 }
 
                 missingAttributes.forEach( arr => errors.push( `Missing matching oc:${arr[0]} for oc:${arr[1]} for question "${question}".` ) );
+            } );
+
+
+        // check for use of last-saved feature
+        this.instances
+            .forEach( instance => {
+                const src = instance.getAttribute( 'src' );
+                if ( /\s?jr:\/\/instance\/last-saved/.test( src ) ){
+                    errors.push( 'The form includes the use of the "last-saved" feature. This feature is not supported.' );
+                }
             } );
     }
 
