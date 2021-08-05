@@ -28,25 +28,25 @@
     },
     "homepage": "https://github.com/enketo/enketo-validate#readme",
     "dependencies": {
-        "commander": "^7.2.0",
-        "enketo-transformer": "^1.42.0",
+        "commander": "^8.1.0",
+        "enketo-transformer": "^1.43.0",
         "enketo-xpath-extensions-oc": "git+https://github.com/OpenClinica/enketo-xpath-extensions-oc.git#727803c",
-        "jsdom": "^16.5.2",
-        "libxslt": "0.9.x",
-        "puppeteer": "^8.0.0"
+        "jsdom": "^16.7.0",
+        "libxslt": "0.10.0",
+        "puppeteer": "^10.2.0"
     },
     "devDependencies": {
         "chai": "^4.3.4",
         "docdash": "^1.2.0",
-        "enketo-core": "5.17.6",
-        "eslint": "^7.23.0",
-        "eslint-plugin-jsdoc": "^32.3.0",
+        "enketo-core": "5.18.1",
+        "eslint": "^7.32.0",
+        "eslint-plugin-jsdoc": "^36.0.6",
         "istanbul-reporter-shield-badge": "^1.2.1",
-        "jsdoc": "^3.6.6",
-        "mocha": "^8.3.2",
-        "pkg": "^4.5.1",
+        "jsdoc": "^3.6.7",
+        "mocha": "^9.0.3",
+        "pkg": "^5.3.1",
         "rimraf": "^3.0.2",
-        "rollup": "^2.44.0",
+        "rollup": "^2.56.0",
         "rollup-plugin-commonjs": "^10.1.0",
         "rollup-plugin-node-resolve": "^5.2.0"
     }
