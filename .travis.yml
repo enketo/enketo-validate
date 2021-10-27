@@ -5,6 +5,8 @@ node_js:
   - '16'
 os:
   - linux
+before_install:
+  - npm install -g npm@^6
 addons:
   apt:
     packages:
