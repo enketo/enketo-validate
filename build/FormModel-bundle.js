@@ -75,8 +75,8 @@
 	        var p = typeof opts === 'object' && typeof opts.path === 'string' ? opts.path : '';
 	        try {  //obtain xml support
 	          commonjsGlobal.XPathEvaluator = commonjsRequire(p + 'xpath');
-	          commonjsGlobal.DOMParser = commonjsRequire(p + 'xmldom').DOMParser;
-	          commonjsGlobal.XMLSerializer = commonjsRequire(p + 'xmldom').XMLSerializer;
+	          commonjsGlobal.DOMParser = commonjsRequire((p || '@xmldom/') + 'xmldom').DOMParser;
+	          commonjsGlobal.XMLSerializer = commonjsRequire((p || '@xmldom/') + 'xmldom').XMLSerializer;
 	        } catch (e) {
 	          console.log(e.message);
 	        }
@@ -1051,7 +1051,7 @@
 
 	/**
 	 * @param {Element} el - Target node
-	 * @return {boolean} Whether previous sibling has same node name
+	 * @return {boolean} Whether previous sibling has the same node name
 	 */
 	function hasPreviousSiblingElementSameName( el ) {
 	    let found = false;
@@ -1069,6 +1069,36 @@
 	    }
 
 	    return found;
+	}
+
+	/**
+	 * @param {Element} el - Target node
+	 * @return {boolean} Whether next sibling has the same node name
+	 */
+	function hasNextSiblingElementSameName( el ) {
+	    let found = false;
+	    const nodeName = el.nodeName;
+	    el = el.nextSibling;
+
+	    while ( el ) {
+	        // Ignore any sibling text and comment nodes (e.g. whitespace with a newline character)
+	        // also deal with repeats that have non-repeat siblings in between them, event though that would be a bug.
+	        if ( el.nodeName && el.nodeName === nodeName ) {
+	            found = true;
+	            break;
+	        }
+	        el = el.nextSibling;
+	    }
+
+	    return found;
+	}
+
+	/**
+	 * @param {Element} el - Target node
+	 * @return {boolean} Whether a sibling has the same node name
+	 */
+	function hasSiblingElementSameName( el ) {
+	    return hasNextSiblingElementSameName( el ) || hasPreviousSiblingElementSameName( el );
 	}
 
 	/**
@@ -1123,7 +1153,7 @@
 	    while ( parent && parentName !== rootNodeName && parentName !== '#document' ) {
 	        if ( includePosition ) {
 	            index = getRepeatIndex( parent );
-	            position = ( index > 0 ) ? `[${index + 1}]` : '';
+	            position = hasSiblingElementSameName( parent ) ? `[${index + 1}]` : '';
 	        }
 	        steps.push( parentName + position );
 	        parent = parent.parentElement;
@@ -1333,21 +1363,24 @@
 	};
 
 	// imported from https://github.com/enketo/enketo-xpathjs/blob/master/src/date-extensions.js
-	// TODO probably shouldn't be changing Date.prototype
+	// TODO probably shouldn't be changing Date.prototype - when these can be safely removed,
+	// these functions would probably more appropriately be in utils/date.js
+
 	/**
 	 * Converts a native Date UTC String to a RFC 3339-compliant date string with local offsets
 	 * used in ODK, so it replaces the Z in the ISOstring with a local offset
+	 * @param {Date} date
 	 * @return {string} a datetime string formatted according to RC3339 with local offset
 	 */
-	Date.prototype.toISOLocalString = function() {
+	const toISOLocalString$1 = (date) => {
 	  //2012-09-05T12:57:00.000-04:00 (ODK)
 
-	  if(this.toString() === 'Invalid Date') {
-	    return this.toString();
+	  if(date.toString() === 'Invalid Date') {
+	    return date.toString();
 	  }
 
-	  var dt = new Date(this.getTime() - (this.getTimezoneOffset() * 60 * 1000)).toISOString()
-	      .replace('Z', this.getTimezoneOffsetAsTime());
+	  var dt = new Date(date.getTime() - (date.getTimezoneOffset() * 60 * 1000)).toISOString()
+	      .replace('Z', getTimezoneOffsetAsTime$1(date));
 
 	  if(dt.indexOf('T00:00:00.000') > 0) {
 	    return dt.split('T')[0];
@@ -1356,7 +1389,11 @@
 	  }
 	};
 
-	Date.prototype.getTimezoneOffsetAsTime = function() {
+	/**
+	 * @param {Date} date
+	 * @return {string}
+	 */
+	const getTimezoneOffsetAsTime$1 = (date) => {
 	  var offsetMinutesTotal;
 	  var hours;
 	  var minutes;
@@ -1365,11 +1402,11 @@
 	    return (x < 10) ? '0' + x : x;
 	  };
 
-	  if(this.toString() === 'Invalid Date') {
-	    return this.toString();
+	  if(date.toString() === 'Invalid Date') {
+	    return date.toString();
 	  }
 
-	  offsetMinutesTotal = this.getTimezoneOffset();
+	  offsetMinutesTotal = date.getTimezoneOffset();
 
 	  direction = (offsetMinutesTotal < 0) ? '+' : '-';
 	  hours = pad2(Math.floor(Math.abs(offsetMinutesTotal / 60)));
@@ -1377,6 +1414,29 @@
 
 	  return direction + hours + ':' + minutes;
 	};
+
+	/**
+	 * @deprecated
+	 * @see {toISOLocalString}
+	 */
+	Date.prototype.toISOLocalString = function() {
+	  return toISOLocalString$1(this);
+	};
+
+	/**
+	 * @deprecated
+	 * @see {getTimezoneOffsetAsTime}
+	 */
+	Date.prototype.getTimezoneOffsetAsTime = function() {
+	  return getTimezoneOffsetAsTime$1(this);
+	};
+
+	var dateExtensions = {
+	  getTimezoneOffsetAsTime: getTimezoneOffsetAsTime$1,
+	  toISOLocalString: toISOLocalString$1,
+	};
+	var dateExtensions_1 = dateExtensions.getTimezoneOffsetAsTime;
+	var dateExtensions_2 = dateExtensions.toISOLocalString;
 
 	/**
 	 * @module format
@@ -1651,11 +1711,11 @@
 	            } else {
 	                const convertedDate = types.date.convert( parts[ 0 ] );
 	                if ( convertedDate ) {
-	                    return `${convertedDate}T00:00:00.000${( new Date() ).getTimezoneOffsetAsTime()}`;
+	                    return `${convertedDate}T00:00:00.000${dateExtensions_1( new Date() )}`;
 	                }
 	            }
 
-	            return date.toString() !== 'Invalid Date' ? date.toISOLocalString() : '';
+	            return date.toString() !== 'Invalid Date' ? dateExtensions_2( date ) : '';
 	        }
 	    },
 	    /**
@@ -1712,7 +1772,7 @@
 	                // We can test this by trying to convert to a date.
 	                date = new Date( x );
 	                if ( date.toString() !== 'Invalid Date' ) {
-	                    x = `${date.getHours()}:${date.getMinutes()}:${date.getSeconds()}.${date.getMilliseconds()}${date.getTimezoneOffsetAsTime()}`;
+	                    x = `${date.getHours()}:${date.getMinutes()}:${date.getSeconds()}.${date.getMilliseconds()}${dateExtensions_1( date )}`;
 	                } else {
 	                    return '';
 	                }
@@ -1736,7 +1796,7 @@
 	            o.milliseconds = secs[ 1 ] || ( requireMillis ? '000' : undefined );
 
 	            if ( tz.length === 0 ) {
-	                offset = new Date().getTimezoneOffsetAsTime();
+	                offset = dateExtensions_1( new Date() );
 	            } else {
 	                offset = `${tz[0] + tz[1].padStart( 2, '0' )}:${tz[2] ? tz[2].padStart( 2, '0' ) : '00'}`;
 	            }
@@ -13019,7 +13079,7 @@
 
 	    // cache evaluation result
 	    if ( !this._nodes ) {
-	        this._nodes = this.model.evaluate( this.selector, 'nodes', null, null, true );
+	        this._nodes = this.model.evaluate( this.selector, 'nodes-ordered', null, null, true );
 	        // noEmpty automatically excludes non-leaf nodes
 	        if ( this.filter.noEmpty === true ) {
 	            this._nodes = this._nodes
@@ -13369,6 +13429,7 @@
 	};
 
 	const { DATE_STRING: DATE_STRING$1, dateToDays, dateStringToDays: dateStringToDays$1 } = date;
+	const { toISOLocalString } = dateExtensions;
 
 	var xpathCast = {
 	  asBoolean: asBoolean$4,
@@ -13404,7 +13465,7 @@
 	  switch(r.t) {
 	    case 'str':  return r.v;
 	    case 'arr':  return r.v.length ? r.v[0].textContent || '' : '';
-	    case 'date': return r.v.toISOLocalString().replace(/T00:00:00.000.*/, ''); // TODO should be handled in an extension rather than core code
+	    case 'date': return toISOLocalString(r.v).replace(/T00:00:00.000.*/, ''); // TODO should be handled in an extension rather than core code
 	    case 'num':
 	    case 'bool':
 	    default:     return r.v.toString();
@@ -43429,6 +43490,7 @@
 
 	var shuffle_1 = shuffle;
 
+	const { getTimezoneOffsetAsTime } = dateExtensions;
 	const { asGeopoints, area, distance } = geo;
 
 	const { randomToken } = randomToken_1;
@@ -43450,7 +43512,6 @@
 	  const
 	      TOO_MANY_ARGS = new Error('too many args'),
 	      TOO_FEW_ARGS = new Error('too few args'),
-	      MILLIS_PER_DAY = 1000 * 60 * 60 * 24,
 	      _round = function(num) {
 	        if(num < 0) {
 	          return -Math.round(-num);
@@ -43582,10 +43643,12 @@
 	    date: function(it) {
 	      return xpr.date(asDate(it));
 	    },
-	    'decimal-date-time': function(date) {
+	    'decimal-date-time': function(r) {
 	      if(arguments.length > 1) throw TOO_MANY_ARGS;
-	      const res = Date.parse(asString$1(date)) / MILLIS_PER_DAY;
-	      return xpr.number(res);
+
+	      const days = dateStringToDays(asString$1(r));
+
+	      return xpr.number(days);
 	    },
 	    'decimal-time': function(r) {
 	      if(arguments.length > 1) throw TOO_MANY_ARGS;
@@ -43993,7 +44056,7 @@
 	        temp = r.split('-');
 	        if(isValidDate(temp[0], temp[1], temp[2])) {
 	          const time = `${_zeroPad(temp[0])}-${_zeroPad(temp[1])}-${_zeroPad(temp[2])}`+
-	            'T00:00:00.000' + (new Date(r)).getTimezoneOffsetAsTime();
+	            'T00:00:00.000' + getTimezoneOffsetAsTime(new Date(r));
 	          return new Date(time);
 	        }
 	      }
@@ -44542,15 +44605,15 @@
 	            const instanceNode = that.node( path, 0 ).getElement();
 	            if ( instanceNode ) {
 	                // TODO: after dropping support for IE11, we can also use instanceNode.children.length
-	                if ( that.evaluate( './*', 'nodes', path, 0, true ).length === 0 ) {
+	                if ( that.evaluate( './*', 'nodes-ordered', path, 0, true ).length === 0 ) {
 	                    // Select all text nodes (excluding repeat COMMENT nodes!)
-	                    that.evaluate( './text()', 'nodes', path, 0, true ).forEach( node => {
+	                    that.evaluate( './text()', 'nodes-ordered', path, 0, true ).forEach( node => {
 	                        node.textContent = '';
 	                    } );
 	                } else {
 	                    // If the node in the default instance is a group (empty in record, so appears to be a leaf node
 	                    // but isn't), empty all true leaf node descendants.
-	                    that.evaluate( './/*[not(*)]', 'nodes', path, 0, true ).forEach( node => {
+	                    that.evaluate( './/*[not(*)]', 'nodes-ordered', path, 0, true ).forEach( node => {
 	                        node.textContent = '';
 	                    } );
 	                }
@@ -44710,7 +44773,7 @@
 	 * @return {Element} node
 	 */
 	FormModel.prototype.getRepeatCommentEl = function( repeatPath, repeatSeriesIndex ) {
-	    return this.evaluate( this.getRepeatCommentSelector( repeatPath ), 'nodes', null, null, true )[ repeatSeriesIndex ];
+	    return this.evaluate( this.getRepeatCommentSelector( repeatPath ), 'nodes-ordered', null, null, true )[ repeatSeriesIndex ];
 	};
 
 	/**
@@ -44884,7 +44947,7 @@
 	    const comment = this.getRepeatCommentText( repeatPath );
 
 	    // Find all repeat series.
-	    this.evaluate( repeatPath, 'nodes', null, null, true ).forEach( repeat => {
+	    this.evaluate( repeatPath, 'nodes-ordered', null, null, true ).forEach( repeat => {
 	        if ( !hasPreviousSiblingElementSameName( repeat ) && !hasPreviousCommentSiblingWithContent( repeat, comment ) ) {
 	            // Add a comment to the primary instance that serves as an insertion point for each repeat series,
 	            repeat.before( document.createComment( comment ) );
@@ -44922,7 +44985,7 @@
 	FormModel.prototype.getTemplateNodes = function() {
 	    const jrPrefix = this.getNamespacePrefix( JAVAROSA_XFORMS_NS );
 
-	    return this.evaluate( `/model/instance[1]/*//*[@${jrPrefix}:template]`, 'nodes', null, null, true );
+	    return this.evaluate( `/model/instance[1]/*//*[@${jrPrefix}:template]`, 'nodes-ordered', null, null, true );
 	};
 
 	/**
@@ -45034,7 +45097,7 @@
 	     * We can always expand that later.
 	     */
 	    const start = this.hasInstance ? '/model/instance' : '';
-	    const nodes = this.evaluate( `${start}/*`, 'nodes', null, null, true );
+	    const nodes = this.evaluate( `${start}/*`, 'nodes-ordered', null, null, true );
 	    const that = this;
 	    let prefix;
 
@@ -45139,7 +45202,7 @@
 	    return expr.replace( INSTANCE, ( match, quote, id ) => {
 	        prefix = `/model/instance[@id="${id}"]`;
 	        // check if referred instance exists in model
-	        if ( that.evaluate( prefix, 'nodes', null, null, true ).length ) {
+	        if ( that.evaluate( prefix, 'nodes-ordered', null, null, true ).length ) {
 	            return prefix;
 	        } else {
 	            throw new FormLogicError( `instance "${id}" does not exist in model` );
@@ -45367,7 +45430,8 @@
 	        1: [ 'number', 'NUMBER_TYPE', 'numberValue' ],
 	        2: [ 'string', 'STRING_TYPE', 'stringValue' ],
 	        3: [ 'boolean', 'BOOLEAN_TYPE', 'booleanValue' ],
-	        7: [ 'nodes', 'ORDERED_NODE_SNAPSHOT_TYPE' ],
+	        6: [ 'nodes', 'UNORDERED_NODE_SNAPSHOT_TYPE' ],
+	        7: [ 'nodes-ordered', 'ORDERED_NODE_SNAPSHOT_TYPE' ],
 	        9: [ 'node', 'FIRST_ORDERED_NODE_TYPE', 'singleNodeValue' ]
 	    };
 
@@ -45423,7 +45487,7 @@
 	            if ( !response ) {
 	                console.error( `Expression: ${expr} did not return any boolean, string or number value as expected` );
 	            }
-	        } else if ( resTypeNum === 7 ) {
+	        } else if ( resTypeNum === 6 || resTypeNum === 7  ) {
 	            // response is an array of Elements
 	            response = [];
 	            for ( j = 0; j < result.snapshotLength; j++ ) {
@@ -45755,9 +45819,9 @@
 	                if ( control.value ) {
 	                    const dt = control.value.split( 'T' )[ 1 ].length === 5 ? control.value + ':00' : control.value;
 	                    // Add local timezone offset
-	                    // do not use .toISOLocalString() because new Date("2019-10-17T16:34:23.048") works differently in iOS/Safari
+	                    // do not use toISOLocalString because new Date("2019-10-17T16:34:23.048") works differently in iOS/Safari
 	                    // Take care to get DST offsets right for the date value.
-	                    value = dt + new Date( dt ).getTimezoneOffsetAsTime();
+	                    value = dt + dateExtensions_1( new Date( dt ) );
 	                }
 	                break;
 	            }
@@ -45826,7 +45890,8 @@
 
 	                    if ( xmlType === 'datetime' ) {
 	                        // convert to local time zone
-	                        value = new Date( value ).toISOLocalString();
+	                        value = dateExtensions_2( new Date( value ) );
+
 	                        // chop off local timezone offset to display properly in (native datetime-local) widget
 	                        const parts = value.split( 'T' );
 	                        const date = parts[ 0 ];
@@ -68216,7 +68281,7 @@
 
 	    update() {
 	        const $dateTimeI = jquery( this.element );
-	        let val = ( $dateTimeI.val().length > 0 ) ? new Date( $dateTimeI.val() ).toISOLocalString() : '';
+	        let val = ( $dateTimeI.val().length > 0 ) ? dateExtensions_2( new Date( $dateTimeI.val() ) ) : '';
 	        /**
 	         * fix a bug which is only on safari (#745)
 	         * If the local timezone is +08:00, for a date value of new Date('2020-10-10T13:10:10') will be:
@@ -68225,7 +68290,7 @@
 	         * so we have to append the timezone here
 	         */
 	        if ( os.macos && browser.safari ) {
-	            val = ( $dateTimeI.val().length > 0 ) ? ( new Date( $dateTimeI.val() + new Date().timezoneOffsetAsTime() ) ).toISOLocalString() : '';
+	            val = ( $dateTimeI.val().length > 0 ) ? dateExtensions_2( new Date( $dateTimeI.val() + dateExtensions_1( new Date() ) ) ) : '';
 	        }
 	        if ( val !== this.value ) {
 	            const vals = val.split( 'T' );
@@ -68246,7 +68311,7 @@
 	            const timeModified = time.hour12 ? types.time.convertMeridian( this.$fakeTimeI.val() ) : this.$fakeTimeI.val();
 	            const t = timeModified.split( ':' );
 
-	            return new Date( d[ 0 ], d[ 1 ] - 1, d[ 2 ], t[ 0 ], t[ 1 ] ).toISOLocalString();
+	            return dateExtensions_2( new Date( d[ 0 ], d[ 1 ] - 1, d[ 2 ], t[ 0 ], t[ 1 ] ) );
 	        } else {
 	            return '';
 	        }
@@ -68259,7 +68324,7 @@
 	          original entry may have been done in a different time zone than the edit). However,
 	          values shown in the widget should reflect the local time representation of that value.
 	         */
-	        const val = value ? new Date( value ).toISOLocalString() : '';
+	        const val = value ? dateExtensions_2( new Date( value ) ) : '';
 	        const vals = val.split( 'T' );
 	        const dateVal = vals[ 0 ];
 	        /**
@@ -73489,7 +73554,8 @@
 	                     * and the dependent node is inside the same repeat, we can prevent the expensive index determination
 	                     */
 	                    const dataNodeName = ( name.lastIndexOf( '/' ) !== -1 ) ? name.substring( name.lastIndexOf( '/' ) + 1 ) : name;
-	                    const dataNode = this.form.model.node( updated.repeatPath, updated.repeatIndex ).getElement().querySelector( dataNodeName );
+	                    const childNodeList = this.form.model.node( updated.repeatPath, updated.repeatIndex ).getElement().querySelectorAll( dataNodeName );
+	                    const dataNode = Array.from( childNodeList ).filter( node => dataNodes.includes( node ) )[0];
 	                    props.index = dataNodes.indexOf( dataNode );
 	                    this._updateCalc( control, props, emptyNonRelevant );
 	                } else if ( control.type === 'hidden' ) {
@@ -75113,7 +75179,7 @@
 	 * @type {string}
 	 * @default
 	 */
-	Form.requiredTransformerVersion = '1.43.0';
+	Form.requiredTransformerVersion = '2.1.0';
 
 	function extendXPath( Evaluator ) {
 
@@ -75261,4 +75327,4 @@
 	window.ocXPathEvaluator = evaluatorOc;
 	window.FormModel = FormModel;
 
-}());
+})();
