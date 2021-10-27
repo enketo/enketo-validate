@@ -84,7 +84,7 @@ const result = validator.validate( xformStr, options );
 
 1. Clone repo and install [prerequisites](#prerequisites).
 2. Run `npm install`. If there is an error the first thing to do is to run `rm -R node_modules` and retry especially after changing Node versions or after earlier crashes during installation.
-3. Run via command line, e.g. `./validate test/xform/xpath-fails.xml`.
+3. Run via command line, e.g. `./validate test/xform/xpath-fails.xml` or `./validate --help`.
 
 ## How it works
 

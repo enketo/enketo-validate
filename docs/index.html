@@ -74,9 +74,10 @@
 <p><strong><a href="https://enketo.github.io/enketo-validate">Technical Documentation</a></strong></p>
 <h2 id="prerequisites">Prerequisites</h2>
 <ol>
-<li>install nodeJS 12</li>
-<li>install build tools for native modules with <code>apt-get install build-essential</code></li>
-<li>install puppeteer (headless Chrome) prerequisites as mentioned <a href="https://github.com/puppeteer/puppeteer/blob/main/docs/troubleshooting.md#chrome-headless-doesnt-launch-on-unix">here</a>, e.g. for Ubuntu/Debian do <code>apt-get install ca-certificates fonts-liberation libappindicator3-1 libasound2 libatk-bridge2.0-0 libatk1.0-0 libc6 libcairo2 libcups2 libdbus-1-3 libexpat1 libfontconfig1 libgbm1 libgcc1 libglib2.0-0 libgtk-3-0 libnspr4 libnss3 libpango-1.0-0 libpangocairo-1.0-0 libstdc++6 libx11-6 libx11-xcb1 libxcb1 libxcomposite1 libxcursor1 libxdamage1 libxext6 libxfixes3 libxi6 libxrandr2 libxrender1 libxss1 libxtst6 lsb-release wget xdg-utils</code></li>
+<li>install nodeJS 12, 14 or 16</li>
+<li>if npm is not version 6, downgrade with <code>npm i -g npm@6</code></li>
+<li>(if necessary) install build tools for native modules with <code>apt-get install build-essential</code></li>
+<li>(if necessary) install puppeteer (headless Chrome) prerequisites as mentioned <a href="https://github.com/puppeteer/puppeteer/blob/main/docs/troubleshooting.md#chrome-headless-doesnt-launch-on-unix">here</a>, e.g. for Ubuntu/Debian do <code>apt-get install ca-certificates fonts-liberation libappindicator3-1 libasound2 libatk-bridge2.0-0 libatk1.0-0 libc6 libcairo2 libcups2 libdbus-1-3 libexpat1 libfontconfig1 libgbm1 libgcc1 libglib2.0-0 libgtk-3-0 libnspr4 libnss3 libpango-1.0-0 libpangocairo-1.0-0 libstdc++6 libx11-6 libx11-xcb1 libxcb1 libxcomposite1 libxcursor1 libxdamage1 libxext6 libxfixes3 libxi6 libxrandr2 libxrender1 libxss1 libxtst6 lsb-release wget xdg-utils</code></li>
 </ol>
 <h2 id="via-command-line">Via Command-line</h2>
 <h4 id="command-line-install">Command-line Install</h4>
@@ -118,6 +119,12 @@ const result = validator.validate( xformStr, options );
 // }
 // if errors.length is 0, the form passed validation
 </code></pre>
+<h2 id="develop">Develop</h2>
+<ol>
+<li>Clone repo and install <a href="#prerequisites">prerequisites</a>.</li>
+<li>Run <code>npm install</code>. If there is an error the first thing to do is to run <code>rm -R node_modules</code> and retry especially after changing Node versions or after earlier crashes during installation.</li>
+<li>Run via command line, e.g. <code>./validate test/xform/xpath-fails.xml</code> or <code>./validate --help</code>.</li>
+</ol>
 <h2 id="how-it-works">How it works</h2>
 <p>In it's current iteration, the validator does the following:</p>
 <ul>
