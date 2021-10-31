@@ -50,9 +50,10 @@ const validate = async( xformStr, options = {} ) => {
 
         return Promise.resolve( { warnings, errors, version, duration } );
     }
-
+    
     xform.checkStructure( warnings, errors );
     xform.checkBinds( warnings, errors );
+    xform.checkRelatives( warnings, errors );
     xform.checkAppearances( warnings, errors );
 
     if ( options.openclinica ) {

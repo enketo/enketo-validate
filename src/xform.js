@@ -492,6 +492,27 @@ class XForm {
     }
 
     /**
+     * NEW! Check to see if there are any relative paths in refs or nodesets. Modifies provided `warnings` and `errors` arrays.
+     *
+     * @param {Array} warnings - Array of existing warnings.
+     * @param {Array} errors - Array of existing errors.
+     */
+
+    checkRelatives( warnings, errors ) {
+    this.formControls.concat( this.groups ).concat( this.repeats )
+        .forEach( control => {
+            const controlNsPrefix = this.nsPrefixResolver( control.namespaceURI );
+            const controlName = controlNsPrefix && /:/.test( control.nodeName ) ? controlNsPrefix + ':' + control.nodeName.split( ':' )[ 1 ] : control.nodeName;
+            const pathAttr = controlName === 'repeat' ? 'nodeset' : 'ref';
+
+            const val = control.getAttribute(pathAttr);
+            if (val.startsWith('.')) {
+                errors.push( `"${controlName}" found with relative path.`)
+            }
+        })        
+}
+
+    /**
      * Checks if appearances are valid. Modifies provided `warnings` and `errors` arrays.
      *
      * @param {Array} warnings - Array of existing warnings.
