@@ -29,7 +29,7 @@
     "homepage": "https://github.com/enketo/enketo-validate#readme",
     "dependencies": {
         "commander": "^7.2.0",
-        "enketo-transformer": "^1.42.0",
+        "enketo-transformer": "1.43.0",
         "enketo-xpath-extensions-oc": "git+https://github.com/OpenClinica/enketo-xpath-extensions-oc.git#727803c",
         "jsdom": "^16.5.2",
         "libxslt": "0.9.x",
@@ -38,7 +38,7 @@
     "devDependencies": {
         "chai": "^4.3.4",
         "docdash": "^1.2.0",
-        "enketo-core": "5.17.6",
+        "enketo-core": "github:enketo/enketo-core#5.18.4.oc",
         "eslint": "^7.23.0",
         "eslint-plugin-jsdoc": "^32.3.0",
         "istanbul-reporter-shield-badge": "^1.2.1",

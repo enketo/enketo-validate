@@ -909,7 +909,7 @@
 	 * @return {Array<Node>} Array of sibling nodes plus target element.
 	 */
 	function getSiblingElementsAndSelf( element, selector ) {
-	    return _getSiblingElements( element, selector, [ element ] );
+	    return _getSiblingElements( element, selector, true );
 	}
 
 	/**
@@ -950,29 +950,21 @@
 	 *
 	 * @param {Node} element - Target element.
 	 * @param {string} [selector] - A CSS selector.
-	 * @param {Array<Node>} [startArray] - Array of nodes to start with.
+	 * @param {boolean} [includeSelf] - Whether to include self.
 	 * @return {Array<Node>} Array of sibling nodes.
 	 */
-	function _getSiblingElements( element, selector = '*', startArray = [] ) {
-	    const siblings = startArray;
-	    let prev = element.previousElementSibling;
-	    let next = element.nextElementSibling;
-	    // TODO: check if iteration approach used by getSiblingElement is faster. It would be more elegant.
-	    while ( prev ) {
-	        if ( prev.matches( selector ) ) {
-	            siblings.unshift( prev );
+	function _getSiblingElements( element, selector = '*', includeSelf = false ) {
+	    const results = [];
+	    let current = element.parentElement.firstElementChild;
+
+	    while ( current ) {
+	        if ( ( current === element && includeSelf ) || ( current !== element && current.matches( selector ) ) ){
+	            results.push( current );
 	        }
-	        prev = prev.previousElementSibling;
+	        current = current.nextElementSibling;
 	    }
 
-	    while ( next ) {
-	        if ( next.matches( selector ) ) {
-	            siblings.push( next );
-	        }
-	        next = next.nextElementSibling;
-	    }
-
-	    return siblings;
+	    return results;
 	}
 
 	/**
@@ -1059,7 +1051,7 @@
 
 	/**
 	 * @param {Element} el - Target node
-	 * @return {boolean} Whether previous sibling has same node name
+	 * @return {boolean} Whether previous sibling has the same node name
 	 */
 	function hasPreviousSiblingElementSameName( el ) {
 	    let found = false;
@@ -1077,6 +1069,36 @@
 	    }
 
 	    return found;
+	}
+
+	/**
+	 * @param {Element} el - Target node
+	 * @return {boolean} Whether next sibling has the same node name
+	 */
+	function hasNextSiblingElementSameName( el ) {
+	    let found = false;
+	    const nodeName = el.nodeName;
+	    el = el.nextSibling;
+
+	    while ( el ) {
+	        // Ignore any sibling text and comment nodes (e.g. whitespace with a newline character)
+	        // also deal with repeats that have non-repeat siblings in between them, event though that would be a bug.
+	        if ( el.nodeName && el.nodeName === nodeName ) {
+	            found = true;
+	            break;
+	        }
+	        el = el.nextSibling;
+	    }
+
+	    return found;
+	}
+
+	/**
+	 * @param {Element} el - Target node
+	 * @return {boolean} Whether a sibling has the same node name
+	 */
+	function hasSiblingElementSameName( el ) {
+	    return hasNextSiblingElementSameName( el ) || hasPreviousSiblingElementSameName( el );
 	}
 
 	/**
@@ -1131,7 +1153,7 @@
 	    while ( parent && parentName !== rootNodeName && parentName !== '#document' ) {
 	        if ( includePosition ) {
 	            index = getRepeatIndex( parent );
-	            position = ( index > 0 ) ? `[${index + 1}]` : '';
+	            position = hasSiblingElementSameName( parent ) ? `[${index + 1}]` : '';
 	        }
 	        steps.push( parentName + position );
 	        parent = parent.parentElement;
@@ -1231,6 +1253,82 @@
 	    }
 	};
 
+	class MutationsTracker{
+
+	    constructor( el = document.documentElement ){
+	        let currentMutations = 0;
+	        let previousMutations = currentMutations;
+	        this.classChanges = new WeakMap();
+	        this.quiet = true;
+
+	        const mutationObserver = new MutationObserver(  mutations => {
+	            mutations.forEach(  mutation => {
+	                currentMutations++;
+	                if ( mutation.type === 'attributes' && mutation.attributeName === 'class' ){
+	                    const trackedClasses = this.classChanges.get( mutation.target ) || [];
+	                    trackedClasses.forEach( obj => {
+	                        if( mutation.target.classList.contains( obj.className ) ){
+	                            obj.completed = true;
+	                            this.classChanges.set( mutation.target, trackedClasses );
+	                        }
+	                    } );
+	                }
+	            } );
+	        } );
+
+	        mutationObserver.observe( el, {
+	            attributes: true,
+	            characterData: true,
+	            childList: true,
+	            subtree: true,
+	            attributeOldValue: true,
+	            characterDataOldValue: true
+	        } );
+
+	        const checkInterval = setInterval( () => {
+	            if ( previousMutations === currentMutations ){
+	                this.quiet = true;
+	                mutationObserver.disconnect();
+	                clearInterval( checkInterval );
+	            } else {
+	                this.quiet = false;
+	                previousMutations = currentMutations;
+	            }
+	        }, 100 );
+	    }
+
+	    _resolveWhenTrue( fn ){
+	        if ( typeof fn !== 'function' ){
+	            return Promise.reject();
+	        }
+
+	        return new Promise( resolve => {
+	            const checkInterval = setInterval( () => {
+	                if ( fn.call( this ) ){
+	                    clearInterval( checkInterval );
+	                    resolve();
+	                }
+	            }, 10 );
+	        } );
+	    }
+
+	    waitForClassChange( element, className ){
+	        const trackedClasses = this.classChanges.get( element ) || [];
+
+	        if ( !trackedClasses.some( obj => obj.className === className ) ){
+	            trackedClasses.push( { className } );
+	            this.classChanges.set( element, trackedClasses );
+	        }
+
+	        return this._resolveWhenTrue( () => this.classChanges.get( element ).find( obj => obj.className === className ).completed );
+	    }
+
+	    waitForQuietness(){
+	        return this._resolveWhenTrue( () => this.quiet );
+	    }
+
+	}
+
 	/**
 	 * A custom error type for form logic
 	 *
@@ -1264,11 +1362,84 @@
 	    'textMaxChars': 2000
 	};
 
+	// imported from https://github.com/enketo/enketo-xpathjs/blob/master/src/date-extensions.js
+	// TODO probably shouldn't be changing Date.prototype - when these can be safely removed,
+	// these functions would probably more appropriately be in utils/date.js
+
+	/**
+	 * Converts a native Date UTC String to a RFC 3339-compliant date string with local offsets
+	 * used in ODK, so it replaces the Z in the ISOstring with a local offset
+	 * @param {Date} date
+	 * @return {string} a datetime string formatted according to RC3339 with local offset
+	 */
+	const toISOLocalString$1 = (date) => {
+	  //2012-09-05T12:57:00.000-04:00 (ODK)
+
+	  if(date.toString() === 'Invalid Date') {
+	    return date.toString();
+	  }
+
+	  var dt = new Date(date.getTime() - (date.getTimezoneOffset() * 60 * 1000)).toISOString()
+	      .replace('Z', getTimezoneOffsetAsTime$1(date));
+
+	  if(dt.indexOf('T00:00:00.000') > 0) {
+	    return dt.split('T')[0];
+	  } else {
+	    return dt;
+	  }
+	};
+
+	/**
+	 * @param {Date} date
+	 * @return {string}
+	 */
+	const getTimezoneOffsetAsTime$1 = (date) => {
+	  var offsetMinutesTotal;
+	  var hours;
+	  var minutes;
+	  var direction;
+	  var pad2 = function(x) {
+	    return (x < 10) ? '0' + x : x;
+	  };
+
+	  if(date.toString() === 'Invalid Date') {
+	    return date.toString();
+	  }
+
+	  offsetMinutesTotal = date.getTimezoneOffset();
+
+	  direction = (offsetMinutesTotal < 0) ? '+' : '-';
+	  hours = pad2(Math.floor(Math.abs(offsetMinutesTotal / 60)));
+	  minutes = pad2(Math.floor(Math.abs(offsetMinutesTotal % 60)));
+
+	  return direction + hours + ':' + minutes;
+	};
+
+	/**
+	 * @deprecated
+	 * @see {toISOLocalString}
+	 */
+	Date.prototype.toISOLocalString = function() {
+	  return toISOLocalString$1(this);
+	};
+
+	/**
+	 * @deprecated
+	 * @see {getTimezoneOffsetAsTime}
+	 */
+	Date.prototype.getTimezoneOffsetAsTime = function() {
+	  return getTimezoneOffsetAsTime$1(this);
+	};
+
+	var dateExtensions = {
+	  getTimezoneOffsetAsTime: getTimezoneOffsetAsTime$1,
+	  toISOLocalString: toISOLocalString$1,
+	};
+
 	/**
 	 * @module format
 	 */
 
-	let _locale = navigator.language;
 	const NUMBER = '0-9\u0660-\u0669';
 	const TIME_PART = `[:${NUMBER}]+`;
 	const MERIDIAN_PART = `[^: ${NUMBER}]+`;
@@ -1283,7 +1454,7 @@
 	function _getCleanLocalTime( dt ) {
 	    dt = typeof dt == 'undefined' ? new Date() : dt;
 
-	    return _cleanSpecialChars( dt.toLocaleTimeString( _locale ) );
+	    return _cleanSpecialChars( dt.toLocaleTimeString( format.locale ) );
 	}
 
 	/**
@@ -1342,6 +1513,13 @@
 	    hasMeridian( time ) {
 	        return HAS_MERIDIAN.test( _cleanSpecialChars( time ) );
 	    }
+	};
+
+	/**
+	 * @namespace format
+	 */
+	const format = {
+	    locale: navigator.language,
 	};
 
 	/**
@@ -13195,52 +13373,6 @@
 	            !that.isRequired( expr ) );
 	};
 
-	// imported from https://github.com/enketo/enketo-xpathjs/blob/master/src/date-extensions.js
-	// TODO probably shouldn't be changing Date.prototype
-	/**
-	 * Converts a native Date UTC String to a RFC 3339-compliant date string with local offsets
-	 * used in ODK, so it replaces the Z in the ISOstring with a local offset
-	 * @return {string} a datetime string formatted according to RC3339 with local offset
-	 */
-	Date.prototype.toISOLocalString = function() {
-	  //2012-09-05T12:57:00.000-04:00 (ODK)
-
-	  if(this.toString() === 'Invalid Date') {
-	    return this.toString();
-	  }
-
-	  var dt = new Date(this.getTime() - (this.getTimezoneOffset() * 60 * 1000)).toISOString()
-	      .replace('Z', this.getTimezoneOffsetAsTime());
-
-	  if(dt.indexOf('T00:00:00.000') > 0) {
-	    return dt.split('T')[0];
-	  } else {
-	    return dt;
-	  }
-	};
-
-	Date.prototype.getTimezoneOffsetAsTime = function() {
-	  var offsetMinutesTotal;
-	  var hours;
-	  var minutes;
-	  var direction;
-	  var pad2 = function(x) {
-	    return (x < 10) ? '0' + x : x;
-	  };
-
-	  if(this.toString() === 'Invalid Date') {
-	    return this.toString();
-	  }
-
-	  offsetMinutesTotal = this.getTimezoneOffset();
-
-	  direction = (offsetMinutesTotal < 0) ? '+' : '-';
-	  hours = pad2(Math.floor(Math.abs(offsetMinutesTotal / 60)));
-	  minutes = pad2(Math.floor(Math.abs(offsetMinutesTotal % 60)));
-
-	  return direction + hours + ':' + minutes;
-	};
-
 	var DATE_STRING$2 = /^\d\d\d\d-\d{1,2}-\d{1,2}(?:T\d\d:\d\d:\d\d\.?\d?\d?(?:Z|[+-]\d\d:\d\d)|.*)?$/;
 
 	function dateToDays$2(d) {
@@ -13297,6 +13429,7 @@
 	};
 
 	const { DATE_STRING: DATE_STRING$1, dateToDays: dateToDays$1, dateStringToDays: dateStringToDays$1 } = date;
+	const { toISOLocalString } = dateExtensions;
 
 	var xpathCast = {
 	  asBoolean: asBoolean$4,
@@ -13330,11 +13463,12 @@
 	function asString$6(r) {
 	  if(isDomNode(r)) return nodeToString(r);
 	  switch(r.t) {
-	    case 'str': return r.v;
-	    case 'arr': return r.v.length ? r.v[0].textContent || '' : '';
+	    case 'str':  return r.v;
+	    case 'arr':  return r.v.length ? r.v[0].textContent || '' : '';
+	    case 'date': return toISOLocalString(r.v).replace(/T00:00:00.000.*/, ''); // TODO should be handled in an extension rather than core code
 	    case 'num':
 	    case 'bool':
-	    default:    return r.v.toString();
+	    default:     return r.v.toString();
 	  }
 	}
 
@@ -43352,10 +43486,11 @@
 
 	var shuffle_1 = shuffle;
 
+	const { getTimezoneOffsetAsTime } = dateExtensions;
 	const { asGeopoints, area, distance } = geo;
 
 	const { randomToken } = randomToken_1;
-	const { DATE_STRING, dateToDays, dateStringToDays, isValidDate} = date;
+	const { DATE_STRING, dateStringToDays, dateToDays, isValidDate } = date;
 
 	const { asBoolean: asBoolean$1, asNumber: asNumber$1, asString: asString$1 } = xpathCast;
 
@@ -43373,7 +43508,6 @@
 	  const
 	      TOO_MANY_ARGS = new Error('too many args'),
 	      TOO_FEW_ARGS = new Error('too few args'),
-	      MILLIS_PER_DAY = 1000 * 60 * 60 * 24,
 	      _round = function(num) {
 	        if(num < 0) {
 	          return -Math.round(-num);
@@ -43505,10 +43639,12 @@
 	    date: function(it) {
 	      return xpr.date(asDate(it));
 	    },
-	    'decimal-date-time': function(date) {
+	    'decimal-date-time': function(r) {
 	      if(arguments.length > 1) throw TOO_MANY_ARGS;
-	      const res = Date.parse(asString$1(date)) / MILLIS_PER_DAY;
-	      return xpr.number(res);
+
+	      const days = r.t === 'num' ? asNumber$1(r) : dateStringToDays(asString$1(r));
+
+	      return xpr.number(days);
 	    },
 	    'decimal-time': function(r) {
 	      if(arguments.length > 1) throw TOO_MANY_ARGS;
@@ -43554,7 +43690,7 @@
 	      if(arguments.length < 2) throw new Error('format-date() :: not enough args');
 	      return xpr.string(format_date(date, format)); },
 	    if: function(con, a, b) {
-	      return xpr.string(asBoolean$1(con) ? asString$1(a) : asString$1(b));
+	      return asBoolean$1(con) ? a : b;
 	    },
 	    'ends-with': function(a, b) {
 	      if(arguments.length > 2) throw TOO_MANY_ARGS;
@@ -43790,10 +43926,10 @@
 	        if(r.t === 'date') {
 	          switch(resultType) {
 	            case XPathResult.BOOLEAN_TYPE: return { resultType, booleanValue:!isNaN(r.v) };
-	            case XPathResult.NUMBER_TYPE:  return { resultType, numberValue:dateToDays(r.v) };
+	            case XPathResult.NUMBER_TYPE:  return { resultType, numberValue:asNumber$1(r) };
 	            case XPathResult.ANY_TYPE:
 	            case XPathResult.STRING_TYPE:
-	              return { resultType, stringValue:r.v.toISOLocalString().replace(/T00:00:00.000.*/, '') };
+	              return { resultType, stringValue:asString$1(r) };
 	            default: throw new Error(`toExternalResult() doesn't know how to convert a date to ${resultType}`);
 	          }
 	        }
@@ -43808,27 +43944,13 @@
 	            return;
 	          }
 
-	          // For comparisons, we must make sure that both values are numbers
-	          // Dates would be fine, except for equality!
-	          if(op >= EQ && op <= GTE) {
-	            if(lhs.t === 'arr' || lhs.t === 'str') lhs = xpr.date(asDate(lhs));
-	            if(rhs.t === 'arr' || rhs.t === 'str') rhs = xpr.date(asDate(rhs));
-	            if(lhs.t !== 'date' || rhs.t !== 'date') {
-	              return op === '!=';
-	            } else {
-	              lhs = { t:'num', v:lhs.v.getTime() };
-	              rhs = { t:'num', v:rhs.v.getTime() };
-	            }
-	          } else if(op === PLUS || op === MINUS) {
-	            // for math operators, we need to do it ourselves
-	            if(lhs.t === 'date' && rhs.t === 'date') err('No handling for simple arithmetic with two dates.');
-	            const d = lhs.t === 'date'? lhs.v: rhs.v,
-	                res = new Date(d.getTime());
-	            let n = lhs.t !== 'date'? asInteger(lhs): asInteger(rhs);
-	            if(op === MINUS) n = -n;
-	            res.setDate(d.getDate() + n);
-	            return res;
-	          }
+	          // For comparisons and math, we must make sure that both values are numbers
+	          if(lhs.t === 'arr' || lhs.t === 'str') lhs = xpr.date(asDate(lhs));
+	          if(rhs.t === 'arr' || rhs.t === 'str') rhs = xpr.date(asDate(rhs));
+	          
+	          if (lhs.t === 'date') lhs = { t:'num', v:dateToDays(lhs.v) };
+	          if (rhs.t === 'date') rhs = { t:'num', v:dateToDays(rhs.v) };
+
 	          return { t:'continue', lhs:lhs, op:op, rhs:rhs };
 	        }
 
@@ -43839,9 +43961,7 @@
 	            const lDays = dateStringToDays(lStr);
 	            const rDays = asNumber$1(rhs);
 	            const delta = op === PLUS ? lDays + rDays : lDays - rDays;
-	            const date = new Date(1970, 0, 1);
-	            date.setDate(date.getDate() + delta);
-	            return date;
+	            return delta;
 	          }
 
 	          const rStr = asString$1(rhs);
@@ -43849,9 +43969,7 @@
 	            const rDays = dateStringToDays(rStr);
 	            const lDays = asNumber$1(lhs);
 	            const delta = op === PLUS ? lDays + rDays : lDays - rDays;
-	            const date = new Date(1970, 0, 1);
-	            date.setDate(date.getDate() + delta);
-	            return date;
+	            return delta;
 	          }
 	        } else if(op >= EQ && op <= GTE) {
 	          const lStr = asString$1(lhs);
@@ -43898,25 +44016,29 @@
 
 	function asDate(r) {
 	  let temp;
+	  let timeComponent;
 	  switch(r.t) {
 	    case 'bool': return new Date(NaN);
 	    case 'date': return r.v;
-	    case 'num':  temp = new Date(1970, 0, 1); temp.setDate(temp.getDate() + r.v); return temp;
+	    case 'num':  temp = new Date(0); temp.setTime(temp.getTime() + r.v * 24 * 60 * 60 * 1000); return temp;
 	    case 'arr':
 	    case 'str':
 	      r = asString$1(r);
 	      if(RAW_NUMBER.test(r)) {
-	        // Create a date at 00:00:00 1st Jan 1970 _in the current timezone_
-	        temp = new Date(1970, 0, 1);
-	        temp.setDate(1 + parseInt(r, 10));
+	        temp = new Date(0);
+	        temp.setTime(temp.getTime() + parseInt(r, 10) * 24 * 60 * 60 * 1000);
 	        return temp;
 	      } else if(DATE_STRING.test(r)) {
 	        temp = r.indexOf('T');
-	        if(temp !== -1) r = r.substring(0, temp);
+	        if(temp !== -1) {
+	          timeComponent = r.substring(temp);
+	          r = r.substring(0, temp);
+	        }
 	        temp = r.split('-');
 	        if(isValidDate(temp[0], temp[1], temp[2])) {
+	          timeComponent = timeComponent ? timeComponent : 'T00:00:00.000' + getTimezoneOffsetAsTime(new Date(r));
 	          const time = `${_zeroPad(temp[0])}-${_zeroPad(temp[1])}-${_zeroPad(temp[2])}`+
-	            'T00:00:00.000' + (new Date(r)).getTimezoneOffsetAsTime();
+	            timeComponent;
 	          return new Date(time);
 	        }
 	      }
@@ -45497,7 +45619,7 @@
 	     * @return {Element} Wrap node
 	     */
 	    getWrapNode( control ) {
-	        return control.closest( '.question, .calculation, .setvalue' );
+	        return control.closest( '.question, .calculation, .setvalue, .setgeopoint' );
 	    },
 	    /**
 	     * @param {Array<Element>} controls - form controls HTML elements
@@ -45692,7 +45814,7 @@
 	        return value || '';
 	    },
 	    /**
-	     * Finds a form control that is not a nested setvalue/xforms-value-changed directive
+	     * Finds a form control that is not a nested xforms-value-changed action
 	     *
 	     * @param {string} name - name attribute value
 	     * @param {number} index - repeat index
@@ -45793,9 +45915,13 @@
 	            if ( curVal === undefined || curVal.toString() !== value.toString() ) {
 	                switch ( type ) {
 	                    case 'radio': {
-	                        const input = this.getWrapNode( control ).querySelector( `input[type="radio"][data-name="${name}"][value="${value}"]` );
-	                        if ( input ) {
-	                            input.checked = true;
+	                        if ( value.toString() === '' ){
+	                            inputs.forEach( input => input.checked = false );
+	                        } else {
+	                            const input = this.getWrapNode( control ).querySelector( `input[type="radio"][data-name="${name}"][value="${value}"]` );
+	                            if ( input ) {
+	                                input.checked = true;
+	                            }
 	                        }
 	                        break;
 	                    }
@@ -45825,7 +45951,7 @@
 	                // don't trigger on all radiobuttons/checkboxes
 	                if ( event ) {
 	                    inputs[ 0 ].dispatchEvent( event );
-	                    // Ensure that any calculations with form controls that serve as setvalue triggers
+	                    // Ensure that any calculations with form controls that serve as action triggers
 	                    // the action.
 	                    if ( event.type === events.InputUpdate().type ){
 	                        inputs[0].dispatchEvent( events.XFormsValueChanged() );
@@ -46005,6 +46131,9 @@
 	                input = optionInput.classList.contains( 'ignore' ) ? getSiblingElement( optionInput.closest( '.option-wrapper' ), 'input.rank' ) : optionInput;
 	            } else if ( list && list.nodeName.toLowerCase() === 'select' ) {
 	                input = list;
+	                if( input.matches( '[readonly]' ) ){
+	                    inputAttributes[ 'disabled' ] = 'disabled';
+	                }
 	            } else if ( list && list.nodeName.toLowerCase() === 'datalist' ) {
 	                if ( shared ) {
 	                    // only the first input, is that okay?
@@ -46093,11 +46222,11 @@
 	                                    const language = label.getAttribute( 'lang' );
 	                                    const type = label.nodeName;
 	                                    const src = label.src;
-	                                    const text = label.textContent;
+	                                    const contentNodes = [ ...label.childNodes ];
 	                                    const active = label.classList.contains( 'active' );
 	                                    const alt = label.alt;
 
-	                                    return { language, type, text, active, src, alt };
+	                                    return { language, type, contentNodes, active, src, alt };
 	                                } );
 	                                break;
 	                            case 'langs':
@@ -46106,11 +46235,11 @@
 	                                    // Two falsy values should set active to true.
 	                                    const active = ( !lang && !that.form.langs.currentLanguage ) || ( lang === that.form.langs.currentLanguage );
 
-	                                    return { language: lang, type: 'span', text: label.textContent, active };
+	                                    return { language: lang, type: 'span', contentNodes: [ ...label.childNodes ], active };
 	                                } );
 	                                break;
 	                            default:
-	                                translations = [ { language: '', type: 'span', text: labels && labels.length ? labels[ 0 ].textContent : 'error', active: true } ];
+	                                translations = [ { language: '', type: 'span', contentNodes: labels && labels.length ? [ ...labels[ 0 ].childNodes ] : [], active: true } ];
 	                        }
 	                    }
 	                    // Obtain the value of the secondary instance item found.
@@ -46125,18 +46254,18 @@
 	                    if ( templateNodeName === 'label' ) {
 	                        optionsFragment.appendChild( that.createInput( inputAttributes, translations, value ) );
 	                    } else if ( templateNodeName === 'option' ) {
-	                        let activeLabel = '';
+	                        let activeLabelContentNodes = [];
 	                        if ( translations.length > 1 ) {
 	                            translations.forEach( translation => {
 	                                if ( translation.active ) {
-	                                    activeLabel = translation.text;
+	                                    activeLabelContentNodes = translation.contentNodes;
 	                                }
 	                                optionsTranslationsFragment.appendChild( that.createOptionTranslation( translation, value ) );
 	                            } );
 	                        } else {
-	                            activeLabel = translations[ 0 ].text;
+	                            activeLabelContentNodes = translations[ 0 ].contentNodes;
 	                        }
-	                        optionsFragment.appendChild( that.createOption( activeLabel, value ) );
+	                        optionsFragment.appendChild( that.createOption( activeLabelContentNodes, value ) );
 	                    }
 
 	                } );
@@ -46225,13 +46354,13 @@
 	    /**
 	     * Creates a HTML option element
 	     *
-	     * @param {string} label - option label
+	     * @param {Array<Element>} labelContentNodes - label content nodes
 	     * @param {string} value - option value
 	     * @return {Element} created option
 	     */
-	    createOption( label, value ) {
+	    createOption( labelContentNodes, value ) {
 	        const option = document.createElement( 'option' );
-	        option.textContent = label;
+	        option.textContent = labelContentNodes.map( node => node.textContent ).join( '' );
 	        option.value = value;
 
 	        return option;
@@ -46242,15 +46371,15 @@
 	     *
 	     * @param {object} translation - translation object
 	     * @param {string} [translation.type] - type of element to create, defaults to span
-	     * @param {string} [translation.text] - translation text
+	     * @param {Array<Node>} [translation.content] - array of translation content nodes
 	     * @param {string} value - option value
 	     * @return {Element} created element
 	     */
 	    createOptionTranslation( translation, value ) {
 	        const el = document.createElement( translation.type || 'span' );
-	        if ( translation.text ) {
-	            el.textContent = translation.text;
+	        if ( translation.contentNodes ) {
 	            el.classList.add( 'option-label' );
+	            translation.contentNodes.forEach( node => el.appendChild( node.cloneNode( true ) ) );
 	        }
 	        el.classList.toggle( 'active', translation.active );
 	        if ( translation.language ) {
@@ -46268,7 +46397,7 @@
 	    /**
 	     * Creates an input HTML element
 	     *
-	     * @param {Array<object>} attributes - attributes to add to input
+	     * @param {object} attributes - attributes to add to input
 	     * @param {Array<object>} translations - translation to add
 	     * @param {string} value - option value
 	     * @return {Element} label element (wrapper)
@@ -46409,46 +46538,38 @@
 	            .catch( console.error );
 	    },
 	    /*
-	     * Obtains the absolute index of the provided repeat or repeat-info element
+	     * Obtains the 0-based absolute index of the provided repeat or repeat-info element
 	     * The goal of this function is to make non-nested repeat index determination as fast as possible.
+	     *
+	     * In nested cases, the "absolute index" for a repeat instance refers to the index across all repeat
+	     * instances with that name regardless of nesting (the repeat structure is conceptually flattened).
+	     * There is one repeat-info element for each sequences of repeats of the given name. The "absolute index"
+	     * of a repeat-info in nested cases refers to the index across all sequences of repeat instances with that name.
+	     *
+	     * The repeat-info concept was added in the context of supporting zero instances of a repeat. It would be good
+	     * to expand on its documentation.
 	     */
 	    getIndex( el ) {
 	        if ( !el || !this.form.repeatsPresent ) {
 	            return 0;
 	        }
-	        let checkEl = el.parentElement.closest( '.or-repeat' );
-	        const info = el.classList.contains( 'or-repeat-info' );
-	        let count = info ? 1 : Number( el.querySelector( '.repeat-number' ).textContent );
-	        let name;
+
+	        const isInfoElement = el.classList.contains( 'or-repeat-info' );
+
+	        const toCountSelector = isInfoElement ? `.or-repeat-info[data-name="${el.dataset.name}"]` : `.or-repeat[name="${el.getAttribute( 'name' )}"]`;
+	        let predecessorCount = isInfoElement ? 0 : Number( el.querySelector( '.repeat-number' ).textContent ) - 1;
+
+	        let checkEl = el;
 	        while ( checkEl ) {
 	            while ( checkEl.previousElementSibling && checkEl.previousElementSibling.matches( '.or-repeat' ) ) {
 	                checkEl = checkEl.previousElementSibling;
-	                if ( info ) {
-	                    count++;
-	                } else {
-	                    name = name || el.getAttribute( 'name' );
-	                    count += checkEl.querySelectorAll( `.or-repeat[name="${name}"]` ).length;
-	                }
+	                predecessorCount += checkEl.querySelectorAll( toCountSelector ).length;
 	            }
 	            const parent = checkEl.parentElement;
 	            checkEl = parent ? parent.closest( '.or-repeat' ) : null;
 	        }
 
-	        return count - 1;
-	    },
-	    /*
-	     * Obtains the absolute index of the provided repeat-info element
-	     */
-	    getInfoIndex( repeatInfo ) {
-	        if ( !this.form.repeatsPresent ) {
-	            return 0;
-	        }
-	        if ( !repeatInfo || !repeatInfo.classList.contains( 'or-repeat-info' ) ) {
-	            return null;
-	        }
-	        const name = repeatInfo.dataset.name;
-
-	        return [ ...repeatInfo.closest( 'form.or' ).querySelectorAll( `.or-repeat-info[data-name="${name}"]` ) ].indexOf( repeatInfo );
+	        return predecessorCount;
 	    },
 	    /**
 	     * [updateViewInstancesFromModel description]
@@ -46512,7 +46633,7 @@
 	         * is determined in a node inside the parent repeat. To do so we use the repeat comment in model as context.
 	         */
 	        const repPath = repeatInfo.dataset.name;
-	        let numRepsInCount = this.form.model.evaluate( repCountPath, 'number', this.form.model.getRepeatCommentSelector( repPath ), this.getInfoIndex( repeatInfo ), true );
+	        let numRepsInCount = this.form.model.evaluate( repCountPath, 'number', this.form.model.getRepeatCommentSelector( repPath ), this.getIndex( repeatInfo ), true );
 	        numRepsInCount = isNaN( numRepsInCount ) ? 0 : numRepsInCount;
 	        const numRepsInView = getSiblingElements( repeatInfo, `.or-repeat[name="${repPath}"]` ).length;
 	        let toCreate = numRepsInCount - numRepsInView;
@@ -46969,14 +47090,21 @@
 	     * @param {jQuery} $e - Element on page to flip to
 	     */
 	    flipToPageContaining( $e ) {
-	        let $closest;
+	        const e = $e[ 0 ];
+	        const closest = e.closest( '[role="page"]' );
 
-	        $closest = $e.closest( '[role="page"]' );
-	        $closest = ( $closest.length === 0 ) ? $e.find( '[role="page"]' ) : $closest;
-
-	        // If $e is a comment question, and it is not inside a group, there may be no $closest.
-	        if ( $closest.length ) {
-	            this._flipTo( $closest[ 0 ] );
+	        if ( closest ) {
+	            this._flipTo( closest );
+	        } else {
+	            // If $e is a comment question, and it is not inside a group, there will be no closest.
+	            const referer = e.querySelector( '[data-for]' );
+	            const ancestor = e.closest( '.or-repeat, form.or' );
+	            if ( referer && ancestor ) {
+	                const linkedQuestion = ancestor.querySelector( `[name="${referer.dataset.for}"]` );
+	                if ( linkedQuestion ) {
+	                    this._flipTo( linkedQuestion.closest( '[role="page"]' ) );
+	                }
+	            }
 	        }
 	        this.$toc.parent().find( '.pages-toc__overlay' ).click();
 	    },
@@ -62914,825 +63042,36 @@
 	className:"leaflet-div-icon leaflet-editing-icon leaflet-edit-resize"}),touchMoveIcon:new L.DivIcon({iconSize:new L.Point(20,20),className:"leaflet-div-icon leaflet-editing-icon leaflet-edit-move leaflet-touch-icon"}),touchResizeIcon:new L.DivIcon({iconSize:new L.Point(20,20),className:"leaflet-div-icon leaflet-editing-icon leaflet-edit-resize leaflet-touch-icon"})},initialize:function(t,e){L.Browser.touch&&(this.options.moveIcon=this.options.touchMoveIcon,this.options.resizeIcon=this.options.touchResizeIcon),this._shape=t,L.Util.setOptions(this,e);},addHooks:function(){var t=this._shape;this._shape._map&&(this._map=this._shape._map,t.setStyle(t.options.editing),t._map&&(this._map=t._map,this._markerGroup||this._initMarkers(),this._map.addLayer(this._markerGroup)));},removeHooks:function(){var t=this._shape;if(t.setStyle(t.options.original),t._map){this._unbindMarker(this._moveMarker);for(var e=0,i=this._resizeMarkers.length;e<i;e++)this._unbindMarker(this._resizeMarkers[e]);this._resizeMarkers=null,this._map.removeLayer(this._markerGroup),delete this._markerGroup;}this._map=null;},updateMarkers:function(){this._markerGroup.clearLayers(),this._initMarkers();},_initMarkers:function(){this._markerGroup||(this._markerGroup=new L.LayerGroup),this._createMoveMarker(),this._createResizeMarker();},_createMoveMarker:function(){},_createResizeMarker:function(){},_createMarker:function(t,e){var i=new L.Marker.Touch(t,{draggable:!0,icon:e,zIndexOffset:10});return this._bindMarker(i),this._markerGroup.addLayer(i),i},_bindMarker:function(t){t.on("dragstart",this._onMarkerDragStart,this).on("drag",this._onMarkerDrag,this).on("dragend",this._onMarkerDragEnd,this).on("touchstart",this._onTouchStart,this).on("touchmove",this._onTouchMove,this).on("MSPointerMove",this._onTouchMove,this).on("touchend",this._onTouchEnd,this).on("MSPointerUp",this._onTouchEnd,this);},_unbindMarker:function(t){t.off("dragstart",this._onMarkerDragStart,this).off("drag",this._onMarkerDrag,this).off("dragend",this._onMarkerDragEnd,this).off("touchstart",this._onTouchStart,this).off("touchmove",this._onTouchMove,this).off("MSPointerMove",this._onTouchMove,this).off("touchend",this._onTouchEnd,this).off("MSPointerUp",this._onTouchEnd,this);},_onMarkerDragStart:function(t){t.target.setOpacity(0),this._shape.fire("editstart");},_fireEdit:function(){this._shape.edited=!0,this._shape.fire("edit");},_onMarkerDrag:function(t){var e=t.target,i=e.getLatLng();e===this._moveMarker?this._move(i):this._resize(i),this._shape.redraw(),this._shape.fire("editdrag");},_onMarkerDragEnd:function(t){t.target.setOpacity(1),this._fireEdit();},_onTouchStart:function(t){if(L.Edit.SimpleShape.prototype._onMarkerDragStart.call(this,t),"function"==typeof this._getCorners){var e=this._getCorners(),i=t.target,o=i._cornerIndex;i.setOpacity(0),this._oppositeCorner=e[(o+2)%4],this._toggleCornerMarkers(0,o);}this._shape.fire("editstart");},_onTouchMove:function(t){var e=this._map.mouseEventToLayerPoint(t.originalEvent.touches[0]),i=this._map.layerPointToLatLng(e);return t.target===this._moveMarker?this._move(i):this._resize(i),this._shape.redraw(),!1},_onTouchEnd:function(t){t.target.setOpacity(1),this.updateMarkers(),this._fireEdit();},_move:function(){},_resize:function(){}}),L.Edit=L.Edit||{},L.Edit.Rectangle=L.Edit.SimpleShape.extend({_createMoveMarker:function(){var t=this._shape.getBounds(),e=t.getCenter();this._moveMarker=this._createMarker(e,this.options.moveIcon);},_createResizeMarker:function(){var t=this._getCorners();this._resizeMarkers=[];for(var e=0,i=t.length;e<i;e++)this._resizeMarkers.push(this._createMarker(t[e],this.options.resizeIcon)),this._resizeMarkers[e]._cornerIndex=e;},_onMarkerDragStart:function(t){L.Edit.SimpleShape.prototype._onMarkerDragStart.call(this,t);var e=this._getCorners(),i=t.target,o=i._cornerIndex;this._oppositeCorner=e[(o+2)%4],this._toggleCornerMarkers(0,o);},_onMarkerDragEnd:function(t){var e,i,o=t.target;o===this._moveMarker&&(e=this._shape.getBounds(),i=e.getCenter(),o.setLatLng(i)),this._toggleCornerMarkers(1),this._repositionCornerMarkers(),L.Edit.SimpleShape.prototype._onMarkerDragEnd.call(this,t);},_move:function(t){for(var e,i=this._shape._defaultShape?this._shape._defaultShape():this._shape.getLatLngs(),o=this._shape.getBounds(),a=o.getCenter(),n=[],s=0,r=i.length;s<r;s++)e=[i[s].lat-a.lat,i[s].lng-a.lng],n.push([t.lat+e[0],t.lng+e[1]]);this._shape.setLatLngs(n),this._repositionCornerMarkers(),this._map.fire(L.Draw.Event.EDITMOVE,{layer:this._shape});},_resize:function(t){var e;this._shape.setBounds(L.latLngBounds(t,this._oppositeCorner)),e=this._shape.getBounds(),this._moveMarker.setLatLng(e.getCenter()),this._map.fire(L.Draw.Event.EDITRESIZE,{layer:this._shape});},_getCorners:function(){var t=this._shape.getBounds();return [t.getNorthWest(),t.getNorthEast(),t.getSouthEast(),t.getSouthWest()]},_toggleCornerMarkers:function(t){for(var e=0,i=this._resizeMarkers.length;e<i;e++)this._resizeMarkers[e].setOpacity(t);},_repositionCornerMarkers:function(){for(var t=this._getCorners(),e=0,i=this._resizeMarkers.length;e<i;e++)this._resizeMarkers[e].setLatLng(t[e]);}}),L.Rectangle.addInitHook(function(){L.Edit.Rectangle&&(this.editing=new L.Edit.Rectangle(this),this.options.editable&&this.editing.enable());}),L.Edit=L.Edit||{},L.Edit.CircleMarker=L.Edit.SimpleShape.extend({_createMoveMarker:function(){var t=this._shape.getLatLng();this._moveMarker=this._createMarker(t,this.options.moveIcon);},_createResizeMarker:function(){this._resizeMarkers=[];},_move:function(t){if(this._resizeMarkers.length){var e=this._getResizeMarkerPoint(t);this._resizeMarkers[0].setLatLng(e);}this._shape.setLatLng(t),this._map.fire(L.Draw.Event.EDITMOVE,{layer:this._shape});}}),L.CircleMarker.addInitHook(function(){L.Edit.CircleMarker&&(this.editing=new L.Edit.CircleMarker(this),this.options.editable&&this.editing.enable()),this.on("add",function(){this.editing&&this.editing.enabled()&&this.editing.addHooks();}),this.on("remove",function(){this.editing&&this.editing.enabled()&&this.editing.removeHooks();});}),L.Edit=L.Edit||{},L.Edit.Circle=L.Edit.CircleMarker.extend({_createResizeMarker:function(){var t=this._shape.getLatLng(),e=this._getResizeMarkerPoint(t);this._resizeMarkers=[],this._resizeMarkers.push(this._createMarker(e,this.options.resizeIcon));},_getResizeMarkerPoint:function(t){var e=this._shape._radius*Math.cos(Math.PI/4),i=this._map.project(t);return this._map.unproject([i.x+e,i.y-e])},_resize:function(t){var e=this._moveMarker.getLatLng();L.GeometryUtil.isVersion07x()?radius=e.distanceTo(t):radius=this._map.distance(e,t),this._shape.setRadius(radius),this._map.editTooltip&&this._map._editTooltip.updateContent({text:L.drawLocal.edit.handlers.edit.tooltip.subtext+"<br />"+L.drawLocal.edit.handlers.edit.tooltip.text,subtext:L.drawLocal.draw.handlers.circle.radius+": "+L.GeometryUtil.readableDistance(radius,!0,this.options.feet,this.options.nautic)}),this._shape.setRadius(radius),this._map.fire(L.Draw.Event.EDITRESIZE,{layer:this._shape});}}),L.Circle.addInitHook(function(){L.Edit.Circle&&(this.editing=new L.Edit.Circle(this),this.options.editable&&this.editing.enable());}),L.Map.mergeOptions({touchExtend:!0}),L.Map.TouchExtend=L.Handler.extend({initialize:function(t){this._map=t,this._container=t._container,this._pane=t._panes.overlayPane;},addHooks:function(){L.DomEvent.on(this._container,"touchstart",this._onTouchStart,this),L.DomEvent.on(this._container,"touchend",this._onTouchEnd,this),L.DomEvent.on(this._container,"touchmove",this._onTouchMove,this),this._detectIE()?(L.DomEvent.on(this._container,"MSPointerDown",this._onTouchStart,this),L.DomEvent.on(this._container,"MSPointerUp",this._onTouchEnd,this),L.DomEvent.on(this._container,"MSPointerMove",this._onTouchMove,this),L.DomEvent.on(this._container,"MSPointerCancel",this._onTouchCancel,this)):(L.DomEvent.on(this._container,"touchcancel",this._onTouchCancel,this),L.DomEvent.on(this._container,"touchleave",this._onTouchLeave,this));},removeHooks:function(){L.DomEvent.off(this._container,"touchstart",this._onTouchStart,this),L.DomEvent.off(this._container,"touchend",this._onTouchEnd,this),L.DomEvent.off(this._container,"touchmove",this._onTouchMove,this),this._detectIE()?(L.DomEvent.off(this._container,"MSPointerDown",this._onTouchStart,this),L.DomEvent.off(this._container,"MSPointerUp",this._onTouchEnd,this),L.DomEvent.off(this._container,"MSPointerMove",this._onTouchMove,this),L.DomEvent.off(this._container,"MSPointerCancel",this._onTouchCancel,this)):(L.DomEvent.off(this._container,"touchcancel",this._onTouchCancel,this),L.DomEvent.off(this._container,"touchleave",this._onTouchLeave,this));},_touchEvent:function(t,e){var i={};if(void 0!==t.touches){if(!t.touches.length)return;i=t.touches[0];}else {if("touch"!==t.pointerType)return;if(i=t,!this._filterClick(t))return}var o=this._map.mouseEventToContainerPoint(i),a=this._map.mouseEventToLayerPoint(i),n=this._map.layerPointToLatLng(a);this._map.fire(e,{latlng:n,layerPoint:a,containerPoint:o,pageX:i.pageX,pageY:i.pageY,originalEvent:t});},_filterClick:function(t){var e=t.timeStamp||t.originalEvent.timeStamp,i=L.DomEvent._lastClick&&e-L.DomEvent._lastClick;return i&&i>100&&i<500||t.target._simulatedClick&&!t._simulated?(L.DomEvent.stop(t),!1):(L.DomEvent._lastClick=e,!0)},_onTouchStart:function(t){if(this._map._loaded){this._touchEvent(t,"touchstart");}},_onTouchEnd:function(t){if(this._map._loaded){this._touchEvent(t,"touchend");}},_onTouchCancel:function(t){if(this._map._loaded){var e="touchcancel";this._detectIE()&&(e="pointercancel"),this._touchEvent(t,e);}},_onTouchLeave:function(t){if(this._map._loaded){this._touchEvent(t,"touchleave");}},_onTouchMove:function(t){if(this._map._loaded){this._touchEvent(t,"touchmove");}},_detectIE:function(){var e=t.navigator.userAgent,i=e.indexOf("MSIE ");if(i>0)return parseInt(e.substring(i+5,e.indexOf(".",i)),10);if(e.indexOf("Trident/")>0){var o=e.indexOf("rv:");return parseInt(e.substring(o+3,e.indexOf(".",o)),10)}var a=e.indexOf("Edge/");return a>0&&parseInt(e.substring(a+5,e.indexOf(".",a)),10)}}),L.Map.addInitHook("addHandler","touchExtend",L.Map.TouchExtend),L.Marker.Touch=L.Marker.extend({_initInteraction:function(){return this.addInteractiveTarget?L.Marker.prototype._initInteraction.apply(this):this._initInteractionLegacy()},_initInteractionLegacy:function(){if(this.options.clickable){var t=this._icon,e=["dblclick","mousedown","mouseover","mouseout","contextmenu","touchstart","touchend","touchmove"];this._detectIE?e.concat(["MSPointerDown","MSPointerUp","MSPointerMove","MSPointerCancel"]):e.concat(["touchcancel"]),L.DomUtil.addClass(t,"leaflet-clickable"),L.DomEvent.on(t,"click",this._onMouseClick,this),L.DomEvent.on(t,"keypress",this._onKeyPress,this);for(var i=0;i<e.length;i++)L.DomEvent.on(t,e[i],this._fireMouseEvent,this);L.Handler.MarkerDrag&&(this.dragging=new L.Handler.MarkerDrag(this),this.options.draggable&&this.dragging.enable());}},_detectIE:function(){var e=t.navigator.userAgent,i=e.indexOf("MSIE ");if(i>0)return parseInt(e.substring(i+5,e.indexOf(".",i)),10);if(e.indexOf("Trident/")>0){var o=e.indexOf("rv:");return parseInt(e.substring(o+3,e.indexOf(".",o)),10)}var a=e.indexOf("Edge/");return a>0&&parseInt(e.substring(a+5,e.indexOf(".",a)),10)}}),L.LatLngUtil={cloneLatLngs:function(t){for(var e=[],i=0,o=t.length;i<o;i++)Array.isArray(t[i])?e.push(L.LatLngUtil.cloneLatLngs(t[i])):e.push(this.cloneLatLng(t[i]));return e},cloneLatLng:function(t){return L.latLng(t.lat,t.lng)}},function(){var t={km:2,ha:2,m:0,mi:2,ac:2,yd:0,ft:0,nm:2};L.GeometryUtil=L.extend(L.GeometryUtil||{},{geodesicArea:function(t){var e,i,o=t.length,a=0,n=Math.PI/180;if(o>2){for(var s=0;s<o;s++)e=t[s],i=t[(s+1)%o],a+=(i.lng-e.lng)*n*(2+Math.sin(e.lat*n)+Math.sin(i.lat*n));a=6378137*a*6378137/2;}return Math.abs(a)},formattedNumber:function(t,e){var i=parseFloat(t).toFixed(e),o=L.drawLocal.format&&L.drawLocal.format.numeric,a=o&&o.delimiters,n=a&&a.thousands,s=a&&a.decimal;if(n||s){var r=i.split(".");i=n?r[0].replace(/(\d)(?=(\d{3})+(?!\d))/g,"$1"+n):r[0],s=s||".",r.length>1&&(i=i+s+r[1]);}return i},readableArea:function(e,i,o){var a,n,s,o=L.Util.extend({},t,o);return i?(n=["ha","m"],s=typeof i,"string"===s?n=[i]:"boolean"!==s&&(n=i),a=e>=1e6&&-1!==n.indexOf("km")?L.GeometryUtil.formattedNumber(1e-6*e,o.km)+" km²":e>=1e4&&-1!==n.indexOf("ha")?L.GeometryUtil.formattedNumber(1e-4*e,o.ha)+" ha":L.GeometryUtil.formattedNumber(e,o.m)+" m²"):(e/=.836127,a=e>=3097600?L.GeometryUtil.formattedNumber(e/3097600,o.mi)+" mi²":e>=4840?L.GeometryUtil.formattedNumber(e/4840,o.ac)+" acres":L.GeometryUtil.formattedNumber(e,o.yd)+" yd²"),a},readableDistance:function(e,i,o,a,n){var s,n=L.Util.extend({},t,n);switch(i?"string"==typeof i?i:"metric":o?"feet":a?"nauticalMile":"yards"){case"metric":s=e>1e3?L.GeometryUtil.formattedNumber(e/1e3,n.km)+" km":L.GeometryUtil.formattedNumber(e,n.m)+" m";break;case"feet":e*=3.28083,s=L.GeometryUtil.formattedNumber(e,n.ft)+" ft";break;case"nauticalMile":e*=.53996,s=L.GeometryUtil.formattedNumber(e/1e3,n.nm)+" nm";break;case"yards":default:e*=1.09361,s=e>1760?L.GeometryUtil.formattedNumber(e/1760,n.mi)+" miles":L.GeometryUtil.formattedNumber(e,n.yd)+" yd";}return s},isVersion07x:function(){var t=L.version.split(".");return 0===parseInt(t[0],10)&&7===parseInt(t[1],10)}});}(),L.Util.extend(L.LineUtil,{segmentsIntersect:function(t,e,i,o){return this._checkCounterclockwise(t,i,o)!==this._checkCounterclockwise(e,i,o)&&this._checkCounterclockwise(t,e,i)!==this._checkCounterclockwise(t,e,o)},_checkCounterclockwise:function(t,e,i){return (i.y-t.y)*(e.x-t.x)>(e.y-t.y)*(i.x-t.x)}}),L.Polyline.include({intersects:function(){var t,e,i,o=this._getProjectedPoints(),a=o?o.length:0;if(this._tooFewPointsForIntersection())return !1;for(t=a-1;t>=3;t--)if(e=o[t-1],i=o[t],this._lineSegmentsIntersectsRange(e,i,t-2))return !0;return !1},newLatLngIntersects:function(t,e){return !!this._map&&this.newPointIntersects(this._map.latLngToLayerPoint(t),e)},newPointIntersects:function(t,e){var i=this._getProjectedPoints(),o=i?i.length:0,a=i?i[o-1]:null,n=o-2;return !this._tooFewPointsForIntersection(1)&&this._lineSegmentsIntersectsRange(a,t,n,e?1:0)},_tooFewPointsForIntersection:function(t){var e=this._getProjectedPoints(),i=e?e.length:0;return i+=t||0,!e||i<=3},_lineSegmentsIntersectsRange:function(t,e,i,o){var a,n,s=this._getProjectedPoints();o=o||0;for(var r=i;r>o;r--)if(a=s[r-1],n=s[r],L.LineUtil.segmentsIntersect(t,e,a,n))return !0;return !1},_getProjectedPoints:function(){if(!this._defaultShape)return this._originalPoints;for(var t=[],e=this._defaultShape(),i=0;i<e.length;i++)t.push(this._map.latLngToLayerPoint(e[i]));return t}}),L.Polygon.include({intersects:function(){var t,e,i,o,a=this._getProjectedPoints();return !this._tooFewPointsForIntersection()&&(!!L.Polyline.prototype.intersects.call(this)||(t=a.length,e=a[0],i=a[t-1],o=t-2,this._lineSegmentsIntersectsRange(i,e,o,1)))}}),L.Control.Draw=L.Control.extend({options:{position:"topleft",draw:{},edit:!1},initialize:function(t){if(L.version<"0.7")throw new Error("Leaflet.draw 0.2.3+ requires Leaflet 0.7.0+. Download latest from https://github.com/Leaflet/Leaflet/");L.Control.prototype.initialize.call(this,t);var e;this._toolbars={},L.DrawToolbar&&this.options.draw&&(e=new L.DrawToolbar(this.options.draw),this._toolbars[L.DrawToolbar.TYPE]=e,this._toolbars[L.DrawToolbar.TYPE].on("enable",this._toolbarEnabled,this)),L.EditToolbar&&this.options.edit&&(e=new L.EditToolbar(this.options.edit),this._toolbars[L.EditToolbar.TYPE]=e,this._toolbars[L.EditToolbar.TYPE].on("enable",this._toolbarEnabled,this)),L.toolbar=this;},onAdd:function(t){var e,i=L.DomUtil.create("div","leaflet-draw"),o=!1;for(var a in this._toolbars)this._toolbars.hasOwnProperty(a)&&(e=this._toolbars[a].addToolbar(t))&&(o||(L.DomUtil.hasClass(e,"leaflet-draw-toolbar-top")||L.DomUtil.addClass(e.childNodes[0],"leaflet-draw-toolbar-top"),o=!0),i.appendChild(e));return i},onRemove:function(){for(var t in this._toolbars)this._toolbars.hasOwnProperty(t)&&this._toolbars[t].removeToolbar();},setDrawingOptions:function(t){for(var e in this._toolbars)this._toolbars[e]instanceof L.DrawToolbar&&this._toolbars[e].setOptions(t);},_toolbarEnabled:function(t){var e=t.target;for(var i in this._toolbars)this._toolbars[i]!==e&&this._toolbars[i].disable();}}),L.Map.mergeOptions({drawControlTooltips:!0,drawControl:!1}),L.Map.addInitHook(function(){this.options.drawControl&&(this.drawControl=new L.Control.Draw,this.addControl(this.drawControl));}),L.Toolbar=L.Class.extend({initialize:function(t){L.setOptions(this,t),this._modes={},this._actionButtons=[],this._activeMode=null;var e=L.version.split(".");1===parseInt(e[0],10)&&parseInt(e[1],10)>=2?L.Toolbar.include(L.Evented.prototype):L.Toolbar.include(L.Mixin.Events);},enabled:function(){return null!==this._activeMode},disable:function(){this.enabled()&&this._activeMode.handler.disable();},addToolbar:function(t){var e,i=L.DomUtil.create("div","leaflet-draw-section"),o=0,a=this._toolbarClass||"",n=this.getModeHandlers(t);for(this._toolbarContainer=L.DomUtil.create("div","leaflet-draw-toolbar leaflet-bar"),this._map=t,e=0;e<n.length;e++)n[e].enabled&&this._initModeHandler(n[e].handler,this._toolbarContainer,o++,a,n[e].title);if(o)return this._lastButtonIndex=--o,this._actionsContainer=L.DomUtil.create("ul","leaflet-draw-actions"),i.appendChild(this._toolbarContainer),i.appendChild(this._actionsContainer),i},removeToolbar:function(){for(var t in this._modes)this._modes.hasOwnProperty(t)&&(this._disposeButton(this._modes[t].button,this._modes[t].handler.enable,this._modes[t].handler),this._modes[t].handler.disable(),this._modes[t].handler.off("enabled",this._handlerActivated,this).off("disabled",this._handlerDeactivated,this));this._modes={};for(var e=0,i=this._actionButtons.length;e<i;e++)this._disposeButton(this._actionButtons[e].button,this._actionButtons[e].callback,this);this._actionButtons=[],this._actionsContainer=null;},_initModeHandler:function(t,e,i,o,a){var n=t.type;this._modes[n]={},this._modes[n].handler=t,this._modes[n].button=this._createButton({type:n,title:a,className:o+"-"+n,container:e,callback:this._modes[n].handler.enable,context:this._modes[n].handler}),this._modes[n].buttonIndex=i,this._modes[n].handler.on("enabled",this._handlerActivated,this).on("disabled",this._handlerDeactivated,this);},_detectIOS:function(){return /iPad|iPhone|iPod/.test(navigator.userAgent)&&!t.MSStream},_createButton:function(t){var e=L.DomUtil.create("a",t.className||"",t.container),i=L.DomUtil.create("span","sr-only",t.container);e.href="#",e.appendChild(i),t.title&&(e.title=t.title,i.innerHTML=t.title),t.text&&(e.innerHTML=t.text,i.innerHTML=t.text);var o=this._detectIOS()?"touchstart":"click";return L.DomEvent.on(e,"click",L.DomEvent.stopPropagation).on(e,"mousedown",L.DomEvent.stopPropagation).on(e,"dblclick",L.DomEvent.stopPropagation).on(e,"touchstart",L.DomEvent.stopPropagation).on(e,"click",L.DomEvent.preventDefault).on(e,o,t.callback,t.context),e},_disposeButton:function(t,e){var i=this._detectIOS()?"touchstart":"click";L.DomEvent.off(t,"click",L.DomEvent.stopPropagation).off(t,"mousedown",L.DomEvent.stopPropagation).off(t,"dblclick",L.DomEvent.stopPropagation).off(t,"touchstart",L.DomEvent.stopPropagation).off(t,"click",L.DomEvent.preventDefault).off(t,i,e);},_handlerActivated:function(t){this.disable(),this._activeMode=this._modes[t.handler],L.DomUtil.addClass(this._activeMode.button,"leaflet-draw-toolbar-button-enabled"),this._showActionsToolbar(),this.fire("enable");},_handlerDeactivated:function(){this._hideActionsToolbar(),L.DomUtil.removeClass(this._activeMode.button,"leaflet-draw-toolbar-button-enabled"),this._activeMode=null,this.fire("disable");},_createActions:function(t){var e,i,o,a,n=this._actionsContainer,s=this.getActions(t),r=s.length;for(i=0,o=this._actionButtons.length;i<o;i++)this._disposeButton(this._actionButtons[i].button,this._actionButtons[i].callback);for(this._actionButtons=[];n.firstChild;)n.removeChild(n.firstChild);for(var l=0;l<r;l++)"enabled"in s[l]&&!s[l].enabled||(e=L.DomUtil.create("li","",n),a=this._createButton({title:s[l].title,text:s[l].text,container:e,callback:s[l].callback,context:s[l].context}),this._actionButtons.push({button:a,callback:s[l].callback}));},_showActionsToolbar:function(){var t=this._activeMode.buttonIndex,e=this._lastButtonIndex,i=this._activeMode.button.offsetTop-1;this._createActions(this._activeMode.handler),this._actionsContainer.style.top=i+"px",0===t&&(L.DomUtil.addClass(this._toolbarContainer,"leaflet-draw-toolbar-notop"),L.DomUtil.addClass(this._actionsContainer,"leaflet-draw-actions-top")),t===e&&(L.DomUtil.addClass(this._toolbarContainer,"leaflet-draw-toolbar-nobottom"),L.DomUtil.addClass(this._actionsContainer,"leaflet-draw-actions-bottom")),this._actionsContainer.style.display="block",this._map.fire(L.Draw.Event.TOOLBAROPENED);},_hideActionsToolbar:function(){this._actionsContainer.style.display="none",L.DomUtil.removeClass(this._toolbarContainer,"leaflet-draw-toolbar-notop"),L.DomUtil.removeClass(this._toolbarContainer,"leaflet-draw-toolbar-nobottom"),L.DomUtil.removeClass(this._actionsContainer,"leaflet-draw-actions-top"),L.DomUtil.removeClass(this._actionsContainer,"leaflet-draw-actions-bottom"),this._map.fire(L.Draw.Event.TOOLBARCLOSED);}}),L.Draw=L.Draw||{},L.Draw.Tooltip=L.Class.extend({initialize:function(t){this._map=t,this._popupPane=t._panes.popupPane,this._visible=!1,this._container=t.options.drawControlTooltips?L.DomUtil.create("div","leaflet-draw-tooltip",this._popupPane):null,this._singleLineLabel=!1,this._map.on("mouseout",this._onMouseOut,this);},dispose:function(){this._map.off("mouseout",this._onMouseOut,this),this._container&&(this._popupPane.removeChild(this._container),this._container=null);},updateContent:function(t){return this._container?(t.subtext=t.subtext||"",0!==t.subtext.length||this._singleLineLabel?t.subtext.length>0&&this._singleLineLabel&&(L.DomUtil.removeClass(this._container,"leaflet-draw-tooltip-single"),this._singleLineLabel=!1):(L.DomUtil.addClass(this._container,"leaflet-draw-tooltip-single"),this._singleLineLabel=!0),this._container.innerHTML=(t.subtext.length>0?'<span class="leaflet-draw-tooltip-subtext">'+t.subtext+"</span><br />":"")+"<span>"+t.text+"</span>",t.text||t.subtext?(this._visible=!0,this._container.style.visibility="inherit"):(this._visible=!1,this._container.style.visibility="hidden"),this):this},updatePosition:function(t){var e=this._map.latLngToLayerPoint(t),i=this._container;return this._container&&(this._visible&&(i.style.visibility="inherit"),L.DomUtil.setPosition(i,e)),this},showAsError:function(){return this._container&&L.DomUtil.addClass(this._container,"leaflet-error-draw-tooltip"),this},removeError:function(){return this._container&&L.DomUtil.removeClass(this._container,"leaflet-error-draw-tooltip"),this},_onMouseOut:function(){this._container&&(this._container.style.visibility="hidden");}}),L.DrawToolbar=L.Toolbar.extend({statics:{TYPE:"draw"},options:{polyline:{},polygon:{},rectangle:{},circle:{},marker:{},circlemarker:{}},initialize:function(t){for(var e in this.options)this.options.hasOwnProperty(e)&&t[e]&&(t[e]=L.extend({},this.options[e],t[e]));this._toolbarClass="leaflet-draw-draw",L.Toolbar.prototype.initialize.call(this,t);},getModeHandlers:function(t){return [{enabled:this.options.polyline,handler:new L.Draw.Polyline(t,this.options.polyline),title:L.drawLocal.draw.toolbar.buttons.polyline},{enabled:this.options.polygon,handler:new L.Draw.Polygon(t,this.options.polygon),title:L.drawLocal.draw.toolbar.buttons.polygon},{enabled:this.options.rectangle,handler:new L.Draw.Rectangle(t,this.options.rectangle),title:L.drawLocal.draw.toolbar.buttons.rectangle},{enabled:this.options.circle,handler:new L.Draw.Circle(t,this.options.circle),title:L.drawLocal.draw.toolbar.buttons.circle},{enabled:this.options.marker,handler:new L.Draw.Marker(t,this.options.marker),title:L.drawLocal.draw.toolbar.buttons.marker},{enabled:this.options.circlemarker,handler:new L.Draw.CircleMarker(t,this.options.circlemarker),title:L.drawLocal.draw.toolbar.buttons.circlemarker}]},getActions:function(t){return [{enabled:t.completeShape,title:L.drawLocal.draw.toolbar.finish.title,text:L.drawLocal.draw.toolbar.finish.text,callback:t.completeShape,context:t},{enabled:t.deleteLastVertex,title:L.drawLocal.draw.toolbar.undo.title,text:L.drawLocal.draw.toolbar.undo.text,callback:t.deleteLastVertex,context:t},{title:L.drawLocal.draw.toolbar.actions.title,text:L.drawLocal.draw.toolbar.actions.text,callback:this.disable,context:this}]},setOptions:function(t){L.setOptions(this,t);for(var e in this._modes)this._modes.hasOwnProperty(e)&&t.hasOwnProperty(e)&&this._modes[e].handler.setOptions(t[e]);}}),L.EditToolbar=L.Toolbar.extend({statics:{TYPE:"edit"},options:{edit:{selectedPathOptions:{dashArray:"10, 10",fill:!0,fillColor:"#fe57a1",fillOpacity:.1,maintainColor:!1}},remove:{},poly:null,featureGroup:null},initialize:function(t){t.edit&&(void 0===t.edit.selectedPathOptions&&(t.edit.selectedPathOptions=this.options.edit.selectedPathOptions),t.edit.selectedPathOptions=L.extend({},this.options.edit.selectedPathOptions,t.edit.selectedPathOptions)),t.remove&&(t.remove=L.extend({},this.options.remove,t.remove)),t.poly&&(t.poly=L.extend({},this.options.poly,t.poly)),this._toolbarClass="leaflet-draw-edit",L.Toolbar.prototype.initialize.call(this,t),this._selectedFeatureCount=0;},getModeHandlers:function(t){var e=this.options.featureGroup;return [{enabled:this.options.edit,handler:new L.EditToolbar.Edit(t,{featureGroup:e,selectedPathOptions:this.options.edit.selectedPathOptions,poly:this.options.poly}),title:L.drawLocal.edit.toolbar.buttons.edit},{enabled:this.options.remove,handler:new L.EditToolbar.Delete(t,{featureGroup:e}),title:L.drawLocal.edit.toolbar.buttons.remove}]},getActions:function(t){var e=[{title:L.drawLocal.edit.toolbar.actions.save.title,text:L.drawLocal.edit.toolbar.actions.save.text,callback:this._save,context:this},{title:L.drawLocal.edit.toolbar.actions.cancel.title,text:L.drawLocal.edit.toolbar.actions.cancel.text,callback:this.disable,context:this}];return t.removeAllLayers&&e.push({title:L.drawLocal.edit.toolbar.actions.clearAll.title,text:L.drawLocal.edit.toolbar.actions.clearAll.text,callback:this._clearAllLayers,context:this}),e},addToolbar:function(t){var e=L.Toolbar.prototype.addToolbar.call(this,t);return this._checkDisabled(),this.options.featureGroup.on("layeradd layerremove",this._checkDisabled,this),e},removeToolbar:function(){this.options.featureGroup.off("layeradd layerremove",this._checkDisabled,this),L.Toolbar.prototype.removeToolbar.call(this);},disable:function(){this.enabled()&&(this._activeMode.handler.revertLayers(),L.Toolbar.prototype.disable.call(this));},_save:function(){this._activeMode.handler.save(),this._activeMode&&this._activeMode.handler.disable();},_clearAllLayers:function(){this._activeMode.handler.removeAllLayers(),this._activeMode&&this._activeMode.handler.disable();},_checkDisabled:function(){var t,e=this.options.featureGroup,i=0!==e.getLayers().length;this.options.edit&&(t=this._modes[L.EditToolbar.Edit.TYPE].button,i?L.DomUtil.removeClass(t,"leaflet-disabled"):L.DomUtil.addClass(t,"leaflet-disabled"),t.setAttribute("title",i?L.drawLocal.edit.toolbar.buttons.edit:L.drawLocal.edit.toolbar.buttons.editDisabled)),this.options.remove&&(t=this._modes[L.EditToolbar.Delete.TYPE].button,i?L.DomUtil.removeClass(t,"leaflet-disabled"):L.DomUtil.addClass(t,"leaflet-disabled"),t.setAttribute("title",i?L.drawLocal.edit.toolbar.buttons.remove:L.drawLocal.edit.toolbar.buttons.removeDisabled));}}),L.EditToolbar.Edit=L.Handler.extend({statics:{TYPE:"edit"},initialize:function(t,e){if(L.Handler.prototype.initialize.call(this,t),L.setOptions(this,e),this._featureGroup=e.featureGroup,!(this._featureGroup instanceof L.FeatureGroup))throw new Error("options.featureGroup must be a L.FeatureGroup");this._uneditedLayerProps={},this.type=L.EditToolbar.Edit.TYPE;var i=L.version.split(".");1===parseInt(i[0],10)&&parseInt(i[1],10)>=2?L.EditToolbar.Edit.include(L.Evented.prototype):L.EditToolbar.Edit.include(L.Mixin.Events);},enable:function(){!this._enabled&&this._hasAvailableLayers()&&(this.fire("enabled",{handler:this.type}),this._map.fire(L.Draw.Event.EDITSTART,{handler:this.type}),L.Handler.prototype.enable.call(this),this._featureGroup.on("layeradd",this._enableLayerEdit,this).on("layerremove",this._disableLayerEdit,this));},disable:function(){this._enabled&&(this._featureGroup.off("layeradd",this._enableLayerEdit,this).off("layerremove",this._disableLayerEdit,this),L.Handler.prototype.disable.call(this),this._map.fire(L.Draw.Event.EDITSTOP,{handler:this.type}),this.fire("disabled",{handler:this.type}));},addHooks:function(){var t=this._map;t&&(t.getContainer().focus(),this._featureGroup.eachLayer(this._enableLayerEdit,this),this._tooltip=new L.Draw.Tooltip(this._map),this._tooltip.updateContent({text:L.drawLocal.edit.handlers.edit.tooltip.text,subtext:L.drawLocal.edit.handlers.edit.tooltip.subtext}),t._editTooltip=this._tooltip,this._updateTooltip(),this._map.on("mousemove",this._onMouseMove,this).on("touchmove",this._onMouseMove,this).on("MSPointerMove",this._onMouseMove,this).on(L.Draw.Event.EDITVERTEX,this._updateTooltip,this));},removeHooks:function(){this._map&&(this._featureGroup.eachLayer(this._disableLayerEdit,this),this._uneditedLayerProps={},this._tooltip.dispose(),this._tooltip=null,this._map.off("mousemove",this._onMouseMove,this).off("touchmove",this._onMouseMove,this).off("MSPointerMove",this._onMouseMove,this).off(L.Draw.Event.EDITVERTEX,this._updateTooltip,this));},revertLayers:function(){this._featureGroup.eachLayer(function(t){this._revertLayer(t);},this);},save:function(){var t=new L.LayerGroup;this._featureGroup.eachLayer(function(e){e.edited&&(t.addLayer(e),e.edited=!1);}),this._map.fire(L.Draw.Event.EDITED,{layers:t});},_backupLayer:function(t){var e=L.Util.stamp(t);this._uneditedLayerProps[e]||(t instanceof L.Polyline||t instanceof L.Polygon||t instanceof L.Rectangle?this._uneditedLayerProps[e]={latlngs:L.LatLngUtil.cloneLatLngs(t.getLatLngs())}:t instanceof L.Circle?this._uneditedLayerProps[e]={latlng:L.LatLngUtil.cloneLatLng(t.getLatLng()),radius:t.getRadius()}:(t instanceof L.Marker||t instanceof L.CircleMarker)&&(this._uneditedLayerProps[e]={latlng:L.LatLngUtil.cloneLatLng(t.getLatLng())}));},_getTooltipText:function(){return {text:L.drawLocal.edit.handlers.edit.tooltip.text,subtext:L.drawLocal.edit.handlers.edit.tooltip.subtext}},_updateTooltip:function(){this._tooltip.updateContent(this._getTooltipText());},_revertLayer:function(t){var e=L.Util.stamp(t);t.edited=!1,this._uneditedLayerProps.hasOwnProperty(e)&&(t instanceof L.Polyline||t instanceof L.Polygon||t instanceof L.Rectangle?t.setLatLngs(this._uneditedLayerProps[e].latlngs):t instanceof L.Circle?(t.setLatLng(this._uneditedLayerProps[e].latlng),t.setRadius(this._uneditedLayerProps[e].radius)):(t instanceof L.Marker||t instanceof L.CircleMarker)&&t.setLatLng(this._uneditedLayerProps[e].latlng),t.fire("revert-edited",{layer:t}));},_enableLayerEdit:function(t){var e,i,o=t.layer||t.target||t;this._backupLayer(o),this.options.poly&&(i=L.Util.extend({},this.options.poly),o.options.poly=i),this.options.selectedPathOptions&&(e=L.Util.extend({},this.options.selectedPathOptions),e.maintainColor&&(e.color=o.options.color,e.fillColor=o.options.fillColor),o.options.original=L.extend({},o.options),o.options.editing=e),o instanceof L.Marker?(o.editing&&o.editing.enable(),o.dragging.enable(),o.on("dragend",this._onMarkerDragEnd).on("touchmove",this._onTouchMove,this).on("MSPointerMove",this._onTouchMove,this).on("touchend",this._onMarkerDragEnd,this).on("MSPointerUp",this._onMarkerDragEnd,this)):o.editing.enable();},_disableLayerEdit:function(t){var e=t.layer||t.target||t;e.edited=!1,e.editing&&e.editing.disable(),delete e.options.editing,delete e.options.original,this._selectedPathOptions&&(e instanceof L.Marker?this._toggleMarkerHighlight(e):(e.setStyle(e.options.previousOptions),
 	delete e.options.previousOptions)),e instanceof L.Marker?(e.dragging.disable(),e.off("dragend",this._onMarkerDragEnd,this).off("touchmove",this._onTouchMove,this).off("MSPointerMove",this._onTouchMove,this).off("touchend",this._onMarkerDragEnd,this).off("MSPointerUp",this._onMarkerDragEnd,this)):e.editing.disable();},_onMouseMove:function(t){this._tooltip.updatePosition(t.latlng);},_onMarkerDragEnd:function(t){var e=t.target;e.edited=!0,this._map.fire(L.Draw.Event.EDITMOVE,{layer:e});},_onTouchMove:function(t){var e=t.originalEvent.changedTouches[0],i=this._map.mouseEventToLayerPoint(e),o=this._map.layerPointToLatLng(i);t.target.setLatLng(o);},_hasAvailableLayers:function(){return 0!==this._featureGroup.getLayers().length}}),L.EditToolbar.Delete=L.Handler.extend({statics:{TYPE:"remove"},initialize:function(t,e){if(L.Handler.prototype.initialize.call(this,t),L.Util.setOptions(this,e),this._deletableLayers=this.options.featureGroup,!(this._deletableLayers instanceof L.FeatureGroup))throw new Error("options.featureGroup must be a L.FeatureGroup");this.type=L.EditToolbar.Delete.TYPE;var i=L.version.split(".");1===parseInt(i[0],10)&&parseInt(i[1],10)>=2?L.EditToolbar.Delete.include(L.Evented.prototype):L.EditToolbar.Delete.include(L.Mixin.Events);},enable:function(){!this._enabled&&this._hasAvailableLayers()&&(this.fire("enabled",{handler:this.type}),this._map.fire(L.Draw.Event.DELETESTART,{handler:this.type}),L.Handler.prototype.enable.call(this),this._deletableLayers.on("layeradd",this._enableLayerDelete,this).on("layerremove",this._disableLayerDelete,this));},disable:function(){this._enabled&&(this._deletableLayers.off("layeradd",this._enableLayerDelete,this).off("layerremove",this._disableLayerDelete,this),L.Handler.prototype.disable.call(this),this._map.fire(L.Draw.Event.DELETESTOP,{handler:this.type}),this.fire("disabled",{handler:this.type}));},addHooks:function(){var t=this._map;t&&(t.getContainer().focus(),this._deletableLayers.eachLayer(this._enableLayerDelete,this),this._deletedLayers=new L.LayerGroup,this._tooltip=new L.Draw.Tooltip(this._map),this._tooltip.updateContent({text:L.drawLocal.edit.handlers.remove.tooltip.text}),this._map.on("mousemove",this._onMouseMove,this));},removeHooks:function(){this._map&&(this._deletableLayers.eachLayer(this._disableLayerDelete,this),this._deletedLayers=null,this._tooltip.dispose(),this._tooltip=null,this._map.off("mousemove",this._onMouseMove,this));},revertLayers:function(){this._deletedLayers.eachLayer(function(t){this._deletableLayers.addLayer(t),t.fire("revert-deleted",{layer:t});},this);},save:function(){this._map.fire(L.Draw.Event.DELETED,{layers:this._deletedLayers});},removeAllLayers:function(){this._deletableLayers.eachLayer(function(t){this._removeLayer({layer:t});},this),this.save();},_enableLayerDelete:function(t){(t.layer||t.target||t).on("click",this._removeLayer,this);},_disableLayerDelete:function(t){var e=t.layer||t.target||t;e.off("click",this._removeLayer,this),this._deletedLayers.removeLayer(e);},_removeLayer:function(t){var e=t.layer||t.target||t;this._deletableLayers.removeLayer(e),this._deletedLayers.addLayer(e),e.fire("deleted");},_onMouseMove:function(t){this._tooltip.updatePosition(t.latlng);},_hasAvailableLayers:function(){return 0!==this._deletableLayers.getLayers().length}});}(window,document);
 
-	// This implementation of LRUMap is a copy of https://github.com/rsms/js-lru/ ,
-	// trivially adapted for ES6 exports.
-
-	/*
-	The MIT License
-
-	Copyright (c) 2010-2020 Rasmus Andersson <https://rsms.me/>
-
-	Permission is hereby granted, free of charge, to any person obtaining a copy
-	of this software and associated documentation files (the "Software"), to deal
-	in the Software without restriction, including without limitation the rights
-	to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-	copies of the Software, and to permit persons to whom the Software is
-	furnished to do so, subject to the following conditions:
-
-	The above copyright notice and this permission notice shall be included in
-	all copies or substantial portions of the Software.
-
-	THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-	IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-	FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-	AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-	LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-	OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-	THE SOFTWARE.
-	*/
-
 	/**
-	 * A doubly linked list-based Least Recently Used (LRU) cache. Will keep most
-	 * recently used items while discarding least recently used items when its limit
-	 * is reached.
-	 *
-	 * Licensed under MIT. Copyright (c) 2010 Rasmus Andersson <http://hunch.se/>
-	 * See README.md for details.
-	 *
-	 * Illustration of the design:
-	 *
-	 *       entry             entry             entry             entry
-	 *       ______            ______            ______            ______
-	 *      | head |.newer => |      |.newer => |      |.newer => | tail |
-	 *      |  A   |          |  B   |          |  C   |          |  D   |
-	 *      |______| <= older.|______| <= older.|______| <= older.|______|
-	 *
-	 *  removed  <--  <--  <--  <--  <--  <--  <--  <--  <--  <--  <--  added
+	 * @typedef GeolocationPosition
+	 * @property {string} geopoint
+	 * @property {number} lat
+	 * @property {number} lng
+	 * @property {window.GeolocationPosition} position
 	 */
 
-	const NEWER = Symbol("newer");
-	const OLDER = Symbol("older");
-
-	class LRUMap {
-		constructor(limit, entries) {
-			if (typeof limit !== "number") {
-				// called as (entries)
-				entries = limit;
-				limit = 0;
-			}
-
-			this.size = 0;
-			this.limit = limit;
-			this.oldest = this.newest = undefined;
-			this._keymap = new Map();
-
-			if (entries) {
-				this.assign(entries);
-				if (limit < 1) {
-					this.limit = this.size;
-				}
-			}
-		}
-
-		_markEntryAsUsed(entry) {
-			if (entry === this.newest) {
-				// Already the most recenlty used entry, so no need to update the list
-				return;
-			}
-			// HEAD--------------TAIL
-			//   <.older   .newer>
-			//  <--- add direction --
-			//   A  B  C  <D>  E
-			if (entry[NEWER]) {
-				if (entry === this.oldest) {
-					this.oldest = entry[NEWER];
-				}
-				entry[NEWER][OLDER] = entry[OLDER]; // C <-- E.
-			}
-			if (entry[OLDER]) {
-				entry[OLDER][NEWER] = entry[NEWER]; // C. --> E
-			}
-			entry[NEWER] = undefined; // D --x
-			entry[OLDER] = this.newest; // D. --> E
-			if (this.newest) {
-				this.newest[NEWER] = entry; // E. <-- D
-			}
-			this.newest = entry;
-		}
-
-		assign(entries) {
-			let entry,
-				limit = this.limit || Number.MAX_VALUE;
-			this._keymap.clear();
-			let it = entries[Symbol.iterator]();
-			for (let itv = it.next(); !itv.done; itv = it.next()) {
-				let e = new Entry(itv.value[0], itv.value[1]);
-				this._keymap.set(e.key, e);
-				if (!entry) {
-					this.oldest = e;
-				} else {
-					entry[NEWER] = e;
-					e[OLDER] = entry;
-				}
-				entry = e;
-				if (limit-- == 0) {
-					throw new Error("overflow");
-				}
-			}
-			this.newest = entry;
-			this.size = this._keymap.size;
-		}
-
-		get(key) {
-			// First, find our cache entry
-			var entry = this._keymap.get(key);
-			if (!entry) return; // Not cached. Sorry.
-			// As <key> was found in the cache, register it as being requested recently
-			this._markEntryAsUsed(entry);
-			return entry.value;
-		}
-
-		set(key, value) {
-			var entry = this._keymap.get(key);
-
-			if (entry) {
-				// update existing
-				entry.value = value;
-				this._markEntryAsUsed(entry);
-				return this;
-			}
-
-			// new entry
-			this._keymap.set(key, (entry = new Entry(key, value)));
-
-			if (this.newest) {
-				// link previous tail to the new tail (entry)
-				this.newest[NEWER] = entry;
-				entry[OLDER] = this.newest;
-			} else {
-				// we're first in -- yay
-				this.oldest = entry;
-			}
-
-			// add new entry to the end of the linked list -- it's now the freshest entry.
-			this.newest = entry;
-			++this.size;
-			if (this.size > this.limit) {
-				// we hit the limit -- remove the head
-				this.shift();
-			}
-
-			return this;
-		}
-
-		shift() {
-			// todo: handle special case when limit == 1
-			var entry = this.oldest;
-			if (entry) {
-				if (this.oldest[NEWER]) {
-					// advance the list
-					this.oldest = this.oldest[NEWER];
-					this.oldest[OLDER] = undefined;
-				} else {
-					// the cache is exhausted
-					this.oldest = undefined;
-					this.newest = undefined;
-				}
-				// Remove last strong reference to <entry> and remove links from the purged
-				// entry being returned:
-				entry[NEWER] = entry[OLDER] = undefined;
-				this._keymap.delete(entry.key);
-				--this.size;
-				return [entry.key, entry.value];
-			}
-		}
-
-		// -------------------------------------------------------------------------------------
-		// Following code (until end of class definition) is optional and can be removed without
-		// breaking the core functionality.
-
-		find(key) {
-			let e = this._keymap.get(key);
-			return e ? e.value : undefined;
-		}
-
-		has(key) {
-			return this._keymap.has(key);
-		}
-
-		delete(key) {
-			var entry = this._keymap.get(key);
-			if (!entry) return;
-			this._keymap.delete(entry.key);
-			if (entry[NEWER] && entry[OLDER]) {
-				// relink the older entry with the newer entry
-				entry[OLDER][NEWER] = entry[NEWER];
-				entry[NEWER][OLDER] = entry[OLDER];
-			} else if (entry[NEWER]) {
-				// remove the link to us
-				entry[NEWER][OLDER] = undefined;
-				// link the newer entry to head
-				this.oldest = entry[NEWER];
-			} else if (entry[OLDER]) {
-				// remove the link to us
-				entry[OLDER][NEWER] = undefined;
-				// link the newer entry to head
-				this.newest = entry[OLDER];
-			} else {
-				// if(entry[OLDER] === undefined && entry.newer === undefined) {
-				this.oldest = this.newest = undefined;
-			}
-
-			this.size--;
-			return entry.value;
-		}
-
-		clear() {
-			// Not clearing links should be safe, as we don't expose live links to user
-			this.oldest = this.newest = undefined;
-			this.size = 0;
-			this._keymap.clear();
-		}
-
-		keys() {
-			return new KeyIterator(this.oldest);
-		}
-
-		values() {
-			return new ValueIterator(this.oldest);
-		}
-
-		entries() {
-			return this;
-		}
-
-		[Symbol.iterator]() {
-			return new EntryIterator(this.oldest);
-		}
-
-		forEach(fun, thisObj) {
-			if (typeof thisObj !== "object") {
-				thisObj = this;
-			}
-			let entry = this.oldest;
-			while (entry) {
-				fun.call(thisObj, entry.value, entry.key, this);
-				entry = entry[NEWER];
-			}
-		}
-
-		/** Returns a JSON (array) representation */
-		toJSON() {
-			var s = new Array(this.size),
-				i = 0,
-				entry = this.oldest;
-			while (entry) {
-				s[i++] = { key: entry.key, value: entry.value };
-				entry = entry[NEWER];
-			}
-			return s;
-		}
-
-		/** Returns a String representation */
-		toString() {
-			var s = "",
-				entry = this.oldest;
-			while (entry) {
-				s += String(entry.key) + ":" + entry.value;
-				entry = entry[NEWER];
-				if (entry) {
-					s += " < ";
-				}
-			}
-			return s;
-		}
-	}
-
-	function Entry(key, value) {
-		this.key = key;
-		this.value = value;
-		this[NEWER] = undefined;
-		this[OLDER] = undefined;
-	}
-
-	function EntryIterator(oldestEntry) {
-		this.entry = oldestEntry;
-	}
-	EntryIterator.prototype[Symbol.iterator] = function () {
-		return this;
-	};
-	EntryIterator.prototype.next = function () {
-		let ent = this.entry;
-		if (ent) {
-			this.entry = ent[NEWER];
-			return { done: false, value: [ent.key, ent.value] };
-		} else {
-			return { done: true, value: undefined };
-		}
-	};
-
-	function KeyIterator(oldestEntry) {
-		this.entry = oldestEntry;
-	}
-	KeyIterator.prototype[Symbol.iterator] = function () {
-		return this;
-	};
-	KeyIterator.prototype.next = function () {
-		let ent = this.entry;
-		if (ent) {
-			this.entry = ent[NEWER];
-			return { done: false, value: ent.key };
-		} else {
-			return { done: true, value: undefined };
-		}
-	};
-
-	function ValueIterator(oldestEntry) {
-		this.entry = oldestEntry;
-	}
-	ValueIterator.prototype[Symbol.iterator] = function () {
-		return this;
-	};
-	ValueIterator.prototype.next = function () {
-		let ent = this.entry;
-		if (ent) {
-			this.entry = ent[NEWER];
-			return { done: false, value: ent.value };
-		} else {
-			return { done: true, value: undefined };
-		}
-	};
-
-	// GoogleMutant by Iván Sánchez Ortega <ivan@sanchezortega.es>
-
-	const GAPIPromise = (function () {
-		let singletonInstance;
-		return function () {
-			if (!singletonInstance) {
-				singletonInstance = new Promise(function (resolve, reject) {
-					let checkCounter = 0,
-						intervalId = null;
-
-					intervalId = setInterval(function () {
-						if (checkCounter >= 20) {
-							clearInterval(intervalId);
-							return reject(new Error("window.google not found after 10 seconds"));
-						}
-						if (!!window.google && !!window.google.maps && !!window.google.maps.Map) {
-							clearInterval(intervalId);
-							return resolve(window.google);
-						}
-						++checkCounter;
-					}, 500);
-				});
-			}
-			return singletonInstance;
-		};
-	})();
-
-	// 🍂class GridLayer.GoogleMutant
-	// 🍂extends GridLayer
-	L.GridLayer.GoogleMutant = L.GridLayer.extend({
-		options: {
-			minZoom: 0,
-			maxZoom: 21, // can be 23, but ugly if more than maxNativeZoom
-			tileSize: 256,
-			subdomains: "abc",
-			errorTileUrl: "",
-			attribution: "", // The mutant container will add its own attribution anyways.
-			opacity: 1,
-			continuousWorld: false,
-			noWrap: false,
-			// 🍂option type: String = 'roadmap'
-			// Google's map type. Valid values are 'roadmap', 'satellite' or 'terrain'. 'hybrid' is not really supported.
-			type: "roadmap",
-			maxNativeZoom: 21,
-		},
-
-		initialize: function (options) {
-			L.GridLayer.prototype.initialize.call(this, options);
-
-			this._isMounted = true;
-
-			this.once("spawned", function () {
-				if (this._subLayers) {
-					//restore previously added google layers
-					for (var layerName in this._subLayers) {
-						this._subLayers[layerName].setMap(this._mutant);
-					}
-				}
-			});
-
-			// Couple data structures indexed by tile key
-			this._tileCallbacks = {}; // Callbacks for promises for tiles that are expected
-			this._lru = new LRUMap(100); // Tile LRU cache
-
-			this._imagesPerTile = this.options.type === "hybrid" ? 2 : 1;
-
-			this._boundOnMutatedImage = this._onMutatedImage.bind(this);
-		},
-
-		onAdd: function (map) {
-			L.GridLayer.prototype.onAdd.call(this, map);
-			this._initMutantContainer();
-
-			// Attribution and logo nodes are not mutated a second time if the
-			// mutant is removed and re-added to the map, hence they are
-			// not cleaned up on layer removal, so they can be added here.
-			if (this._logoContainer) {
-				map._controlCorners.bottomleft.appendChild(this._logoContainer);
-			}
-			if (this._attributionContainer) {
-				map._controlCorners.bottomright.appendChild(this._attributionContainer);
-			}
-
-			GAPIPromise().then(() => {
-				if (!this._isMounted) {
-					return;
-				}
-				this._ready = true;
-
-				this._initMutant();
-
-				map = this._map;
-				if (!map) {
-					return;
-				}
-				var moveevent = this.options.updateWhenIdle ? "moveend" : "move";
-				map.on(moveevent, this._update, this);
-				this.once("remove", function () {
-					this._map.off(moveevent, this._update, this);
-				});
-				//handle layer being added to a map for which there are no Google tiles at the given zoom
-				google.maps.event.addListenerOnce(this._mutant, "idle", () => {
-					if (!this._map) {
-						return;
-					}
-					this._checkZoomLevels();
-					this._mutantIsReady = true;
-				});
-
-				this._update();
-			});
-		},
-
-		onRemove: function (map) {
-			L.GridLayer.prototype.onRemove.call(this, map);
-			this._observer.disconnect();
-			map._container.removeChild(this._mutantContainer);
-			if (this._logoContainer) {
-				L.DomUtil.remove(this._logoContainer);
-			}
-			if (this._attributionContainer) {
-				L.DomUtil.remove(this._attributionContainer);
-			}
-
-			google.maps.event.clearListeners(map, "idle");
-			if (this._mutant) {
-				google.maps.event.clearListeners(this._mutant, "idle");
-			}
-			map.off("move moveend", this._update, this);
-
-			this._isMounted = false;
-		},
-
-		// 🍂method addGoogleLayer(name: String, options?: Object): this
-		// Adds layer with the given name and options to the google Map instance.
-		// `name`: one of the google maps API layers, with it's constructor available in `google.maps` object.
-		// currently following values supported: 'TrafficLayer', 'TransitLayer', 'BicyclingLayer'.
-		// `options`: see https://developers.google.com/maps/documentation/javascript/reference/map
-		addGoogleLayer: function (googleLayerName, options) {
-			if (!this._subLayers) this._subLayers = {};
-			GAPIPromise().then(() => {
-				var Constructor = google.maps[googleLayerName];
-				var googleLayer = new Constructor(options);
-				if (this._mutant) {
-					googleLayer.setMap(this._mutant);
-				} // otherwise it will be added on 'spawned'
-				this._subLayers[googleLayerName] = googleLayer;
-			});
-			return this;
-		},
-
-		// 🍂method removeGoogleLayer(name: String): this
-		// Removes layer with the given name from the google Map instance.
-		removeGoogleLayer: function (googleLayerName) {
-			GAPIPromise().then(() => {
-				var googleLayer = this._subLayers && this._subLayers[googleLayerName];
-				if (googleLayer) {
-					googleLayer.setMap(null);
-					delete this._subLayers[googleLayerName];
-				}
-			});
-			return this;
-		},
-
-		_initMutantContainer: function () {
-			if (!this._mutantContainer) {
-				this._mutantContainer = L.DomUtil.create(
-					"div",
-					"leaflet-google-mutant leaflet-top leaflet-left"
-				);
-				this._mutantContainer.id = "_MutantContainer_" + L.Util.stamp(this._mutantContainer);
-				this._mutantContainer.style.zIndex = 800; //leaflet map pane at 400, controls at 1000
-				this._mutantContainer.style.pointerEvents = "none";
-
-				L.DomEvent.off(this._mutantContainer);
-			}
-			this._map.getContainer().appendChild(this._mutantContainer);
-
-			this.setOpacity(this.options.opacity);
-			const style = this._mutantContainer.style;
-			if (this.options.zoomSnap < 1) {
-				// Fractional zoom needs a bigger mutant container in order to load more (smaller) tiles
-				style.width = "180%";
-				style.height = "180%";
-			} else {
-				style.width = "100%";
-				style.height = "100%";
-			}
-			style.zIndex = -1;
-
-			this._attachObserver(this._mutantContainer);
-		},
-
-		_initMutant: function () {
-			if (this._mutant) {
-				// reuse old _mutant, just make sure it has the correct size
-				return;
-			}
-
-			var map = new google.maps.Map(this._mutantContainer, {
-				center: { lat: 0, lng: 0 },
-				zoom: 0,
-				tilt: 0,
-				mapTypeId: this.options.type,
-				disableDefaultUI: true,
-				keyboardShortcuts: false,
-				draggable: false,
-				disableDoubleClickZoom: true,
-				scrollwheel: false,
-				streetViewControl: false,
-				styles: this.options.styles || {},
-				backgroundColor: "transparent",
-			});
-
-			this._mutant = map;
-
-			google.maps.event.addListenerOnce(map, "idle", () => {
-				var nodes = this._mutantContainer.querySelectorAll("a");
-				for (var i = 0; i < nodes.length; ++i) {
-					nodes[i].style.pointerEvents = "auto";
-				}
-			});
-
-			// 🍂event spawned
-			// Fired when the mutant has been created.
-			this.fire("spawned", { mapObject: map });
-		},
-
-		_attachObserver: function _attachObserver(node) {
-			if (!this._observer) this._observer = new MutationObserver(this._onMutations.bind(this));
-
-			// pass in the target node, as well as the observer options
-			this._observer.observe(node, { childList: true, subtree: true });
-
-			// if we are reusing an old _mutantContainer, we must manually detect
-			// all existing tiles in it
-			Array.prototype.forEach.call(node.querySelectorAll("img"), this._boundOnMutatedImage);
-		},
-
-		_onMutations: function _onMutations(mutations) {
-			for (var i = 0; i < mutations.length; ++i) {
-				var mutation = mutations[i];
-				for (var j = 0; j < mutation.addedNodes.length; ++j) {
-					var node = mutation.addedNodes[j];
-
-					if (node instanceof HTMLImageElement) {
-						this._onMutatedImage(node);
-					} else if (node instanceof HTMLElement) {
-						Array.prototype.forEach.call(
-							node.querySelectorAll("img"),
-							this._boundOnMutatedImage
-						);
-
-						// Check for, and remove, the "Google Maps can't load correctly" div.
-						// You *are* loading correctly, you dumbwit.
-						if (node.style.backgroundColor === "white") {
-							L.DomUtil.remove(node);
-						}
-
-						// Check for, and remove, the "For development purposes only" divs on the aerial/hybrid tiles.
-						if (node.textContent.indexOf("For development purposes only") === 0) {
-							L.DomUtil.remove(node);
-						}
-
-						// Check for, and remove, the "Sorry, we have no imagery here"
-						// empty <div>s. The [style*="text-align: center"] selector
-						// avoids matching the attribution notice.
-						// This empty div doesn't have a reference to the tile
-						// coordinates, so it's not possible to mark the tile as
-						// failed.
-						Array.prototype.forEach.call(
-							node.querySelectorAll('div[draggable=false][style*="text-align: center"]'),
-							L.DomUtil.remove
-						);
-
-						// Move Google attributions to leaflet's bottom-right control container
-						if (
-							node.querySelectorAll(".gmnoprint").length > 0 ||
-							node.querySelectorAll('a[title="Click to see this area on Google Maps"]')
-								.length > 0
-						) {
-							const ctr = (this._attributionContainer = L.DomUtil.create(
-								"div",
-								"leaflet-control leaflet-control-attribution"
-							));
-							L.DomEvent.disableClickPropagation(ctr);
-							ctr.style.height = "14px";
-							ctr.style.background = "none";
-							this._map._controlCorners.bottomright.appendChild(ctr);
-							ctr.appendChild(node);
-						}
-
-						// Move Google logo to leaflet's bottom-left control container
-						if (node.style.zIndex == 1000000) {
-							this._map._controlCorners.bottomleft.appendChild(node);
-							this._logoContainer = node;
-						}
-					}
-				}
-			}
-		},
-
-		// Only images which 'src' attrib match this will be considered for moving around.
-		// Looks like some kind of string-based protobuf, maybe??
-		// Only the roads (and terrain, and vector-based stuff) match this pattern
-		_roadRegexp: /!1i(\d+)!2i(\d+)!3i(\d+)!/,
-
-		// On the other hand, raster imagery matches this other pattern
-		_satRegexp: /x=(\d+)&y=(\d+)&z=(\d+)/,
-
-		// On small viewports, when zooming in/out, a static image is requested
-		// This will not be moved around, just removed from the DOM.
-		_staticRegExp: /StaticMapService\.GetMapImage/,
-
-		_onMutatedImage: function _onMutatedImage(imgNode) {
-			let coords;
-			let match = imgNode.src.match(this._roadRegexp);
-			let sublayer = 0;
-
-			if (match) {
-				coords = {
-					z: match[1],
-					x: match[2],
-					y: match[3],
-				};
-				if (this._imagesPerTile > 1) {
-					imgNode.style.zIndex = 1;
-					sublayer = 1;
-				}
-			} else {
-				match = imgNode.src.match(this._satRegexp);
-				if (match) {
-					coords = {
-						x: match[1],
-						y: match[2],
-						z: match[3],
-					};
-				}
-				// imgNode.style.zIndex = 0;
-				sublayer = 0;
-			}
-
-			if (coords) {
-				var tileKey = this._tileCoordsToKey(coords);
-				imgNode.style.position = "absolute";
-				imgNode.style.visibility = "hidden";
-
-				var key = tileKey + "/" + sublayer;
-				// Cache img so it can also be used in subsequent tile requests
-				this._lru.set(key, imgNode);
-
-				if (key in this._tileCallbacks && this._tileCallbacks[key]) {
-					// Use the tile for *all* pending callbacks. They'll be cloned anyway.
-					this._tileCallbacks[key].forEach((callback) => callback(imgNode));
-					delete this._tileCallbacks[key];
-				}
-			} else if (imgNode.src.match(this._staticRegExp)) {
-				imgNode.style.visibility = "hidden";
-			}
-		},
-
-		createTile: function (coords, done) {
-			const key = this._tileCoordsToKey(coords),
-				tileContainer = L.DomUtil.create("div");
-
-			tileContainer.style.textAlign = "left";
-			tileContainer.dataset.pending = this._imagesPerTile;
-			done = done.bind(this, null, tileContainer);
-
-			for (var i = 0; i < this._imagesPerTile; ++i) {
-				const key2 = key + "/" + i,
-					imgNode = this._lru.get(key2);
-				if (imgNode) {
-					tileContainer.appendChild(this._clone(imgNode));
-					--tileContainer.dataset.pending;
-				} else {
-					this._tileCallbacks[key2] = this._tileCallbacks[key2] || [];
-					this._tileCallbacks[key2].push(
-						function (c /*, k2*/) {
-							return function (imgNode) {
-								c.appendChild(this._clone(imgNode));
-								--c.dataset.pending;
-								if (!parseInt(c.dataset.pending)) {
-									done();
-								}
-							}.bind(this);
-						}.bind(this)(tileContainer /*, key2*/)
-					);
-				}
-			}
-
-			if (!parseInt(tileContainer.dataset.pending)) {
-				L.Util.requestAnimFrame(done);
-			}
-			return tileContainer;
-		},
-
-		_clone: function (imgNode) {
-			const clonedImgNode = imgNode.cloneNode(true);
-			clonedImgNode.style.visibility = "visible";
-			return clonedImgNode;
-		},
-
-		_checkZoomLevels: function () {
-			//setting the zoom level on the Google map may result in a different zoom level than the one requested
-			//(it won't go beyond the level for which they have data).
-			const zoomLevel = this._map.getZoom(),
-				gMapZoomLevel = this._mutant.getZoom();
-
-			if (!zoomLevel || !gMapZoomLevel) return;
-
-			if (
-				gMapZoomLevel !== zoomLevel || //zoom levels are out of sync, Google doesn't have data
-				gMapZoomLevel > this.options.maxNativeZoom
-			) {
-				//at current location, Google does have data (contrary to maxNativeZoom)
-				//Update maxNativeZoom
-				this._setMaxNativeZoom(gMapZoomLevel);
-			}
-		},
-
-		_setMaxNativeZoom: function (zoomLevel) {
-			if (zoomLevel !== this.options.maxNativeZoom) {
-				this.options.maxNativeZoom = zoomLevel;
-				this._resetView();
-			}
-		},
-
-		_update: function () {
-			// zoom level check needs to happen before super's implementation (tile addition/creation)
-			// otherwise tiles may be missed if maxNativeZoom is not yet correctly determined
-			if (this._mutant) {
-				const center = this._map.getCenter(),
-					_center = new google.maps.LatLng(center.lat, center.lng),
-					zoom = Math.round(this._map.getZoom()),
-					mutantZoom = this._mutant.getZoom();
-
-				this._mutant.setCenter(_center);
-
-				//ignore fractional zoom levels
-				if (zoom !== mutantZoom) {
-					this._mutant.setZoom(zoom);
-
-					if (this._mutantIsReady) this._checkZoomLevels();
-					//else zoom level check will be done later by 'idle' handler
-				}
-			}
-
-			L.GridLayer.prototype._update.call(this);
-		},
-
-		_resize: function () {
-			const factor = this.options.zoomSnap < 1 ? 1.8 : 1;
-			const size = this._map.getSize().multiplyBy(factor);
-			if (
-				this._mutantContainer.style.width === size.x &&
-				this._mutantContainer.style.height === size.y
-			) {
-				return;
-			}
-			this.setElementSize(this._mutantContainer, size);
-			if (!this._mutant) return;
-			google.maps.event.trigger(this._mutant, "resize");
-		},
-
-		_handleZoomAnim: function () {
-			if (!this._mutant) return;
-
-			const center = this._map.getCenter(),
-				_center = new google.maps.LatLng(center.lat, center.lng);
-
-			this._mutant.setCenter(_center);
-			this._mutant.setZoom(Math.round(this._map.getZoom()));
-		},
-	});
-
-	// 🍂factory gridLayer.googleMutant(options)
-	// Returns a new `GridLayer.GoogleMutant` given its options
-	L.gridLayer.googleMutant = function (options) {
-		return new L.GridLayer.GoogleMutant(options);
+	/**
+	 * @param {window.PositionOptions} [options] - lookup options
+	 * @return {Promise<GeolocationPosition>} - coordinates
+	 */
+	const getCurrentPosition = ( options ) => {
+	    return new Promise( ( resolve, reject ) => {
+	        navigator.geolocation.getCurrentPosition( ( position ) => {
+	            const { latitude, longitude, altitude, accuracy } = position.coords;
+
+	            const lat = Math.round( latitude * 1000000 ) / 1000000;
+	            const lng = Math.round( longitude * 1000000 ) / 1000000;
+
+	            const geopoint = `${lat} ${lng} ${altitude || '0.0'} ${accuracy || '0.0'}`;
+
+	            resolve( {
+	                geopoint,
+	                lat,
+	                lng,
+	                position,
+	            } );
+	        }, reject, options );
+	    } );
 	};
 
 	let googleMapsScriptRequest;
@@ -63784,7 +63123,7 @@
 	     * @type {string}
 	     */
 	    static get selector() {
-	        return '.question input[data-type-xml="geopoint"], .question input[data-type-xml="geotrace"], .question input[data-type-xml="geoshape"]';
+	        return '.question input[data-type-xml="geopoint"]:not([data-setgeopoint]), .question input[data-type-xml="geotrace"], .question input[data-type-xml="geoshape"]';
 	    }
 
 	    /**
@@ -63999,9 +63338,9 @@
 	            // set worldview in case permissions take too long (e.g. in FF);
 	            this._updateMap( [ 0, 0 ], 1 );
 	            if ( this.props.detect ) {
-	                navigator.geolocation.getCurrentPosition( position => {
+	                getCurrentPosition().then( position => {
 	                    that._updateMap( [ position.coords.latitude, position.coords.longitude ], defaultZoom );
-	                } );
+	                } ).catch( () => {} );
 	            }
 	        } else {
 	            // center map around first loaded geopoint value
@@ -64252,26 +63591,23 @@
 	        };
 	        this.$detect.click( event => {
 	            event.preventDefault();
-	            navigator.geolocation.getCurrentPosition( position => {
-	                const latLng = {
-	                    lat: Math.round( position.coords.latitude * 1000000 ) / 1000000,
-	                    lng: Math.round( position.coords.longitude * 1000000 ) / 1000000
-	                };
 
-	                if ( that.polyline && that.props.type === 'geoshape' && that.updatedPolylineWouldIntersect( latLng, that.currentIndex ) ) {
+	            getCurrentPosition( options ).then( ( result ) => {
+	                if ( that.polyline && that.props.type === 'geoshape' && that.updatedPolylineWouldIntersect( result, that.currentIndex ) ) {
 	                    that._showIntersectError();
 	                } else {
+	                    const { lat, lng, position } = result;
 	                    //that.points[that.currentIndex] = [ position.coords.latitude, position.coords.longitude ];
 	                    //that._updateMap( );
-	                    that._updateInputs( [ latLng.lat, latLng.lng, position.coords.altitude, position.coords.accuracy ] );
+	                    that._updateInputs( [ lat, lng, position.coords.altitude, position.coords.accuracy ] );
 	                    // if current index is last of points, automatically create next point
 	                    if ( that.currentIndex === that.points.length - 1 && that.props.type !== 'geopoint' ) {
 	                        that._addPoint();
 	                    }
 	                }
-	            }, () => {
+	            } ).catch( () => {
 	                console.error( 'error occurred trying to obtain position' );
-	            }, options );
+	            } );
 
 	            return false;
 	        } );
@@ -65120,7 +64456,11 @@
 	                this._resize( el );
 	            }
 	        } );
-	        textareas.forEach( this._resize.bind( this ) );
+	        // workaround for resize issue on first time load textarea with existing value on enketo-express
+	        new MutationsTracker( this.element ).waitForQuietness()
+	            .then( () => { 
+	                textareas.forEach( this._resize.bind( this ) );
+	            } );
 	        this.element.addEventListener( events.PageFlip().type, event => {
 	            const els = event.target.querySelectorAll( 'textarea' );
 	            els.forEach( this._resize.bind( this ) );
@@ -70845,12 +70185,13 @@
 	        }
 
 	        this.range.addEventListener( 'change', () => {
+	            this.current.textContent = this.value;
+	            this._updateMercury( ( this.value - this.props.min ) / ( that.props.max - that.props.min ) );
+
 	            // Avoid unnecessary change events on original input as these can have big negative consequences
 	            // https://github.com/OpenClinica/enketo-express-oc/issues/209
 	            if ( this.originalInputValue !== this.value ) {
-	                this.current.textContent = this.value;
 	                this.originalInputValue = this.value;
-	                this._updateMercury( ( this.value - this.props.min ) / ( that.props.max - that.props.min ) );
 	            }
 	        } );
 
@@ -70867,19 +70208,19 @@
 
 	        this.widget.querySelector( '.btn-reset' ).addEventListener( 'click', this._reset.bind( this ) );
 
-	        // loads the default value if exists, else resets
+	        // Loads the default value if exists, else resets
 	        this.update();
 
 	        let ticks = this.props.ticks ? Math.ceil( Math.abs( ( this.props.max - this.props.min ) / this.props.step ) ) : 1;
-	        // Now reduce to a number < 50 to avoid showing a sold black tick line.
+	        // Now reduce to a number < 50 to avoid showing a solid black tick line.
 	        let divisor = Math.ceil( ticks / this.props.maxTicks );
 	        while ( ticks % divisor && divisor < ticks ) {
 	            divisor++;
 	        }
 	        ticks = ticks / divisor;
 
-	        // Various attemps to use more elegant CSS background on the _ticks div, have failed due to little
-	        // issues seemingly related to rounding or browser sloppiness. This far is less elegant but nice and robust:
+	        // Various attempts to use more elegant CSS background on the __ticks div, have failed due to little
+	        // issues seemingly related to rounding or browser sloppiness. This is far less elegant but robust:
 	        this.widget.querySelector( '.range-widget__ticks' )
 	            .append( document.createRange().createContextualFragment( new Array( ticks ).fill( '<span></span>' ).join( '' ) ) );
 	    }
@@ -72355,7 +71696,6 @@
 	 * @param {sortable} sortableContainer a valid sortableContainer
 	 * @param {boolean} enable enable or disable event
 	 */
-	// export default (sortableContainer: sortable, enable: boolean) => {
 	var enableHoverClass = (function (sortableContainer, enable) {
 	    if (typeof store(sortableContainer).getConfig('hoverClass') === 'string') {
 	        var hoverClasses_1 = store(sortableContainer).getConfig('hoverClass').split(' ');
@@ -72366,11 +71706,11 @@
 	                if (event.buttons === 0) {
 	                    filter(sortableContainer.children, store(sortableContainer).getConfig('items')).forEach(function (item) {
 	                        var _a, _b;
-	                        if (item !== event.target) {
-	                            (_a = item.classList).remove.apply(_a, hoverClasses_1);
+	                        if (item === event.target || item.contains(event.target)) {
+	                            (_a = item.classList).add.apply(_a, hoverClasses_1);
 	                        }
 	                        else {
-	                            (_b = item.classList).add.apply(_b, hoverClasses_1);
+	                            (_b = item.classList).remove.apply(_b, hoverClasses_1);
 	                        }
 	                    });
 	                }
@@ -72507,6 +71847,8 @@
 	    var opts = addData(sortableElement, 'opts') || {};
 	    var items = filter(sortableElement.children, opts.items);
 	    var handles = getHandles(items, opts.handle);
+	    // disable adding hover class
+	    enableHoverClass(sortableElement, false);
 	    // remove event handlers & data from sortable
 	    removeEventListener(sortableElement, 'dragover');
 	    removeEventListener(sortableElement, 'dragenter');
@@ -72534,6 +71876,8 @@
 	    addAttribute(sortableElement, 'aria-dropeffect', 'move');
 	    addData(sortableElement, '_disabled', 'false');
 	    addAttribute(handles, 'draggable', 'true');
+	    // enable hover class
+	    enableHoverClass(sortableElement, true);
 	    // @todo: remove this fix
 	    // IE FIX for ghost
 	    // can be disabled as it has the side effect that other events
@@ -72568,6 +71912,7 @@
 	    addData(sortableElement, '_disabled', 'true');
 	    addAttribute(handles, 'draggable', 'false');
 	    removeEventListener(handles, 'mousedown');
+	    enableHoverClass(sortableElement, false);
 	};
 	/**
 	 * Reload the sortable
@@ -72658,8 +72003,6 @@
 	        enableSortable(sortableElement);
 	        addAttribute(listItems, 'role', 'option');
 	        addAttribute(listItems, 'aria-grabbed', 'false');
-	        // enable hover class
-	        enableHoverClass(sortableElement, true);
 	        /*
 	         Handle drag events on draggable items
 	         Handle is set at the sortableElement level as it will bubble up
@@ -72768,8 +72111,10 @@
 	            if (dragging.getAttribute('aria-copied') === 'true' && addData(dragging, 'dropped') !== 'true') {
 	                dragging.remove();
 	            }
-	            dragging.style.display = dragging.oldDisplay;
-	            delete dragging.oldDisplay;
+	            if (dragging.oldDisplay !== undefined) {
+	                dragging.style.display = dragging.oldDisplay;
+	                delete dragging.oldDisplay;
+	            }
 	            var visiblePlaceholder = Array.from(stores.values()).map(function (data) { return data.placeholder; })
 	                .filter(function (placeholder) { return placeholder instanceof HTMLElement; })
 	                .filter(isInDom)[0];
@@ -72811,10 +72156,19 @@
 	                .filter(function (placeholder) { return placeholder instanceof HTMLElement; })
 	                // only elements in DOM
 	                .filter(isInDom)[0];
-	            // attach element after placeholder
-	            insertAfter(visiblePlaceholder, dragging);
-	            // remove placeholder from dom
-	            visiblePlaceholder.remove();
+	            if (visiblePlaceholder) {
+	                visiblePlaceholder.replaceWith(dragging);
+	                // to avoid flickering restoring element display immediately after replacing placeholder
+	                if (dragging.oldDisplay !== undefined) {
+	                    dragging.style.display = dragging.oldDisplay;
+	                    delete dragging.oldDisplay;
+	                }
+	            }
+	            else {
+	                // set the dropped value to 'false' to delete copied dragging at the time of 'dragend'
+	                addData(dragging, 'dropped', 'false');
+	                return;
+	            }
 	            /*
 	             * Fires Custom Event - 'sortstop'
 	             */
@@ -72959,7 +72313,7 @@
 	                return;
 	            }
 	            var options = addData(sortableElement, 'opts');
-	            if (parseInt(options.maxItems) && filter(sortableElement.children, addData(sortableElement, 'items')).length >= parseInt(options.maxItems) && dragging.parentElement !== sortableElement) {
+	            if (parseInt(options.maxItems) && filter(sortableElement.children, addData(sortableElement, 'items')).length > parseInt(options.maxItems) && dragging.parentElement !== sortableElement) {
 	                return;
 	            }
 	            e.preventDefault();
@@ -74189,7 +73543,7 @@
 	                } else if ( control.type === 'hidden' ) {
 	                    /*
 	                     * This case is the consequence of the  decision to place calculated items without a visible form control,
-	                     * as a separate group (.or-calculated-items, or .or-setvalue-items), instead of in the Form DOM in the locations .
+	                     * as a separate group (.or-calculated-items, or .or-setvalue-items, or .or-setgeopoint-items), instead of in the Form DOM in the locations .
 	                     * This occurs when update is called with empty updated object and multiple repeats are present.
 	                     */
 	                    dataNodes.forEach( ( el, index ) => {
@@ -74216,71 +73570,81 @@
 	    },
 
 	    /**
-	     * Runs <setvalue> actions.
-	     *
-	     * @param {CustomEvent} [event] - the event type that triggered the setvalue action.
+	     * @param {'setvalue' | 'setgeopoint'} action - the action being performed.
+	     * @param {CustomEvent} [event] - the event type that triggered the action.
 	     */
-	    setValue( event ) {
-
-	        if ( !event ) {
-	            return;
-	        }
-
-	        if ( !this.form ) {
-	            throw new Error( 'Setvalue module not correctly instantiated with form property.' );
-	        }
-
-	        let nodes = [];
-
+	    _getNodesForAction( action, event ) {
 	        if ( event.type === new events.InstanceFirstLoad().type ) {
 	            // We ignore relevance for the data-instance-first-load, as that will likely never be what users want for a default value.
 	            // Do not use getRelatedNodes here, because the obtaining (and caching) of nodes inside repeats is (and should be) disabled at the
 	            // time this event fires.
 	            //
-	            // We change the order by first evaluating the non-formcontrol setvalue directives (in document order), and then
+	            // We change the order by first evaluating the non-formcontrol actions (in document order), and then
 	            // the ones with form controls.
 	            // https://github.com/OpenClinica/enketo-express-oc/issues/355#issuecomment-725640823
-	            nodes = [ ...this.form.view.html.querySelectorAll( `.setvalue [data-setvalue][data-event*="${event.type}"]` ) ].concat(
-	                this.form.filterRadioCheckSiblings( [ ...this.form.view.html.querySelectorAll( `.question [data-setvalue][data-event*="${event.type}"]` ) ] ) );
+	            return [ ...this.form.view.html.querySelectorAll( `.${action} [data-${action}][data-event*="${event.type}"]` ) ].concat(
+	                this.form.filterRadioCheckSiblings( [ ...this.form.view.html.querySelectorAll( `.question [data-${action}][data-event*="${event.type}"]` ) ] ) );
 	        } else if ( event.type === new events.NewRepeat().type ) {
 	            // Only this event requires specific index targeting through the "updated" object
-	            // We change the order by first evaluating the non-formcontrol setvalue directives (in document order), and then
+	            // We change the order by first evaluating the non-formcontrol actions (in document order), and then
 	            // the ones with form controls.
 	            // https://github.com/OpenClinica/enketo-express-oc/issues/355#issuecomment-725640823
 	            // https://github.com/OpenClinica/enketo-express-oc/issues/419
-	            nodes = this.form.getRelatedNodes( 'data-setvalue', `.setvalue [data-event*="${event.type}"]`, event.detail ).get().concat(
-	                this.form.getRelatedNodes( 'data-setvalue', `.question [data-event*="${event.type}"]`, event.detail ).get() );
+	            return this.form.getRelatedNodes( `data-${action}`, `.${action} [data-event*="${event.type}"]`, event.detail ).get().concat(
+	                this.form.getRelatedNodes( `data-${action}`, `.question [data-event*="${event.type}"]`, event.detail ).get() );
 
 	        } else if ( event.type === new events.XFormsValueChanged().type ) {
 	            const question = event.target.closest( '.question' );
-	            nodes = question ? [ ...question.querySelectorAll( `[data-setvalue][data-event*="${event.type}"]` ) ] : nodes;
+
+	            return question ? [ ...question.querySelectorAll( `[data-${action}][data-event*="${event.type}"]` ) ] : [];
+	        }
+	    },
+
+	    /**
+	     * Runs actions.
+	     *
+	     * @param {'setvalue' | 'setgeopoint'} action - the action to perform.
+	     * @param {CustomEvent} [event] - the event type that triggered the action.
+	     */
+	    performAction( action, event ) {
+	        if ( !event ) {
+	            return;
 	        }
 
-	        nodes.forEach( setvalueControl => {
-	            const name = this.form.input.getName( setvalueControl );
+	        if ( !this.form ) {
+	            throw new Error( `${action} action not correctly instantiated with form property.` );
+	        }
+
+	        const nodes = this._getNodesForAction( action, event );
+
+	        nodes.forEach( actionControl => {
+	            const name = this.form.input.getName( actionControl );
 	            const dataNodesObj = this.form.model.node( name );
 	            const dataNodes = dataNodesObj.getElements();
 
 	            const props = {
 	                name,
-	                expr: setvalueControl.dataset.setvalue,
-	                dataType: this.form.input.getXmlType( setvalueControl ),
-	                relevantExpr: this.form.input.getRelevant( setvalueControl ),
+	                dataType: this.form.input.getXmlType( actionControl ),
+	                relevantExpr: this.form.input.getRelevant( actionControl ),
 	                index: event.detail && typeof event.detail.repeatIndex !== 'undefined' ? event.detail.repeatIndex : 0,
 	                dataNodesObj,
-	                type: 'setvalue'
+	                type: action,
 	            };
+
+	            if ( action === 'setvalue' ) {
+	                props.expr = actionControl.dataset.setvalue;
+	            }
 
 	            if ( dataNodes.length > 1 && event.type !== new events.NewRepeat().type && event.type !== new events.XFormsValueChanged().type ) {
 	                /*
-	                 * This case is the consequence of the decision to place setvalue items that are siblings of bind in the XForm
-	                 * as a separate group (.or-setvalue-items), instead of in the Form DOM in the locations where they belong.
+	                 * This case is the consequence of the decision to place action elements that are siblings of bind in the XForm
+	                 * as a separate group (.or-setvalue-items, .or-setgeopoint-items), instead of in the Form DOM in the locations where they belong.
 	                 * This occurs when update is called when multiple repeats are present.
 	                 * For now this is only relevant for events that are *not* odk-new-repeat and *not* xforms-value-changed.
 	                 */
 	                dataNodes.forEach( ( el, index ) => {
 	                    const obj = Object.create( props );
-	                    const control = setvalueControl;
+	                    const control = actionControl;
 	                    obj.index = index;
 	                    this._updateCalc( control, obj );
 	                } );
@@ -74296,10 +73660,10 @@
 	                }
 	                this._updateCalc( control, props );
 	            } else if ( dataNodes[ props.index ] ) {
-	                const control = setvalueControl;
+	                const control = actionControl;
 	                this._updateCalc( control, props );
 	            } else {
-	                console.error( 'SetValue called for node that does not exist in model.' );
+	                console.error( 'performAction called for node that does not exist in model.' );
 	            }
 	        } );
 	    },
@@ -74311,7 +73675,22 @@
 	     * @param {boolean} [emptyNonRelevant] - Whether to set the calculation result to empty if non-relevant
 	     */
 	    _updateCalc( control, props, emptyNonRelevant ) {
-	        if ( !emptyNonRelevant && props.type !== 'setvalue' && this._hasNeverBeenRelevant( control, props ) && !this._isRelevant( props ) ){
+	        if ( !emptyNonRelevant && props.type !== 'setvalue' && props.type !== 'setgeopoint' && this._hasNeverBeenRelevant( control, props ) && !this._isRelevant( props ) ){
+	            return;
+	        }
+
+	        if ( props.type === 'setgeopoint' ) {
+	            const options = {
+	                enableHighAccuracy: true,
+	                maximumAge: 0,
+	            };
+
+	            getCurrentPosition( options ).then( ( { geopoint } ) => {
+	                this._updateValue( control, props, geopoint );
+	            } ).catch( () => {
+	                this._updateValue( control, props, '' );
+	            } );
+
 	            return;
 	        }
 
@@ -74325,6 +73704,18 @@
 	        const result =  !empty && newExpr ? this.form.model.evaluate( newExpr, 'string', props.name, props.index ) : '';
 
 	        // Filter the result set to only include the target node
+	        this._updateValue( control, props, result );
+	    },
+
+	    /**
+	     * Updates a control's value after a calculation.
+	     *
+	     * @param {Element} control - view element containing calculation
+	     * @param {*} props - properties of a calculation element
+	     * @param {*} result - result of a calculation
+	     */
+	    _updateValue( control, props, result ) {
+	        // Filter the result set to only include the target node
 	        props.dataNodesObj.setIndex( props.index );
 
 	        const existingModelValue = props.dataNodesObj.getVal();
@@ -74334,10 +73725,16 @@
 
 	        const newModelValue = props.dataNodesObj.getVal();
 
+	        // This is okay for an xforms-value-changed action (may be no form control)
+	        if ( !control ) {
+	            return;
+	        }
+
 	        // Not the most efficient to use input.setVal here as it will do another lookup
 	        // of the node, that we already have...
 	        // We should not use value "result" here because node.setVal() may have done a data type conversion
-	        if ( control && existingModelValue !== newModelValue ) {
+
+	        if ( existingModelValue !== newModelValue ) {
 	            this.form.input.setVal( control, newModelValue );
 
 	            /*
@@ -74597,10 +73994,10 @@
 	            node.closest( '.question' ).classList.add( 'readonly' );
 
 	            const path = this.form.input.getName( node );
-	            const setValue = this.form.view.html.querySelector( `[data-setvalue][data-event="xforms-value-changed"][name="${path}"]` );
+	            const action = this.form.view.html.querySelector( `[data-setvalue][data-event="xforms-value-changed"][name="${path}"], [data-setgeopoint][data-event="xforms-value-changed"][name="${path}"]` );
 
 	            // Note: the readonly-forced class is added for special readonly views of a form.
-	            const empty = !node.value && !node.dataset.calculate && !setValue && !node.classList.contains( 'readonly-forced' );
+	            const empty = !node.value && !node.dataset.calculate && !action && !node.classList.contains( 'readonly-forced' );
 
 	            node.classList.toggle( 'empty', empty );
 
@@ -74760,7 +74157,7 @@
 	     * @type {string}
 	     */
 	    get id() {
-	        return this.view.html.id;
+	        return this.view.html.dataset.formId;
 	    },
 	    /**
 	     * To facilitate forks that support multiple constraints per question
@@ -74834,16 +74231,25 @@
 	    this.readonly = this.addModule( readonlyModule );
 
 	    // Handle odk-instance-first-load event
-	    this.model.events.addEventListener( events.InstanceFirstLoad().type, event => this.calc.setValue( event ) );
+	    this.model.events.addEventListener( events.InstanceFirstLoad().type, event => {
+	        this.calc.performAction( 'setvalue', event );
+	        this.calc.performAction( 'setgeopoint', event );
+	    } );
 
 	    // Handle odk-new-repeat event before initializing repeats
-	    this.view.html.addEventListener( events.NewRepeat().type, event => this.calc.setValue( event ) );
+	    this.view.html.addEventListener( events.NewRepeat().type, event => {
+	        this.calc.performAction( 'setvalue', event );
+	        this.calc.performAction( 'setgeopoint', event );
+	    } );
 
 	    // Handle xforms-value-changed
-	    this.view.html.addEventListener( events.XFormsValueChanged().type, event => this.calc.setValue( event ) );
+	    this.view.html.addEventListener( events.XFormsValueChanged().type, event => {
+	        this.calc.performAction( 'setvalue', event );
+	        this.calc.performAction( 'setgeopoint', event );
+	    } );
 
 	    // Before initializing form view and model, passthrough some model events externally
-	    // Because of setvalue/instance-first-load, this should be done before the model is initialized. This is important for custom
+	    // Because of instance-first-load actions, this should be done before the model is initialized. This is important for custom
 	    // applications that submit each individual value separately (opposed to a full XML model at the end).
 	    this.model.events.addEventListener( events.DataUpdate().type, event => {
 	        that.view.html.dispatchEvent( events.DataUpdate( event.detail ) );
@@ -75137,8 +74543,9 @@
 	    }
 
 	    // If a new repeat was created, update the cached collection of all form controls with that attribute
-	    // If a repeat was deleted ( update.repeatPath && !updated.cloned), rebuild cache
-	    if ( !this.all[ attr ] || ( updated.repeatPath && !updated.cloned ) ) {
+	    // If a repeat was deleted ( update.repeatPath && !updated.cloned), rebuild cache.
+	    // Exclude outputs from the cache, because outputs can be added via itemsets (in labels).
+	    if ( !this.all[ attr ] || ( updated.repeatPath && !updated.cloned ) || filter === '.or-output' ) {
 	        // (re)build the cache
 	        // However, if repeats have not been initialized exclude nodes inside a repeat until the first repeat has been added during repeat initialization.
 	        // The default view repeat will be removed during initialization (and stored as template), before it is re-added, if necessary.
@@ -75727,7 +75134,7 @@
 	            this.pages.flipToPageContaining( jquery( target ) );
 	        }
 	        // check if the target has a form control
-	        if ( target.closest( '.calculation, .setvalue' ) ) {
+	        if ( target.closest( '.calculation, .setvalue, .setgeopoint' ) ) {
 	            // It is up to the apps to decide what to do with this event.
 	            target.dispatchEvent( events.GoToInvisible() );
 	        }
@@ -75755,7 +75162,7 @@
 	 * @type {string}
 	 * @default
 	 */
-	Form.requiredTransformerVersion = '1.42.0';
+	Form.requiredTransformerVersion = 'github:enketo/enketo-transformer#0400f5e';
 
 	function extendXPath( Evaluator ) {
 
