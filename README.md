@@ -1,4 +1,4 @@
-[![npm version](https://badge.fury.io/js/enketo-validate.svg)](http://badge.fury.io/js/enketo-validate) [![Build Status](https://travis-ci.com/enketo/enketo-validate.svg?branch=master)](https://travis-ci.com/enketo/enketo-validate) [![Dependency Status](https://david-dm.org/enketo/enketo-validate/status.svg)](https://david-dm.org/enketo/enketo-validate) [![devDependency Status](https://david-dm.org/enketo/enketo-validate/dev-status.svg)](https://david-dm.org/enketo/enketo-validate?type=dev)
+[![npm version](https://badge.fury.io/js/enketo-validate.svg)](http://badge.fury.io/js/enketo-validate) ![Build Status](https://github.com/enketo/enketo-validate/actions/workflows/ci.yml/badge.svg)
 
 Enketo Validate
 ==============
