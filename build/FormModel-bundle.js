@@ -2228,7 +2228,9 @@
 
 	var slice = arr.slice;
 
-	var flat = function( array ) {
+	var flat = arr.flat ? function( array ) {
+		return arr.flat.call( array );
+	} : function( array ) {
 		return arr.concat.apply( [], array );
 	};
 
@@ -13375,7 +13377,7 @@
 
 	var DATE_STRING$2 = /^\d\d\d\d-\d{1,2}-\d{1,2}(?:T\d\d:\d\d:\d\d\.?\d?\d?(?:Z|[+-]\d\d:\d\d)|.*)?$/;
 
-	function dateToDays$1(d) {
+	function dateToDays$2(d) {
 	  return d.getTime() / (1000 * 60 * 60 * 24);
 	}
 
@@ -13387,7 +13389,7 @@
 	    temp = d.split('-');
 	    temp = new Date(temp[0], temp[1]-1, temp[2]);
 	  }
-	  return dateToDays$1(temp);
+	  return dateToDays$2(temp);
 	}
 
 	/**
@@ -13423,12 +13425,12 @@
 
 	var date = {
 	  DATE_STRING: DATE_STRING$2,
-	  dateToDays: dateToDays$1,
+	  dateToDays: dateToDays$2,
 	  dateStringToDays: dateStringToDays$2,
 	  isValidDate: isValidDate$1
 	};
 
-	const { DATE_STRING: DATE_STRING$1, dateToDays, dateStringToDays: dateStringToDays$1 } = date;
+	const { DATE_STRING: DATE_STRING$1, dateToDays: dateToDays$1, dateStringToDays: dateStringToDays$1 } = date;
 	const { toISOLocalString } = dateExtensions;
 
 	var xpathCast = {
@@ -13451,7 +13453,7 @@
 	function asNumber$5(r) {
 	  if(r.t === 'num')  return r.v;
 	  if(r.t === 'bool') return r.v ? 1 : 0;
-	  if(r.t === 'date') return dateToDays(r.v); // TODO should be handled in an extension rather than core code
+	  if(r.t === 'date') return dateToDays$1(r.v); // TODO should be handled in an extension rather than core code
 
 	  const str = asString$6(r).trim();
 	  if(str === '') return NaN;
@@ -43494,7 +43496,7 @@
 	const { asGeopoints, area, distance } = geo;
 
 	const { randomToken } = randomToken_1;
-	const { DATE_STRING, dateStringToDays, isValidDate } = date;
+	const { DATE_STRING, dateStringToDays, dateToDays, isValidDate } = date;
 
 	const { asBoolean: asBoolean$1, asNumber: asNumber$1, asString: asString$1 } = xpathCast;
 
@@ -43646,7 +43648,7 @@
 	    'decimal-date-time': function(r) {
 	      if(arguments.length > 1) throw TOO_MANY_ARGS;
 
-	      const days = dateStringToDays(asString$1(r));
+	      const days = r.t === 'num' ? asNumber$1(r) : dateStringToDays(asString$1(r));
 
 	      return xpr.number(days);
 	    },
@@ -43948,27 +43950,13 @@
 	            return;
 	          }
 
-	          // For comparisons, we must make sure that both values are numbers
-	          // Dates would be fine, except for equality!
-	          if(op >= EQ && op <= GTE) {
-	            if(lhs.t === 'arr' || lhs.t === 'str') lhs = xpr.date(asDate(lhs));
-	            if(rhs.t === 'arr' || rhs.t === 'str') rhs = xpr.date(asDate(rhs));
-	            if(lhs.t !== 'date' || rhs.t !== 'date') {
-	              return op === '!=';
-	            } else {
-	              lhs = { t:'num', v:lhs.v.getTime() };
-	              rhs = { t:'num', v:rhs.v.getTime() };
-	            }
-	          } else if(op === PLUS || op === MINUS) {
-	            // for math operators, we need to do it ourselves
-	            if(lhs.t === 'date' && rhs.t === 'date') err('No handling for simple arithmetic with two dates.');
-	            const d = lhs.t === 'date'? lhs.v: rhs.v,
-	                res = new Date(d.getTime());
-	            let n = lhs.t !== 'date'? asInteger(lhs): asInteger(rhs);
-	            if(op === MINUS) n = -n;
-	            res.setDate(d.getDate() + n);
-	            return res;
-	          }
+	          // For comparisons and math, we must make sure that both values are numbers
+	          if(lhs.t === 'arr' || lhs.t === 'str') lhs = xpr.date(asDate(lhs));
+	          if(rhs.t === 'arr' || rhs.t === 'str') rhs = xpr.date(asDate(rhs));
+	          
+	          if (lhs.t === 'date') lhs = { t:'num', v:dateToDays(lhs.v) };
+	          if (rhs.t === 'date') rhs = { t:'num', v:dateToDays(rhs.v) };
+
 	          return { t:'continue', lhs:lhs, op:op, rhs:rhs };
 	        }
 
@@ -43979,9 +43967,7 @@
 	            const lDays = dateStringToDays(lStr);
 	            const rDays = asNumber$1(rhs);
 	            const delta = op === PLUS ? lDays + rDays : lDays - rDays;
-	            const date = new Date(1970, 0, 1);
-	            date.setDate(date.getDate() + delta);
-	            return date;
+	            return delta;
 	          }
 
 	          const rStr = asString$1(rhs);
@@ -43989,9 +43975,7 @@
 	            const rDays = dateStringToDays(rStr);
 	            const lDays = asNumber$1(lhs);
 	            const delta = op === PLUS ? lDays + rDays : lDays - rDays;
-	            const date = new Date(1970, 0, 1);
-	            date.setDate(date.getDate() + delta);
-	            return date;
+	            return delta;
 	          }
 	        } else if(op >= EQ && op <= GTE) {
 	          const lStr = asString$1(lhs);
@@ -44038,25 +44022,29 @@
 
 	function asDate(r) {
 	  let temp;
+	  let timeComponent;
 	  switch(r.t) {
 	    case 'bool': return new Date(NaN);
 	    case 'date': return r.v;
-	    case 'num':  temp = new Date(1970, 0, 1); temp.setDate(temp.getDate() + r.v); return temp;
+	    case 'num':  temp = new Date(0); temp.setTime(temp.getTime() + r.v * 24 * 60 * 60 * 1000); return temp;
 	    case 'arr':
 	    case 'str':
 	      r = asString$1(r);
 	      if(RAW_NUMBER.test(r)) {
-	        // Create a date at 00:00:00 1st Jan 1970 _in the current timezone_
-	        temp = new Date(1970, 0, 1);
-	        temp.setDate(1 + parseInt(r, 10));
+	        temp = new Date(0);
+	        temp.setTime(temp.getTime() + parseInt(r, 10) * 24 * 60 * 60 * 1000);
 	        return temp;
 	      } else if(DATE_STRING.test(r)) {
 	        temp = r.indexOf('T');
-	        if(temp !== -1) r = r.substring(0, temp);
+	        if(temp !== -1) {
+	          timeComponent = r.substring(temp);
+	          r = r.substring(0, temp);
+	        }
 	        temp = r.split('-');
 	        if(isValidDate(temp[0], temp[1], temp[2])) {
+	          timeComponent = timeComponent ? timeComponent : 'T00:00:00.000' + getTimezoneOffsetAsTime(new Date(r));
 	          const time = `${_zeroPad(temp[0])}-${_zeroPad(temp[1])}-${_zeroPad(temp[2])}`+
-	            'T00:00:00.000' + getTimezoneOffsetAsTime(new Date(r));
+	            timeComponent;
 	          return new Date(time);
 	        }
 	      }
@@ -44706,9 +44694,13 @@
 	        // set the instanceID value to empty
 	        instanceIdEl.textContent = '';
 
+	        const namespace = instanceIdEl.namespaceURI;
+
 	        // add deprecatedID node if necessary
 	        if ( !deprecatedIdEl ) {
-	            deprecatedIdEl = parser.parseFromString( '<deprecatedID/>', 'text/xml' ).documentElement;
+	            const nsPrefix = namespace ? this.getNamespacePrefix( namespace ) : '';
+	            const nsDeclaration = namespace ? `xmlns:${nsPrefix}="${namespace}"` : '';
+	            deprecatedIdEl = parser.parseFromString( `<${nsPrefix ? nsPrefix + ':' : ''}deprecatedID ${nsDeclaration}/>`, 'text/xml' ).documentElement;
 	            this.xml.adoptNode( deprecatedIdEl );
 	            metaEl = this.xml.querySelector( '* > meta' );
 	            metaEl.appendChild( deprecatedIdEl );
@@ -46151,6 +46143,9 @@
 	                input = optionInput.classList.contains( 'ignore' ) ? getSiblingElement( optionInput.closest( '.option-wrapper' ), 'input.rank' ) : optionInput;
 	            } else if ( list && list.nodeName.toLowerCase() === 'select' ) {
 	                input = list;
+	                if( input.matches( '[readonly]' ) ){
+	                    inputAttributes[ 'disabled' ] = 'disabled';
+	                }
 	            } else if ( list && list.nodeName.toLowerCase() === 'datalist' ) {
 	                if ( shared ) {
 	                    // only the first input, is that okay?
@@ -46239,11 +46234,11 @@
 	                                    const language = label.getAttribute( 'lang' );
 	                                    const type = label.nodeName;
 	                                    const src = label.src;
-	                                    const text = label.textContent;
+	                                    const contentNodes = [ ...label.childNodes ];
 	                                    const active = label.classList.contains( 'active' );
 	                                    const alt = label.alt;
 
-	                                    return { language, type, text, active, src, alt };
+	                                    return { language, type, contentNodes, active, src, alt };
 	                                } );
 	                                break;
 	                            case 'langs':
@@ -46252,11 +46247,11 @@
 	                                    // Two falsy values should set active to true.
 	                                    const active = ( !lang && !that.form.langs.currentLanguage ) || ( lang === that.form.langs.currentLanguage );
 
-	                                    return { language: lang, type: 'span', text: label.textContent, active };
+	                                    return { language: lang, type: 'span', contentNodes: [ ...label.childNodes ], active };
 	                                } );
 	                                break;
 	                            default:
-	                                translations = [ { language: '', type: 'span', text: labels && labels.length ? labels[ 0 ].textContent : 'error', active: true } ];
+	                                translations = [ { language: '', type: 'span', contentNodes: labels && labels.length ? [ ...labels[ 0 ].childNodes ] : [], active: true } ];
 	                        }
 	                    }
 	                    // Obtain the value of the secondary instance item found.
@@ -46271,18 +46266,18 @@
 	                    if ( templateNodeName === 'label' ) {
 	                        optionsFragment.appendChild( that.createInput( inputAttributes, translations, value ) );
 	                    } else if ( templateNodeName === 'option' ) {
-	                        let activeLabel = '';
+	                        let activeLabelContentNodes = [];
 	                        if ( translations.length > 1 ) {
 	                            translations.forEach( translation => {
 	                                if ( translation.active ) {
-	                                    activeLabel = translation.text;
+	                                    activeLabelContentNodes = translation.contentNodes;
 	                                }
 	                                optionsTranslationsFragment.appendChild( that.createOptionTranslation( translation, value ) );
 	                            } );
 	                        } else {
-	                            activeLabel = translations[ 0 ].text;
+	                            activeLabelContentNodes = translations[ 0 ].contentNodes;
 	                        }
-	                        optionsFragment.appendChild( that.createOption( activeLabel, value ) );
+	                        optionsFragment.appendChild( that.createOption( inputAttributes, activeLabelContentNodes, value ) );
 	                    }
 
 	                } );
@@ -46371,13 +46366,17 @@
 	    /**
 	     * Creates a HTML option element
 	     *
-	     * @param {string} label - option label
+	     * @param {object} attributes - attributes to add to option
+	     * @param {Array<Element>} labelContentNodes - label content nodes
 	     * @param {string} value - option value
 	     * @return {Element} created option
 	     */
-	    createOption( label, value ) {
+	    createOption( attributes, labelContentNodes, value ) {
 	        const option = document.createElement( 'option' );
-	        option.textContent = label;
+	        Object.getOwnPropertyNames( attributes ).forEach( attr => {
+	            option.setAttribute( attr, attributes[ attr ] );
+	        } );
+	        option.textContent = labelContentNodes.map( node => node.textContent ).join( '' );
 	        option.value = value;
 
 	        return option;
@@ -46388,15 +46387,15 @@
 	     *
 	     * @param {object} translation - translation object
 	     * @param {string} [translation.type] - type of element to create, defaults to span
-	     * @param {string} [translation.text] - translation text
+	     * @param {Array<Node>} [translation.content] - array of translation content nodes
 	     * @param {string} value - option value
 	     * @return {Element} created element
 	     */
 	    createOptionTranslation( translation, value ) {
 	        const el = document.createElement( translation.type || 'span' );
-	        if ( translation.text ) {
-	            el.textContent = translation.text;
+	        if ( translation.contentNodes ) {
 	            el.classList.add( 'option-label' );
+	            translation.contentNodes.forEach( node => el.appendChild( node.cloneNode( true ) ) );
 	        }
 	        el.classList.toggle( 'active', translation.active );
 	        if ( translation.language ) {
@@ -46414,7 +46413,7 @@
 	    /**
 	     * Creates an input HTML element
 	     *
-	     * @param {Array<object>} attributes - attributes to add to input
+	     * @param {object} attributes - attributes to add to input
 	     * @param {Array<object>} translations - translation to add
 	     * @param {string} value - option value
 	     * @return {Element} label element (wrapper)
@@ -47388,6 +47387,7 @@
 	                this.current.classList.remove( 'current', 'fade-out' );
 	                getAncestors( this.current, '.or-group, .or-group-data, .or-repeat', '.or' )
 	                    .forEach( el => el.classList.remove( 'contains-current' ) );
+	                this._pauseMultimedia( this.current );
 	                this._setToCurrent( pageEl );
 	                this._focusOnFirstQuestion( pageEl );
 	                this._toggleButtons( newIndex );
@@ -47447,6 +47447,16 @@
 	        this.$btnNext.add( this.$btnLast ).toggleClass( 'disabled', !next );
 	        this.$btnPrev.add( this.$btnFirst ).toggleClass( 'disabled', !prev );
 	        this.$formFooter.toggleClass( 'end', !next );
+	    },
+	    /**
+	     * Pauses video and audio from playing when switching to a page.
+	     *
+	     * @param {Element} pageEl - page element
+	     */
+	    _pauseMultimedia( pageEl ) {
+	        jquery( pageEl )
+	            .find( 'audio, video' )
+	            .each( ( idx, element ) => element.pause() );
 	    },
 	    /**
 	     * Updates Table of Contents
@@ -68302,6 +68312,20 @@
 	        }
 	    }
 
+	    get originalInputValue() {
+	        const originalInputValue = super.originalInputValue;
+
+	        if ( originalInputValue === '' ) {
+	            return '';
+	        }
+
+	        return dateExtensions_2( new Date( originalInputValue ) );
+	    }
+
+	    set originalInputValue( value ) {
+	        super.originalInputValue = value;
+	    }
+
 	    /**
 	     * @type {string}
 	     */
@@ -74561,8 +74585,9 @@
 	    }
 
 	    // If a new repeat was created, update the cached collection of all form controls with that attribute
-	    // If a repeat was deleted ( update.repeatPath && !updated.cloned), rebuild cache
-	    if ( !this.all[ attr ] || ( updated.repeatPath && !updated.cloned ) ) {
+	    // If a repeat was deleted ( update.repeatPath && !updated.cloned), rebuild cache.
+	    // Exclude outputs from the cache, because outputs can be added via itemsets (in labels).
+	    if ( !this.all[ attr ] || ( updated.repeatPath && !updated.cloned ) || filter === '.or-output' ) {
 	        // (re)build the cache
 	        // However, if repeats have not been initialized exclude nodes inside a repeat until the first repeat has been added during repeat initialization.
 	        // The default view repeat will be removed during initialization (and stored as template), before it is re-added, if necessary.
@@ -75179,7 +75204,7 @@
 	 * @type {string}
 	 * @default
 	 */
-	Form.requiredTransformerVersion = '2.1.0';
+	Form.requiredTransformerVersion = '2.1.2';
 
 	function extendXPath( Evaluator ) {
 
