@@ -1,7 +1,4 @@
 #!/usr/bin/env node
-
-'use strict';
-
 let program = require( 'commander' );
 const pkg = require( './package' );
 const fs = require( 'fs' );

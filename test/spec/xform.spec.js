@@ -296,6 +296,29 @@ describe( 'XForm', () => {
 
     } );
 
+    describe( 'with likely user errors that are not actually XPath syntax errors', () => {
+        const xf = loadXForm( 'user-ues.xml' );
+        const validation = validator.validate( xf );
+
+        it( 'outputs warnings', async() => {
+            const result = await validation;
+
+            expect( result.warnings.length ).to.equal( 12 );
+            expect( arrContains( result.warnings, /Constraint .+ "ues"/i ) ).to.equal( true );
+            expect( arrContains( result.warnings, /Relevant .+ "ues"/i ) ).to.equal( true );
+            expect( arrContains( result.warnings, /Required .+ "ues"/i ) ).to.equal( true );
+            expect( arrContains( result.warnings, /Readonly .+ "ues"/i ) ).to.equal( true );
+            expect( arrContains( result.warnings, /Constraint .+ "w6"/i ) ).to.equal( true );
+            expect( arrContains( result.warnings, /Relevant .+ "w6"/i ) ).to.equal( true );
+            expect( arrContains( result.warnings, /Required .+ "w6"/i ) ).to.equal( true );
+            expect( arrContains( result.warnings, /Readonly .+ "w6"/i ) ).to.equal( true );
+            expect( arrContains( result.warnings, /Constraint .+ "true\(\)"/i ) ).to.equal( true );
+            expect( arrContains( result.warnings, /Constraint .+ "false\(\)"/i ) ).to.equal( true );
+            expect( arrContains( result.warnings, /Relevant .+ "true\(\)"/i ) ).to.equal( true );
+            expect( arrContains( result.warnings, /Relevant .+ "false\(\)"/i ) ).to.equal( true );
+        } );
+    } );
+
     describe( 'with unsupported external app launching syntax', () => {
         const xf = loadXForm( 'external-app.xml' );
         const validation = validator.validate( xf );

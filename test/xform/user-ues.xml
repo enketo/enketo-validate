@@ -1,0 +1,38 @@
+<?xml version="1.0"?>
+<h:html xmlns="http://www.w3.org/2002/xforms" xmlns:ev="http://www.w3.org/2001/xml-events" xmlns:h="http://www.w3.org/1999/xhtml" xmlns:jr="http://openrosa.org/javarosa" xmlns:odk="http://www.opendatakit.org/xforms" xmlns:orx="http://openrosa.org/xforms" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+    <h:head>
+        <h:title>user-ues</h:title>
+        <model odk:xforms-version="1.0.0">
+            <instance>
+                <data id="user-ues">
+                    <one />
+                    <two />
+                    <three />
+                    <four />
+                    <meta>
+                        <instanceID />
+                    </meta>
+                </data>
+            </instance>
+            <bind constraint="ues" nodeset="/data/one" readonly="ues" relevant="ues" required="ues" type="string" />
+            <bind constraint="w6" nodeset="/data/two" readonly="w6" relevant="w6" required="w6" type="string" />
+            <bind constraint="true()" relevant="true()" nodeset="/data/three" type="string" />
+            <bind constraint="false()" relevant="false()" nodeset="/data/four" type="string" />
+            <bind jr:preload="uid" nodeset="/data/meta/instanceID" readonly="true()" type="string" />
+        </model>
+    </h:head>
+    <h:body>
+        <input ref="/data/one">
+            <label>Enter text</label>
+        </input>
+        <input ref="/data/two">
+            <label>Enter text</label>
+        </input>
+        <input ref="/data/three">
+            <label>Enter text</label>
+        </input>
+        <input ref="/data/four">
+            <label>Enter text</label>
+        </input>
+    </h:body>
+</h:html>
