@@ -63112,6 +63112,7 @@
 	    'attribution': '© <a href="http://openstreetmap.org">OpenStreetMap</a> | <a href="www.openstreetmap.org/copyright">Terms</a>'
 	} ];
 	let searchSource = 'https://maps.googleapis.com/maps/api/geocode/json?address={address}&sensor=true&key={api_key}';
+	const googleApiKey = config.google_api_key;
 	const iconSingle = leafletSrc.divIcon( {
 	    iconSize: 24,
 	    className: 'enketo-geopoint-marker'
@@ -63647,7 +63648,9 @@
 	    _enableSearch() {
 	        const that = this;
 
-	        {
+	        if ( googleApiKey ) {
+	            searchSource = searchSource.replace( '{api_key}', googleApiKey );
+	        } else {
 	            searchSource = searchSource.replace( '&key={api_key}', '' );
 	        }
 
@@ -63927,7 +63930,7 @@
 	                    resolve();
 	                };
 	                // make the request for the Google Maps script asynchronously
-	                apiKeyQueryParam = '';
+	                apiKeyQueryParam = ( googleApiKey ) ? `&key=${googleApiKey}` : '';
 	                loadUrl = `https://maps.google.com/maps/api/js?v=weekly${apiKeyQueryParam}&libraries=places&callback=gmapsLoaded`;
 	                getScript( loadUrl );
 	            } );
