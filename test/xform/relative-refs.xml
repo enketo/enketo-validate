@@ -1,0 +1,71 @@
+<h:html xmlns="http://www.w3.org/2002/xforms"
+    xmlns:ev="http://www.w3.org/2001/xml-events"
+    xmlns:h="http://www.w3.org/1999/xhtml"
+    xmlns:jr="http://openrosa.org/javarosa"
+    xmlns:orx="http://openrosa.org/xforms"
+    xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+    <h:head>
+        <h:title>Nested Repeats</h:title>
+        <model>
+            <instance>
+                <data id="data">
+                    <kids>
+                        <has-kids>1</has-kids>
+                        <kids-details jr:template="">
+                            <kids-name/>
+                        </kids-details>
+                        <group>
+                            <nested-age/>
+                        </group>
+                    </kids>
+                    <gps/>
+                    <something>
+                        <repeat jr:template="">
+                            <a/>
+                        </repeat>
+                    </something>
+                    <orx:meta>
+                        <orx:instanceID/>
+                    </orx:meta>
+                </data>
+            </instance>
+            <bind nodeset="/data/kids/has-kids" type="select1"/>
+            <bind nodeset="/data/kids/kids-details" relevant="/data/kids/has-kids='1'"/>
+            <bind nodeset="/data/kids/kids-details/kids-name" type="string"/>
+            <bind nodeset="/data/kids/group/nested-age" type="int"/>
+        </model>
+    </h:head>
+    <h:body>
+        <group ref="/data/kids">
+            <label>Kids</label>
+            <select1 ref="./has-kids">
+                <label>4. Do you have any kids?</label>
+                <item>
+                    <label>yes</label>
+                    <value>1</value>
+                </item>
+            </select1>
+            <group ref="kids-details">
+                <label>4.1 Kids Details</label>
+                <repeat nodeset=".">
+                    <input ref="kids-name">
+                        <label>4.1.1 Child's Name</label>
+                    </input>
+                </repeat>
+            </group>
+            <group ref="./group">
+                <label>4.2 A Nested Group</label>
+                <input ref="nested-age">
+                    <label>4.4 A Nested Age</label>
+                </input>
+            </group>
+        </group>
+        <group ref="/data/something">
+            <repeat nodeset="repeat">
+                <input ref="./a">
+                    <label>a</label>
+                </input>
+            </repeat>
+        </group>
+    </h:body>
+</h:html>
