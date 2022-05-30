@@ -44,7 +44,6 @@
         "istanbul-reporter-shield-badge": "^1.2.1",
         "jsdoc": "^3.6.10",
         "mocha": "^10.0.0",
-        "pkg": "^5.7.0",
         "rimraf": "^3.0.2",
         "rollup": "^2.75.3",
         "rollup-plugin-commonjs": "^10.1.0",
