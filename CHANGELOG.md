@@ -7,6 +7,9 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 ##### Add
 - Add basic checks to catch common XLSForm authoring mistakes when adding a value to the wrong column or misspelling a value.
 
+##### Removed
+- Binary building.
+
 [1.14.2] - 2022-02-11
 ---------------------
 ##### Changed
