@@ -14,39 +14,39 @@
  * @param {string} func - The function name to search for
  * @return {Array<Array<string, any>>} The result array, where each result is an array containing the function call and array of arguments.
  */
-function parseFunctionFromExpression( expr, func ) {
+function parseFunctionFromExpression(expr, func) {
     let result;
-    const findFunc = new RegExp( `${func}\\s*\\(`, 'g' );
+    const findFunc = new RegExp(`${func}\\s*\\(`, 'g');
     const results = [];
 
-    if ( !expr || !func ) {
+    if (!expr || !func) {
         return results;
     }
 
-    while ( ( result = findFunc.exec( expr ) ) !== null ) {
+    while ((result = findFunc.exec(expr)) !== null) {
         const args = [];
         let openBrackets = 1;
-        let start = result.index;
+        const start = result.index;
         let argStart = findFunc.lastIndex;
         let index = argStart - 1;
-        while ( openBrackets !== 0 && index < expr.length ) {
+        while (openBrackets !== 0 && index < expr.length) {
             index++;
-            if ( expr[ index ] === '(' ) {
+            if (expr[index] === '(') {
                 openBrackets++;
-            } else if ( expr[ index ] === ')' ) {
+            } else if (expr[index] === ')') {
                 openBrackets--;
-            } else if ( expr[ index ] === ',' && openBrackets === 1 ) {
-                args.push( expr.substring( argStart, index ).trim() );
+            } else if (expr[index] === ',' && openBrackets === 1) {
+                args.push(expr.substring(argStart, index).trim());
                 argStart = index + 1;
             }
         }
         // add last argument
-        if ( argStart < index ) {
-            args.push( expr.substring( argStart, index ).trim() );
+        if (argStart < index) {
+            args.push(expr.substring(argStart, index).trim());
         }
 
         // add [ 'function( a ,b)', ['a','b'] ] to result array
-        results.push( [ expr.substring( start, index + 1 ), args ] );
+        results.push([expr.substring(start, index + 1), args]);
     }
 
     return results;
@@ -57,8 +57,8 @@ function parseFunctionFromExpression( expr, func ) {
  * @param {*} n - value
  * @return {boolean} whether it is a number value
  */
-function isNumber( n ) {
-    return !isNaN( parseFloat( n ) ) && isFinite( n );
+function isNumber(n) {
+    return !isNaN(parseFloat(n)) && isFinite(n);
 }
 
 /**
@@ -69,15 +69,15 @@ function isNumber( n ) {
  * @param {Element} el - Target node
  * @return {boolean} Whether previous sibling has the same node name
  */
-function hasPreviousSiblingElementSameName( el ) {
+function hasPreviousSiblingElementSameName(el) {
     let found = false;
-    const nodeName = el.nodeName;
+    const { nodeName } = el;
     el = el.previousSibling;
 
-    while ( el ) {
+    while (el) {
         // Ignore any sibling text and comment nodes (e.g. whitespace with a newline character)
         // also deal with repeats that have non-repeat siblings in between them, event though that would be a bug.
-        if ( el.nodeName && el.nodeName === nodeName ) {
+        if (el.nodeName && el.nodeName === nodeName) {
             found = true;
             break;
         }
@@ -91,15 +91,15 @@ function hasPreviousSiblingElementSameName( el ) {
  * @param {Element} el - Target node
  * @return {boolean} Whether next sibling has the same node name
  */
-function hasNextSiblingElementSameName( el ) {
+function hasNextSiblingElementSameName(el) {
     let found = false;
-    const nodeName = el.nodeName;
+    const { nodeName } = el;
     el = el.nextSibling;
 
-    while ( el ) {
+    while (el) {
         // Ignore any sibling text and comment nodes (e.g. whitespace with a newline character)
         // also deal with repeats that have non-repeat siblings in between them, event though that would be a bug.
-        if ( el.nodeName && el.nodeName === nodeName ) {
+        if (el.nodeName && el.nodeName === nodeName) {
             found = true;
             break;
         }
@@ -113,10 +113,12 @@ function hasNextSiblingElementSameName( el ) {
  * @param {Element} el - Target node
  * @return {boolean} Whether a sibling has the same node name
  */
-function hasSiblingElementSameName( el ) {
-    return hasNextSiblingElementSameName( el ) || hasPreviousSiblingElementSameName( el );
+function hasSiblingElementSameName(el) {
+    return (
+        hasNextSiblingElementSameName(el) ||
+        hasPreviousSiblingElementSameName(el)
+    );
 }
-
 
 /**
  * Creates an XPath from a node
@@ -126,37 +128,43 @@ function hasSiblingElementSameName( el ) {
  * @param {boolean} [includePosition] - Whether or not to include the positions `/path/to/repeat[2]/node`
  * @return {string} XPath
  */
-function getXPath( node, rootNodeName = '#document', includePosition = false ) {
+function getXPath(node, rootNodeName = '#document', includePosition = false) {
     let index;
     const steps = [];
     let position = '';
-    if ( !node || node.nodeType !== 1 ) {
+    if (!node || node.nodeType !== 1) {
         return null;
     }
-    const nodeName = node.nodeName;
+    const { nodeName } = node;
     let parent = node.parentElement;
     let parentName = parent ? parent.nodeName : null;
 
-    if ( includePosition ) {
-        index = getRepeatIndex( node );
-        if ( index > 0 ) {
+    if (includePosition) {
+        index = getRepeatIndex(node);
+        if (index > 0) {
             position = `[${index + 1}]`;
         }
     }
 
-    steps.push( nodeName + position );
+    steps.push(nodeName + position);
 
-    while ( parent && parentName !== rootNodeName && parentName !== '#document' ) {
-        if ( includePosition ) {
-            index = getRepeatIndex( parent );
-            position = hasSiblingElementSameName( parent ) ? `[${index + 1}]` : '';
+    while (
+        parent &&
+        parentName !== rootNodeName &&
+        parentName !== '#document'
+    ) {
+        if (includePosition) {
+            index = getRepeatIndex(parent);
+            position = hasSiblingElementSameName(parent)
+                ? `[${index + 1}]`
+                : '';
         }
-        steps.push( parentName + position );
+        steps.push(parentName + position);
         parent = parent.parentElement;
         parentName = parent ? parent.nodeName : null;
     }
 
-    return `/${steps.reverse().join( '/' )}`;
+    return `/${steps.reverse().join('/')}`;
 }
 
 /**
@@ -165,14 +173,14 @@ function getXPath( node, rootNodeName = '#document', includePosition = false ) {
  * @param {Element} node - XML node
  * @return {number} index
  */
-function getRepeatIndex( node ) {
+function getRepeatIndex(node) {
     let index = 0;
-    const nodeName = node.nodeName;
+    const { nodeName } = node;
     let prevSibling = node.previousSibling;
 
-    while ( prevSibling ) {
+    while (prevSibling) {
         // ignore any sibling text and comment nodes (e.g. whitespace with a newline character)
-        if ( prevSibling.nodeName && prevSibling.nodeName === nodeName ) {
+        if (prevSibling.nodeName && prevSibling.nodeName === nodeName) {
             index++;
         }
         prevSibling = prevSibling.previousSibling;
