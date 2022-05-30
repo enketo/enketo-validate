@@ -1,7 +1,7 @@
 image: Visual Studio 2015
 
 environment:
-  NODEJS_VERSION: 8
+  NODEJS_VERSION: 16
   APPVEYOR_OS_NAME: windows
 
 install:
@@ -10,7 +10,7 @@ install:
   - npm install -g pkg
   - node validate --me
 
-build_script: 
+build_script:
   - cmd: windows-build-binary.bat
 
 test_script:
