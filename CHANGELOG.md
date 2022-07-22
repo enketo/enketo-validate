@@ -2,10 +2,15 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+[Unreleased]
+-------------------------
+##### Added
+- Check for a custom OpenClinica _external signature_ feature.
+
 [1.15.0] - 2022-05-30
 -------------------------
 ##### Added
-- Add basic checks to catch common XLSForm authoring mistakes when adding a value to the wrong column or misspelling a value.
+- Basic checks to catch common XLSForm authoring mistakes when adding a value to the wrong column or misspelling a value.
 
 ##### Removed
 - Binary building.

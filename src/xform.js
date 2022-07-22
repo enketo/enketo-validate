@@ -641,8 +641,23 @@ class XForm {
                     ( value && !CLINICALDATA_REF.test( value ) ) ;
             } )
             .map( bind => this._nodeName( bind ) )
-            .forEach( nodeName => errors.push( `Found bind with clinicaldata attribute for question "${nodeName}" that does not ` +
-                'have a calculation referring to instance(\'clinicaldata\').' ) );
+            .forEach( nodeName => errors.push( `Found bind with external attribute with "clinicaldata" value for question "${nodeName}" that does not ` +
+                'have a calculation referring to instance("clinicaldata").' ) );
+
+        this.binds
+            .filter( bind => bind.getAttributeNS( this.NAMESPACES.oc, 'external' ) === 'signature' )
+            .filter( bind => {
+                const path = bind.getAttribute( 'nodeset' );
+                const select = this.doc.querySelector( `select[ref="${path}"]` );
+                const appearanceVal = select ? select.getAttribute( 'appearance' ) : '';
+                const options = select ? select.querySelectorAll( 'item' ) : [];
+
+                return !select || options.length !== 1 ||
+                    ( appearanceVal && appearanceVal.trim().split( ' ' ).includes( 'minimal' ) );
+            } )
+            .map( bind => this._nodeName( bind ) )
+            .forEach( nodeName => warnings.push( `Found bind with external attribute with "signature" value for question "${nodeName}" that does not ` +
+                    'have the "select" question type with a single option without the minimal appearance.' ) );
 
         this.binds
             .forEach( bind => {
