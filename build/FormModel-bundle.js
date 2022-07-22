@@ -41887,7 +41887,7 @@
 	 * @param {string} [endSelector] - A CSS selector indicating where to stop. It will include this element if matched by the filter.
 	 * @return {Array<Node>} Array of ancestors.
 	 */
-	function getAncestors(element, filterSelector = '*', endSelector = null) {
+	function getAncestors(element, filterSelector, endSelector = null) {
 	    const ancestors = [];
 	    let parent = element.parentElement;
 
@@ -41942,7 +41942,7 @@
 	 * @param {string} selector - A CSS selector.
 	 * @return {Array<Node>} Array of child elements.
 	 */
-	function getChildren(element, selector = '*') {
+	function getChildren(element, selector) {
 	    return [...element.children].filter((el) => el.matches(selector));
 	}
 
@@ -42054,7 +42054,7 @@
 	 * @param {boolean} [includePosition] - Whether or not to include the positions `/path/to/repeat[2]/node`
 	 * @return {string} XPath
 	 */
-	function getXPath(node, rootNodeName = '#document', includePosition = false) {
+	function getXPath(node, rootNodeName, includePosition = false) {
 	    let index;
 	    const steps = [];
 	    let position = '';
@@ -43303,16 +43303,8 @@
 	             */
 	            let context = p.path;
 	            if (
-	                (getChild(node, `.or-repeat-info[data-name="${p.path}"]`) &&
-	                    !getChild(node, `.or-repeat[name="${p.path}"]`)) ||
-	                // Special cases below for model nodes with no visible form control: if repeat instance removed or if
-	                // no instances at all (e.g. during load with `jr:count="0"`)
-	                (insideRepeat &&
-	                    repeatParent == null &&
-	                    (options.removed ||
-	                        this.form.view.html.querySelector(
-	                            `.or-repeat[name="${CSS.escape(repeatPath)}"]`
-	                        ) == null))
+	                getChild(node, `.or-repeat-info[data-name="${p.path}"]`) &&
+	                !getChild(node, `.or-repeat[name="${p.path}"]`)
 	            ) {
 	                context = null;
 	            }
@@ -43968,7 +43960,6 @@
 	                nodes: null,
 	                repeatPath,
 	                repeatIndex,
-	                removed: true, // Introduced to handle relevance on model nodes with no form controls (calculates)
 	            })
 	        );
 
@@ -44794,7 +44785,7 @@
 	                'text/xml'
 	            ).documentElement;
 	            this.xml.adoptNode(deprecatedIdEl);
-	            metaEl = this.xml.querySelector('instance > * > meta');
+	            metaEl = this.xml.querySelector('* > meta');
 	            metaEl.appendChild(deprecatedIdEl);
 	        }
 	    }
@@ -44949,6 +44940,7 @@
 	    firstRepeatInSeries
 	) {
 	    this.getNamespacePrefix(ENKETO_XFORMS_NS);
+	    firstRepeatInSeries = firstRepeatInSeries || repeat;
 	};
 
 	/**
@@ -63577,15 +63569,15 @@
 	    'https://maps.googleapis.com/maps/api/geocode/json?address={address}&sensor=true&key={api_key}';
 	const googleApiKey = config.google_api_key;
 	const iconSingle = leafletSrc.divIcon({
-	    iconSize: [16, 24],
+	    iconSize: 24,
 	    className: 'enketo-geopoint-marker',
 	});
 	const iconMulti = leafletSrc.divIcon({
-	    iconSize: [16, 16],
+	    iconSize: 16,
 	    className: 'enketo-geopoint-circle-marker',
 	});
 	const iconMultiActive = leafletSrc.divIcon({
-	    iconSize: [16, 16],
+	    iconSize: 16,
 	    className: 'enketo-geopoint-circle-marker-active',
 	});
 
@@ -63614,7 +63606,7 @@
 	     * @type {string}
 	     */
 	    static get selector() {
-	        return ':is(.question input[data-type-xml="geopoint"], .question input[data-type-xml="geotrace"], .question input[data-type-xml="geoshape"]):not([data-setvalue], [data-setgeopoint])';
+	        return '.question input[data-type-xml="geopoint"]:not([data-setgeopoint]), .question input[data-type-xml="geotrace"], .question input[data-type-xml="geoshape"]';
 	    }
 
 	    /**
@@ -63862,7 +63854,7 @@
 	            this._updateMap([0, 0], 1);
 	            if (this.props.detect) {
 	                getCurrentPosition()
-	                    .then(({ position }) => {
+	                    .then((position) => {
 	                        that._updateMap(
 	                            [
 	                                position.coords.latitude,
@@ -64310,6 +64302,7 @@
 	        // update last requested map coordinates to be used to initialize map in mobile fullscreen view
 	        if (latLng) {
 	            this.lastLatLng = latLng;
+	            this.lastZoom = zoom;
 	        }
 
 	        // update the map if it is visible
@@ -64372,16 +64365,6 @@
 	                    that._addPoint();
 	                    that._updateInputs(latLng, 'change.bymap');
 	                } else ;
-	            });
-
-	            this.map.on('load', () => {
-	                this.map.on('zoomend', (event) => {
-	                    const zoom = event.target.getZoom();
-
-	                    if (zoom != null) {
-	                        this.lastZoom = zoom;
-	                    }
-	                });
 	            });
 
 	            // watch out, default "Leaflet" link clicks away from page, loosing all data
@@ -75902,9 +75885,9 @@
 	        const { evaluationCascadeAdditions } = this;
 
 	        if (evaluationCascadeAdditions.length > 0) {
-	            baseEvaluationCascade.push(function (...args) {
+	            baseEvaluationCascade.push(() => {
 	                for (const fn of evaluationCascadeAdditions) {
-	                    fn.apply(this, args);
+	                    fn();
 	                }
 	            });
 	        }
@@ -75912,9 +75895,8 @@
 	        if (config.experimentalOptimizations.computeAsync) {
 	            return baseEvaluationCascade.map(
 	                (fn) =>
-	                    function (...args) {
-	                        callOnIdle(() => fn.apply(this, args));
-	                    }
+	                    (...args) =>
+	                        callOnIdle(() => fn(...args))
 	            );
 	        }
 
