@@ -1,0 +1,100 @@
+<?xml version="1.0"?>
+<h:html xmlns="http://www.w3.org/2002/xforms" xmlns:ev="http://www.w3.org/2001/xml-events" xmlns:h="http://www.w3.org/1999/xhtml" xmlns:jr="http://openrosa.org/javarosa" xmlns:oc="http://openclinica.org/xforms" xmlns:odk="http://www.opendatakit.org/xforms" xmlns:orx="http://openrosa.org/xforms" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+    <h:head>
+        <h:title>openclinica-external-signature</h:title>
+        <model odk:xforms-version="1.0.0">
+            <instance>
+                <data id="openclinica-external-signature">
+                    <a />
+                    <b />
+                    <c />
+                    <d />
+                    <e />
+                    <f />
+                    <g />
+                    <h />
+                    <i />
+                    <j />
+                    <meta>
+                        <instanceID />
+                    </meta>
+                </data>
+            </instance>
+            <bind nodeset="/data/a" oc:external="signature" type="string" required="true()"/>
+            <bind nodeset="/data/b" oc:external="signature" type="int" />
+            <bind nodeset="/data/c" oc:external="signature" type="string" />
+            <bind nodeset="/data/d" oc:external="signature" type="string" />
+            <bind nodeset="/data/e" oc:external="signature" type="string" />
+            <bind nodeset="/data/f" oc:external="signature" type="string" />
+            <bind nodeset="/data/g" oc:external="signature" type="string" />
+            <bind nodeset="/data/h" oc:external="signature" type="string" />
+            <bind nodeset="/data/i" oc:external="signature" type="string" />
+            <bind nodeset="/data/j" oc:external="signature" type="binary" />
+            <bind jr:preload="uid" nodeset="/data/meta/instanceID" readonly="true()" type="string" />
+        </model>
+    </h:head>
+    <h:body>
+        <input ref="/data/a">
+            <label>enter</label>
+        </input>
+        <input ref="/data/b">
+            <label>enter</label>
+        </input>
+        <select1 ref="/data/c">
+            <label>enter</label>
+            <item>
+                <label>Yes</label>
+                <value>yes</value>
+            </item>
+            <item>
+                <label>No</label>
+                <value>no</value>
+            </item>
+        </select1>
+        <select ref="/data/d">
+            <label>enter</label>
+            <item>
+                <label>Yes</label>
+                <value>yes</value>
+            </item>
+            <item>
+                <label>No</label>
+                <value>no</value>
+            </item>
+        </select>
+        <select1 ref="/data/e">
+            <label>enter</label>
+            <item>
+                <label>Agreed</label>
+                <value>agreed</value>
+            </item>
+        </select1>
+        <select ref="/data/f" appearance="w1">
+            <label>enter</label>
+            <item>
+                <label>Agreed</label>
+                <value>agreed</value>
+            </item>
+        </select>
+        <select1 appearance="minimal" ref="/data/g">
+            <label>enter</label>
+            <item>
+                <label>Agreed</label>
+                <value>agreed</value>
+            </item>
+        </select1>
+        <select appearance="minimal" ref="/data/h">
+            <label>enter</label>
+            <item>
+                <label>Agreed</label>
+                <value>agreed</value>
+            </item>
+        </select>
+        <trigger ref="/data/i">
+            <label>enter</label>
+        </trigger>
+        <upload appearance="signature" mediatype="image/*" ref="/data/j">
+            <label>enter</label>
+        </upload>
+    </h:body>
+</h:html>

@@ -179,11 +179,32 @@ describe( 'XForm', () => {
             it( 'outputs errors for binds with oc:external="clinicaldata" that do not ' +
                 'do not have a calculation that refers to instance(\'clinicaldata\')', async() => {
                 const result = await validation;
-                expect( arrContains( result.errors, /"invalid4" .* not .* calculation referring to instance\('clinicaldata'\)/i ) ).to.equal( true );
-                expect( arrContains( result.errors, /"invalid5" .* not .* calculation referring to instance\('clinicaldata'\)/i ) ).to.equal( true );
-                expect( arrContains( result.errors, /"invalid6" .* not .* calculation referring to instance\('clinicaldata'\)/i ) ).to.equal( true );
+                expect( arrContains( result.errors, /"invalid4" .* not .* calculation referring to instance\("clinicaldata"\)/i ) ).to.equal( true );
+                expect( arrContains( result.errors, /"invalid5" .* not .* calculation referring to instance\("clinicaldata"\)/i ) ).to.equal( true );
+                expect( arrContains( result.errors, /"invalid6" .* not .* calculation referring to instance\("clinicaldata"\)/i ) ).to.equal( true );
             } );
 
+        } );
+
+        describe( 'forms with the special signature extensions', ()=>{
+            const validation = validator.validate( loadXForm( 'openclinica-external-signature.xml' ), {
+                openclinica: true
+            } );
+
+            it( 'outputs warnings for non-checkbox questions or questions with more than 1 checkbox', async()=>{
+                const result = await validation;
+                expect( result.errors.length ).to.equal( 0 );
+                expect( result.warnings.length ).to.equal( 9 );
+                expect( arrContains( result.warnings, /"signature" .* "a"/i ) ).to.equal( true );
+                expect( arrContains( result.warnings, /"signature" .* "b"/i ) ).to.equal( true );
+                expect( arrContains( result.warnings, /"signature" .* "c"/i ) ).to.equal( true );
+                expect( arrContains( result.warnings, /"signature" .* "d"/i ) ).to.equal( true );
+                expect( arrContains( result.warnings, /"signature" .* "e"/i ) ).to.equal( true );
+                expect( arrContains( result.warnings, /"signature" .* "g"/i ) ).to.equal( true );
+                expect( arrContains( result.warnings, /"signature" .* "h"/i ) ).to.equal( true );
+                expect( arrContains( result.warnings, /"signature" .* "i"/i ) ).to.equal( true );
+                expect( arrContains( result.warnings, /"signature" .* "j"/i ) ).to.equal( true );
+            } );
         } );
 
         describe( 'forms with special multiple constraints extensions', () => {
