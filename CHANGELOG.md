@@ -2,7 +2,7 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
-[Unreleased]
+[1.15.1] - 2022-07-28
 -------------------------
 ##### Added
 - Check for a custom OpenClinica _external signature_ feature.
