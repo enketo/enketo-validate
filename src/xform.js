@@ -9,6 +9,12 @@ const xslModelSheet = libxslt.parse( sheets.xslModel );
 const appearanceRules = require( './appearances' );
 
 /**
+ * @typedef Result
+ * @property {Array<string>} warnings - List of warnings.
+ * @property {Array<string>} errors - List of errors.
+ */
+
+/**
  * @class XForm
  */
 class XForm {
@@ -314,12 +320,13 @@ class XForm {
     }
 
     /**
-     * Checks if the structure is valid. Modifies provided `warnings` and `errors` arrays.
+     * Checks if the structure is valid.
      *
-     * @param {Array} warnings - Array of existing warnings.
-     * @param {Array} errors - Array of existing errors.
+     * @return {Result} Result object with warnings and errors.
      */
-    checkStructure( warnings, errors ) {
+    checkStructure() {
+        const errors = [];
+        const warnings = [];
         const rootEl = this.doc.documentElement;
         const rootElNodeName = rootEl.nodeName;
         if ( !( /^[A-z]+:html$/.test( rootElNodeName ) ) ) {
@@ -452,15 +459,18 @@ class XForm {
             warnings.push( 'Found <repeat> that has a parent <group> without a ref attribute. ' +
                 'If the repeat has relevant logic, this will make the form very slow.' );
         }
+
+        return { warnings, errors };
     }
 
     /**
-     * Checks if binds are valid. Modifies provided `warnings` and `errors` arrays.
+     * Checks if binds are valid.
      *
-     * @param {Array} warnings - Array of existing warnings.
-     * @param {Array} errors - Array of existing errors.
+     * @return {Result} Result object with warnings and errors.
      */
-    checkBinds( warnings, errors ) {
+    checkBinds() {
+        const warnings = [];
+        const errors = [];
         // Check for use of form controls with calculations that are not readonly
         this.bindsWithCalc
             .filter( this._withFormControl.bind( this ) )
@@ -473,15 +483,18 @@ class XForm {
             } )
             .map( bind => this._nodeName( bind ) )
             .forEach( nodeName => errors.push( `Question "${nodeName}" has a calculation that is not set to readonly.` ) );
+
+        return { warnings, errors };
     }
 
     /**
-     * Checks if appearances are valid. Modifies provided `warnings` and `errors` arrays.
+     * Checks if appearances are valid.
      *
-     * @param {Array} warnings - Array of existing warnings.
-     * @param {Array} errors - Array of existing errors.
+     * @return {Result} Result object with warnings and errors.
      */
-    checkAppearances( warnings, errors ) {
+    checkAppearances() {
+        const warnings = [];
+        const errors = [];
         this.formControls.concat( this.groups ).concat( this.repeats )
             .forEach( control => {
                 let appearanceVal = control.getAttribute( 'appearance' );
@@ -584,15 +597,18 @@ class XForm {
                 } );
 
             } );
+
+        return { warnings, errors };
     }
 
     /**
-     * Checks special OpenClinica rules. Modifies provided `warnings` and `errors` arrays.
+     * Checks special OpenClinica rules.
      *
-     * @param {Array} warnings - Array of existing warnings.
-     * @param {Array} errors - Array of existing errors.
+     * @return {Result} Result object with warnings and errors.
      */
-    checkOpenClinicaRules( warnings, errors ) {
+    checkOpenClinicaRules() {
+        const warnings = [];
+        const errors = [];
         const CLINICALDATA_REF = /instance\(\s*(["'])((?:(?!\1)clinicaldata))\1\s*\)/;
 
         // Check for use of external data in instance "clinicaldata"
@@ -685,6 +701,8 @@ class XForm {
                     errors.push( 'The form includes the use of the "last-saved" feature. This feature is not supported.' );
                 }
             } );
+
+        return { warnings, errors };
     }
 
     /**
