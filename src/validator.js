@@ -14,8 +14,8 @@ const { version } = require( '../package' );
 
 /**
  * @typedef ValidateResult
- * @property {Array} warnings - List of warnings.
- * @property {Array} errors - List of errors.
+ * @property {Array<string>} warnings - List of warnings.
+ * @property {Array<string>} errors - List of errors.
  * @property {string} version - Package version.
  */
 
@@ -37,6 +37,7 @@ const validate = async( xformStr, options = {} ) => {
     const start = Date.now();
     let warnings = [];
     let errors = [];
+    let result = {};
     let xform;
 
     try {
@@ -51,12 +52,22 @@ const validate = async( xformStr, options = {} ) => {
         return Promise.resolve( { warnings, errors, version, duration } );
     }
 
-    xform.checkStructure( warnings, errors );
-    xform.checkBinds( warnings, errors );
-    xform.checkAppearances( warnings, errors );
+    result = xform.checkStructure();
+    warnings = warnings.concat( result.warnings );
+    errors = errors.concat( result.errors );
+
+    result = xform.checkBinds();
+    warnings = warnings.concat( result.warnings );
+    errors = errors.concat( result.errors );
+
+    result = xform.checkAppearances();
+    warnings = warnings.concat( result.warnings );
+    errors = errors.concat( result.errors );
 
     if ( options.openclinica ) {
-        xform.checkOpenClinicaRules( warnings, errors );
+        result = xform.checkOpenClinicaRules(  );
+        warnings = warnings.concat( result.warnings );
+        errors = errors.concat( result.errors );
     }
 
     try{
