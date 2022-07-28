@@ -193,17 +193,17 @@ describe( 'XForm', () => {
 
             it( 'outputs warnings for non-checkbox questions or questions with more than 1 checkbox', async()=>{
                 const result = await validation;
-                expect( result.errors.length ).to.equal( 0 );
-                expect( result.warnings.length ).to.equal( 9 );
-                expect( arrContains( result.warnings, /"signature" .* "a"/i ) ).to.equal( true );
-                expect( arrContains( result.warnings, /"signature" .* "b"/i ) ).to.equal( true );
-                expect( arrContains( result.warnings, /"signature" .* "c"/i ) ).to.equal( true );
-                expect( arrContains( result.warnings, /"signature" .* "d"/i ) ).to.equal( true );
-                expect( arrContains( result.warnings, /"signature" .* "e"/i ) ).to.equal( true );
-                expect( arrContains( result.warnings, /"signature" .* "g"/i ) ).to.equal( true );
-                expect( arrContains( result.warnings, /"signature" .* "h"/i ) ).to.equal( true );
-                expect( arrContains( result.warnings, /"signature" .* "i"/i ) ).to.equal( true );
-                expect( arrContains( result.warnings, /"signature" .* "j"/i ) ).to.equal( true );
+                expect( result.warnings.length ).to.equal( 0 );
+                expect( result.errors.length ).to.equal( 9 );
+                expect( arrContains( result.errors, /"signature" .* "a"/i ) ).to.equal( true );
+                expect( arrContains( result.errors, /"signature" .* "b"/i ) ).to.equal( true );
+                expect( arrContains( result.errors, /"signature" .* "c"/i ) ).to.equal( true );
+                expect( arrContains( result.errors, /"signature" .* "d"/i ) ).to.equal( true );
+                expect( arrContains( result.errors, /"signature" .* "e"/i ) ).to.equal( true );
+                expect( arrContains( result.errors, /"signature" .* "g"/i ) ).to.equal( true );
+                expect( arrContains( result.errors, /"signature" .* "h"/i ) ).to.equal( true );
+                expect( arrContains( result.errors, /"signature" .* "i"/i ) ).to.equal( true );
+                expect( arrContains( result.errors, /"signature" .* "j"/i ) ).to.equal( true );
             } );
         } );
 
