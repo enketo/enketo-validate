@@ -37,7 +37,7 @@
         "array-bracket-spacing": ["error", "always"],
         "no-implied-eval": "error",
         "object-curly-spacing": ["error", "always"],
-        "jsdoc/check-examples": 1,
+        "jsdoc/check-examples": 0,
         "jsdoc/check-param-names": 1,
         "jsdoc/check-tag-names": 1,
         "jsdoc/check-types": 1,
