@@ -1,0 +1,123 @@
+<?xml version="1.0"?>
+<h:html xmlns="http://www.w3.org/2002/xforms" xmlns:ev="http://www.w3.org/2001/xml-events" xmlns:h="http://www.w3.org/1999/xhtml" xmlns:jr="http://openrosa.org/javarosa" xmlns:odk="http://www.opendatakit.org/xforms" xmlns:orx="http://openrosa.org/xforms" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+    <h:head>
+        <h:title>Repeats with w-values</h:title>
+        <model odk:xforms-version="1.0.0">
+            <instance>
+                <data id="appearances-repeat">
+                    <rep1 jr:template="">
+                        <text1 />
+                        <int1 />
+                    </rep1>
+                    <rep1>
+                        <text1 />
+                        <int1 />
+                    </rep1>
+                    <rep2 jr:template="">
+                        <text2 />
+                        <int2 />
+                    </rep2>
+                    <rep2>
+                        <text2 />
+                        <int2 />
+                    </rep2>
+                    <rep3 jr:template="">
+                        <text3 />
+                        <int3 />
+                    </rep3>
+                    <rep3>
+                        <text3 />
+                        <int3 />
+                    </rep3>
+                    <rep4 jr:template="">
+                        <text4 />
+                        <int4 />
+                    </rep4>
+                    <rep4>
+                        <text4 />
+                        <int4 />
+                    </rep4>
+                    <rep5 jr:template="">
+                        <text5 />
+                        <int5 />
+                    </rep5>
+                    <rep5>
+                        <text5 />
+                        <int5 />
+                    </rep5>
+                    <meta>
+                        <instanceID />
+                    </meta>
+                </data>
+            </instance>
+            <bind nodeset="/data/rep1/text1" type="string" />
+            <bind nodeset="/data/rep1/int1" type="int" />
+            <bind nodeset="/data/rep2/text2" type="string" />
+            <bind nodeset="/data/rep2/int2" type="int" />
+            <bind nodeset="/data/rep3/text3" type="string" />
+            <bind nodeset="/data/rep3/int3" type="int" />
+            <bind nodeset="/data/rep4/text4" type="string" />
+            <bind nodeset="/data/rep4/int4" type="int" />
+            <bind nodeset="/data/rep5/text5" type="string" />
+            <bind nodeset="/data/rep5/int5" type="int" />
+            <bind jr:preload="uid" nodeset="/data/meta/instanceID" readonly="true()" type="string" />
+        </model>
+    </h:head>
+    <h:body class="theme-grid">
+        <group ref="/data/rep1">
+            <label>Repeat</label>
+            <repeat appearance="w2" nodeset="/data/rep1">
+                <input appearance="w1" ref="/data/rep1/text1">
+                    <label>Text</label>
+                </input>
+                <input appearance="w1" ref="/data/rep1/int1">
+                    <label>Number</label>
+                </input>
+            </repeat>
+        </group>
+        <group ref="/data/rep2">
+            <label>Repeat</label>
+            <repeat appearance="w1" nodeset="/data/rep2">
+                <input appearance="w1" ref="/data/rep2/text2">
+                    <label>Text</label>
+                </input>
+                <input appearance="w1" ref="/data/rep2/int2">
+                    <label>Number</label>
+                </input>
+            </repeat>
+        </group>
+        <group ref="/data/rep3">
+            <label>Repeat</label>
+            <repeat appearance="w3" nodeset="/data/rep3">
+                <input appearance="w1" ref="/data/rep3/text3">
+                    <label>Text</label>
+                </input>
+                <input appearance="w2" ref="/data/rep3/int3">
+                    <label>Number</label>
+                </input>
+            </repeat>
+        </group>
+        <group ref="/data/rep4">
+            <label>Repeat</label>
+            <repeat appearance="w4" nodeset="/data/rep4">
+                <input appearance="w2" ref="/data/rep4/text4">
+                    <label>Text</label>
+                </input>
+                <input appearance="w2" ref="/data/rep4/int4">
+                    <label>Number</label>
+                </input>
+            </repeat>
+        </group>
+        <group ref="/data/rep5">
+            <label>Repeat</label>
+            <repeat appearance="w5" nodeset="/data/rep5">
+                <input appearance="w2" ref="/data/rep5/text5">
+                    <label>Text</label>
+                </input>
+                <input appearance="w3" ref="/data/rep5/int5">
+                    <label>Number</label>
+                </input>
+            </repeat>
+        </group>
+    </h:body>
+</h:html>
