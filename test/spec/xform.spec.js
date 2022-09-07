@@ -264,20 +264,20 @@ describe( 'XForm', () => {
             const result = await validation;
 
             expect( result.warnings.length ).to.equal( WARNINGS );
-            expect( arrContains( result.warnings, /"minimal" for question "b"/i ) ).to.equal( true );
-            expect( arrContains( result.warnings, /"compact-2" for question "b"/i ) ).to.equal( true );
+            expect( arrContains( result.warnings, /"minimal" for "b"/i ) ).to.equal( true );
+            expect( arrContains( result.warnings, /"compact-2" for "b"/i ) ).to.equal( true );
             expect( arrContains( result.warnings, /"maximal" for question "c"/i ) ).to.equal( true );
-            expect( arrContains( result.warnings, /"hide-input" for question "d"/i ) ).to.equal( true );
+            expect( arrContains( result.warnings, /"hide-input" for "d"/i ) ).to.equal( true );
             expect( arrContains( result.warnings, /"search" for question "d" .+ deprecated.+"autocomplete"/i ) ).to.equal( true );
-            expect( arrContains( result.warnings, /"compact" for question "e"/i ) ).to.equal( true );
+            expect( arrContains( result.warnings, /"compact" for "e"/i ) ).to.equal( true );
             expect( arrContains( result.warnings, /"compact-19" for question "f"/i ) ).to.equal( true );
             expect( arrContains( result.warnings, /"numbers" for question "g"/i ) ).to.equal( true );
             expect( arrContains( result.warnings, /"no-ticks" for question "g"/i ) ).to.equal( true );
             expect( arrContains( result.warnings, /"maps" for question "h"/i ) ).to.equal( true );
-            expect( arrContains( result.warnings, /"signature" for question "h"/i ) ).to.equal( true );
+            expect( arrContains( result.warnings, /"signature" for "h"/i ) ).to.equal( true );
             expect( arrContains( result.warnings, /"pulldown" for question "i"/i ) ).to.equal( true );
             expect( arrContains( result.warnings, /"horizontal-compact" for question "k" .+ deprecated.+"columns-pack"/i ) ).to.equal( true );
-            expect( arrContains( result.warnings, /"field-list" for question "two"/i ) ).to.equal( true );
+            expect( arrContains( result.warnings, /"field-list" for "two"/i ) ).to.equal( true );
         } );
 
         it( 'outputs 1 error', async() => {
@@ -304,8 +304,8 @@ describe( 'XForm', () => {
             expect( result.warnings.length ).to.equal( 4 );
             expect( arrContains( result.warnings, /"horizontal" for question "d" .+ deprecated.+"columns"/i ) ).to.equal( true );
             expect( arrContains( result.warnings, /"horizontal" for question "f" .+ deprecated.+"columns"/i ) ).to.equal( true );
-            expect( arrContains( result.warnings, /"horizontal" for question "i".+not valid/i ) ).to.equal( true );
-            expect( arrContains( result.warnings, /"horizontal" for question "one".+not valid.+\(group\)/i ) ).to.equal( true );
+            expect( arrContains( result.warnings, /"horizontal" for "i".+not valid.+type odkkkkkk:rank/i ) ).to.equal( true );
+            expect( arrContains( result.warnings, /"horizontal" for "one".+not valid.+type group/i ) ).to.equal( true );
         } );
 
         it( 'for custom analog-scale widgets', async() => {
@@ -315,6 +315,21 @@ describe( 'XForm', () => {
             expect( arrContains( result.warnings, /"show-scale" for question "e" .+ combination .+horizontal/i ) ).to.equal( true );
         } );
 
+    } );
+
+    describe( 'with repeats with incorrect w-values for Grid Theme forms', () => {
+        const xf = loadXForm( 'appearances-repeat.xml' );
+        const validation = validator.validate( xf );
+        const WARNINGS = 3;
+
+        it( 'outputs warnings', async() => {
+            const result = await validation;
+
+            expect( result.warnings.length ).to.equal( WARNINGS );
+            expect( arrContains( result.warnings, /"w3" for "rep3"/i ) ).to.equal( true );
+            expect( arrContains( result.warnings, /"w1" for "rep2"/i ) ).to.equal( true );
+            expect( arrContains( result.warnings, /"w2" for "rep1"/i ) ).to.equal( true );
+        } );
     } );
 
     describe( 'with likely user errors that are not actually XPath syntax errors', () => {

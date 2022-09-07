@@ -2,6 +2,14 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+[Unreleased]
+--------------------------
+##### Added
+- Check for repeats with w-values less than w4.
+
+##### Changed
+- Tweaked error/warning output messages to use "group" and "repeat" instead of "question" for issues with appearances.
+
 [1.15.1] - 2022-07-28
 -------------------------
 ##### Added
