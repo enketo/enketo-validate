@@ -506,8 +506,9 @@ class XForm {
                 const controlName = controlNsPrefix && /:/.test( control.nodeName ) ? controlNsPrefix + ':' + control.nodeName.split( ':' )[ 1 ] : control.nodeName;
                 const pathAttr = controlName === 'repeat' ? 'nodeset' : 'ref';
                 const ref = control.getAttribute( pathAttr );
+                const friendlyControlName = controlName === 'repeat' || controlName === 'group' ? controlName : 'question';
                 if ( !ref ) {
-                    errors.push( `Question found in body that has no ${pathAttr} attribute (${control.nodeName}).` );
+                    errors.push( `A ${friendlyControlName} found in body that has no ${pathAttr} attribute (${control.nodeName}).` );
 
                     return;
                 }
@@ -520,7 +521,7 @@ class XForm {
 
                 // Special error for use of ex;
                 if ( appearanceVal.trim().startsWith( 'ex:' ) ){
-                    errors.push( `Appearance "ex:" to launch an external app for question "${nodeName}" is not supported.` );
+                    errors.push( `Appearance "ex:" to launch an external app for ${friendlyControlName} "${nodeName}" is not supported.` );
 
                     return;
                 }
@@ -528,7 +529,7 @@ class XForm {
                 const searchMatches = appearanceVal.match( /search\(.+\)/ );
                 if ( searchMatches ){
                     appearanceVal = appearanceVal.replace( searchMatches[0], '' );
-                    errors.push( `Appearance "search" for question "${nodeName}" is not supported.` );
+                    errors.push( `Appearance "search" for ${friendlyControlName} "${nodeName}" is not supported.` );
                 }
                 const appearances = appearanceVal.trim() ? appearanceVal.split( ' ' ) : [];
                 appearances.forEach( appearance => {
@@ -545,14 +546,14 @@ class XForm {
                     }
 
                     if ( rules.length === 0 ) {
-                        warnings.push( `Appearance "${appearance}" for question "${nodeName}" is not supported.` );
+                        warnings.push( `Appearance "${appearance}" for ${friendlyControlName} "${nodeName}" is not supported.` );
 
                         return;
                     }
 
                     const allowedControls = rules.map( rule => rule.controls || [] ).flat();
                     if ( allowedControls.length && !allowedControls.includes( controlName ) ) {
-                        warnings.push( `Appearance "${appearance}" for question "${nodeName}" is not valid for this question type (${control.nodeName}).` );
+                        warnings.push( `Appearance "${appearance}" for "${nodeName}" is not valid for type ${control.nodeName}.` );
 
                         return;
                     }
@@ -561,7 +562,7 @@ class XForm {
                     if ( allowedTypes.length && !allowedTypes.includes( dataType ) ) {
                         // Only check types if controls check passed.
                         // TODO check namespaced types when it becomes applicable (for XML Schema types).
-                        warnings.push( `Appearance "${appearance}" for question "${nodeName}" is not valid for this data type (${dataType}).` );
+                        warnings.push( `Appearance "${appearance}" for ${friendlyControlName} "${nodeName}" is not valid for this data type (${dataType}).` );
 
                         return;
                     }
@@ -573,20 +574,20 @@ class XForm {
                         || rules[0];
 
                     if ( applicableRule && applicableRule.appearances && !applicableRule.appearances.some( appearanceMatch => appearances.includes( appearanceMatch ) ) ) {
-                        warnings.push( `Appearance "${appearance}" for question "${nodeName}" requires any of these appearances: "${this._join( applicableRule.appearances )}".` );
+                        warnings.push( `Appearance "${appearance}" for ${friendlyControlName} "${nodeName}" requires any of these appearances: "${this._join( applicableRule.appearances )}".` );
 
                         return;
                     }
 
                     if ( applicableRule && applicableRule.appearancesConflict && applicableRule.appearancesConflict.some( appearanceMatch => appearances.includes( appearanceMatch ) ) ) {
-                        warnings.push( `Appearance "${appearance}" for question "${nodeName}" cannot be used in combination with any of these appearances: "${this._join( applicableRule.appearancesConflict )}".` );
+                        warnings.push( `Appearance "${appearance}" for ${friendlyControlName} "${nodeName}" cannot be used in combination with any of these appearances: "${this._join( applicableRule.appearancesConflict )}".` );
 
                         return;
                     }
 
 
                     if ( applicableRule && applicableRule.preferred ) {
-                        warnings.push( `Appearance "${appearance}" for question "${nodeName}" is deprecated, use "${applicableRule.preferred}" instead.` );
+                        warnings.push( `Appearance "${appearance}" for ${friendlyControlName} "${nodeName}" is deprecated, use "${applicableRule.preferred}" instead.` );
                     }
                     // Possibilities for future additions:
                     // - check accept/mediaType

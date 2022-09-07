@@ -162,17 +162,19 @@
         "controls": [ "range" ]
     },
     "w1": {
-        "controls": [ "input", "select1", "select", "upload", "trigger", "range", "odk:rank", "group", "repeat" ]
+        "controls": [ "input", "select1", "select", "upload", "trigger", "range", "odk:rank", "group" ]
     },
     "w2": "w1",
     "w3": "w1",
-    "w4": "w1",
-    "w5": "w1",
-    "w6": "w1",
-    "w7": "w1",
-    "w8": "w1",
-    "w9": "w1",
-    "w10": "w1",
+    "w4": {
+        "controls": [ "input", "select1", "select", "upload", "trigger", "range", "odk:rank", "group", "repeat" ]
+    },
+    "w5": "w4",
+    "w6": "w4",
+    "w7": "w4",
+    "w8": "w4",
+    "w9": "w4",
+    "w10": "w4",
     "analog-scale": {
         "controls": [ "input" ],
         "types": [ "decimal", "xsd:decimal", "int", "xsd:int" ]
