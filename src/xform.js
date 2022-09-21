@@ -102,9 +102,13 @@ class XForm {
      * @type {Array<Node>}
      */
     get formControls() {
+        // TODO: wrong to use h: namespace prefix without resolver here!
+        // fix in JSDom might be forthcoming:
+        // * https://github.com/jsdom/jsdom/issues/2159,
+        // * https://github.com/jsdom/jsdom/issues/2028
         // doc.evaluate does not support namespaces at all (nsResolver is not used) in JSDom, hence this clever not() trick
         // to use querySelectorAll instead.
-        this._formControls = this._formControls || [ ...this.doc.querySelectorAll( '*|body *:not(item):not(label):not(hint):not(value):not(itemset):not(output):not(repeat):not(group):not(setvalue)' ) ];
+        this._formControls = this._formControls || [ ...this.doc.querySelectorAll( 'h\\:body *:not(item):not(label):not(hint):not(value):not(itemset):not(output):not(repeat):not(group):not(setvalue)' ) ];
 
         return this._formControls;
     }
@@ -113,8 +117,12 @@ class XForm {
      * @type {Array<Node>}
      */
     get groups() {
+        // TODO: wrong to use h: namespace prefix without resolver here!
+        // fix in JSDom might be forthcoming:
+        // * https://github.com/jsdom/jsdom/issues/2159,
+        // * https://github.com/jsdom/jsdom/issues/2028
         // doc.evaluate does not support namespaces at all (nsResolver is not used) in JSDom
-        this._groups = this._groups || [ ...this.doc.querySelectorAll( '*|body group' ) ];
+        this._groups = this._groups || [ ...this.doc.querySelectorAll( 'h\\:body group' ) ];
 
         return this._groups;
     }
@@ -123,8 +131,12 @@ class XForm {
      * @type {Array<Node>}
      */
     get repeats() {
+        // TODO: wrong to use h: namespace prefix without resolver here!
+        // fix in JSDom might be forthcoming:
+        // * https://github.com/jsdom/jsdom/issues/2159,
+        // * https://github.com/jsdom/jsdom/issues/2028
         // doc.evaluate does not support namespaces at all (nsResolver is not used) in JSDom
-        this._repeats = this._repeats || [ ...this.doc.querySelectorAll( '*|body repeat' ) ];
+        this._repeats = this._repeats || [ ...this.doc.querySelectorAll( 'h\\:body repeat' ) ];
 
         return this._repeats;
     }
@@ -142,8 +154,12 @@ class XForm {
      * @type {Array<Node>}
      */
     get items() {
+        // TODO: wrong to use h: namespace prefix without resolver here!
+        // fix in JSDom might be forthcoming:
+        // * https://github.com/jsdom/jsdom/issues/2159,
+        // * https://github.com/jsdom/jsdom/issues/2028
         // doc.evaluate does not support namespaces at all (nsResolver is not used) in JSDom
-        this._items = this._items || [ ...this.doc.querySelectorAll( '*|body item, *|body itemset' ) ];
+        this._items = this._items || [ ...this.doc.querySelectorAll( 'h\\:body item, h\\:body itemset' ) ];
 
         return this._items;
     }

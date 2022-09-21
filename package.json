@@ -5,7 +5,7 @@
     "main": "src/validator.js",
     "bin": "./validate",
     "scripts": {
-        "test": "mocha test/spec/*.spec.js --exit --timeout 9000 && npm run style-check",
+        "test": "mocha test/spec/*.spec.js --exit --timeout 9000",
         "build-docs": "rimraf docs && ./node_modules/.bin/jsdoc -c jsdoc.config.js",
         "prepare": "rollup --config && rollup --config rollup.utils.config.js",
         "style-fix": "eslint *.js src/**/*.js test/**/*.js --fix",
@@ -31,7 +31,7 @@
         "commander": "^9.4.0",
         "enketo-transformer": "^2.1.5",
         "enketo-xpath-extensions-oc": "git+https://github.com/OpenClinica/enketo-xpath-extensions-oc.git#727803c",
-        "jsdom": "^20.0.0",
+        "jsdom": "^19.0.0",
         "libxslt": "0.10.1",
         "puppeteer": "^17.1.2"
     },
