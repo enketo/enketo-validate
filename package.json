@@ -5,7 +5,7 @@
     "main": "src/validator.js",
     "bin": "./validate",
     "scripts": {
-        "test": "mocha test/spec/*.spec.js --exit --timeout 9000",
+        "test": "mocha test/spec/*.spec.js --exit --timeout 9000 && npm run style-check",
         "build-docs": "rimraf docs && ./node_modules/.bin/jsdoc -c jsdoc.config.js",
         "prepare": "rollup --config && rollup --config rollup.utils.config.js",
         "style-fix": "eslint *.js src/**/*.js test/**/*.js --fix",
