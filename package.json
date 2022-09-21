@@ -1,6 +1,6 @@
 {
     "name": "enketo-validate",
-    "version": "1.15.3",
+    "version": "2.0.0",
     "description": "An XForm validator around Enketo's form engine",
     "main": "src/validator.js",
     "bin": "./validate",
@@ -33,13 +33,13 @@
         "enketo-xpath-extensions-oc": "git+https://github.com/OpenClinica/enketo-xpath-extensions-oc.git#727803c",
         "jsdom": "^20.0.0",
         "libxslt": "0.10.1",
-        "puppeteer": "^17.1.2"
+        "puppeteer": "^18.0.4"
     },
     "devDependencies": {
         "chai": "^4.3.6",
         "docdash": "^1.2.0",
         "enketo-core": "^6.1.2",
-        "eslint": "^8.23.0",
+        "eslint": "^8.23.1",
         "eslint-plugin-jsdoc": "^39.3.6",
         "istanbul-reporter-shield-badge": "^1.2.1",
         "jsdoc": "^3.6.11",
