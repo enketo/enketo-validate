@@ -31,7 +31,7 @@
         "commander": "^9.4.0",
         "enketo-transformer": "^2.1.5",
         "enketo-xpath-extensions-oc": "git+https://github.com/OpenClinica/enketo-xpath-extensions-oc.git#727803c",
-        "jsdom": "^19.0.0",
+        "jsdom": "^20.0.0",
         "libxslt": "0.10.1",
         "puppeteer": "^17.1.2"
     },
