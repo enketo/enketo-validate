@@ -2,6 +2,11 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+[1.15.3] - 2022-09-21
+--------------------------
+##### Fixed
+- Not working in Node 12
+
 [1.15.2] - 2022-09-07
 --------------------------
 ##### Added
