@@ -17,7 +17,7 @@
 
 	var jquery = createCommonjsModule(function (module) {
 	/*!
-	 * jQuery JavaScript Library v3.6.0
+	 * jQuery JavaScript Library v3.6.1
 	 * https://jquery.com/
 	 *
 	 * Includes Sizzle.js
@@ -27,7 +27,7 @@
 	 * Released under the MIT license
 	 * https://jquery.org/license
 	 *
-	 * Date: 2021-03-02T17:08Z
+	 * Date: 2022-08-26T17:52Z
 	 */
 	( function( global, factory ) {
 
@@ -39,7 +39,7 @@
 			// (such as Node.js), expose a factory as module.exports.
 			// This accentuates the need for the creation of a real `window`.
 			// e.g. var jQuery = require("jquery")(window);
-			// See ticket #14549 for more info.
+			// See ticket trac-14549 for more info.
 			module.exports = global.document ?
 				factory( global, true ) :
 				function( w ) {
@@ -159,7 +159,7 @@
 
 
 	var
-		version = "3.6.0",
+		version = "3.6.1",
 
 		// Define a local copy of jQuery
 		jQuery = function( selector, context ) {
@@ -3137,8 +3137,8 @@
 	var rootjQuery,
 
 		// A simple way to check for HTML strings
-		// Prioritize #id over <tag> to avoid XSS via location.hash (#9521)
-		// Strict HTML recognition (#11290: must start with <)
+		// Prioritize #id over <tag> to avoid XSS via location.hash (trac-9521)
+		// Strict HTML recognition (trac-11290: must start with <)
 		// Shortcut simple #id case for speed
 		rquickExpr = /^(?:\s*(<[\w\W]+>)[^>]*|#([\w-]+))$/,
 
@@ -4095,7 +4095,7 @@
 		isReady: false,
 
 		// A counter to track how many items to wait for before
-		// the ready event fires. See #6781
+		// the ready event fires. See trac-6781
 		readyWait: 1,
 
 		// Handle when the DOM is ready
@@ -4223,7 +4223,7 @@
 
 	// Convert dashed to camelCase; used by the css and data modules
 	// Support: IE <=9 - 11, Edge 12 - 15
-	// Microsoft forgot to hump their vendor prefix (#9572)
+	// Microsoft forgot to hump their vendor prefix (trac-9572)
 	function camelCase( string ) {
 		return string.replace( rmsPrefix, "ms-" ).replace( rdashAlpha, fcamelCase );
 	}
@@ -4259,7 +4259,7 @@
 				value = {};
 
 				// We can accept data for non-element nodes in modern browsers,
-				// but we should not, see #8335.
+				// but we should not, see trac-8335.
 				// Always return an empty object.
 				if ( acceptData( owner ) ) {
 
@@ -4498,7 +4498,7 @@
 						while ( i-- ) {
 
 							// Support: IE 11 only
-							// The attrs elements can be null (#14894)
+							// The attrs elements can be null (trac-14894)
 							if ( attrs[ i ] ) {
 								name = attrs[ i ].name;
 								if ( name.indexOf( "data-" ) === 0 ) {
@@ -4921,9 +4921,9 @@
 			input = document.createElement( "input" );
 
 		// Support: Android 4.0 - 4.3 only
-		// Check state lost if the name is set (#11217)
+		// Check state lost if the name is set (trac-11217)
 		// Support: Windows Web Apps (WWA)
-		// `name` and `type` must use .setAttribute for WWA (#14901)
+		// `name` and `type` must use .setAttribute for WWA (trac-14901)
 		input.setAttribute( "type", "radio" );
 		input.setAttribute( "checked", "checked" );
 		input.setAttribute( "name", "t" );
@@ -4947,7 +4947,7 @@
 	} )();
 
 
-	// We have to close these tags to support XHTML (#13200)
+	// We have to close these tags to support XHTML (trac-13200)
 	var wrapMap = {
 
 		// XHTML parsers do not magically insert elements in the
@@ -4973,7 +4973,7 @@
 	function getAll( context, tag ) {
 
 		// Support: IE <=9 - 11 only
-		// Use typeof to avoid zero-argument method invocation on host objects (#15151)
+		// Use typeof to avoid zero-argument method invocation on host objects (trac-15151)
 		var ret;
 
 		if ( typeof context.getElementsByTagName !== "undefined" ) {
@@ -5056,7 +5056,7 @@
 					// Remember the top-level container
 					tmp = fragment.firstChild;
 
-					// Ensure the created nodes are orphaned (#12392)
+					// Ensure the created nodes are orphaned (trac-12392)
 					tmp.textContent = "";
 				}
 			}
@@ -5477,15 +5477,15 @@
 
 				for ( ; cur !== this; cur = cur.parentNode || this ) {
 
-					// Don't check non-elements (#13208)
-					// Don't process clicks on disabled elements (#6911, #8165, #11382, #11764)
+					// Don't check non-elements (trac-13208)
+					// Don't process clicks on disabled elements (trac-6911, trac-8165, trac-11382, trac-11764)
 					if ( cur.nodeType === 1 && !( event.type === "click" && cur.disabled === true ) ) {
 						matchedHandlers = [];
 						matchedSelectors = {};
 						for ( i = 0; i < delegateCount; i++ ) {
 							handleObj = handlers[ i ];
 
-							// Don't conflict with Object.prototype properties (#13203)
+							// Don't conflict with Object.prototype properties (trac-13203)
 							sel = handleObj.selector + " ";
 
 							if ( matchedSelectors[ sel ] === undefined ) {
@@ -5739,7 +5739,7 @@
 
 			// Create target properties
 			// Support: Safari <=6 - 7 only
-			// Target should not be a text node (#504, #13143)
+			// Target should not be a text node (trac-504, trac-13143)
 			this.target = ( src.target && src.target.nodeType === 3 ) ?
 				src.target.parentNode :
 				src.target;
@@ -5862,10 +5862,10 @@
 				return true;
 			},
 
-			// Suppress native focus or blur as it's already being fired
-			// in leverageNative.
-			_default: function() {
-				return true;
+			// Suppress native focus or blur if we're currently inside
+			// a leveraged native-event stack
+			_default: function( event ) {
+				return dataPriv.get( event.target, type );
 			},
 
 			delegateType: delegateType
@@ -5964,7 +5964,8 @@
 
 		// checked="checked" or checked
 		rchecked = /checked\s*(?:[^=]|=\s*.checked.)/i,
-		rcleanScript = /^\s*<!(?:\[CDATA\[|--)|(?:\]\]|--)>\s*$/g;
+
+		rcleanScript = /^\s*<!\[CDATA\[|\]\]>\s*$/g;
 
 	// Prefer a tbody over its parent table for containing new rows
 	function manipulationTarget( elem, content ) {
@@ -6078,7 +6079,7 @@
 
 				// Use the original fragment for the last item
 				// instead of the first because it can end up
-				// being emptied incorrectly in certain situations (#8070).
+				// being emptied incorrectly in certain situations (trac-8070).
 				for ( ; i < l; i++ ) {
 					node = fragment;
 
@@ -6119,6 +6120,12 @@
 									}, doc );
 								}
 							} else {
+
+								// Unwrap a CDATA section containing script contents. This shouldn't be
+								// needed as in XML documents they're already not visible when
+								// inspecting element contents and in HTML documents they have no
+								// meaning but we're preserving that logic for backwards compatibility.
+								// This will be removed completely in 4.0. See gh-4904.
 								DOMEval( node.textContent.replace( rcleanScript, "" ), node, doc );
 							}
 						}
@@ -6401,9 +6408,12 @@
 	} );
 	var rnumnonpx = new RegExp( "^(" + pnum + ")(?!px)[a-z%]+$", "i" );
 
+	var rcustomProp = /^--/;
+
+
 	var getStyles = function( elem ) {
 
-			// Support: IE <=11 only, Firefox <=30 (#15098, #14150)
+			// Support: IE <=11 only, Firefox <=30 (trac-15098, trac-14150)
 			// IE throws on elements created in popups
 			// FF meanwhile throws on frame elements through "defaultView.getComputedStyle"
 			var view = elem.ownerDocument.defaultView;
@@ -6437,6 +6447,15 @@
 
 
 	var rboxStyle = new RegExp( cssExpand.join( "|" ), "i" );
+
+	var whitespace = "[\\x20\\t\\r\\n\\f]";
+
+
+	var rtrimCSS = new RegExp(
+		"^" + whitespace + "+|((?:^|[^\\\\])(?:\\\\.)*)" + whitespace + "+$",
+		"g"
+	);
+
 
 
 
@@ -6503,7 +6522,7 @@
 		}
 
 		// Support: IE <=9 - 11 only
-		// Style of cloned element affects source element cloned (#8908)
+		// Style of cloned element affects source element cloned (trac-8908)
 		div.style.backgroundClip = "content-box";
 		div.cloneNode( true ).style.backgroundClip = "";
 		support.clearCloneStyle = div.style.backgroundClip === "content-box";
@@ -6583,6 +6602,7 @@
 
 	function curCSS( elem, name, computed ) {
 		var width, minWidth, maxWidth, ret,
+			isCustomProp = rcustomProp.test( name ),
 
 			// Support: Firefox 51+
 			// Retrieving style before computed somehow
@@ -6593,10 +6613,21 @@
 		computed = computed || getStyles( elem );
 
 		// getPropertyValue is needed for:
-		//   .css('filter') (IE 9 only, #12537)
-		//   .css('--customProperty) (#3144)
+		//   .css('filter') (IE 9 only, trac-12537)
+		//   .css('--customProperty) (gh-3144)
 		if ( computed ) {
 			ret = computed.getPropertyValue( name ) || computed[ name ];
+
+			// trim whitespace for custom property (issue gh-4926)
+			if ( isCustomProp ) {
+
+				// rtrim treats U+000D CARRIAGE RETURN and U+000C FORM FEED
+				// as whitespace while CSS does not, but this is not a problem
+				// because CSS preprocessing replaces them with U+000A LINE FEED
+				// (which *is* CSS whitespace)
+				// https://www.w3.org/TR/css-syntax-3/#input-preprocessing
+				ret = ret.replace( rtrimCSS, "$1" );
+			}
 
 			if ( ret === "" && !isAttached( elem ) ) {
 				ret = jQuery.style( elem, name );
@@ -6693,7 +6724,6 @@
 		// except "table", "table-cell", or "table-caption"
 		// See here for display values: https://developer.mozilla.org/en-US/docs/CSS/display
 		rdisplayswap = /^(none|table(?!-c[ea]).+)/,
-		rcustomProp = /^--/,
 		cssShow = { position: "absolute", visibility: "hidden", display: "block" },
 		cssNormalTransform = {
 			letterSpacing: "0",
@@ -6929,15 +6959,15 @@
 			if ( value !== undefined ) {
 				type = typeof value;
 
-				// Convert "+=" or "-=" to relative numbers (#7345)
+				// Convert "+=" or "-=" to relative numbers (trac-7345)
 				if ( type === "string" && ( ret = rcssNum.exec( value ) ) && ret[ 1 ] ) {
 					value = adjustCSS( elem, name, ret );
 
-					// Fixes bug #9237
+					// Fixes bug trac-9237
 					type = "number";
 				}
 
-				// Make sure that null and NaN values aren't set (#7116)
+				// Make sure that null and NaN values aren't set (trac-7116)
 				if ( value == null || value !== value ) {
 					return;
 				}
@@ -7561,7 +7591,7 @@
 					remaining = Math.max( 0, animation.startTime + animation.duration - currentTime ),
 
 					// Support: Android 2.3 only
-					// Archaic crash bug won't allow us to use `1 - ( 0.5 || 0 )` (#12497)
+					// Archaic crash bug won't allow us to use `1 - ( 0.5 || 0 )` (trac-12497)
 					temp = remaining / animation.duration || 0,
 					percent = 1 - temp,
 					index = 0,
@@ -7951,7 +7981,6 @@
 
 
 	// Based off of the plugin by Clint Helfers, with permission.
-	// https://web.archive.org/web/20100324014747/http://blindsignals.com/index.php/2009/07/jquery-delay/
 	jQuery.fn.delay = function( time, type ) {
 		time = jQuery.fx ? jQuery.fx.speeds[ time ] || time : time;
 		type = type || "fx";
@@ -8176,8 +8205,7 @@
 					// Support: IE <=9 - 11 only
 					// elem.tabIndex doesn't always return the
 					// correct value when it hasn't been explicitly set
-					// https://web.archive.org/web/20141116233347/http://fluidproject.org/blog/2008/01/09/getting-setting-and-removing-tabindex-values-with-javascript/
-					// Use proper attribute retrieval(#12072)
+					// Use proper attribute retrieval (trac-12072)
 					var tabindex = jQuery.find.attr( elem, "tabindex" );
 
 					if ( tabindex ) {
@@ -8281,8 +8309,7 @@
 
 	jQuery.fn.extend( {
 		addClass: function( value ) {
-			var classes, elem, cur, curValue, clazz, j, finalValue,
-				i = 0;
+			var classNames, cur, curValue, className, i, finalValue;
 
 			if ( isFunction( value ) ) {
 				return this.each( function( j ) {
@@ -8290,36 +8317,35 @@
 				} );
 			}
 
-			classes = classesToArray( value );
+			classNames = classesToArray( value );
 
-			if ( classes.length ) {
-				while ( ( elem = this[ i++ ] ) ) {
-					curValue = getClass( elem );
-					cur = elem.nodeType === 1 && ( " " + stripAndCollapse( curValue ) + " " );
+			if ( classNames.length ) {
+				return this.each( function() {
+					curValue = getClass( this );
+					cur = this.nodeType === 1 && ( " " + stripAndCollapse( curValue ) + " " );
 
 					if ( cur ) {
-						j = 0;
-						while ( ( clazz = classes[ j++ ] ) ) {
-							if ( cur.indexOf( " " + clazz + " " ) < 0 ) {
-								cur += clazz + " ";
+						for ( i = 0; i < classNames.length; i++ ) {
+							className = classNames[ i ];
+							if ( cur.indexOf( " " + className + " " ) < 0 ) {
+								cur += className + " ";
 							}
 						}
 
 						// Only assign if different to avoid unneeded rendering.
 						finalValue = stripAndCollapse( cur );
 						if ( curValue !== finalValue ) {
-							elem.setAttribute( "class", finalValue );
+							this.setAttribute( "class", finalValue );
 						}
 					}
-				}
+				} );
 			}
 
 			return this;
 		},
 
 		removeClass: function( value ) {
-			var classes, elem, cur, curValue, clazz, j, finalValue,
-				i = 0;
+			var classNames, cur, curValue, className, i, finalValue;
 
 			if ( isFunction( value ) ) {
 				return this.each( function( j ) {
@@ -8331,44 +8357,41 @@
 				return this.attr( "class", "" );
 			}
 
-			classes = classesToArray( value );
+			classNames = classesToArray( value );
 
-			if ( classes.length ) {
-				while ( ( elem = this[ i++ ] ) ) {
-					curValue = getClass( elem );
+			if ( classNames.length ) {
+				return this.each( function() {
+					curValue = getClass( this );
 
 					// This expression is here for better compressibility (see addClass)
-					cur = elem.nodeType === 1 && ( " " + stripAndCollapse( curValue ) + " " );
+					cur = this.nodeType === 1 && ( " " + stripAndCollapse( curValue ) + " " );
 
 					if ( cur ) {
-						j = 0;
-						while ( ( clazz = classes[ j++ ] ) ) {
+						for ( i = 0; i < classNames.length; i++ ) {
+							className = classNames[ i ];
 
 							// Remove *all* instances
-							while ( cur.indexOf( " " + clazz + " " ) > -1 ) {
-								cur = cur.replace( " " + clazz + " ", " " );
+							while ( cur.indexOf( " " + className + " " ) > -1 ) {
+								cur = cur.replace( " " + className + " ", " " );
 							}
 						}
 
 						// Only assign if different to avoid unneeded rendering.
 						finalValue = stripAndCollapse( cur );
 						if ( curValue !== finalValue ) {
-							elem.setAttribute( "class", finalValue );
+							this.setAttribute( "class", finalValue );
 						}
 					}
-				}
+				} );
 			}
 
 			return this;
 		},
 
 		toggleClass: function( value, stateVal ) {
-			var type = typeof value,
+			var classNames, className, i, self,
+				type = typeof value,
 				isValidValue = type === "string" || Array.isArray( value );
-
-			if ( typeof stateVal === "boolean" && isValidValue ) {
-				return stateVal ? this.addClass( value ) : this.removeClass( value );
-			}
 
 			if ( isFunction( value ) ) {
 				return this.each( function( i ) {
@@ -8379,17 +8402,20 @@
 				} );
 			}
 
-			return this.each( function() {
-				var className, i, self, classNames;
+			if ( typeof stateVal === "boolean" && isValidValue ) {
+				return stateVal ? this.addClass( value ) : this.removeClass( value );
+			}
 
+			classNames = classesToArray( value );
+
+			return this.each( function() {
 				if ( isValidValue ) {
 
 					// Toggle individual class names
-					i = 0;
 					self = jQuery( this );
-					classNames = classesToArray( value );
 
-					while ( ( className = classNames[ i++ ] ) ) {
+					for ( i = 0; i < classNames.length; i++ ) {
+						className = classNames[ i ];
 
 						// Check each className given, space separated list
 						if ( self.hasClass( className ) ) {
@@ -8523,7 +8549,7 @@
 						val :
 
 						// Support: IE <=10 - 11 only
-						// option.text throws exceptions (#14686, #14858)
+						// option.text throws exceptions (trac-14686, trac-14858)
 						// Strip and collapse whitespace
 						// https://html.spec.whatwg.org/#strip-and-collapse-whitespace
 						stripAndCollapse( jQuery.text( elem ) );
@@ -8550,7 +8576,7 @@
 						option = options[ i ];
 
 						// Support: IE <=9 only
-						// IE8-9 doesn't update selected after form reset (#2551)
+						// IE8-9 doesn't update selected after form reset (trac-2551)
 						if ( ( option.selected || i === index ) &&
 
 								// Don't return options that are disabled or in a disabled optgroup
@@ -8693,8 +8719,8 @@
 				return;
 			}
 
-			// Determine event propagation path in advance, per W3C events spec (#9951)
-			// Bubble up to document, then to window; watch for a global ownerDocument var (#9724)
+			// Determine event propagation path in advance, per W3C events spec (trac-9951)
+			// Bubble up to document, then to window; watch for a global ownerDocument var (trac-9724)
 			if ( !onlyHandlers && !special.noBubble && !isWindow( elem ) ) {
 
 				bubbleType = special.delegateType || type;
@@ -8746,7 +8772,7 @@
 					acceptData( elem ) ) {
 
 					// Call a native DOM method on the target with the same name as the event.
-					// Don't do default actions on window, that's where global variables be (#6170)
+					// Don't do default actions on window, that's where global variables be (trac-6170)
 					if ( ontype && isFunction( elem[ type ] ) && !isWindow( elem ) ) {
 
 						// Don't re-trigger an onFOO event when we call its FOO() method
@@ -9020,7 +9046,7 @@
 		rantiCache = /([?&])_=[^&]*/,
 		rheaders = /^(.*?):[ \t]*([^\r\n]*)$/mg,
 
-		// #7653, #8125, #8152: local protocol detection
+		// trac-7653, trac-8125, trac-8152: local protocol detection
 		rlocalProtocol = /^(?:about|app|app-storage|.+-extension|file|res|widget):$/,
 		rnoContent = /^(?:GET|HEAD)$/,
 		rprotocol = /^\/\//,
@@ -9043,7 +9069,7 @@
 		 */
 		transports = {},
 
-		// Avoid comment-prolog char sequence (#10098); must appease lint and evade compression
+		// Avoid comment-prolog char sequence (trac-10098); must appease lint and evade compression
 		allTypes = "*/".concat( "*" ),
 
 		// Anchor tag for parsing the document origin
@@ -9114,7 +9140,7 @@
 
 	// A special extend for ajax options
 	// that takes "flat" options (not to be deep extended)
-	// Fixes #9887
+	// Fixes trac-9887
 	function ajaxExtend( target, src ) {
 		var key, deep,
 			flatOptions = jQuery.ajaxSettings.flatOptions || {};
@@ -9525,12 +9551,12 @@
 			deferred.promise( jqXHR );
 
 			// Add protocol if not provided (prefilters might expect it)
-			// Handle falsy url in the settings object (#10093: consistency with old signature)
+			// Handle falsy url in the settings object (trac-10093: consistency with old signature)
 			// We also use the url parameter if available
 			s.url = ( ( url || s.url || location.href ) + "" )
 				.replace( rprotocol, location.protocol + "//" );
 
-			// Alias method option to type as per ticket #12004
+			// Alias method option to type as per ticket trac-12004
 			s.type = options.method || options.type || s.method || s.type;
 
 			// Extract dataTypes list
@@ -9573,7 +9599,7 @@
 			}
 
 			// We can fire global events as of now if asked to
-			// Don't fire events if jQuery.event is undefined in an AMD-usage scenario (#15118)
+			// Don't fire events if jQuery.event is undefined in an AMD-usage scenario (trac-15118)
 			fireGlobals = jQuery.event && s.global;
 
 			// Watch for a new set of requests
@@ -9602,7 +9628,7 @@
 				if ( s.data && ( s.processData || typeof s.data === "string" ) ) {
 					cacheURL += ( rquery.test( cacheURL ) ? "&" : "?" ) + s.data;
 
-					// #9682: remove data so that it's not used in an eventual retry
+					// trac-9682: remove data so that it's not used in an eventual retry
 					delete s.data;
 				}
 
@@ -9875,7 +9901,7 @@
 		return jQuery.ajax( {
 			url: url,
 
-			// Make this explicit, since user can override this through ajaxSetup (#11264)
+			// Make this explicit, since user can override this through ajaxSetup (trac-11264)
 			type: "GET",
 			dataType: "script",
 			cache: true,
@@ -9984,7 +10010,7 @@
 			0: 200,
 
 			// Support: IE <=9 only
-			// #1450: sometimes IE returns 1223 when it should be 204
+			// trac-1450: sometimes IE returns 1223 when it should be 204
 			1223: 204
 		},
 		xhrSupported = jQuery.ajaxSettings.xhr();
@@ -10056,7 +10082,7 @@
 									} else {
 										complete(
 
-											// File: protocol always yields status 0; see #8605, #14207
+											// File: protocol always yields status 0; see trac-8605, trac-14207
 											xhr.status,
 											xhr.statusText
 										);
@@ -10117,7 +10143,7 @@
 						xhr.send( options.hasContent && options.data || null );
 					} catch ( e ) {
 
-						// #14683: Only rethrow if this hasn't been notified as an error yet
+						// trac-14683: Only rethrow if this hasn't been notified as an error yet
 						if ( callback ) {
 							throw e;
 						}
@@ -10761,7 +10787,9 @@
 
 	// Support: Android <=4.0 only
 	// Make sure we trim BOM and NBSP
-	var rtrim = /^[\s\uFEFF\xA0]+|[\s\uFEFF\xA0]+$/g;
+	// Require that the "whitespace run" starts from a non-whitespace
+	// to avoid O(N^2) behavior when the engine would try matching "\s+$" at each space position.
+	var rtrim = /^[\s\uFEFF\xA0]+|([^\s\uFEFF\xA0])[\s\uFEFF\xA0]+$/g;
 
 	// Bind a function to a context, optionally partially applying any
 	// arguments.
@@ -10828,7 +10856,7 @@
 	jQuery.trim = function( text ) {
 		return text == null ?
 			"" :
-			( text + "" ).replace( rtrim, "" );
+			( text + "" ).replace( rtrim, "$1" );
 	};
 
 
@@ -10855,8 +10883,8 @@
 	};
 
 	// Expose jQuery and $ identifiers, even in AMD
-	// (#7102#comment:10, https://github.com/jquery/jquery/pull/557)
-	// and CommonJS for browser emulators (#13566)
+	// (trac-7102#comment:10, https://github.com/jquery/jquery/pull/557)
+	// and CommonJS for browser emulators (trac-13566)
 	if ( typeof noGlobal === "undefined" ) {
 		window.jQuery = window.$ = jQuery;
 	}
@@ -12223,6 +12251,7 @@
 	    };
 
 	  /**
+	   * @type {typeof document.evaluate}
 	   * @see https://developer.mozilla.org/en-US/docs/Web/API/Document/evaluate
 	   */
 	  const evaluate = this.evaluate = function(input, cN, nR, rT, _, contextSize=1, contextPosition=1) {
@@ -12288,7 +12317,7 @@
 	            case 'num':
 	              if     (arg.v ===  Infinity) argString += '( 1 div 0)';
 	              else if(arg.v === -Infinity) argString += '(-1 div 0)';
-	              else                         argString += arg.v;
+	              else                         argString += arg.v.toFixed(20); // Prevent JS from converting to scientific notation
 	              break;
 	            case 'str': {
 	              const quote = arg.quote || (arg.v.indexOf('"') === -1 ? '"' : "'");
@@ -12356,7 +12385,18 @@
 	          });
 	          prev.v = newNodeset;
 	        } else {
-	          pushToken(toInternalResult(wrapped.evaluate(expr, cN, nR, XPathResult.ANY_TYPE, null)));
+	          // This addresses a bug in Chrome and Safari, where an absolute
+	          // nodeset expression evaluated with an attribute contex node
+	          // does not evaluate to that nodeset as expected. Using the
+	          // attribute's owner document evaluates the expression correctly,
+	          // ensuring consistent behavior between Chrome, Safari and Firefox.
+	          const contextNode = (
+	            cN?.nodeType === Node.ATTRIBUTE_NODE && expr.startsWith('/')
+	              ? cN.ownerDocument
+	              : cN
+	          );
+
+	          pushToken(toInternalResult(wrapped.evaluate(expr, contextNode, nR, XPathResult.ANY_TYPE, null)));
 	        }
 
 	        newCurrent();
@@ -42286,75 +42326,358 @@
 	FormLogicError.prototype.constructor = FormLogicError;
 
 	/**
+	 * @module event
+	 */
+	// TODO: add second "propagate" parameter to constructors to add .enketo namespace to event.
+
+	/**
+	 * Data update event.
+	 *
+	 * @static
+	 * @param {*} detail - Data to be passed with event
+	 * @return {CustomEvent} Custom "dataupdate" event
+	 */
+	function DataUpdate(detail) {
+	    return new CustomEvent('dataupdate', { detail });
+	}
+
+	/**
+	 * Fake focus event.
+	 *
+	 * @return {CustomEvent} Custom "fakefocus" event (bubbling)
+	 */
+	function FakeFocus() {
+	    return new CustomEvent('fakefocus', { bubbles: true });
+	}
+
+	/**
+	 * Apply focus event.
+	 *
+	 * @return {CustomEvent} Custom "applyfocus" event
+	 */
+	function ApplyFocus() {
+	    return new CustomEvent('applyfocus');
+	}
+
+	/**
+	 * Page flip event.
+	 *
+	 * @return {CustomEvent} Custom "pageflip" event (bubbling)
+	 */
+	function PageFlip() {
+	    return new CustomEvent('pageflip', { bubbles: true });
+	}
+
+	/**
+	 * Removed event.
+	 *
+	 * @param {*} detail - Data to be passed with event
+	 * @return {CustomEvent} Custom "removed" event (bubbling)
+	 */
+	function Removed(detail) {
+	    return new CustomEvent('removed', { detail, bubbles: true });
+	}
+
+	/**
+	 * The odk-instance-first-load event as defined in the ODK XForms spec.
+	 *
+	 * @see https://getodk.github.io/xforms-spec/#event:odk-instance-first-load
+	 *@return {CustomEvent} Custom "odk-instance-first-load" event (bubbling)
+	 */
+	function InstanceFirstLoad() {
+	    return new CustomEvent('odk-instance-first-load', { bubbles: true });
+	}
+
+	/**
+	 * The odk-new-repeat event as defined in the ODK XForms spec.
+	 *
+	 * @see https://getodk.github.io/xforms-spec/#event:odk-new-repeat
+	 * @param {{repeatPath: string, repeatIndex: number, trigger: string}} detail - Data to be passed with event.
+	 * @return {CustomEvent} Custom "odk-new-repeat" event (bubbling)
+	 */
+	function NewRepeat(detail) {
+	    return new CustomEvent('odk-new-repeat', { detail, bubbles: true });
+	}
+
+	/**
+	 * The addrepeat event is similar but fired under different circumstances.
+	 *
+	 * @param {{repeatPath: string, repeatIndex: number, trigger: string}} detail - Data to be passed with event.
+	 * @return {CustomEvent} Custom "odk-new-repeat" event (bubbling)
+	 */
+	function AddRepeat(detail) {
+	    return new CustomEvent('addrepeat', { detail, bubbles: true });
+	}
+
+	/**
+	 * Remove repeat event.
+	 *
+	 * @return {CustomEvent} Custom "removerepeat" event (bubbling)
+	 */
+	function RemoveRepeat() {
+	    return new CustomEvent('removerepeat', { bubbles: true });
+	}
+
+	/**
+	 * Change language event.
+	 *
+	 * @return {CustomEvent} Custom "changelanguage" event (bubbling)
+	 */
+	function ChangeLanguage() {
+	    return new CustomEvent('changelanguage', { bubbles: true });
+	}
+
+	/**
+	 * Change event.
+	 *
+	 * @return {Event} The regular HTML "change" event (bubbling)
+	 */
+	function Change() {
+	    return new Event('change', { bubbles: true });
+	}
+
+	/**
+	 * Xforms-value-changed event as defined in the ODK XForms spec.
+	 *
+	 * @see https://getodk.github.io/xforms-spec/#event:xforms-value-changed
+	 * @param {{repeatIndex: number}} detail - Data to be passed with event.
+	 * @return {CustomEvent} Custom "xforms-value-changed" event (bubbling).
+	 */
+	function XFormsValueChanged(detail) {
+	    return new CustomEvent('xforms-value-changed', { detail, bubbles: true });
+	}
+
+	/**
+	 * Input event.
+	 *
+	 * @return {Event} "input" event (bubbling)
+	 */
+	function Input() {
+	    return new Event('input', { bubbles: true });
+	}
+
+	/**
+	 * Input update event which fires when a form control value is updated programmatically.
+	 *
+	 * @return {CustomEvent} Custom "inputupdate" event (bubbling)
+	 */
+	function InputUpdate() {
+	    return new CustomEvent('inputupdate', { bubbles: true });
+	}
+
+	/**
+	 * Edited event.
+	 *
+	 * @return {CustomEvent} Custom "edited" event (bubbling)
+	 */
+	function Edited() {
+	    return new CustomEvent('edited', { bubbles: true });
+	}
+
+	/**
+	 * Before save event.
+	 *
+	 * @return {CustomEvent} Custom "edited" event (bubbling)
+	 */
+	function BeforeSave() {
+	    return new CustomEvent('before-save', { bubbles: true });
+	}
+
+	/**
+	 * Validation complete event.
+	 *
+	 * @return {CustomEvent} Custom "validationcomplete" event (bubbling)
+	 */
+	function ValidationComplete() {
+	    return new CustomEvent('validation-complete', { bubbles: true });
+	}
+
+	/**
+	 * Invalidated event.
+	 *
+	 * @return {CustomEvent} Custom "invalidated" event (bubbling)
+	 */
+	function Invalidated() {
+	    return new CustomEvent('invalidated', { bubbles: true });
+	}
+
+	/**
+	 * Progress update event.
+	 *
+	 * @param {*} detail - Data to be passed with event
+	 * @return {CustomEvent} Custom "progressupdate" event (bubbling)
+	 */
+	function ProgressUpdate(detail) {
+	    return new CustomEvent('progress-update', { detail, bubbles: true });
+	}
+
+	/**
+	 * Go to hidden event fired when the goto target is not relevant.
+	 *
+	 * @return {CustomEvent} Custom "gotoirrelevant" event (bubbling)
+	 */
+	function GoToIrrelevant() {
+	    return new CustomEvent('goto-irrelevant', { bubbles: true });
+	}
+
+	/**
+	 * Go to invisible event fired when the target has no form control.
+	 * This is event has prevalence of the "go to hidden" event.
+	 *
+	 * @return {CustomEvent} Custom "gotoinvisible" event (bubbling)
+	 */
+	function GoToInvisible() {
+	    return new CustomEvent('goto-invisible', { bubbles: true });
+	}
+
+	function ChangeOption() {
+	    return new CustomEvent('change-option', { bubbles: true });
+	}
+
+	/**
+	 * Go to printify text event.
+	 *
+	 * @return {CustomEvent} Custom "printify" event (bubbling)
+	 */
+	function Printify() {
+	    return new CustomEvent('printify', { bubbles: true });
+	}
+
+	/**
+	 * Go to deprintify text event.
+	 *
+	 * @return {CustomEvent} Custom "deprintify" event (bubbling)
+	 */
+	function DePrintify() {
+	    return new CustomEvent('deprintify', { bubbles: true });
+	}
+
+	function UpdateMaxSize() {
+	    return new CustomEvent('update-max-size', { bubbles: true });
+	}
+
+	var events = {
+	    DataUpdate,
+	    FakeFocus,
+	    ApplyFocus,
+	    PageFlip,
+	    Removed,
+	    InstanceFirstLoad,
+	    NewRepeat,
+	    AddRepeat,
+	    RemoveRepeat,
+	    ChangeLanguage,
+	    Change,
+	    Input,
+	    InputUpdate,
+	    Edited,
+	    BeforeSave,
+	    ValidationComplete,
+	    Invalidated,
+	    ProgressUpdate,
+	    GoToIrrelevant,
+	    GoToInvisible,
+	    XFormsValueChanged,
+	    ChangeOption,
+	    Printify,
+	    DePrintify,
+	    UpdateMaxSize,
+	};
+
+	/**
 	 * @module format
 	 */
 
-	const NUMBER = '0-9\u0660-\u0669';
-	const TIME_PART = `[:${NUMBER}]+`;
-	const MERIDIAN_PART = `[^: ${NUMBER}]+`;
-	const HAS_MERIDIAN = new RegExp(
-	    `^(${TIME_PART} ?(${MERIDIAN_PART}))|((${MERIDIAN_PART}) ?${TIME_PART})$`
-	);
+	/**
+	 * @typedef LocaleState
+	 * @property {string[]} locales
+	 * @property {string} dateString
+	 * @property {string} timeString
+	 * @property {Intl.DateTimeFormat} timeFormatter
+	 */
+
+	/** @type {LocaleState | null} */
+	let localeState = null;
+
+	const setLocalizedTimeFormatter = () => {
+	    const locales = Intl.getCanonicalLocales(navigator.languages);
+	    const date = new Date(2000, 1, 1, 1, 23, 45);
+	    const dateString = date.toLocaleString();
+	    const timeString = date.toLocaleTimeString();
+	    const timeFormatter = Intl.DateTimeFormat(locales, {
+	        timeStyle: 'short',
+	    });
+
+	    localeState = {
+	        locales,
+	        dateString,
+	        timeString,
+	        timeFormatter,
+	    };
+	};
 
 	/**
-	 * Transforms time to a cleaned-up localized time.
-	 *
-	 * @param {Date} dt - date object
-	 * @return {string} cleaned-up localized time
+	 * @param {HTMLFormElement} [rootElement]
 	 */
-	function _getCleanLocalTime(dt) {
-	    dt = typeof dt === 'undefined' ? new Date() : dt;
+	const initTimeLocalization = (rootElement) => {
+	    const languageChangeListener = () => {
+	        setLocalizedTimeFormatter();
 
-	    return _cleanSpecialChars(dt.toLocaleTimeString(format.locale));
-	}
+	        rootElement?.dispatchEvent(events.ChangeLanguage());
+	    };
 
-	/**
-	 * Remove unneeded and problematic special characters in (date)time string.
-	 *
-	 * @param {string} timeStr - (date)time string to clean up
-	 * @return {string} transformed (date)time string with removed unneeded special characters that cause issues
-	 */
-	function _cleanSpecialChars(timeStr) {
-	    return timeStr.replace(/[\u200E\u200F]/g, '');
-	}
+	    addEventListener('languagechange', languageChangeListener);
+
+	    setLocalizedTimeFormatter();
+
+	    return removeEventListener.bind(
+	        window,
+	        'languagechange',
+	        languageChangeListener
+	    );
+	};
 
 	/**
 	 * @namespace time
 	 */
 	const time = {
-	    // For now we just look at a subset of numbers in Arabic and Latin. There are actually over 20 number scripts and :digit: doesn't work in browsers
 	    /**
-	     * @type {string}
+	     * @type {boolean}
 	     */
 	    get hour12() {
-	        return this.hasMeridian(_getCleanLocalTime());
+	        const { hour12 } = localeState.timeFormatter.resolvedOptions();
+
+	        return Boolean(hour12);
 	    },
+
 	    /**
 	     * @type {string}
 	     */
 	    get pmNotation() {
 	        return this.meridianNotation(new Date(2000, 1, 1, 23, 0, 0));
 	    },
+
 	    /**
 	     * @type {string}
 	     */
 	    get amNotation() {
 	        return this.meridianNotation(new Date(2000, 1, 1, 1, 0, 0));
 	    },
-	    /**
-	     * @type {Function}
-	     * @param {Date} dt - datetime string
-	     */
-	    meridianNotation(dt) {
-	        let matches = _getCleanLocalTime(dt).match(HAS_MERIDIAN);
-	        if (matches && matches.length) {
-	            matches = matches.filter((item) => !!item);
 
-	            return matches[matches.length - 1].trim();
+	    /**
+	     * @param {Date} date - datetime string
+	     */
+	    meridianNotation(date) {
+	        const formatted = localeState.timeFormatter.formatToParts(date);
+	        const meridianPart = formatted.find(({ type }) => type === 'dayPeriod');
+
+	        if (meridianPart != null) {
+	            return meridianPart.value;
 	        }
 
 	        return null;
 	    },
+
 	    /**
 	     * Whether time string has meridian parts
 	     *
@@ -42362,15 +42685,8 @@
 	     * @param {string} time - Time string
 	     */
 	    hasMeridian(time) {
-	        return HAS_MERIDIAN.test(_cleanSpecialChars(time));
+	        return time.includes(this.amNotation) || time.includes(this.pmNotation);
 	    },
-	};
-
-	/**
-	 * @namespace format
-	 */
-	const format = {
-	    locale: navigator.language,
 	};
 
 	/**
@@ -42846,265 +43162,6 @@
 	            return true;
 	        },
 	    },
-	};
-
-	/**
-	 * @module event
-	 */
-	// TODO: add second "propagate" parameter to constructors to add .enketo namespace to event.
-
-	/**
-	 * Data update event.
-	 *
-	 * @static
-	 * @param {*} detail - Data to be passed with event
-	 * @return {CustomEvent} Custom "dataupdate" event
-	 */
-	function DataUpdate(detail) {
-	    return new CustomEvent('dataupdate', { detail });
-	}
-
-	/**
-	 * Fake focus event.
-	 *
-	 * @return {CustomEvent} Custom "fakefocus" event (bubbling)
-	 */
-	function FakeFocus() {
-	    return new CustomEvent('fakefocus', { bubbles: true });
-	}
-
-	/**
-	 * Apply focus event.
-	 *
-	 * @return {CustomEvent} Custom "applyfocus" event
-	 */
-	function ApplyFocus() {
-	    return new CustomEvent('applyfocus');
-	}
-
-	/**
-	 * Page flip event.
-	 *
-	 * @return {CustomEvent} Custom "pageflip" event (bubbling)
-	 */
-	function PageFlip() {
-	    return new CustomEvent('pageflip', { bubbles: true });
-	}
-
-	/**
-	 * Removed event.
-	 *
-	 * @param {*} detail - Data to be passed with event
-	 * @return {CustomEvent} Custom "removed" event (bubbling)
-	 */
-	function Removed(detail) {
-	    return new CustomEvent('removed', { detail, bubbles: true });
-	}
-
-	/**
-	 * The odk-instance-first-load event as defined in the ODK XForms spec.
-	 *
-	 * @see https://getodk.github.io/xforms-spec/#event:odk-instance-first-load
-	 *@return {CustomEvent} Custom "odk-instance-first-load" event (bubbling)
-	 */
-	function InstanceFirstLoad() {
-	    return new CustomEvent('odk-instance-first-load', { bubbles: true });
-	}
-
-	/**
-	 * The odk-new-repeat event as defined in the ODK XForms spec.
-	 *
-	 * @see https://getodk.github.io/xforms-spec/#event:odk-new-repeat
-	 * @param {{repeatPath: string, repeatIndex: number, trigger: string}} detail - Data to be passed with event.
-	 * @return {CustomEvent} Custom "odk-new-repeat" event (bubbling)
-	 */
-	function NewRepeat(detail) {
-	    return new CustomEvent('odk-new-repeat', { detail, bubbles: true });
-	}
-
-	/**
-	 * The addrepeat event is similar but fired under different circumstances.
-	 *
-	 * @param {{repeatPath: string, repeatIndex: number, trigger: string}} detail - Data to be passed with event.
-	 * @return {CustomEvent} Custom "odk-new-repeat" event (bubbling)
-	 */
-	function AddRepeat(detail) {
-	    return new CustomEvent('addrepeat', { detail, bubbles: true });
-	}
-
-	/**
-	 * Remove repeat event.
-	 *
-	 * @return {CustomEvent} Custom "removerepeat" event (bubbling)
-	 */
-	function RemoveRepeat() {
-	    return new CustomEvent('removerepeat', { bubbles: true });
-	}
-
-	/**
-	 * Change language event.
-	 *
-	 * @return {CustomEvent} Custom "changelanguage" event (bubbling)
-	 */
-	function ChangeLanguage() {
-	    return new CustomEvent('changelanguage', { bubbles: true });
-	}
-
-	/**
-	 * Change event.
-	 *
-	 * @return {Event} The regular HTML "change" event (bubbling)
-	 */
-	function Change() {
-	    return new Event('change', { bubbles: true });
-	}
-
-	/**
-	 * Xforms-value-changed event as defined in the ODK XForms spec.
-	 *
-	 * @see https://getodk.github.io/xforms-spec/#event:xforms-value-changed
-	 * @param {{repeatIndex: number}} detail - Data to be passed with event.
-	 * @return {CustomEvent} Custom "xforms-value-changed" event (bubbling).
-	 */
-	function XFormsValueChanged(detail) {
-	    return new CustomEvent('xforms-value-changed', { detail, bubbles: true });
-	}
-
-	/**
-	 * Input event.
-	 *
-	 * @return {Event} "input" event (bubbling)
-	 */
-	function Input() {
-	    return new Event('input', { bubbles: true });
-	}
-
-	/**
-	 * Input update event which fires when a form control value is updated programmatically.
-	 *
-	 * @return {CustomEvent} Custom "inputupdate" event (bubbling)
-	 */
-	function InputUpdate() {
-	    return new CustomEvent('inputupdate', { bubbles: true });
-	}
-
-	/**
-	 * Edited event.
-	 *
-	 * @return {CustomEvent} Custom "edited" event (bubbling)
-	 */
-	function Edited() {
-	    return new CustomEvent('edited', { bubbles: true });
-	}
-
-	/**
-	 * Before save event.
-	 *
-	 * @return {CustomEvent} Custom "edited" event (bubbling)
-	 */
-	function BeforeSave() {
-	    return new CustomEvent('before-save', { bubbles: true });
-	}
-
-	/**
-	 * Validation complete event.
-	 *
-	 * @return {CustomEvent} Custom "validationcomplete" event (bubbling)
-	 */
-	function ValidationComplete() {
-	    return new CustomEvent('validation-complete', { bubbles: true });
-	}
-
-	/**
-	 * Invalidated event.
-	 *
-	 * @return {CustomEvent} Custom "invalidated" event (bubbling)
-	 */
-	function Invalidated() {
-	    return new CustomEvent('invalidated', { bubbles: true });
-	}
-
-	/**
-	 * Progress update event.
-	 *
-	 * @param {*} detail - Data to be passed with event
-	 * @return {CustomEvent} Custom "progressupdate" event (bubbling)
-	 */
-	function ProgressUpdate(detail) {
-	    return new CustomEvent('progress-update', { detail, bubbles: true });
-	}
-
-	/**
-	 * Go to hidden event fired when the goto target is not relevant.
-	 *
-	 * @return {CustomEvent} Custom "gotoirrelevant" event (bubbling)
-	 */
-	function GoToIrrelevant() {
-	    return new CustomEvent('goto-irrelevant', { bubbles: true });
-	}
-
-	/**
-	 * Go to invisible event fired when the target has no form control.
-	 * This is event has prevalence of the "go to hidden" event.
-	 *
-	 * @return {CustomEvent} Custom "gotoinvisible" event (bubbling)
-	 */
-	function GoToInvisible() {
-	    return new CustomEvent('goto-invisible', { bubbles: true });
-	}
-
-	function ChangeOption() {
-	    return new CustomEvent('change-option', { bubbles: true });
-	}
-
-	/**
-	 * Go to printify text event.
-	 *
-	 * @return {CustomEvent} Custom "printify" event (bubbling)
-	 */
-	function Printify() {
-	    return new CustomEvent('printify', { bubbles: true });
-	}
-
-	/**
-	 * Go to deprintify text event.
-	 *
-	 * @return {CustomEvent} Custom "deprintify" event (bubbling)
-	 */
-	function DePrintify() {
-	    return new CustomEvent('deprintify', { bubbles: true });
-	}
-
-	function UpdateMaxSize() {
-	    return new CustomEvent('update-max-size', { bubbles: true });
-	}
-
-	var events = {
-	    DataUpdate,
-	    FakeFocus,
-	    ApplyFocus,
-	    PageFlip,
-	    Removed,
-	    InstanceFirstLoad,
-	    NewRepeat,
-	    AddRepeat,
-	    RemoveRepeat,
-	    ChangeLanguage,
-	    Change,
-	    Input,
-	    InputUpdate,
-	    Edited,
-	    BeforeSave,
-	    ValidationComplete,
-	    Invalidated,
-	    ProgressUpdate,
-	    GoToIrrelevant,
-	    GoToInvisible,
-	    XFormsValueChanged,
-	    ChangeOption,
-	    Printify,
-	    DePrintify,
-	    UpdateMaxSize,
 	};
 
 	/**
@@ -49384,14 +49441,14 @@
 
 	var leafletSrc = createCommonjsModule(function (module, exports) {
 	/* @preserve
-	 * Leaflet 1.8.0, a JS library for interactive maps. https://leafletjs.com
+	 * Leaflet 1.9.2, a JS library for interactive maps. https://leafletjs.com
 	 * (c) 2010-2022 Vladimir Agafonkin, (c) 2010-2011 CloudMade
 	 */
 
 	(function (global, factory) {
 	  factory(exports) ;
 	})(commonjsGlobal, (function (exports) {
-	  var version = "1.8.0";
+	  var version = "1.9.2";
 
 	  /*
 	   * @namespace Util
@@ -49887,35 +49944,30 @@
 	  	},
 
 	  	// attach listener (without syntactic sugar now)
-	  	_on: function (type, fn, context) {
+	  	_on: function (type, fn, context, _once) {
 	  		if (typeof fn !== 'function') {
 	  			console.warn('wrong listener type: ' + typeof fn);
 	  			return;
 	  		}
-	  		this._events = this._events || {};
 
-	  		/* get/init listeners for type */
-	  		var typeListeners = this._events[type];
-	  		if (!typeListeners) {
-	  			typeListeners = [];
-	  			this._events[type] = typeListeners;
+	  		// check if fn already there
+	  		if (this._listens(type, fn, context) !== false) {
+	  			return;
 	  		}
 
 	  		if (context === this) {
 	  			// Less memory footprint.
 	  			context = undefined;
 	  		}
-	  		var newListener = {fn: fn, ctx: context},
-	  		    listeners = typeListeners;
 
-	  		// check if fn already there
-	  		for (var i = 0, len = listeners.length; i < len; i++) {
-	  			if (listeners[i].fn === fn && listeners[i].ctx === context) {
-	  				return;
-	  			}
+	  		var newListener = {fn: fn, ctx: context};
+	  		if (_once) {
+	  			newListener.once = true;
 	  		}
 
-	  		listeners.push(newListener);
+	  		this._events = this._events || {};
+	  		this._events[type] = this._events[type] || [];
+	  		this._events[type].push(newListener);
 	  	},
 
 	  	_off: function (type, fn, context) {
@@ -49923,10 +49975,11 @@
 	  		    i,
 	  		    len;
 
-	  		if (!this._events) { return; }
+	  		if (!this._events) {
+	  			return;
+	  		}
 
 	  		listeners = this._events[type];
-
 	  		if (!listeners) {
 	  			return;
 	  		}
@@ -49944,32 +49997,24 @@
 	  			return;
 	  		}
 
-	  		if (context === this) {
-	  			context = undefined;
-	  		}
-
 	  		if (typeof fn !== 'function') {
 	  			console.warn('wrong listener type: ' + typeof fn);
 	  			return;
 	  		}
+
 	  		// find fn and remove it
-	  		for (i = 0, len = listeners.length; i < len; i++) {
-	  			var l = listeners[i];
-	  			if (l.ctx !== context) { continue; }
-	  			if (l.fn === fn) {
-	  				if (this._firingCount) {
-	  					// set the removed listener to noop so that's not called if remove happens in fire
-	  					l.fn = falseFn;
+	  		var index = this._listens(type, fn, context);
+	  		if (index !== false) {
+	  			var listener = listeners[index];
+	  			if (this._firingCount) {
+	  				// set the removed listener to noop so that's not called if remove happens in fire
+	  				listener.fn = falseFn;
 
-	  					/* copy array in case events are being fired */
-	  					this._events[type] = listeners = listeners.slice();
-	  				}
-	  				listeners.splice(i, 1);
-
-	  				return;
+	  				/* copy array in case events are being fired */
+	  				this._events[type] = listeners = listeners.slice();
 	  			}
+	  			listeners.splice(index, 1);
 	  		}
-	  		console.warn('listener not found');
 	  	},
 
 	  	// @method fire(type: String, data?: Object, propagate?: Boolean): this
@@ -49987,12 +50032,16 @@
 
 	  		if (this._events) {
 	  			var listeners = this._events[type];
-
 	  			if (listeners) {
 	  				this._firingCount = (this._firingCount + 1) || 1;
 	  				for (var i = 0, len = listeners.length; i < len; i++) {
 	  					var l = listeners[i];
-	  					l.fn.call(l.ctx || this, event);
+	  					// off overwrites l.fn, so we need to copy fn to a var
+	  					var fn = l.fn;
+	  					if (l.once) {
+	  						this.off(type, fn, l.ctx);
+	  					}
+	  					fn.call(l.ctx || this, event);
 	  				}
 
 	  				this._firingCount--;
@@ -50008,45 +50057,85 @@
 	  	},
 
 	  	// @method listens(type: String, propagate?: Boolean): Boolean
+	  	// @method listens(type: String, fn: Function, context?: Object, propagate?: Boolean): Boolean
 	  	// Returns `true` if a particular event type has any listeners attached to it.
 	  	// The verification can optionally be propagated, it will return `true` if parents have the listener attached to it.
-	  	listens: function (type, propagate) {
+	  	listens: function (type, fn, context, propagate) {
 	  		if (typeof type !== 'string') {
 	  			console.warn('"string" type argument expected');
 	  		}
+
+	  		// we don't overwrite the input `fn` value, because we need to use it for propagation
+	  		var _fn = fn;
+	  		if (typeof fn !== 'function') {
+	  			propagate = !!fn;
+	  			_fn = undefined;
+	  			context = undefined;
+	  		}
+
 	  		var listeners = this._events && this._events[type];
-	  		if (listeners && listeners.length) { return true; }
+	  		if (listeners && listeners.length) {
+	  			if (this._listens(type, _fn, context) !== false) {
+	  				return true;
+	  			}
+	  		}
 
 	  		if (propagate) {
 	  			// also check parents for listeners if event propagates
 	  			for (var id in this._eventParents) {
-	  				if (this._eventParents[id].listens(type, propagate)) { return true; }
+	  				if (this._eventParents[id].listens(type, fn, context, propagate)) { return true; }
 	  			}
 	  		}
 	  		return false;
+	  	},
+
+	  	// returns the index (number) or false
+	  	_listens: function (type, fn, context) {
+	  		if (!this._events) {
+	  			return false;
+	  		}
+
+	  		var listeners = this._events[type] || [];
+	  		if (!fn) {
+	  			return !!listeners.length;
+	  		}
+
+	  		if (context === this) {
+	  			// Less memory footprint.
+	  			context = undefined;
+	  		}
+
+	  		for (var i = 0, len = listeners.length; i < len; i++) {
+	  			if (listeners[i].fn === fn && listeners[i].ctx === context) {
+	  				return i;
+	  			}
+	  		}
+	  		return false;
+
 	  	},
 
 	  	// @method once(…): this
 	  	// Behaves as [`on(…)`](#evented-on), except the listener will only get fired once and then removed.
 	  	once: function (types, fn, context) {
 
+	  		// types can be a map of types/handlers
 	  		if (typeof types === 'object') {
 	  			for (var type in types) {
-	  				this.once(type, types[type], fn);
+	  				// we don't process space-separated events here for performance;
+	  				// it's a hot path since Layer uses the on(obj) syntax
+	  				this._on(type, types[type], fn, true);
 	  			}
-	  			return this;
+
+	  		} else {
+	  			// types can be a string of space-separated words
+	  			types = splitWords(types);
+
+	  			for (var i = 0, len = types.length; i < len; i++) {
+	  				this._on(types[i], fn, context, true);
+	  			}
 	  		}
 
-	  		var handler = bind(function () {
-	  			this
-	  			    .off(types, fn, context)
-	  			    .off(types, handler, context);
-	  		}, this);
-
-	  		// add a listener that's executed once and removed after that
-	  		return this
-	  		    .on(types, fn, context)
-	  		    .on(types, handler, context);
+	  		return this;
 	  	},
 
 	  	// @method addEventParent(obj: Evented): this
@@ -50362,21 +50451,36 @@
 	  Bounds.prototype = {
 	  	// @method extend(point: Point): this
 	  	// Extends the bounds to contain the given point.
-	  	extend: function (point) { // (Point)
-	  		point = toPoint(point);
+
+	  	// @alternative
+	  	// @method extend(otherBounds: Bounds): this
+	  	// Extend the bounds to contain the given bounds
+	  	extend: function (obj) {
+	  		var min2, max2;
+	  		if (!obj) { return this; }
+
+	  		if (obj instanceof Point || typeof obj[0] === 'number' || 'x' in obj) {
+	  			min2 = max2 = toPoint(obj);
+	  		} else {
+	  			obj = toBounds(obj);
+	  			min2 = obj.min;
+	  			max2 = obj.max;
+
+	  			if (!min2 || !max2) { return this; }
+	  		}
 
 	  		// @property min: Point
 	  		// The top left corner of the rectangle.
 	  		// @property max: Point
 	  		// The bottom right corner of the rectangle.
 	  		if (!this.min && !this.max) {
-	  			this.min = point.clone();
-	  			this.max = point.clone();
+	  			this.min = min2.clone();
+	  			this.max = max2.clone();
 	  		} else {
-	  			this.min.x = Math.min(point.x, this.min.x);
-	  			this.max.x = Math.max(point.x, this.max.x);
-	  			this.min.y = Math.min(point.y, this.min.y);
-	  			this.max.y = Math.max(point.y, this.max.y);
+	  			this.min.x = Math.min(min2.x, this.min.x);
+	  			this.max.x = Math.max(max2.x, this.max.x);
+	  			this.min.y = Math.min(min2.y, this.min.y);
+	  			this.max.y = Math.max(max2.y, this.max.y);
 	  		}
 	  		return this;
 	  	},
@@ -50384,7 +50488,7 @@
 	  	// @method getCenter(round?: Boolean): Point
 	  	// Returns the center point of the bounds.
 	  	getCenter: function (round) {
-	  		return new Point(
+	  		return toPoint(
 	  		        (this.min.x + this.max.x) / 2,
 	  		        (this.min.y + this.max.y) / 2, round);
 	  	},
@@ -50392,13 +50496,13 @@
 	  	// @method getBottomLeft(): Point
 	  	// Returns the bottom-left point of the bounds.
 	  	getBottomLeft: function () {
-	  		return new Point(this.min.x, this.max.y);
+	  		return toPoint(this.min.x, this.max.y);
 	  	},
 
 	  	// @method getTopRight(): Point
 	  	// Returns the top-right point of the bounds.
 	  	getTopRight: function () { // -> Point
-	  		return new Point(this.max.x, this.min.y);
+	  		return toPoint(this.max.x, this.min.y);
 	  	},
 
 	  	// @method getTopLeft(): Point
@@ -50478,9 +50582,40 @@
 	  		return xOverlaps && yOverlaps;
 	  	},
 
+	  	// @method isValid(): Boolean
+	  	// Returns `true` if the bounds are properly initialized.
 	  	isValid: function () {
 	  		return !!(this.min && this.max);
-	  	}
+	  	},
+
+
+	  	// @method pad(bufferRatio: Number): Bounds
+	  	// Returns bounds created by extending or retracting the current bounds by a given ratio in each direction.
+	  	// For example, a ratio of 0.5 extends the bounds by 50% in each direction.
+	  	// Negative values will retract the bounds.
+	  	pad: function (bufferRatio) {
+	  		var min = this.min,
+	  		max = this.max,
+	  		heightBuffer = Math.abs(min.x - max.x) * bufferRatio,
+	  		widthBuffer = Math.abs(min.y - max.y) * bufferRatio;
+
+
+	  		return toBounds(
+	  			toPoint(min.x - heightBuffer, min.y - widthBuffer),
+	  			toPoint(max.x + heightBuffer, max.y + widthBuffer));
+	  	},
+
+
+	  	// @method equals(otherBounds: Bounds): Boolean
+	  	// Returns `true` if the rectangle is equivalent to the given bounds.
+	  	equals: function (bounds) {
+	  		if (!bounds) { return false; }
+
+	  		bounds = toBounds(bounds);
+
+	  		return this.min.equals(bounds.getTopLeft()) &&
+	  			this.max.equals(bounds.getBottomRight());
+	  	},
 	  };
 
 
@@ -51388,6 +51523,13 @@
 	  	}
 	  }());
 
+
+	  // @property mac: Boolean; `true` when the browser is running in a Mac platform
+	  var mac = navigator.platform.indexOf('Mac') === 0;
+
+	  // @property mac: Boolean; `true` when the browser is running in a Linux platform
+	  var linux = navigator.platform.indexOf('Linux') === 0;
+
 	  function userAgentContains(str) {
 	  	return navigator.userAgent.toLowerCase().indexOf(str) >= 0;
 	  }
@@ -51426,7 +51568,9 @@
 	  	canvas: canvas$1,
 	  	svg: svg$1,
 	  	vml: vml,
-	  	inlineSvg: inlineSvg
+	  	inlineSvg: inlineSvg,
+	  	mac: mac,
+	  	linux: linux
 	  };
 
 	  /*
@@ -51566,6 +51710,25 @@
 	  		if (e.pointerType === 'mouse' ||
 	  			(e.sourceCapabilities && !e.sourceCapabilities.firesTouchEvents)) {
 
+	  			return;
+	  		}
+
+	  		// When clicking on an <input>, the browser generates a click on its
+	  		// <label> (and vice versa) triggering two clicks in quick succession.
+	  		// This ignores clicks on elements which are a label with a 'for'
+	  		// attribute (or children of such a label), but not children of
+	  		// a <input>.
+	  		var path = getPropagationPath(e);
+	  		if (path.some(function (el) {
+	  			return el instanceof HTMLLabelElement && el.attributes.for;
+	  		}) &&
+	  			!path.some(function (el) {
+	  				return (
+	  					el instanceof HTMLInputElement ||
+	  					el instanceof HTMLSelectElement
+	  				);
+	  			})
+	  		) {
 	  			return;
 	  		}
 
@@ -52190,6 +52353,26 @@
 	  	return this;
 	  }
 
+	  // @function getPropagationPath(ev: DOMEvent): Array
+	  // Compatibility polyfill for [`Event.composedPath()`](https://developer.mozilla.org/en-US/docs/Web/API/Event/composedPath).
+	  // Returns an array containing the `HTMLElement`s that the given DOM event
+	  // should propagate to (if not stopped).
+	  function getPropagationPath(ev) {
+	  	if (ev.composedPath) {
+	  		return ev.composedPath();
+	  	}
+
+	  	var path = [];
+	  	var el = ev.target;
+
+	  	while (el) {
+	  		path.push(el);
+	  		el = el.parentNode;
+	  	}
+	  	return path;
+	  }
+
+
 	  // @function getMousePosition(ev: DOMEvent, container?: HTMLElement): Point
 	  // Gets normalized mouse position from a DOM event relative to the
 	  // `container` (border excluded) or to the whole page if not specified.
@@ -52209,12 +52392,15 @@
 	  	);
 	  }
 
-	  // Chrome on Win scrolls double the pixels as in other platforms (see #4538),
-	  // and Firefox scrolls device pixels, not CSS pixels
-	  var wheelPxFactor =
-	  	(Browser.win && Browser.chrome) ? 2 * window.devicePixelRatio :
-	  	Browser.gecko ? window.devicePixelRatio : 1;
 
+	  //  except , Safari and
+	  // We need double the scroll pixels (see #7403 and #4538) for all Browsers
+	  // except OSX (Mac) -> 3x, Chrome running on Linux 1x
+
+	  var wheelPxFactor =
+	  	(Browser.linux && Browser.chrome) ? window.devicePixelRatio :
+	  	Browser.mac ? window.devicePixelRatio * 3 :
+	  	window.devicePixelRatio > 0 ? 2 * window.devicePixelRatio : 1;
 	  // @function getWheelDelta(ev: DOMEvent): Number
 	  // Gets normalized wheel delta from a wheel DOM event, in vertical
 	  // pixels scrolled (negative if scrolling down).
@@ -52258,6 +52444,7 @@
 	    disableClickPropagation: disableClickPropagation,
 	    preventDefault: preventDefault,
 	    stop: stop,
+	    getPropagationPath: getPropagationPath,
 	    getMousePosition: getMousePosition,
 	    getWheelDelta: getWheelDelta,
 	    isExternalTarget: isExternalTarget,
@@ -52273,8 +52460,21 @@
 	   *
 	   * @example
 	   * ```js
-	   * var fx = new L.PosAnimation();
-	   * fx.run(el, [300, 500], 0.5);
+	   * var myPositionMarker = L.marker([48.864716, 2.294694]).addTo(map);
+	   *
+	   * myPositionMarker.on("click", function() {
+	   * 	var pos = map.latLngToLayerPoint(myPositionMarker.getLatLng());
+	   * 	pos.y -= 25;
+	   * 	var fx = new L.PosAnimation();
+	   *
+	   * 	fx.once('end',function() {
+	   * 		pos.y += 25;
+	   * 		fx.run(myPositionMarker._icon, pos, 0.8);
+	   * 	});
+	   *
+	   * 	fx.run(myPositionMarker._icon, pos, 0.3);
+	   * });
+	   *
 	   * ```
 	   *
 	   * @constructor L.PosAnimation()
@@ -52554,7 +52754,7 @@
 	  		}
 
 	  		// animation didn't start, just reset the map view
-	  		this._resetView(center, zoom);
+	  		this._resetView(center, zoom, options.pan && options.pan.noMoveStart);
 
 	  		return this;
 	  	},
@@ -52797,11 +52997,13 @@
 	  	setMaxBounds: function (bounds) {
 	  		bounds = toLatLngBounds(bounds);
 
+	  		if (this.listens('moveend', this._panInsideMaxBounds)) {
+	  			this.off('moveend', this._panInsideMaxBounds);
+	  		}
+
 	  		if (!bounds.isValid()) {
 	  			this.options.maxBounds = null;
-	  			return this.off('moveend', this._panInsideMaxBounds);
-	  		} else if (this.options.maxBounds) {
-	  			this.off('moveend', this._panInsideMaxBounds);
+	  			return this;
 	  		}
 
 	  		this.options.maxBounds = bounds;
@@ -53171,7 +53373,7 @@
 	  		this._checkIfLoaded();
 
 	  		if (this._lastCenter && !this._moved()) {
-	  			return this._lastCenter;
+	  			return this._lastCenter.clone();
 	  		}
 	  		return this.layerPointToLatLng(this._getCenterLayerPoint());
 	  	},
@@ -53520,7 +53722,7 @@
 	  	// private methods that modify map state
 
 	  	// @section Map state change events
-	  	_resetView: function (center, zoom) {
+	  	_resetView: function (center, zoom, noMoveStart) {
 	  		setPosition(this._mapPane, new Point(0, 0));
 
 	  		var loading = !this._loaded;
@@ -53531,7 +53733,7 @@
 
 	  		var zoomChanged = this._zoom !== zoom;
 	  		this
-	  			._moveStart(zoomChanged, false)
+	  			._moveStart(zoomChanged, noMoveStart)
 	  			._move(center, zoom)
 	  			._moveEnd(zoomChanged);
 
@@ -53728,7 +53930,7 @@
 	  	},
 
 	  	_isClickDisabled: function (el) {
-	  		while (el !== this._container) {
+	  		while (el && el !== this._container) {
 	  			if (el['_leaflet_disable_click']) { return true; }
 	  			el = el.parentNode;
 	  		}
@@ -54954,7 +55156,7 @@
 	  	return new Scale(options);
 	  };
 
-	  var ukrainianFlag = '<svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="12" height="8"><path fill="#4C7BE1" d="M0 0h12v4H0z"/><path fill="#FFD500" d="M0 4h12v3H0z"/><path fill="#E0BC00" d="M0 7h12v1H0z"/></svg>';
+	  var ukrainianFlag = '<svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="12" height="8" viewBox="0 0 12 8" class="leaflet-attribution-flag"><path fill="#4C7BE1" d="M0 0h12v4H0z"/><path fill="#FFD500" d="M0 4h12v3H0z"/><path fill="#E0BC00" d="M0 7h12v1H0z"/></svg>';
 
 
 	  /*
@@ -55023,7 +55225,7 @@
 	  	},
 
 	  	// @method addAttribution(text: String): this
-	  	// Adds an attribution text (e.g. `'Vector data &copy; Mapbox'`).
+	  	// Adds an attribution text (e.g. `'&copy; OpenStreetMap contributors'`).
 	  	addAttribution: function (text) {
 	  		if (!text) { return this; }
 
@@ -55615,6 +55817,55 @@
 	  	return isFlat(latlngs);
 	  }
 
+	  /* @function polylineCenter(latlngs: LatLng[], crs: CRS): LatLng
+	   * Returns the center ([centroid](http://en.wikipedia.org/wiki/Centroid)) of the passed LatLngs (first ring) from a polyline.
+	   */
+	  function polylineCenter(latlngs, crs) {
+	  	var i, halfDist, segDist, dist, p1, p2, ratio, center;
+
+	  	if (!latlngs || latlngs.length === 0) {
+	  		throw new Error('latlngs not passed');
+	  	}
+
+	  	if (!isFlat(latlngs)) {
+	  		console.warn('latlngs are not flat! Only the first ring will be used');
+	  		latlngs = latlngs[0];
+	  	}
+
+	  	var points = [];
+	  	for (var j in latlngs) {
+	  		points.push(crs.project(toLatLng(latlngs[j])));
+	  	}
+
+	  	var len = points.length;
+
+	  	for (i = 0, halfDist = 0; i < len - 1; i++) {
+	  		halfDist += points[i].distanceTo(points[i + 1]) / 2;
+	  	}
+
+	  	// The line is so small in the current view that all points are on the same pixel.
+	  	if (halfDist === 0) {
+	  		center = points[0];
+	  	} else {
+	  		for (i = 0, dist = 0; i < len - 1; i++) {
+	  			p1 = points[i];
+	  			p2 = points[i + 1];
+	  			segDist = p1.distanceTo(p2);
+	  			dist += segDist;
+
+	  			if (dist > halfDist) {
+	  				ratio = (dist - halfDist) / segDist;
+	  				center = [
+	  					p2.x - ratio * (p2.x - p1.x),
+	  					p2.y - ratio * (p2.y - p1.y)
+	  				];
+	  				break;
+	  			}
+	  		}
+	  	}
+	  	return crs.unproject(toPoint(center));
+	  }
+
 	  var LineUtil = {
 	    __proto__: null,
 	    simplify: simplify,
@@ -55625,7 +55876,8 @@
 	    _getBitCode: _getBitCode,
 	    _sqClosestPointOnSegment: _sqClosestPointOnSegment,
 	    isFlat: isFlat,
-	    _flat: _flat
+	    _flat: _flat,
+	    polylineCenter: polylineCenter
 	  };
 
 	  /*
@@ -55682,9 +55934,53 @@
 	  	return points;
 	  }
 
+	  /* @function polygonCenter(latlngs: LatLng[] crs: CRS): LatLng
+	   * Returns the center ([centroid](http://en.wikipedia.org/wiki/Centroid)) of the passed LatLngs (first ring) from a polygon.
+	   */
+	  function polygonCenter(latlngs, crs) {
+	  	var i, j, p1, p2, f, area, x, y, center;
+
+	  	if (!latlngs || latlngs.length === 0) {
+	  		throw new Error('latlngs not passed');
+	  	}
+
+	  	if (!isFlat(latlngs)) {
+	  		console.warn('latlngs are not flat! Only the first ring will be used');
+	  		latlngs = latlngs[0];
+	  	}
+
+	  	var points = [];
+	  	for (var k in latlngs) {
+	  		points.push(crs.project(toLatLng(latlngs[k])));
+	  	}
+
+	  	var len = points.length;
+	  	area = x = y = 0;
+
+	  	// polygon centroid algorithm;
+	  	for (i = 0, j = len - 1; i < len; j = i++) {
+	  		p1 = points[i];
+	  		p2 = points[j];
+
+	  		f = p1.y * p2.x - p2.y * p1.x;
+	  		x += (p1.x + p2.x) * f;
+	  		y += (p1.y + p2.y) * f;
+	  		area += f * 3;
+	  	}
+
+	  	if (area === 0) {
+	  		// Polygon is so small that all points are on same pixel.
+	  		center = points[0];
+	  	} else {
+	  		center = [x / area, y / area];
+	  	}
+	  	return crs.unproject(toPoint(center));
+	  }
+
 	  var PolyUtil = {
 	    __proto__: null,
-	    clipPolygon: clipPolygon
+	    clipPolygon: clipPolygon,
+	    polygonCenter: polygonCenter
 	  };
 
 	  /*
@@ -57643,38 +57939,7 @@
 	  		if (!this._map) {
 	  			throw new Error('Must add layer to map before using getCenter()');
 	  		}
-
-	  		var i, halfDist, segDist, dist, p1, p2, ratio,
-	  		    points = this._rings[0],
-	  		    len = points.length;
-
-	  		if (!len) { return null; }
-
-	  		// polyline centroid algorithm; only uses the first ring if there are multiple
-
-	  		for (i = 0, halfDist = 0; i < len - 1; i++) {
-	  			halfDist += points[i].distanceTo(points[i + 1]) / 2;
-	  		}
-
-	  		// The line is so small in the current view that all points are on the same pixel.
-	  		if (halfDist === 0) {
-	  			return this._map.layerPointToLatLng(points[0]);
-	  		}
-
-	  		for (i = 0, dist = 0; i < len - 1; i++) {
-	  			p1 = points[i];
-	  			p2 = points[i + 1];
-	  			segDist = p1.distanceTo(p2);
-	  			dist += segDist;
-
-	  			if (dist > halfDist) {
-	  				ratio = (dist - halfDist) / segDist;
-	  				return this._map.layerPointToLatLng([
-	  					p2.x - ratio * (p2.x - p1.x),
-	  					p2.y - ratio * (p2.y - p1.y)
-	  				]);
-	  			}
-	  		}
+	  		return polylineCenter(this._defaultShape(), this._map.options.crs);
 	  	},
 
 	  	// @method getBounds(): LatLngBounds
@@ -57916,39 +58181,14 @@
 	  		return !this._latlngs.length || !this._latlngs[0].length;
 	  	},
 
+	  	// @method getCenter(): LatLng
+	  	// Returns the center ([centroid](http://en.wikipedia.org/wiki/Centroid)) of the Polygon.
 	  	getCenter: function () {
 	  		// throws error when not yet added to map as this center calculation requires projected coordinates
 	  		if (!this._map) {
 	  			throw new Error('Must add layer to map before using getCenter()');
 	  		}
-
-	  		var i, j, p1, p2, f, area, x, y, center,
-	  		    points = this._rings[0],
-	  		    len = points.length;
-
-	  		if (!len) { return null; }
-
-	  		// polygon centroid algorithm; only uses the first ring if there are multiple
-
-	  		area = x = y = 0;
-
-	  		for (i = 0, j = len - 1; i < len; j = i++) {
-	  			p1 = points[i];
-	  			p2 = points[j];
-
-	  			f = p1.y * p2.x - p2.y * p1.x;
-	  			x += (p1.x + p2.x) * f;
-	  			y += (p1.y + p2.y) * f;
-	  			area += f * 3;
-	  		}
-
-	  		if (area === 0) {
-	  			// Polygon is so small that all points are on same pixel.
-	  			center = points[0];
-	  		} else {
-	  			center = [x / area, y / area];
-	  		}
-	  		return this._map.layerPointToLatLng(center);
+	  		return polygonCenter(this._defaultShape(), this._map.options.crs);
 	  	},
 
 	  	_convertLatLngs: function (latlngs) {
@@ -58233,14 +58473,24 @@
 
 	  	case 'GeometryCollection':
 	  		for (i = 0, len = geometry.geometries.length; i < len; i++) {
-	  			var layer = geometryToLayer({
+	  			var geoLayer = geometryToLayer({
 	  				geometry: geometry.geometries[i],
 	  				type: 'Feature',
 	  				properties: geojson.properties
 	  			}, options);
 
-	  			if (layer) {
-	  				layers.push(layer);
+	  			if (geoLayer) {
+	  				layers.push(geoLayer);
+	  			}
+	  		}
+	  		return new FeatureGroup(layers);
+
+	  	case 'FeatureCollection':
+	  		for (i = 0, len = geometry.features.length; i < len; i++) {
+	  			var featureLayer = geometryToLayer(geometry.features[i], options);
+
+	  			if (featureLayer) {
+	  				layers.push(featureLayer);
 	  			}
 	  		}
 	  		return new FeatureGroup(layers);
@@ -58299,8 +58549,9 @@
 	  	var coords = [];
 
 	  	for (var i = 0, len = latlngs.length; i < len; i++) {
+	  		// Check for flat arrays required to ensure unbalanced arrays are correctly converted in recursion
 	  		coords.push(levelsDeep ?
-	  			latLngsToCoords(latlngs[i], levelsDeep - 1, closed, precision) :
+	  			latLngsToCoords(latlngs[i], isFlat(latlngs[i]) ? 0 : levelsDeep - 1, closed, precision) :
 	  			latLngToCoords(latlngs[i], precision));
 	  	}
 
@@ -58909,13 +59160,25 @@
 
 	  		// @option pane: String = undefined
 	  		// `Map pane` where the overlay will be added.
-	  		pane: undefined
+	  		pane: undefined,
+
+	  		// @option content: String|HTMLElement|Function = ''
+	  		// Sets the HTML content of the overlay while initializing. If a function is passed the source layer will be
+	  		// passed to the function. The function should return a `String` or `HTMLElement` to be used in the overlay.
+	  		content: ''
 	  	},
 
 	  	initialize: function (options, source) {
-	  		setOptions(this, options);
-
-	  		this._source = source;
+	  		if (options && (options instanceof L.LatLng || isArray(options))) {
+	  			this._latlng = toLatLng(options);
+	  			setOptions(this, source);
+	  		} else {
+	  			setOptions(this, options);
+	  			this._source = source;
+	  		}
+	  		if (this.options.content) {
+	  			this._content = this.options.content;
+	  		}
 	  	},
 
 	  	// @method openOn(map: Map): this
@@ -59227,12 +59490,18 @@
 	   * marker.bindPopup(popupContent).openPopup();
 	   * ```
 	   * Path overlays like polylines also have a `bindPopup` method.
-	   * Here's a more complicated way to open a popup on a map:
+	   *
+	   * A popup can be also standalone:
 	   *
 	   * ```js
 	   * var popup = L.popup()
 	   * 	.setLatLng(latlng)
 	   * 	.setContent('<p>Hello world!<br />This is a nice popup.</p>')
+	   * 	.openOn(map);
+	   * ```
+	   * or
+	   * ```js
+	   * var popup = L.popup(latlng, {content: '<p>Hello world!<br />This is a nice popup.</p>')
 	   * 	.openOn(map);
 	   * ```
 	   */
@@ -59263,6 +59532,8 @@
 	  		// @option maxHeight: Number = null
 	  		// If set, creates a scrollable container of the given height
 	  		// inside a popup if its content exceeds it.
+	  		// The scrollable container can be styled using the
+	  		// `leaflet-popup-scrolled` CSS class selector.
 	  		maxHeight: null,
 
 	  		// @option autoPan: Boolean = true
@@ -59408,7 +59679,10 @@
 	  			closeButton.href = '#close';
 	  			closeButton.innerHTML = '<span aria-hidden="true">&#215;</span>';
 
-	  			on(closeButton, 'click', this.close, this);
+	  			on(closeButton, 'click', function (ev) {
+	  				preventDefault(ev);
+	  				this.close();
+	  			}, this);
 	  		}
 	  	},
 
@@ -59502,6 +59776,9 @@
 	  // @namespace Popup
 	  // @factory L.popup(options?: Popup options, source?: Layer)
 	  // Instantiates a `Popup` object given an optional `options` object that describes its appearance and location and an optional `source` object that is used to tag the popup with a reference to the Layer to which it refers.
+	  // @alternative
+	  // @factory L.popup(latlng: LatLng, options?: Popup options)
+	  // Instantiates a `Popup` object given `latlng` where the popup will open and an optional `options` object that describes its appearance and location.
 	  var popup = function (options, source) {
 	  	return new Popup(options, source);
 	  };
@@ -59599,7 +59876,8 @@
 	  	// @method openPopup(latlng?: LatLng): this
 	  	// Opens the bound popup at the specified `latlng` or at the default popup anchor if no `latlng` is passed.
 	  	openPopup: function (latlng) {
-	  		if (this._popup && this._popup._prepareOpen(latlng)) {
+	  		if (this._popup && this._popup._prepareOpen(latlng || this._latlng)) {
+
 	  			// open the popup on the map
 	  			this._popup.openOn(this._map);
 	  		}
@@ -59685,10 +59963,28 @@
 	   * Used to display small texts on top of map layers.
 	   *
 	   * @example
+	   * If you want to just bind a tooltip to marker:
 	   *
 	   * ```js
 	   * marker.bindTooltip("my tooltip text").openTooltip();
 	   * ```
+	   * Path overlays like polylines also have a `bindTooltip` method.
+	   *
+	   * A tooltip can be also standalone:
+	   *
+	   * ```js
+	   * var tooltip = L.tooltip()
+	   * 	.setLatLng(latlng)
+	   * 	.setContent('Hello world!<br />This is a nice tooltip.')
+	   * 	.addTo(map);
+	   * ```
+	   * or
+	   * ```js
+	   * var tooltip = L.tooltip(latlng, {content: 'Hello world!<br />This is a nice tooltip.'})
+	   * 	.addTo(map);
+	   * ```
+	   *
+	   *
 	   * Note about tooltip offset. Leaflet takes two options in consideration
 	   * for computing tooltip offsetting:
 	   * - the `offset` Tooltip option: it defaults to [0, 0], and it's specific to one tooltip.
@@ -59789,6 +60085,9 @@
 	  		    className = prefix + ' ' + (this.options.className || '') + ' leaflet-zoom-' + (this._zoomAnimated ? 'animated' : 'hide');
 
 	  		this._contentNode = this._container = create$1('div', className);
+
+	  		this._container.setAttribute('role', 'tooltip');
+	  		this._container.setAttribute('id', 'leaflet-tooltip-' + stamp(this));
 	  	},
 
 	  	_updateLayout: function () {},
@@ -59869,7 +60168,10 @@
 
 	  // @namespace Tooltip
 	  // @factory L.tooltip(options?: Tooltip options, source?: Layer)
-	  // Instantiates a Tooltip object given an optional `options` object that describes its appearance and location and an optional `source` object that is used to tag the tooltip with a reference to the Layer to which it refers.
+	  // Instantiates a `Tooltip` object given an optional `options` object that describes its appearance and location and an optional `source` object that is used to tag the tooltip with a reference to the Layer to which it refers.
+	  // @alternative
+	  // @factory L.tooltip(latlng: LatLng, options?: Tooltip options)
+	  // Instantiates a `Tooltip` object given `latlng` where the tooltip will open and an optional `options` object that describes its appearance and location.
 	  var tooltip = function (options, source) {
 	  	return new Tooltip(options, source);
 	  };
@@ -59957,6 +60259,11 @@
 	  			events.mouseover = this._openTooltip;
 	  			events.mouseout = this.closeTooltip;
 	  			events.click = this._openTooltip;
+	  			if (this._map) {
+	  				this._addFocusListeners();
+	  			} else {
+	  				events.add = this._addFocusListeners;
+	  			}
 	  		} else {
 	  			events.add = this._openTooltip;
 	  		}
@@ -59973,6 +60280,12 @@
 	  		if (this._tooltip && this._tooltip._prepareOpen(latlng)) {
 	  			// open the tooltip on the map
 	  			this._tooltip.openOn(this._map);
+
+	  			if (this.getElement) {
+	  				this._setAriaDescribedByOnLayer(this);
+	  			} else if (this.eachLayer) {
+	  				this.eachLayer(this._setAriaDescribedByOnLayer, this);
+	  			}
 	  		}
 	  		return this;
 	  	},
@@ -60014,6 +60327,33 @@
 	  	getTooltip: function () {
 	  		return this._tooltip;
 	  	},
+
+	  	_addFocusListeners: function () {
+	  		if (this.getElement) {
+	  			this._addFocusListenersOnLayer(this);
+	  		} else if (this.eachLayer) {
+	  			this.eachLayer(this._addFocusListenersOnLayer, this);
+	  		}
+	  	},
+
+	  	_addFocusListenersOnLayer: function (layer) {
+	  		var el = layer.getElement();
+	  		if (el) {
+	  			on(el, 'focus', function () {
+	  				this._tooltip._source = layer;
+	  				this.openTooltip();
+	  			}, this);
+	  			on(el, 'blur', this.closeTooltip, this);
+	  		}
+	  	},
+
+	  	_setAriaDescribedByOnLayer: function (layer) {
+	  		var el = layer.getElement();
+	  		if (el) {
+	  			el.setAttribute('aria-describedby', this._tooltip._container.id);
+	  		}
+	  	},
+
 
 	  	_openTooltip: function (e) {
 	  		if (!this._tooltip || !this._map || (this._map.dragging && this._map.dragging.moving())) {
@@ -61033,7 +61373,7 @@
 	   * @example
 	   *
 	   * ```js
-	   * L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png?{foo}', {foo: 'bar', attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'}).addTo(map);
+	   * L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png?{foo}', {foo: 'bar', attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'}).addTo(map);
 	   * ```
 	   *
 	   * @section URL template
@@ -61120,13 +61460,19 @@
 
 	  			if (!options.zoomReverse) {
 	  				options.zoomOffset++;
-	  				options.maxZoom--;
+	  				options.maxZoom = Math.max(options.minZoom, options.maxZoom - 1);
 	  			} else {
 	  				options.zoomOffset--;
-	  				options.minZoom++;
+	  				options.minZoom = Math.min(options.maxZoom, options.minZoom + 1);
 	  			}
 
 	  			options.minZoom = Math.max(0, options.minZoom);
+	  		} else if (!options.zoomReverse) {
+	  			// make sure maxZoom is gte minZoom
+	  			options.maxZoom = Math.max(options.minZoom, options.maxZoom);
+	  		} else {
+	  			// make sure minZoom is lte maxZoom
+	  			options.minZoom = Math.min(options.maxZoom, options.minZoom);
 	  		}
 
 	  		if (typeof options.subdomains === 'string') {
@@ -61173,17 +61519,11 @@
 	  			tile.referrerPolicy = this.options.referrerPolicy;
 	  		}
 
-	  		/*
-	  		 Alt tag is set to empty string to keep screen readers from reading URL and for compliance reasons
-	  		 https://www.w3.org/TR/WCAG20-TECHS/H67
-	  		*/
+	  		// The alt attribute is set to the empty string,
+	  		// allowing screen readers to ignore the decorative image tiles.
+	  		// https://www.w3.org/WAI/tutorials/images/decorative/
+	  		// https://www.w3.org/TR/html-aria/#el-img-empty-alt
 	  		tile.alt = '';
-
-	  		/*
-	  		 Set role="presentation" to force screen readers to ignore this
-	  		 https://www.w3.org/TR/wai-aria/roles#textalternativecomputation
-	  		*/
-	  		tile.setAttribute('role', 'presentation');
 
 	  		tile.src = this.getTileUrl(coords);
 
@@ -63377,7 +63717,7 @@
 
 	  		cancelAnimFrame(this._animRequest);
 
-	  		var moveFn = bind(map._move, map, this._center, this._zoom, {pinch: true, round: false});
+	  		var moveFn = bind(map._move, map, this._center, this._zoom, {pinch: true, round: false}, undefined);
 	  		this._animRequest = requestAnimFrame(moveFn, this, true);
 
 	  		preventDefault(e);
@@ -67693,6 +68033,7 @@
 	(($, window, document) => {
 	    // TIMEPICKER PUBLIC CLASS DEFINITION
 	    const Timepicker = function (element, options) {
+	        this.languages = navigator.languages;
 	        this.widget = '';
 	        this.$element = $(element);
 	        this.defaultTime = options.defaultTime;
@@ -67704,8 +68045,6 @@
 	        this.secondStep = options.secondStep;
 	        this.snapToStep = options.snapToStep;
 	        this.showInputs = options.showInputs;
-	        this.showMeridian = options.showMeridian;
-	        this.meridianNotation = options.meridianNotation;
 	        this.showSeconds = options.showSeconds;
 	        this.template = options.template;
 	        this.appendWidgetTo = options.appendWidgetTo;
@@ -67733,6 +68072,17 @@
 	    };
 
 	    Timepicker.prototype = {
+	        get showMeridian() {
+	            return time.hour12;
+	        },
+
+	        get meridianNotation() {
+	            return {
+	                am: time.amNotation,
+	                pm: time.pmNotation,
+	            };
+	        },
+
 	        constructor: Timepicker,
 	        _init() {
 	            const self = this;
@@ -67786,6 +68136,9 @@
 	                    'click',
 	                    $.proxy(this.widgetClick, this)
 	                );
+
+	                this.meridianColumns =
+	                    this.$widget[0].querySelectorAll('.meridian-column');
 	            } else {
 	                this.$widget = false;
 	            }
@@ -68033,19 +68386,13 @@
                 this.showSeconds
                     ? `<td class="separator">&nbsp;</td><td><a href="#" data-action="incrementSecond"><span class="${this.icons.up}"></span></a></td>`
                     : ''
-            }${
-                this.showMeridian
-                    ? `<td class="separator">&nbsp;</td><td class="meridian-column"><a href="#" data-action="toggleMeridian"><span class="${this.icons.up}"></span></a></td>`
-                    : ''
-            }</tr><tr><td>${hourTemplate}</td> <td class="separator">:</td><td>${minuteTemplate}</td> ${
+            }<td class="separator meridian-column">&nbsp;</td><td class="meridian-column"><a href="#" data-action="toggleMeridian"><span class="${
+                this.icons.up
+            }"></span></a></td></tr><tr><td>${hourTemplate}</td> <td class="separator">:</td><td>${minuteTemplate}</td> ${
                 this.showSeconds
                     ? `<td class="separator">:</td><td>${secondTemplate}</td>`
                     : ''
-            }${
-                this.showMeridian
-                    ? `<td class="separator">&nbsp;</td><td>${meridianTemplate}</td>`
-                    : ''
-            }</tr><tr><td><a href="#" data-action="decrementHour"><span class="${
+            }<td class="separator meridian-column">&nbsp;</td><td class="meridian-column">${meridianTemplate}</td></tr><tr><td><a href="#" data-action="decrementHour"><span class="${
                 this.icons.down
             }"></span></a></td><td class="separator"></td><td><a href="#" data-action="decrementMinute"><span class="${
                 this.icons.down
@@ -68053,11 +68400,9 @@
                 this.showSeconds
                     ? `<td class="separator">&nbsp;</td><td><a href="#" data-action="decrementSecond"><span class="${this.icons.down}"></span></a></td>`
                     : ''
-            }${
-                this.showMeridian
-                    ? `<td class="separator">&nbsp;</td><td><a href="#" data-action="toggleMeridian"><span class="${this.icons.down}"></span></a></td>`
-                    : ''
-            }</tr></table>`;
+            }<td class="separator meridian-column">&nbsp;</td><td class="meridian-column"><a href="#" data-action="toggleMeridian"><span class="${
+                this.icons.down
+            }"></span></a></td></tr></table>`;
 
 	            switch (this.template) {
 	                case 'dropdown':
@@ -68848,6 +69193,21 @@
 	                        .text(this.meridian);
 	                }
 	            }
+
+	            const { showMeridian } = this;
+	            const meridianDisplay = showMeridian ? 'table-cell' : 'none';
+
+	            this.meridianColumns.forEach((column) => {
+	                column.style.display = meridianDisplay;
+	            });
+	        },
+
+	        updateLocalization() {
+	            if (this.languages !== navigator.languages) {
+	                this.languages = navigator.languages;
+	                this.updateFromElementVal();
+	                this.updateWidget();
+	            }
 	        },
 
 	        updateFromWidgetInputs() {
@@ -69116,8 +69476,14 @@
 	     * Updates widget
 	     */
 	    update() {
-	        if (this.element.value !== this.value && this.fakeTimeI) {
-	            jquery(this.fakeTimeI).timepicker('setTime', this.element.value);
+	        if (this.fakeTimeI) {
+	            const $fakeTimeInput = jquery(this.fakeTimeI);
+
+	            if (this.element.value !== this.value) {
+	                $fakeTimeInput.timepicker('setTime', this.element.value);
+	            }
+
+	            $fakeTimeInput.timepicker('updateLocalization');
 	        }
 	    }
 
@@ -69273,6 +69639,7 @@
 	                      )
 	                    : '';
 	        }
+
 	        if (val !== this.value) {
 	            const vals = val.split('T');
 	            const dateVal = vals[0];
@@ -69282,6 +69649,8 @@
 	            this.$fakeDateI.datepicker('setDate', dateVal);
 	            this.$fakeTimeI.timepicker('setTime', timeVal);
 	        }
+
+	        this.$fakeTimeI.timepicker('updateLocalization');
 	    }
 
 	    get originalInputValue() {
@@ -72631,10 +73000,10 @@
 	 * @param {Function} callback
 	 * @param {string} event
 	 */
-	function addEventListener(element, eventName, callback) {
+	function addEventListener$1(element, eventName, callback) {
 	    if (element instanceof Array) {
 	        for (var i = 0; i < element.length; ++i) {
-	            addEventListener(element[i], eventName, callback);
+	            addEventListener$1(element[i], eventName, callback);
 	        }
 	        return;
 	    }
@@ -72645,10 +73014,10 @@
 	 * @param {Array<HTMLElement>|HTMLElement} element
 	 * @param {string} eventName
 	 */
-	function removeEventListener(element, eventName) {
+	function removeEventListener$1(element, eventName) {
 	    if (element instanceof Array) {
 	        for (var i = 0; i < element.length; ++i) {
-	            removeEventListener(element[i], eventName);
+	            removeEventListener$1(element[i], eventName);
 	        }
 	        return;
 	    }
@@ -73082,7 +73451,7 @@
 	        var hoverClasses_1 = store(sortableContainer).getConfig('hoverClass').split(' ');
 	        // add class on hover
 	        if (enable === true) {
-	            addEventListener(sortableContainer, 'mousemove', throttle(function (event) {
+	            addEventListener$1(sortableContainer, 'mousemove', throttle(function (event) {
 	                // check of no mouse button was pressed when mousemove started == no drag
 	                if (event.buttons === 0) {
 	                    filter(sortableContainer.children, store(sortableContainer).getConfig('items')).forEach(function (item) {
@@ -73097,7 +73466,7 @@
 	                }
 	            }, store(sortableContainer).getConfig('throttleTime')));
 	            // remove class on leave
-	            addEventListener(sortableContainer, 'mouseleave', function () {
+	            addEventListener$1(sortableContainer, 'mouseleave', function () {
 	                filter(sortableContainer.children, store(sortableContainer).getConfig('items')).forEach(function (item) {
 	                    var _a;
 	                    (_a = item.classList).remove.apply(_a, hoverClasses_1);
@@ -73106,8 +73475,8 @@
 	            // remove events
 	        }
 	        else {
-	            removeEventListener(sortableContainer, 'mousemove');
-	            removeEventListener(sortableContainer, 'mouseleave');
+	            removeEventListener$1(sortableContainer, 'mousemove');
+	            removeEventListener$1(sortableContainer, 'mouseleave');
 	        }
 	    }
 	});
@@ -73138,21 +73507,21 @@
 	 * @param {Array|NodeList} items
 	 */
 	var removeItemEvents = function (items) {
-	    removeEventListener(items, 'dragstart');
-	    removeEventListener(items, 'dragend');
-	    removeEventListener(items, 'dragover');
-	    removeEventListener(items, 'dragenter');
-	    removeEventListener(items, 'drop');
-	    removeEventListener(items, 'mouseenter');
-	    removeEventListener(items, 'mouseleave');
+	    removeEventListener$1(items, 'dragstart');
+	    removeEventListener$1(items, 'dragend');
+	    removeEventListener$1(items, 'dragover');
+	    removeEventListener$1(items, 'dragenter');
+	    removeEventListener$1(items, 'drop');
+	    removeEventListener$1(items, 'mouseenter');
+	    removeEventListener$1(items, 'mouseleave');
 	};
 	// Remove container events
 	var removeContainerEvents = function (originContainer, previousContainer) {
 	    if (originContainer) {
-	        removeEventListener(originContainer, 'dragleave');
+	        removeEventListener$1(originContainer, 'dragleave');
 	    }
 	    if (previousContainer && (previousContainer !== originContainer)) {
-	        removeEventListener(previousContainer, 'dragleave');
+	        removeEventListener$1(previousContainer, 'dragleave');
 	    }
 	};
 	/**
@@ -73231,15 +73600,15 @@
 	    // disable adding hover class
 	    enableHoverClass(sortableElement, false);
 	    // remove event handlers & data from sortable
-	    removeEventListener(sortableElement, 'dragover');
-	    removeEventListener(sortableElement, 'dragenter');
-	    removeEventListener(sortableElement, 'dragstart');
-	    removeEventListener(sortableElement, 'dragend');
-	    removeEventListener(sortableElement, 'drop');
+	    removeEventListener$1(sortableElement, 'dragover');
+	    removeEventListener$1(sortableElement, 'dragenter');
+	    removeEventListener$1(sortableElement, 'dragstart');
+	    removeEventListener$1(sortableElement, 'dragend');
+	    removeEventListener$1(sortableElement, 'drop');
 	    // remove event data from sortable
 	    removeSortableData(sortableElement);
 	    // remove event handlers & data from items
-	    removeEventListener(handles, 'mousedown');
+	    removeEventListener$1(handles, 'mousedown');
 	    removeItemEvents(items);
 	    removeItemData(items);
 	    removeContainerEvents(originContainer, previousContainer);
@@ -73266,7 +73635,7 @@
 	    if (opts.disableIEFix === false) {
 	        var spanEl = (document || window.document).createElement('span');
 	        if (typeof spanEl.dragDrop === 'function') {
-	            addEventListener(handles, 'mousedown', function () {
+	            addEventListener$1(handles, 'mousedown', function () {
 	                if (items.indexOf(this) !== -1) {
 	                    this.dragDrop();
 	                }
@@ -73292,7 +73661,7 @@
 	    addAttribute(sortableElement, 'aria-dropeffect', 'none');
 	    addData(sortableElement, '_disabled', 'true');
 	    addAttribute(handles, 'draggable', 'false');
-	    removeEventListener(handles, 'mousedown');
+	    removeEventListener$1(handles, 'mousedown');
 	    enableHoverClass(sortableElement, false);
 	};
 	/**
@@ -73308,11 +73677,11 @@
 	    // remove event handlers from items
 	    removeItemEvents(items);
 	    removeContainerEvents(originContainer, previousContainer);
-	    removeEventListener(handles, 'mousedown');
+	    removeEventListener$1(handles, 'mousedown');
 	    // remove event handlers from sortable
-	    removeEventListener(sortableElement, 'dragover');
-	    removeEventListener(sortableElement, 'dragenter');
-	    removeEventListener(sortableElement, 'drop');
+	    removeEventListener$1(sortableElement, 'dragover');
+	    removeEventListener$1(sortableElement, 'dragenter');
+	    removeEventListener$1(sortableElement, 'drop');
 	};
 	/**
 	 * Public sortable object
@@ -73389,7 +73758,7 @@
 	         Handle is set at the sortableElement level as it will bubble up
 	         from the item
 	         */
-	        addEventListener(sortableElement, 'dragstart', function (e) {
+	        addEventListener$1(sortableElement, 'dragstart', function (e) {
 	            // ignore dragstart events
 	            var target = getEventTarget(e);
 	            if (target.isSortable === true) {
@@ -73430,7 +73799,7 @@
 	        /*
 	         We are capturing targetSortable before modifications with 'dragenter' event
 	        */
-	        addEventListener(sortableElement, 'dragenter', function (e) {
+	        addEventListener$1(sortableElement, 'dragenter', function (e) {
 	            var target = getEventTarget(e);
 	            var sortableContainer = findSortable(target, e);
 	            if (sortableContainer && sortableContainer !== previousContainer) {
@@ -73454,7 +73823,7 @@
 	                        originalTarget: target
 	                    }
 	                }));
-	                addEventListener(sortableContainer, 'dragleave', function (e) {
+	                addEventListener$1(sortableContainer, 'dragleave', function (e) {
 	                    // TODO: rename outTarget to be more self-explanatory
 	                    // e.fromElement for very old browsers, similar to relatedTarget
 	                    var outTarget = e.relatedTarget || e.fromElement;
@@ -73483,7 +73852,7 @@
 	         * Fires each time dragEvent end, or ESC pressed
 	         * We are using it to clean up any draggable elements and placeholders
 	         */
-	        addEventListener(sortableElement, 'dragend', function (e) {
+	        addEventListener$1(sortableElement, 'dragend', function (e) {
 	            if (!dragging) {
 	                return;
 	            }
@@ -73522,7 +73891,7 @@
 	         * Drop Event - https://developer.mozilla.org/en-US/docs/Web/Events/drop
 	         * Fires when valid drop target area is hit
 	         */
-	        addEventListener(sortableElement, 'drop', function (e) {
+	        addEventListener$1(sortableElement, 'drop', function (e) {
 	            if (!listsConnected(sortableElement, dragging.parentElement)) {
 	                return;
 	            }
@@ -73702,8 +74071,8 @@
 	            e.dataTransfer.dropEffect = store(sortableElement).getConfig('copy') === true ? 'copy' : 'move';
 	            debouncedDragOverEnter(sortableElement, element, e.pageX, e.pageY);
 	        };
-	        addEventListener(listItems.concat(sortableElement), 'dragover', onDragOverEnter);
-	        addEventListener(listItems.concat(sortableElement), 'dragenter', onDragOverEnter);
+	        addEventListener$1(listItems.concat(sortableElement), 'dragover', onDragOverEnter);
+	        addEventListener$1(listItems.concat(sortableElement), 'dragenter', onDragOverEnter);
 	    });
 	    return sortableElements;
 	}
@@ -76051,6 +76420,8 @@
 	    let loadErrors = [];
 	    const that = this;
 
+	    initTimeLocalization(this.view.html);
+
 	    this.toc = this.addModule(tocModule);
 	    this.pages = this.addModule(pageModule);
 	    this.langs = this.addModule(languageModule);
@@ -77191,7 +77562,7 @@
 	 * @type {string}
 	 * @default
 	 */
-	Form.requiredTransformerVersion = '2.1.5';
+	Form.requiredTransformerVersion = '2.1.6';
 
 	function extendXPath( Evaluator ) {
 
