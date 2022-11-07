@@ -657,8 +657,7 @@ class XForm {
                     ( appearanceVal && appearanceVal.trim().split( ' ' ).includes( 'minimal' ) );
             } )
             .map( bind => this._nodeName( bind ) )
-            .forEach( nodeName => errors.push( `Found bind with external attribute with "signature" value for question "${nodeName}" that does not ` +
-                    'have the "select" question type with a single option without the minimal appearance.' ) );
+            .forEach( () => errors.push( 'Signature items must be of type "select_multiple" with one option.' ) );
 
         this.binds
             .forEach( bind => {
