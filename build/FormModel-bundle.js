@@ -17,7 +17,7 @@
 
 	var jquery = createCommonjsModule(function (module) {
 	/*!
-	 * jQuery JavaScript Library v3.6.1
+	 * jQuery JavaScript Library v3.6.3
 	 * https://jquery.com/
 	 *
 	 * Includes Sizzle.js
@@ -27,7 +27,7 @@
 	 * Released under the MIT license
 	 * https://jquery.org/license
 	 *
-	 * Date: 2022-08-26T17:52Z
+	 * Date: 2022-12-20T21:28Z
 	 */
 	( function( global, factory ) {
 
@@ -159,7 +159,7 @@
 
 
 	var
-		version = "3.6.1",
+		version = "3.6.3",
 
 		// Define a local copy of jQuery
 		jQuery = function( selector, context ) {
@@ -530,14 +530,14 @@
 	}
 	var Sizzle =
 	/*!
-	 * Sizzle CSS Selector Engine v2.3.6
+	 * Sizzle CSS Selector Engine v2.3.9
 	 * https://sizzlejs.com/
 	 *
 	 * Copyright JS Foundation and other contributors
 	 * Released under the MIT license
 	 * https://js.foundation/
 	 *
-	 * Date: 2021-02-16
+	 * Date: 2022-12-19
 	 */
 	( function( window ) {
 	var i,
@@ -887,6 +887,27 @@
 					}
 
 					try {
+
+						// `qSA` may not throw for unrecognized parts using forgiving parsing:
+						// https://drafts.csswg.org/selectors/#forgiving-selector
+						// like the `:has()` pseudo-class:
+						// https://drafts.csswg.org/selectors/#relational
+						// `CSS.supports` is still expected to return `false` then:
+						// https://drafts.csswg.org/css-conditional-4/#typedef-supports-selector-fn
+						// https://drafts.csswg.org/css-conditional-4/#dfn-support-selector
+						if ( support.cssSupportsSelector &&
+
+							// eslint-disable-next-line no-undef
+							!CSS.supports( "selector(:is(" + newSelector + "))" ) ) {
+
+							// Support: IE 11+
+							// Throw to get to the same code path as an error directly in qSA.
+							// Note: once we only support browser supporting
+							// `CSS.supports('selector(...)')`, we can most likely drop
+							// the `try-catch`. IE doesn't implement the API.
+							throw new Error();
+						}
+
 						push.apply( results,
 							newContext.querySelectorAll( newSelector )
 						);
@@ -1182,6 +1203,31 @@
 				!el.querySelectorAll( ":scope fieldset div" ).length;
 		} );
 
+		// Support: Chrome 105+, Firefox 104+, Safari 15.4+
+		// Make sure forgiving mode is not used in `CSS.supports( "selector(...)" )`.
+		//
+		// `:is()` uses a forgiving selector list as an argument and is widely
+		// implemented, so it's a good one to test against.
+		support.cssSupportsSelector = assert( function() {
+			/* eslint-disable no-undef */
+
+			return CSS.supports( "selector(*)" ) &&
+
+				// Support: Firefox 78-81 only
+				// In old Firefox, `:is()` didn't use forgiving parsing. In that case,
+				// fail this test as there's no selector to test against that.
+				// `CSS.supports` uses unforgiving parsing
+				document.querySelectorAll( ":is(:jqfake)" ) &&
+
+				// `*` is needed as Safari & newer Chrome implemented something in between
+				// for `:has()` - it throws in `qSA` if it only contains an unsupported
+				// argument but multiple ones, one of which is supported, are fine.
+				// We want to play safe in case `:is()` gets the same treatment.
+				!CSS.supports( "selector(:is(*,:jqfake))" );
+
+			/* eslint-enable */
+		} );
+
 		/* Attributes
 		---------------------------------------------------------------------- */
 
@@ -1448,6 +1494,17 @@
 			} );
 		}
 
+		if ( !support.cssSupportsSelector ) {
+
+			// Support: Chrome 105+, Safari 15.4+
+			// `:has()` uses a forgiving selector list as an argument so our regular
+			// `try-catch` mechanism fails to catch `:has()` with arguments not supported
+			// natively like `:has(:contains("Foo"))`. Where supported & spec-compliant,
+			// we now use `CSS.supports("selector(:is(SELECTOR_TO_BE_TESTED))")`, but
+			// outside that we mark `:has` as buggy.
+			rbuggyQSA.push( ":has" );
+		}
+
 		rbuggyQSA = rbuggyQSA.length && new RegExp( rbuggyQSA.join( "|" ) );
 		rbuggyMatches = rbuggyMatches.length && new RegExp( rbuggyMatches.join( "|" ) );
 
@@ -1460,7 +1517,14 @@
 		// As in, an element does not contain itself
 		contains = hasCompare || rnative.test( docElem.contains ) ?
 			function( a, b ) {
-				var adown = a.nodeType === 9 ? a.documentElement : a,
+
+				// Support: IE <9 only
+				// IE doesn't have `contains` on `document` so we need to check for
+				// `documentElement` presence.
+				// We need to fall back to `a` when `documentElement` is missing
+				// as `ownerDocument` of elements within `<template/>` may have
+				// a null one - a default behavior of all modern browsers.
+				var adown = a.nodeType === 9 && a.documentElement || a,
 					bup = b && b.parentNode;
 				return a === bup || !!( bup && bup.nodeType === 1 && (
 					adown.contains ?
@@ -2250,7 +2314,7 @@
 				return elem.nodeName.toLowerCase() === "input" &&
 					elem.type === "text" &&
 
-					// Support: IE<8
+					// Support: IE <10 only
 					// New HTML5 attribute values (e.g., "search") appear with elem.type === "text"
 					( ( attr = elem.getAttribute( "type" ) ) == null ||
 						attr.toLowerCase() === "text" );
@@ -6616,17 +6680,37 @@
 		//   .css('filter') (IE 9 only, trac-12537)
 		//   .css('--customProperty) (gh-3144)
 		if ( computed ) {
+
+			// Support: IE <=9 - 11+
+			// IE only supports `"float"` in `getPropertyValue`; in computed styles
+			// it's only available as `"cssFloat"`. We no longer modify properties
+			// sent to `.css()` apart from camelCasing, so we need to check both.
+			// Normally, this would create difference in behavior: if
+			// `getPropertyValue` returns an empty string, the value returned
+			// by `.css()` would be `undefined`. This is usually the case for
+			// disconnected elements. However, in IE even disconnected elements
+			// with no styles return `"none"` for `getPropertyValue( "float" )`
 			ret = computed.getPropertyValue( name ) || computed[ name ];
 
-			// trim whitespace for custom property (issue gh-4926)
-			if ( isCustomProp ) {
+			if ( isCustomProp && ret ) {
 
-				// rtrim treats U+000D CARRIAGE RETURN and U+000C FORM FEED
+				// Support: Firefox 105+, Chrome <=105+
+				// Spec requires trimming whitespace for custom properties (gh-4926).
+				// Firefox only trims leading whitespace. Chrome just collapses
+				// both leading & trailing whitespace to a single space.
+				//
+				// Fall back to `undefined` if empty string returned.
+				// This collapses a missing definition with property defined
+				// and set to an empty string but there's no standard API
+				// allowing us to differentiate them without a performance penalty
+				// and returning `undefined` aligns with older jQuery.
+				//
+				// rtrimCSS treats U+000D CARRIAGE RETURN and U+000C FORM FEED
 				// as whitespace while CSS does not, but this is not a problem
 				// because CSS preprocessing replaces them with U+000A LINE FEED
 				// (which *is* CSS whitespace)
 				// https://www.w3.org/TR/css-syntax-3/#input-preprocessing
-				ret = ret.replace( rtrimCSS, "$1" );
+				ret = ret.replace( rtrimCSS, "$1" ) || undefined;
 			}
 
 			if ( ret === "" && !isAttached( elem ) ) {
@@ -11676,7 +11760,7 @@
 	 * deviates from JavaRosa by producing 'Invalid Date' rather than `NaN`,
 	 * for consistency with historical behavior.
 	 */
-	class BlankDate$1 extends Date {
+	let BlankDate$1 = class BlankDate extends Date {
 	  constructor() {
 	    super(NaN);
 	  }
@@ -11684,7 +11768,7 @@
 	  toString() {
 	    return '';
 	  }
-	}
+	};
 
 	/**
 	 * Converts a native Date UTC String to a RFC 3339-compliant date string with local offsets
@@ -20775,7 +20859,7 @@
 
 	var _nodeResolve_empty$1 = /*#__PURE__*/Object.freeze({
 		__proto__: null,
-		'default': _nodeResolve_empty
+		default: _nodeResolve_empty
 	});
 
 	var require$$7 = getCjsExportFromNamespace(_nodeResolve_empty$1);
@@ -42410,12 +42494,20 @@
 	}
 
 	/**
+	 * @typedef RemoveRepeatDetail
+	 * @property {object} [initRepeatInfo]
+	 * @property {string} [initRepeatInfo.repeatPath]
+	 * @property {number} [initRepeatInfo.repeatIndex]
+	 */
+
+	/**
 	 * Remove repeat event.
 	 *
+	 * @param {RemoveRepeatDetail} [detail]
 	 * @return {CustomEvent} Custom "removerepeat" event (bubbling)
 	 */
-	function RemoveRepeat() {
-	    return new CustomEvent('removerepeat', { bubbles: true });
+	function RemoveRepeat(detail) {
+	    return new CustomEvent('removerepeat', { detail, bubbles: true });
 	}
 
 	/**
@@ -47313,9 +47405,13 @@
 	        $repeat.remove();
 	        that.numberRepeats(repeatInfo);
 	        that.toggleButtons(repeatInfo);
+
+	        const detail = this.form.initialized
+	            ? {}
+	            : { initRepeatInfo: { repeatPath, repeatIndex } };
 	        // Trigger the removerepeat on the next repeat or repeat-info(always present)
 	        // so that removerepeat handlers know where the repeat was removed
-	        $next[0].dispatchEvent(events.RemoveRepeat());
+	        $next[0].dispatchEvent(events.RemoveRepeat(detail));
 	        // Now remove the data node
 	        that.form.model.node(repeatPath, repeatIndex).remove();
 	    },
@@ -48182,6 +48278,7 @@
 	const range$1 = document.createRange();
 
 	/**
+	 * @template {HTMLElement} [Element=HTMLElement]
 	 * A Widget class that can be extended to provide some of the basic widget functionality out of the box.
 	 */
 	class Widget {
@@ -49441,14 +49538,14 @@
 
 	var leafletSrc = createCommonjsModule(function (module, exports) {
 	/* @preserve
-	 * Leaflet 1.9.2, a JS library for interactive maps. https://leafletjs.com
+	 * Leaflet 1.9.3, a JS library for interactive maps. https://leafletjs.com
 	 * (c) 2010-2022 Vladimir Agafonkin, (c) 2010-2011 CloudMade
 	 */
 
 	(function (global, factory) {
 	  factory(exports) ;
 	})(commonjsGlobal, (function (exports) {
-	  var version = "1.9.2";
+	  var version = "1.9.3";
 
 	  /*
 	   * @namespace Util
@@ -49837,6 +49934,7 @@
 	  };
 
 	  function checkDeprecatedMixinEvents(includes) {
+	  	/* global L: true */
 	  	if (typeof L === 'undefined' || !L || !L.Mixin) { return; }
 
 	  	includes = isArray(includes) ? includes : [includes];
@@ -51605,7 +51703,7 @@
 	  	}
 	  	if (!handle[type]) {
 	  		console.warn('wrong event specified:', type);
-	  		return L.Util.falseFn;
+	  		return falseFn;
 	  	}
 	  	handler = handle[type].bind(this, handler);
 	  	obj.addEventListener(pEvent[type], handler, false);
@@ -53663,7 +53761,7 @@
 
 	  		var position = getStyle(container, 'position');
 
-	  		if (position !== 'absolute' && position !== 'relative' && position !== 'fixed') {
+	  		if (position !== 'absolute' && position !== 'relative' && position !== 'fixed' && position !== 'sticky') {
 	  			container.style.position = 'relative';
 	  		}
 
@@ -54094,7 +54192,7 @@
 	  		// If offset is less than a pixel, ignore.
 	  		// This prevents unstable projections from getting into
 	  		// an infinite loop of tiny offsets.
-	  		if (offset.round().equals([0, 0])) {
+	  		if (Math.abs(offset.x) <= 1 && Math.abs(offset.y) <= 1) {
 	  			return center;
 	  		}
 
@@ -54653,13 +54751,7 @@
 	  			this._map.on('click', this.collapse, this);
 
 	  			on(container, {
-	  				mouseenter: function () {
-	  					on(section, 'click', preventDefault);
-	  					this.expand();
-	  					setTimeout(function () {
-	  						off(section, 'click', preventDefault);
-	  					});
-	  				},
+	  				mouseenter: this._expandSafely,
 	  				mouseleave: this.collapse
 	  			}, this);
 	  		}
@@ -54669,8 +54761,18 @@
 	  		link.title = 'Layers';
 	  		link.setAttribute('role', 'button');
 
-	  		on(link, 'click', preventDefault); // prevent link function
-	  		on(link, 'focus', this.expand, this);
+	  		on(link, {
+	  			keydown: function (e) {
+	  				if (e.keyCode === 13) {
+	  					this._expandSafely();
+	  				}
+	  			},
+	  			// Certain screen readers intercept the key event and instead send a click event
+	  			click: function (e) {
+	  				preventDefault(e);
+	  				this._expandSafely();
+	  			}
+	  		}, this);
 
 	  		if (!collapsed) {
 	  			this.expand();
@@ -54875,6 +54977,15 @@
 	  			this.expand();
 	  		}
 	  		return this;
+	  	},
+
+	  	_expandSafely: function () {
+	  		var section = this._section;
+	  		on(section, 'click', preventDefault);
+	  		this.expand();
+	  		setTimeout(function () {
+	  			off(section, 'click', preventDefault);
+	  		});
 	  	}
 
 	  });
@@ -58556,7 +58667,7 @@
 	  	}
 
 	  	if (!levelsDeep && closed) {
-	  		coords.push(coords[0]);
+	  		coords.push(coords[0].slice());
 	  	}
 
 	  	return coords;
@@ -59169,7 +59280,7 @@
 	  	},
 
 	  	initialize: function (options, source) {
-	  		if (options && (options instanceof L.LatLng || isArray(options))) {
+	  		if (options && (options instanceof LatLng || isArray(options))) {
 	  			this._latlng = toLatLng(options);
 	  			setOptions(this, source);
 	  		} else {
@@ -59722,9 +59833,16 @@
 	  		setPosition(this._container, pos.add(anchor));
 	  	},
 
-	  	_adjustPan: function (e) {
+	  	_adjustPan: function () {
 	  		if (!this.options.autoPan) { return; }
 	  		if (this._map._panAnim) { this._map._panAnim.stop(); }
+
+	  		// We can endlessly recurse if keepInView is set and the view resets.
+	  		// Let's guard against that by exiting early if we're responding to our own autopan.
+	  		if (this._autopanning) {
+	  			this._autopanning = false;
+	  			return;
+	  		}
 
 	  		var map = this._map,
 	  		    marginBottom = parseInt(getStyle(this._container, 'marginBottom'), 10) || 0,
@@ -59760,9 +59878,14 @@
 	  		// @event autopanstart: Event
 	  		// Fired when the map starts autopanning when opening a popup.
 	  		if (dx || dy) {
+	  			// Track that we're autopanning, as this function will be re-ran on moveend
+	  			if (this.options.keepInView) {
+	  				this._autopanning = true;
+	  			}
+
 	  			map
 	  			    .fire('autopanstart')
-	  			    .panBy([dx, dy], {animate: e && e.type === 'moveend'});
+	  			    .panBy([dx, dy]);
 	  		}
 	  	},
 
@@ -59876,10 +59999,14 @@
 	  	// @method openPopup(latlng?: LatLng): this
 	  	// Opens the bound popup at the specified `latlng` or at the default popup anchor if no `latlng` is passed.
 	  	openPopup: function (latlng) {
-	  		if (this._popup && this._popup._prepareOpen(latlng || this._latlng)) {
-
-	  			// open the popup on the map
-	  			this._popup.openOn(this._map);
+	  		if (this._popup) {
+	  			if (!(this instanceof FeatureGroup)) {
+	  				this._popup._source = this;
+	  			}
+	  			if (this._popup._prepareOpen(latlng || this._latlng)) {
+	  				// open the popup on the map
+	  				this._popup.openOn(this._map);
+	  			}
 	  		}
 	  		return this;
 	  	},
@@ -60277,14 +60404,19 @@
 	  	// @method openTooltip(latlng?: LatLng): this
 	  	// Opens the bound tooltip at the specified `latlng` or at the default tooltip anchor if no `latlng` is passed.
 	  	openTooltip: function (latlng) {
-	  		if (this._tooltip && this._tooltip._prepareOpen(latlng)) {
-	  			// open the tooltip on the map
-	  			this._tooltip.openOn(this._map);
+	  		if (this._tooltip) {
+	  			if (!(this instanceof FeatureGroup)) {
+	  				this._tooltip._source = this;
+	  			}
+	  			if (this._tooltip._prepareOpen(latlng)) {
+	  				// open the tooltip on the map
+	  				this._tooltip.openOn(this._map);
 
-	  			if (this.getElement) {
-	  				this._setAriaDescribedByOnLayer(this);
-	  			} else if (this.eachLayer) {
-	  				this.eachLayer(this._setAriaDescribedByOnLayer, this);
+	  				if (this.getElement) {
+	  					this._setAriaDescribedByOnLayer(this);
+	  				} else if (this.eachLayer) {
+	  					this.eachLayer(this._setAriaDescribedByOnLayer, this);
+	  				}
 	  			}
 	  		}
 	  		return this;
@@ -63416,10 +63548,15 @@
 	  					offset = toPoint(offset).multiplyBy(3);
 	  				}
 
-	  				map.panBy(offset);
-
 	  				if (map.options.maxBounds) {
-	  					map.panInsideBounds(map.options.maxBounds);
+	  					offset = map._limitOffset(toPoint(offset), map.options.maxBounds);
+	  				}
+
+	  				if (map.options.worldCopyJump) {
+	  					var newLatLng = map.wrapLatLng(map.unproject(map.project(map.getCenter()).add(offset)));
+	  					map.panTo(newLatLng);
+	  				} else {
+	  					map.panBy(offset);
 	  				}
 	  			}
 	  		} else if (key in this._zoomKeys) {
@@ -63954,7 +64091,7 @@
 	     * @type {string}
 	     */
 	    static get selector() {
-	        return ':is(.question input[data-type-xml="geopoint"], .question input[data-type-xml="geotrace"], .question input[data-type-xml="geoshape"]):not([data-setvalue], [data-setgeopoint])';
+	        return '.question input[data-type-xml="geopoint"]:not([data-setvalue], [data-setgeopoint]), .question input[data-type-xml="geotrace"]:not([data-setvalue], [data-setgeopoint]), .question input[data-type-xml="geoshape"]:not([data-setvalue], [data-setgeopoint])';
 	    }
 
 	    /**
@@ -71142,10 +71279,13 @@
 	            this._handleFiles(existingFilename);
 	        }
 
+	        // This listener serves to capture a drawing when the submit button is clicked within [DELAY]
+	        // milliseconds after the last stroke ended. Note that this could be the entire drawing/signature.
+	        canvas.addEventListener('blur', this._forceUpdate.bind(this));
+
 	        // We built a delay in saving on stroke "end", to avoid excessive updating
 	        // This event does not fire on touchscreens for which we use the .hide-canvas-btn click
 	        // to do the same thing.
-	        canvas.addEventListener('blur', this._forceUpdate.bind(this));
 
 	        this.initialize = fileManager.init().then(() => {
 	            that.pad = new SignaturePad(canvas, {
@@ -71470,7 +71610,7 @@
 	        const that = this;
 
 	        if (this.element.value) {
-	            // This discombulated line is to help the i18next parser pick up all 3 keys.
+	            // This discombobulated line is to help the i18next parser pick up all 3 keys.
 	            const item =
 	                this.props.type === 'signature'
 	                    ? t('drawwidget.signature')
@@ -71491,6 +71631,11 @@
 	                    delete that.element.dataset.loadedUrl;
 	                    that.element.dataset.filenamePostfix = '';
 	                    jquery(that.element).val('').trigger('change');
+	                    if (that._updateWithDelay) {
+	                        // This ensures that an emptied canvas will not be considered a drawing to be captured
+	                        // in _forceUpdate, e.g. after the blur event fires on an empty canvas see issue #924
+	                        that._updateWithDelay = null;
+	                    }
 	                    // Annotate file input
 	                    that.$widget
 	                        .find('input[type=file]')
@@ -74677,6 +74822,237 @@
 	}
 
 	/**
+	 * @abstract
+	 * @extends {Widget<HTMLInputElement>}
+	 */
+	class NumberInput extends Widget {
+	    /**
+	     * @abstract
+	     */
+	    static get numberType() {
+	        throw new Error('Not implemented');
+	    }
+
+	    static get selector() {
+	        return `.question input[type="number"][data-type-xml="${this.numberType}"]`;
+	    }
+
+	    /**
+	     * @param {HTMLInputElemnt} input
+	     */
+	    static condition(input) {
+	        const isRange =
+	            input.hasAttribute('min') &&
+	            input.hasAttribute('max') &&
+	            input.hasAttribute('step');
+
+	        if (isRange || input.classList.contains('ignore')) {
+	            return false;
+	        }
+
+	        const question = input.closest('.question');
+
+	        return [
+	            'or-appearance-analog-scale',
+	            'or-appearance-my-widget',
+	            'or-appearance-distress',
+	            'or-appearance-rating',
+	        ].every((className) => !question.classList.contains(className));
+	    }
+
+	    get languages() {
+	        const formLanguage = this.languageSelect?.value;
+
+	        let validFormLanguage;
+
+	        try {
+	            Intl.getCanonicalLocales(formLanguage);
+
+	            validFormLanguage = formLanguage;
+	        } catch {
+	            // If this fails, the form's selected language is likely not a valid
+	            // code and will cause all other `Intl` usage to fail.
+	        }
+
+	        return [validFormLanguage, ...navigator.languages].filter(
+	            (language) => language != null
+	        );
+	    }
+
+	    get language() {
+	        return this.languages[0] ?? navigator.language;
+	    }
+
+	    /** @type {Set<string>} */
+	    get decimalCharacters() {
+	        return new Set();
+	    }
+
+	    get pattern() {
+	        const { decimalCharacters } = this;
+	        const decimalPattern =
+	            decimalCharacters.size === 0
+	                ? ''
+	                : `([${Array.from(decimalCharacters).join('')}]\\d+)?`;
+	        const pattern = `^-?\\d+${decimalPattern}$`;
+
+	        this.element.setAttribute('pattern', pattern);
+
+	        return new RegExp(pattern);
+	    }
+
+	    get characterPattern() {
+	        const { decimalCharacters } = this;
+
+	        return new RegExp(`[-0-9${Array.from(decimalCharacters).join('')}]`);
+	    }
+
+	    get value() {
+	        return this.element.value;
+	    }
+
+	    set value(value) {
+	        this.element.value = value;
+	    }
+
+	    /**
+	     * @param {HTMLInputElement} input
+	     * @param {any} options
+	     */
+	    constructor(input, options) {
+	        super(input, options);
+
+	        const formElement = input.closest('form.or');
+
+	        /** @type {HTMLSelectElement | null} */
+	        this.languageSelect =
+	            formElement.parentElement?.querySelector('#form-languages');
+
+	        let { characterPattern } = this;
+
+	        const question = inputHelper.getWrapNode(input);
+	        const message = document.createElement('div');
+
+	        message.classList.add('invalid-value-msg', 'active');
+
+	        question.setAttribute('lang', this.language);
+	        question.append(message);
+
+	        this.question = question;
+	        this.message = message;
+
+	        this.setReformattedValue(input.valueAsNumber);
+	        this.setValidity();
+
+	        const languageChanged = () => {
+	            // Important: this value may become invalid if it isn't accessed
+	            // before setting `lang`. This repros in Firefox if:
+	            //
+	            // 1. Your default language is English
+	            // 2. Set a decimal value
+	            // 3. Switch to French
+	            // 4. Switch back to English
+	            const { valueAsNumber } = input;
+
+	            characterPattern = this.characterPattern;
+	            question.setAttribute('lang', this.language);
+	            this.setReformattedValue(valueAsNumber);
+	            this.setValidity();
+	        };
+
+	        formElement.addEventListener(
+	            events.ChangeLanguage().type,
+	            languageChanged
+	        );
+	        window.addEventListener('languagechange', languageChanged);
+
+	        input.addEventListener('keydown', (event) => {
+	            const { ctrlKey, isComposing, key, metaKey } = event;
+
+	            if (
+	                ctrlKey ||
+	                metaKey ||
+	                (key.length > 1 && key !== 'Spacebar') ||
+	                (!isComposing && characterPattern.test(event.key))
+	            ) {
+	                return true;
+	            }
+
+	            event.preventDefault();
+	            event.stopPropagation();
+	        });
+
+	        input.addEventListener('input', () => {
+	            this.setValidity();
+	        });
+	    }
+
+	    /**
+	     * @param {number} value
+	     */
+	    setReformattedValue(value) {
+	        const { element, pattern } = this;
+
+	        element.removeAttribute('pattern');
+	        element.value = '';
+
+	        if (!Number.isNaN(value)) {
+	            element.value = value;
+	        }
+
+	        element.setAttribute('pattern', pattern);
+	    }
+
+	    setValidity() {
+	        const { element, message, question } = this;
+
+	        const isValid = element.checkValidity();
+
+	        question.classList.toggle('invalid-value', !isValid);
+	        message.innerText = isValid ? '' : t('constraint.invalid');
+	        this.isValid = isValid;
+	    }
+	}
+
+	class DecimalInput extends NumberInput {
+	    static get numberType() {
+	        return 'decimal';
+	    }
+
+	    get decimalCharacters() {
+	        const locales = Intl.getCanonicalLocales(this.languages);
+	        const formatter = Intl.NumberFormat(locales);
+	        const decimal = formatter
+	            .formatToParts(0.1)
+	            .find(({ type }) => type === 'decimal').value;
+
+	        return new Set([...super.decimalCharacters, '.', decimal]);
+	    }
+
+	    get value() {
+	        return super.value;
+	    }
+
+	    set value(value) {
+	        super.value = value;
+	    }
+	}
+
+	class IntegerInput extends NumberInput {
+	    static get numberType() {
+	        return 'int';
+	    }
+
+	    get value() {
+	        return super.value;
+	    }
+
+	    set value(value) {
+	        super.value = value;
+	    }
+	}
+
+	/**
 	 * A collection of all available widgets
 	 *
 	 * @module widgets
@@ -74714,6 +75090,8 @@
 	    RatingWidget,
 	    TextPrintWidget,
 	    ThousandsSeparatorWidget,
+	    DecimalInput,
+	    IntegerInput,
 	];
 
 	/**
@@ -75525,7 +75903,10 @@
 	                        dataNodes.includes(node)
 	                    )[0];
 	                    props.index = dataNodes.indexOf(dataNode);
-	                    this._updateCalc(control, props, emptyNonRelevant);
+
+	                    if (props.index > -1) {
+	                        this._updateCalc(control, props, emptyNonRelevant);
+	                    }
 	                } else if (control.type === 'hidden') {
 	                    /*
 	                     * This case is the consequence of the  decision to place calculated items without a visible form control,
@@ -75995,122 +76376,6 @@
 	};
 
 	/**
-	 * @module mask
-	 */
-
-	const KEYBOARD_CUT_PASTE = 'xvc';
-
-	var maskModule = {
-	    init() {
-	        /*
-	         * These are hardcoded number input masks. The approach will be different if we
-	         * ever add complex user-defined input masks.
-	         */
-	        this._setNumberMask(
-	            '[data-type-xml="int"]',
-	            /^(-?[0-9]+$)/,
-	            '-0123456789'
-	        );
-	        this._setNumberMask(
-	            '[data-type-xml="decimal"]',
-	            /^(-?[0-9]+[.,]?[0-9]*$)/,
-	            '-0123456789.,'
-	        );
-	    },
-
-	    /**
-	     * @param {string} selector - selector of elements to apply mask to
-	     * @param {string} validRegex - regular expression for valid values
-	     * @param {string} allowedChars - string of allowed characters
-	     */
-	    _setNumberMask(selector, validRegex, allowedChars) {
-	        const form = this.form.view.html;
-
-	        form.addEventListener('keydown', (event) => {
-	            if (event.target.matches(selector)) {
-	                // The "key" property is the correct standards-compliant property to use
-	                // but needs some corrections for non-standard-compliant IE behavior.
-	                if (
-	                    this._isNotPrintableKey(event) ||
-	                    this._isKeyboardCutPaste(event) ||
-	                    allowedChars.indexOf(event.key) !== -1
-	                ) {
-	                    return true;
-	                }
-	                event.preventDefault();
-	                event.stopPropagation();
-	            }
-	        });
-
-	        form.addEventListener('paste', (event) => {
-	            if (event.target.matches(selector)) {
-	                const val = getPasteData(event);
-	                // HTML number input fields will trim the pasted value automatically.
-	                if (val && validRegex.test(val.trim())) {
-	                    // Note that event.target.value will be empty if the pasted value is not a valid number (except in IE11).
-	                    // In that case the paste action has the same result as pasting an empty value, ie
-	                    // clearing any existing value.
-	                    return true;
-	                }
-
-	                event.target.value = '';
-	                event.target.dispatchEvent(events.Change());
-
-	                event.preventDefault();
-	                event.stopPropagation();
-	            }
-	        });
-	        /*
-	         * Workaround for most browsers keeping invalid numbers visible in the input without a means to access the invalid value.
-	         * E.g. see https://bugs.chromium.org/p/chromium/issues/detail?id=178437&can=2&q=178437&colspec=ID%20Pri%20M%20Stars%20ReleaseBlock%20Component%20Status%20Owner%20Summary%20OS%20Modified
-	         *
-	         * A much more intelligent way to solve the problem would be to add a feedback loop from the Model to the input that would
-	         * correct (a converted number) or empty (an invalid number). https://github.com/enketo/enketo-core/issues/407
-	         */
-	        form.addEventListener('blur', (event) => {
-	            if (event.target.matches(selector)) {
-	                // proper browsers:
-	                if (
-	                    typeof event.target.validity !== 'undefined' &&
-	                    typeof event.target.validity.badInput !== 'undefined' &&
-	                    event.target.validity.badInput
-	                ) {
-	                    event.target.value = '';
-	                }
-	                // IE11 (no validity.badInput support, but does give access to invalid number with event.target.value)
-	                else if (
-	                    typeof event.target.validity.badInput === 'undefined' &&
-	                    event.target.value &&
-	                    !validRegex.test(event.target.value.trim())
-	                ) {
-	                    event.target.value = '';
-	                }
-	            }
-	        });
-	    },
-
-	    // Using the (assumed) fact that a non-printable character key always has length > 1
-	    // IE11: non-confirming 'Spacebar'
-	    /**
-	     * @param {Event} e - event
-	     * @return {boolean} whether key is printable
-	     */
-	    _isNotPrintableKey(e) {
-	        return e.key.length > 1 && e.key !== 'Spacebar';
-	    },
-
-	    /**
-	     * @param {Event} e - event
-	     * @return {boolean} whether event is a paste event
-	     */
-	    _isKeyboardCutPaste(e) {
-	        return (
-	            KEYBOARD_CUT_PASTE.indexOf(e.key) !== -1 && (e.metaKey || e.ctrlKey)
-	        );
-	    },
-	};
-
-	/**
 	 * @module readonly
 	 */
 
@@ -76224,7 +76489,7 @@
 
 	    this.nonRepeats = {};
 	    this.all = {};
-	    this.options = typeof options !== 'object' ? {} : options;
+	    this.options = options ?? {};
 
 	    this.view = {
 	        $: $form,
@@ -76435,7 +76700,6 @@
 	    this.itemset = this.addModule(itemsetModule);
 	    this.calc = this.addModule(calculationModule);
 	    this.required = this.addModule(requiredModule);
-	    this.mask = this.addModule(maskModule);
 	    this.readonly = this.addModule(readonlyModule);
 
 	    // Handle odk-instance-first-load event
@@ -76505,46 +76769,94 @@
 	        // before repeats.init so that template contains role="page" when applicable
 	        this.pages.init();
 
-	        // after radio button data-name setting (now done in XLST)
-	        let repeatsAdded = 0;
+	        const repeatPaths = Array.from(
+	            this.view.html.querySelectorAll('.or-repeat-info')
+	        ).map((element) => element.dataset.name);
 
-	        const tempHandlerAddRepeat = () => {
-	            repeatsAdded += 1;
-	        };
+	        // Builds a cache of known repeat path prefixes `repeat.init`.
+	        // The cache is sorted by length, longest to shortest, to ensure
+	        // that lookups using this cache find the deepest nested repeat
+	        // for a given path.
+	        this.repeatPathPrefixes = repeatPaths
+	            .map((path) => `${path}/`)
+	            .sort((a, b) => b.length - a.length);
 
-	        this.view.html.addEventListener(
-	            events.AddRepeat().type,
-	            tempHandlerAddRepeat
-	        );
+	        if (repeatPaths.length > 0) {
+	            const nestedRepeats = Array.from(
+	                this.view.html.querySelectorAll('.or-repeat .or-repeat')
+	            );
+	            const nestedRepeatPaths = nestedRepeats.map((repeat) =>
+	                repeat.getAttribute('name')
+	            );
+	            const nestedRepeatParents = repeatPaths.filter((prefix) =>
+	                nestedRepeatPaths.some((path) => path.startsWith(prefix))
+	            );
+	            const recalculationPaths = [
+	                ...nestedRepeatParents,
+	                ...nestedRepeatPaths,
+	            ];
 
-	        this.repeatsInitialized = true;
-	        this.repeats.init();
+	            let didRecalculate = false;
 
-	        // Recalculate after repeats are initialized. Previously this was performed in
-	        // `tempHandlerAddRepeat`, but recalculating them all at once is significantly faster.
-	        if (repeatsAdded > 0) {
+	            const addRepeatType = events.AddRepeat().type;
+	            const removeRepeatType = events.RemoveRepeat().type;
+
+	            // after radio button data-name setting (now done in XLST)
+	            // Set temporary event handler to ensure calculations in newly added repeats are run for the first time
+	            const tempHandlerAddRepeat = ({ detail }) => {
+	                const recalculate = recalculationPaths.includes(
+	                    detail.repeatPath
+	                );
+
+	                if (recalculate) {
+	                    this.calc.update(detail);
+	                    didRecalculate = true;
+	                }
+	            };
+	            const tempHandlerRemoveRepeat = (event) => {
+	                const recalculate =
+	                    didRecalculate ||
+	                    recalculationPaths.includes(
+	                        event.detail.initRepeatInfo.repeatPath
+	                    );
+
+	                if (recalculate) {
+	                    this.all = {};
+	                    didRecalculate = false;
+	                }
+	            };
+
+	            if (recalculationPaths.length > 0) {
+	                this.view.html.addEventListener(
+	                    addRepeatType,
+	                    tempHandlerAddRepeat
+	                );
+	                this.view.html.addEventListener(
+	                    removeRepeatType,
+	                    tempHandlerRemoveRepeat
+	                );
+	            }
+
+	            this.repeatsInitialized = true;
+	            this.repeats.init();
+
+	            if (recalculationPaths.length > 0) {
+	                this.view.html.removeEventListener(
+	                    addRepeatType,
+	                    tempHandlerAddRepeat
+	                );
+	                this.view.html.removeEventListener(
+	                    removeRepeatType,
+	                    tempHandlerRemoveRepeat
+	                );
+	            }
+
 	            this.calc.update({
 	                allRepeats: true,
 	                cloned: true,
 	            });
-
 	            this.all = {};
-
-	            // Builds a cache of known repeat path prefixes `repeat.init`.
-	            // The cache is sorted by length, longest to shortest, to ensure
-	            // that lookups using this cache find the deepest nested repeat
-	            // for a given path.
-	            this.repeatPathPrefixes = Array.from(
-	                this.view.html.querySelectorAll('.or-repeat-info')
-	            )
-	                .map((element) => `${element.dataset.name}/`)
-	                .sort((a, b) => b.length - a.length);
 	        }
-
-	        this.view.html.removeEventListener(
-	            events.AddRepeat().type,
-	            tempHandlerAddRepeat
-	        );
 
 	        // after repeats.init, but before itemset.update
 	        this.output.update();
@@ -76577,8 +76889,6 @@
 	        this.calc.update();
 
 	        this.required.update();
-
-	        this.mask.init();
 
 	        this.editStatus = false;
 
@@ -77183,7 +77493,7 @@
 	        this.output.update();
 	    });
 
-	    this.view.$.find('.or-group > h4').on('click', function () {
+	    this.view.$.on('click', '.or-group > h4', function () {
 	        // The resize trigger is to make sure canvas widgets start working.
 	        jquery(this)
 	            .closest('.or-group')
@@ -77275,9 +77585,11 @@
 	 * @return {!boolean} Whether the question/form is not marked as invalid.
 	 */
 	Form.prototype.isValid = function (node) {
-	    const invalidSelectors = ['.invalid-required', '.invalid-relevant'].concat(
-	        this.constraintClassesInvalid.map((cls) => `.${cls}`)
-	    );
+	    const invalidSelectors = [
+	        '.invalid-value,',
+	        '.invalid-required',
+	        '.invalid-relevant',
+	    ].concat(this.constraintClassesInvalid.map((cls) => `.${cls}`));
 	    if (node) {
 	        const question = this.input.getWrapNode(node);
 	        const cls = question.classList;
@@ -77328,7 +77640,11 @@
 	 */
 	Form.prototype.validateContent = function ($container) {
 	    const that = this;
-	    const invalidSelector = ['.invalid-required', '.invalid-relevant']
+	    const invalidSelector = [
+	        '.invalid-value',
+	        '.invalid-required',
+	        '.invalid-relevant',
+	    ]
 	        .concat(this.constraintClassesInvalid.map((cls) => `.${cls}`))
 	        .join(', ');
 
@@ -77562,7 +77878,7 @@
 	 * @type {string}
 	 * @default
 	 */
-	Form.requiredTransformerVersion = '2.1.6';
+	Form.requiredTransformerVersion = '2.1.7';
 
 	function extendXPath( Evaluator ) {
 
