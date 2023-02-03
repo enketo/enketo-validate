@@ -192,16 +192,27 @@ describe( 'XForm', () => {
 
         } );
 
-        describe( 'forms with the special signature extensions', ()=>{
-            const validation = validator.validate( loadXForm( 'openclinica-external-signature.xml' ), {
+        describe( 'forms with the special signature extensions ', ()=>{
+            const validation1 = validator.validate( loadXForm( 'openclinica-external-signature-invalid.xml' ), {
+                openclinica: true
+            } );
+            const validation2 = validator.validate( loadXForm( 'openclinica-external-signature-valid.xml' ), {
                 openclinica: true
             } );
 
-            it( 'outputs warnings for non-checkbox questions or questions with more than 1 checkbox', async()=>{
-                const result = await validation;
+            it( 'passes without errors and warnings when defined correctly', async()=>{
+                const result = await validation2;
                 expect( result.warnings.length ).to.equal( 0 );
-                expect( result.errors.length ).to.equal( 9 );
-                expect( result.errors.every( error => error.includes( 'Signature' ) ) ).to.equal( true );
+                expect( result.errors.length ).to.equal( 0 );
+            } );
+
+            it( 'returns errors when defined incorrectly', async()=>{
+                const result = await validation1;
+                expect( result.warnings.length ).to.equal( 0 );
+                expect( result.errors.length ).to.equal( 11 );
+                expect ( arrContains( result.errors, /Signature .* choice name set to "1"/  ) ).to.equal( true );
+                expect ( arrContains( result.errors, /only include one signature item/  ) ).to.equal( true );
+                expect ( arrContains( result.errors, /Signature .* must be of type "select_multiple" with one option/ )  ).to.equal( true );
             } );
         } );
 

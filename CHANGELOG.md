@@ -2,10 +2,12 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
-[Unreleased]
+[2.1.0] - 2023-02-03
 --------------------------
 ##### Added
 - Check for missing value elements in choice options.
+- Check that only one of OpenClinica's _external signature_ questions are present.
+- Check that value of OpenClinica's _external signature_ question is "1".
 
 [2.0.1] - 2022-11-07
 --------------------------

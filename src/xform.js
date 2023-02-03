@@ -653,19 +653,28 @@ class XForm {
             .forEach( nodeName => errors.push( `Found bind with external attribute with "clinicaldata" value for question "${nodeName}" that does not ` +
                 'have a calculation referring to instance("clinicaldata").' ) );
 
-        this.binds
-            .filter( bind => bind.getAttributeNS( this.NAMESPACES.oc, 'external' ) === 'signature' )
-            .filter( bind => {
+        const externalSignatureQuestions =  this.binds
+            .filter( bind => bind.getAttributeNS( this.NAMESPACES.oc, 'external' ) === 'signature' );
+
+        if ( externalSignatureQuestions.length > 1 ){
+            errors.push( 'Consent forms can only include one signature item.' );
+        }
+
+        externalSignatureQuestions
+            .forEach( bind => {
                 const path = bind.getAttribute( 'nodeset' );
                 const select = this.doc.querySelector( `select[ref="${path}"]` );
                 const appearanceVal = select ? select.getAttribute( 'appearance' ) : '';
                 const options = select ? select.querySelectorAll( 'item' ) : [];
+                const valueEl = options[0] ? options[0].querySelector( 'value' ) : null;
 
-                return !select || options.length !== 1 ||
-                    ( appearanceVal && appearanceVal.trim().split( ' ' ).includes( 'minimal' ) );
-            } )
-            .map( bind => this._nodeName( bind ) )
-            .forEach( () => errors.push( 'Signature items must be of type "select_multiple" with one option.' ) );
+                if( !select || options.length !== 1 ||
+                    ( appearanceVal && appearanceVal.trim().split( ' ' ).includes( 'minimal' ) ) ){
+                    errors.push( 'Signature items must be of type "select_multiple" with one option.' );
+                } else if ( valueEl && valueEl.textContent !== '1' ){
+                    errors.push( 'Signature items must have choice name set to "1"' );
+                }
+            } );
 
         this.binds
             .forEach( bind => {
