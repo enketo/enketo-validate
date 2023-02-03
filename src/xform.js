@@ -244,7 +244,7 @@ class XForm {
                     for ( let i = 0; i < msg.args().length; ++i )
                         console.log( `${i}: ${msg.args()[i]}` );
                 } );
-*/
+                */
 
                 return page.evaluateHandle( ( modelStr,  externalArr, ocExtensions ) => {
                     const parser = new DOMParser();
@@ -359,16 +359,24 @@ class XForm {
         }
 
         // These are the elements we expect to have a label though we're going slightly beyond spec requirement here.
-        this.formControls.concat( this.items )
-            .forEach( control => {
-                // The selector ":scope > label" fails with namespaced elements such as odk:rank
-                // TODO: after https://github.com/XLSForm/pyxform/issues/439 has been implemented remove "|| el.nodeName === 'hint'".
-                if ( ![ ...control.childNodes ].some( el => el.nodeName === 'label' || el.nodeName === 'hint' ) ) {
-                    const type = control.nodeName === 'item' || control.nodeName === 'itemset' ? 'Select option for question' : 'Question';
-                    const nodeName = this._nodeName( control,'ref' ) || this._nodeName( control.parentElement, 'ref' ) || '?';
-                    errors.push( `${type} "${nodeName}" has no label.` );
-                }
-            } );
+        this.formControls.forEach( control => {
+            // The selector ":scope > label" fails with namespaced elements such as odk:rank
+            if ( ![ ...control.childNodes ].some( el => el.nodeName === 'label' ) ) {
+                const nodeName = this._nodeName( control,'ref' ) || '?';
+                errors.push( `Question "${nodeName}" has no label.` );
+            }
+        } );
+
+        this.items.forEach( item => {
+            if ( ![ ...item.childNodes ].some( el => el.nodeName === 'label' ) ){
+                const nodeName = this._nodeName( item.parentElement, 'ref' ) || '?';
+                errors.push( `Select option for question "${nodeName}" has no label.` );
+            }
+            if ( ![ ...item.childNodes ].some( el => el.nodeName === 'value' ) ){
+                const nodeName = this._nodeName( item.parentElement, 'ref' ) || '?';
+                errors.push( `Select option for question "${nodeName}" has no value.` );
+            }
+        } );
 
         let modelEl;
         if ( headEl ) {
