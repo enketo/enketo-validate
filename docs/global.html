@@ -3,7 +3,7 @@
 <head>
     
     <meta charset="utf-8">
-    <title>validator - Enketo Validate</title>
+    <title>Global - Enketo Validate</title>
     
     <meta name="description" content="An XForm validator around Enketo's form engine" />
     
@@ -40,7 +40,7 @@
 
 <div id="main">
     
-    <h1 class="page-title">validator</h1>
+    <h1 class="page-title">Global</h1>
     
 
     
@@ -51,6 +51,13 @@
 <section>
 
 <header>
+    
+        <h2>
+        
+            
+        
+        </h2>
+        
     
 </header>
 
@@ -63,11 +70,6 @@
 <dl class="details">
     
 
-    
-    <dt class="tag-source">Source:</dt>
-    <dd class="tag-source"><ul class="dummy"><li>
-        <a href="validator.js.html">validator.js</a>, <a href="validator.js.html#line1">line 1</a>
-    </li></ul></dd>
     
 
     
@@ -126,219 +128,13 @@
     
 
     
-        <h3 class="subsection-title">Methods</h3>
-
-        
-            
-
-    
-
-    <h4 class="name" id=".validate"><span class="type-signature type-signature-async, static">(async, static) </span>validate<span class="signature">(xformStr, options<span class="signature-attributes">opt</span>)</span><span class="type-signature"> &rarr; {ValidateResult}</span></h4>
-
-    
-
-
-
-
-<dl class="details">
-    
-    <dt class="tag-description">Description:</dt>
-    <dd class="tag-description"><ul class="dummy"><li><p>The validate function. Relies heavily on the <a href="XForm.html"><code>XForm</code></a> class.</p></li></ul></dd>
-    
-
-    
-    <dt class="tag-source">Source:</dt>
-    <dd class="tag-source"><ul class="dummy"><li>
-        <a href="validator.js.html">validator.js</a>, <a href="validator.js.html#line36">line 36</a>
-    </li></ul></dd>
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-</dl>
-
-
-
-
-
-
-
-
-
-
-
-
-
-    <h5 class="h5-parameters">Parameters:</h5>
-    
-
-<table class="params">
-    <thead>
-    <tr>
-        
-        <th>Name</th>
-        
-
-        <th>Type</th>
-
-        
-        <th>Attributes</th>
-        
-
-        
-
-        <th class="last">Description</th>
-    </tr>
-    </thead>
-
-    <tbody>
-    
-
-        <tr>
-            
-                <td class="name"><code>xformStr</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">string</span>
-
-
-
-            
-            </td>
-
-            
-                <td class="attributes">
-                
-
-                
-
-                
-                </td>
-            
-
-            
-
-            <td class="description last"><p>XForm content.</p></td>
-        </tr>
-
-    
-
-        <tr>
-            
-                <td class="name"><code>options</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">ValidationOptions</span>
-
-
-
-            
-            </td>
-
-            
-                <td class="attributes">
-                
-                    &lt;optional><br>
-                
-
-                
-
-                
-                </td>
-            
-
-            
-
-            <td class="description last"><p>Validation options.</p></td>
-        </tr>
-
-    
-    </tbody>
-</table>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-<h5 class="h5-returns">Returns:</h5>
-
-        
-<div class="param-desc">
-    <p>validation results.</p>
-</div>
-
-
-
-<dl class="param-type">
-    <dt>
-        Type
-    </dt>
-    <dd>
-        
-<span class="param-type">ValidateResult</span>
-
-
-
-    </dd>
-</dl>
-
-    
-
-
-
-        
-    
 
     
         <h3 class="subsection-title">Type Definitions</h3>
 
         
                 
-<h4 class="name" id="~ValidateResult">ValidateResult</h4>
+<h4 class="name" id="Result">Result</h4>
 
 
 
@@ -350,7 +146,7 @@
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="validator.js.html">validator.js</a>, <a href="validator.js.html#line15">line 15</a>
+        <a href="xform.js.html">xform.js</a>, <a href="xform.js.html#line11">line 11</a>
     </li></ul></dd>
     
 
@@ -455,167 +251,6 @@
             
 
             <td class="description last"><p>List of errors.</p></td>
-        </tr>
-
-    
-
-        <tr>
-            
-                <td class="name"><code>version</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">string</span>
-
-
-
-            
-            </td>
-
-            
-
-            
-
-            <td class="description last"><p>Package version.</p></td>
-        </tr>
-
-    
-    </tbody>
-</table>
-
-
-
-
-
-
-
-
-
-
-
-
-
-            
-                
-<h4 class="name" id="~ValidationOptions">ValidationOptions</h4>
-
-
-
-
-
-<dl class="details">
-    
-
-    
-    <dt class="tag-source">Source:</dt>
-    <dd class="tag-source"><ul class="dummy"><li>
-        <a href="validator.js.html">validator.js</a>, <a href="validator.js.html#line22">line 22</a>
-    </li></ul></dd>
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-</dl>
-
-
-
-    <h5 class="subsection-title">Properties:</h5>
-
-    
-
-<table class="props">
-    <thead>
-    <tr>
-        
-        <th>Name</th>
-        
-
-        <th>Type</th>
-
-        
-
-        
-
-        <th class="last">Description</th>
-    </tr>
-    </thead>
-
-    <tbody>
-    
-
-        <tr>
-            
-                <td class="name"><code>debug</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">boolean</span>
-
-
-
-            
-            </td>
-
-            
-
-            
-
-            <td class="description last"><p>Run validator in debug mode.</p></td>
-        </tr>
-
-    
-
-        <tr>
-            
-                <td class="name"><code>openclinica</code></td>
-            
-
-            <td class="type">
-            
-                
-<span class="param-type">boolean</span>
-
-
-
-            
-            </td>
-
-            
-
-            
-
-            <td class="description last"><p>Run validator in OpenClinica mode.</p></td>
         </tr>
 
     

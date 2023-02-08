@@ -1,13 +1,13 @@
 {
     "name": "enketo-validate",
-    "version": "1.14.0",
+    "version": "2.1.1",
     "description": "An XForm validator around Enketo's form engine",
     "main": "src/validator.js",
     "bin": "./validate",
     "scripts": {
         "test": "mocha test/spec/*.spec.js --exit --timeout 9000 && npm run style-check",
         "build-docs": "rimraf docs && ./node_modules/.bin/jsdoc -c jsdoc.config.js",
-        "prepare": "rollup --config && rollup --config rollup.utils.config.js",
+        "prepare": "rollup --config && rollup --config rollup.utils.config.mjs",
         "style-fix": "eslint *.js src/**/*.js test/**/*.js --fix",
         "style-check": "eslint *.js src/**/*.js test/**/*.js"
     },
@@ -28,25 +28,24 @@
     },
     "homepage": "https://github.com/enketo/enketo-validate#readme",
     "dependencies": {
-        "commander": "^8.1.0",
-        "enketo-transformer": "^1.43.0",
-        "enketo-xpath-extensions-oc": "git+https://github.com/OpenClinica/enketo-xpath-extensions-oc.git#727803c",
-        "jsdom": "^16.7.0",
-        "libxslt": "0.10.0",
-        "puppeteer": "^10.2.0"
+        "commander": "^10.0.0",
+        "enketo-transformer": "^2.1.7",
+        "enketo-xpath-extensions-oc": "git+https://github.com/OpenClinica/enketo-xpath-extensions-oc.git#ab81eeb7d0f1fb34bcf2615d2c6a27c3b0915f56",
+        "jsdom": "^21.1.0",
+        "libxslt": "0.10.1",
+        "puppeteer": "^19.6.3"
     },
     "devDependencies": {
-        "chai": "^4.3.4",
-        "docdash": "^1.2.0",
-        "enketo-core": "5.18.1",
-        "eslint": "^7.32.0",
-        "eslint-plugin-jsdoc": "^36.0.6",
+        "chai": "^4.3.7",
+        "docdash": "^2.0.1",
+        "enketo-core": "^6.1.7",
+        "eslint": "^8.33.0",
+        "eslint-plugin-jsdoc": "^39.8.0",
         "istanbul-reporter-shield-badge": "^1.2.1",
-        "jsdoc": "^3.6.7",
-        "mocha": "^9.0.3",
-        "pkg": "^5.3.1",
-        "rimraf": "^3.0.2",
-        "rollup": "^2.56.0",
+        "jsdoc": "^4.0.0",
+        "mocha": "^10.2.0",
+        "rimraf": "^4.1.2",
+        "rollup": "^3.13.0",
         "rollup-plugin-commonjs": "^10.1.0",
         "rollup-plugin-node-resolve": "^5.2.0"
     }

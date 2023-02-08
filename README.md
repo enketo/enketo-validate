@@ -1,4 +1,4 @@
-[![npm version](https://badge.fury.io/js/enketo-validate.svg)](http://badge.fury.io/js/enketo-validate) [![Build Status](https://travis-ci.com/enketo/enketo-validate.svg?branch=master)](https://travis-ci.com/enketo/enketo-validate) [![Dependency Status](https://david-dm.org/enketo/enketo-validate/status.svg)](https://david-dm.org/enketo/enketo-validate) [![devDependency Status](https://david-dm.org/enketo/enketo-validate/dev-status.svg)](https://david-dm.org/enketo/enketo-validate?type=dev)
+[![npm version](https://badge.fury.io/js/enketo-validate.svg)](http://badge.fury.io/js/enketo-validate) ![Build Status](https://github.com/enketo/enketo-validate/actions/workflows/ci.yml/badge.svg)
 
 Enketo Validate
 ==============
@@ -7,7 +7,7 @@ _Validate [ODK XForms](https://opendatakit.github.io/xforms-spec/) using Enketo'
 
 This app can be used:
 
-1. via the command-line, e.g. in a non-javascript form builder such as [pyxform](https://github.com/XLSForm/pyxform).
+1. via the command-line
 2. as a nodeJS module to be used in your own javascript application
 
 Live demo web application (meant for testing purposes only) that uses Enketo Validate (and ODK Validate) as a module: [validate.enketo.org](https://validate.enketo.org) \([source code](https://github.com/enketo/enketo-validate-webapp)\)
@@ -15,12 +15,12 @@ Live demo web application (meant for testing purposes only) that uses Enketo Val
 
 **[Technical Documentation](https://enketo.github.io/enketo-validate)**
 
-
 ## Prerequisites
 
-1. install nodeJS 12
-2. install build tools for native modules with `apt-get install build-essential`
-3. install puppeteer (headless Chrome) prerequisites as mentioned [here](https://github.com/puppeteer/puppeteer/blob/main/docs/troubleshooting.md#chrome-headless-doesnt-launch-on-unix), e.g. for Ubuntu/Debian do `apt-get install ca-certificates fonts-liberation libappindicator3-1 libasound2 libatk-bridge2.0-0 libatk1.0-0 libc6 libcairo2 libcups2 libdbus-1-3 libexpat1 libfontconfig1 libgbm1 libgcc1 libglib2.0-0 libgtk-3-0 libnspr4 libnss3 libpango-1.0-0 libpangocairo-1.0-0 libstdc++6 libx11-6 libx11-xcb1 libxcb1 libxcomposite1 libxcursor1 libxdamage1 libxext6 libxfixes3 libxi6 libxrandr2 libxrender1 libxss1 libxtst6 lsb-release wget xdg-utils`
+1. install nodeJS 14 or 16
+2. if npm is not version 6, downgrade with `npm i -g npm@6` (but you could check first if still necessary)
+2. (if necessary) install build tools for native modules with `apt-get install build-essential`
+3. (if necessary) install puppeteer (headless Chrome) prerequisites as mentioned [here](https://github.com/puppeteer/puppeteer/blob/main/docs/troubleshooting.md#chrome-headless-doesnt-launch-on-unix), e.g. for Ubuntu/Debian do `apt-get install ca-certificates fonts-liberation libappindicator3-1 libasound2 libatk-bridge2.0-0 libatk1.0-0 libc6 libcairo2 libcups2 libdbus-1-3 libexpat1 libfontconfig1 libgbm1 libgcc1 libglib2.0-0 libgtk-3-0 libnspr4 libnss3 libpango-1.0-0 libpangocairo-1.0-0 libstdc++6 libx11-6 libx11-xcb1 libxcb1 libxcomposite1 libxcursor1 libxdamage1 libxext6 libxfixes3 libxi6 libxrandr2 libxrender1 libxss1 libxtst6 lsb-release wget xdg-utils`
 
 ## Via Command-line
 
@@ -80,6 +80,12 @@ const result = validator.validate( xformStr, options );
 // if errors.length is 0, the form passed validation
 ```
 
+## Develop
+
+1. Clone repo and install [prerequisites](#prerequisites).
+2. Run `npm install`. If there is an error the first thing to do is to run `rm -R node_modules` and retry especially after changing Node versions or after earlier crashes during installation.
+3. Run via command line, e.g. `./validate test/xform/xpath-fails.xml` or `./validate --help`.
+
 ## How it works
 
 In it's current iteration, the validator does the following:
@@ -92,7 +98,7 @@ In it's current iteration, the validator does the following:
 * It checks whether required `<label>` elements exist.
 * It checks for duplicate question or group names.
 * It checks for nested repeats.
-* It checks for form controls that have a calculation but is not set as readonly.
+* It checks for form controls that have a calculation but are not set as readonly.
 
 \* Note, that `/path/to/a/nonexisting/node` is perfectly valid XPath.
 

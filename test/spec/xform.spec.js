@@ -15,6 +15,12 @@ describe( 'XForm', () => {
             const result = await validator.validate( xf );
             expect( result.duration ).to.be.above( 0 );
         } );
+
+        it( 'returns no errors and no warnings', async() => {
+            const result = await validator.validate( xf );
+            expect( result.errors.length ).to.equal( 0 );
+            expect( result.warnings.length ).to.equal( 0 );
+        } );
     } );
 
     describe( 'that is invalid', () => {
@@ -150,7 +156,7 @@ describe( 'XForm', () => {
     describe( 'with calculations on a form control that are not set to readonly', () => {
         const validation = validator.validate( loadXForm( 'calculation-not-readonly.xml' ) );
 
-        it( 'outputs errors', async() => {
+        it( 'returns errors', async() => {
             const result = await validation;
             expect( arrContains( result.errors, /"a" has a calculation that is not set to readonly/i ) ).to.equal( true );
         } );
@@ -163,12 +169,12 @@ describe( 'XForm', () => {
                 openclinica: true
             } );
 
-            it( 'outputs errors', async() => {
+            it( 'returns errors', async() => {
                 const result = await validation;
                 expect( result.errors.length ).to.equal( 6 );
             } );
 
-            it( 'outputs errors for calculations without form control that refer to external ' +
+            it( 'returns errors for calculations without form control that refer to external ' +
                 'clinicaldata instance but do not have the oc:external="clinicaldata" bind', async() => {
                 const result = await validation;
                 expect( arrContains( result.errors, /"invalid1" .* to external clinicaldata without the required "external" attribute/i ) ).to.equal( true );
@@ -176,14 +182,38 @@ describe( 'XForm', () => {
                 expect( arrContains( result.errors, /"invalid3" .* to external clinicaldata without the required "external" attribute/i ) ).to.equal( true );
             } );
 
-            it( 'outputs errors for binds with oc:external="clinicaldata" that do not ' +
+            it( 'returns errors for binds with oc:external="clinicaldata" that do not ' +
                 'do not have a calculation that refers to instance(\'clinicaldata\')', async() => {
                 const result = await validation;
-                expect( arrContains( result.errors, /"invalid4" .* not .* calculation referring to instance\('clinicaldata'\)/i ) ).to.equal( true );
-                expect( arrContains( result.errors, /"invalid5" .* not .* calculation referring to instance\('clinicaldata'\)/i ) ).to.equal( true );
-                expect( arrContains( result.errors, /"invalid6" .* not .* calculation referring to instance\('clinicaldata'\)/i ) ).to.equal( true );
+                expect( arrContains( result.errors, /"invalid4" .* not .* calculation referring to instance\("clinicaldata"\)/i ) ).to.equal( true );
+                expect( arrContains( result.errors, /"invalid5" .* not .* calculation referring to instance\("clinicaldata"\)/i ) ).to.equal( true );
+                expect( arrContains( result.errors, /"invalid6" .* not .* calculation referring to instance\("clinicaldata"\)/i ) ).to.equal( true );
             } );
 
+        } );
+
+        describe( 'forms with the special signature extensions ', ()=>{
+            const validation1 = validator.validate( loadXForm( 'openclinica-external-signature-invalid.xml' ), {
+                openclinica: true
+            } );
+            const validation2 = validator.validate( loadXForm( 'openclinica-external-signature-valid.xml' ), {
+                openclinica: true
+            } );
+
+            it( 'passes without errors and warnings when defined correctly', async()=>{
+                const result = await validation2;
+                expect( result.warnings.length ).to.equal( 0 );
+                expect( result.errors.length ).to.equal( 0 );
+            } );
+
+            it( 'returns errors when defined incorrectly', async()=>{
+                const result = await validation1;
+                expect( result.warnings.length ).to.equal( 0 );
+                expect( result.errors.length ).to.equal( 11 );
+                expect ( arrContains( result.errors, /Signature .* choice name set to "1"/  ) ).to.equal( true );
+                expect ( arrContains( result.errors, /only include one signature item/  ) ).to.equal( true );
+                expect ( arrContains( result.errors, /Signature .* must be of type "select_multiple" with one option/ )  ).to.equal( true );
+            } );
         } );
 
         describe( 'forms with special multiple constraints extensions', () => {
@@ -191,7 +221,7 @@ describe( 'XForm', () => {
                 openclinica: true
             } );
 
-            it( 'outputs errors', async() => {
+            it( 'returns errors', async() => {
                 const result = await validation;
                 expect( result.errors.length ).to.equal( 9 );
                 expect( arrContains( result.errors, /unsupported oc:constraint .+ "something"/ ) ).to.equal( true );
@@ -211,7 +241,7 @@ describe( 'XForm', () => {
                 openclinica: true
             } );
 
-            it( 'outputs an error', async() => {
+            it( 'returns an error', async() => {
                 const result = await validation;
                 expect( result.errors.length ).to.equal( 1 );
                 expect( arrContains( result.errors, /last-saved\s+not supported/ ) );
@@ -224,7 +254,7 @@ describe( 'XForm', () => {
     describe( 'forms using the special last-saved instance', () => {
         const validation = validator.validate( loadXForm( 'last-saved.xml' ) );
 
-        it( 'does not output an error', async() => {
+        it( 'does not return an error', async() => {
             const result = await validation;
             expect( result.errors.length ).to.equal( 0 );
         } );
@@ -239,52 +269,52 @@ describe( 'XForm', () => {
         const WARNINGS = 14;
         const ERRORS = 1;
 
-        it( 'outputs warnings', async() => {
+        it( 'returns warnings', async() => {
             const result = await validation;
 
             expect( result.warnings.length ).to.equal( WARNINGS );
-            expect( arrContains( result.warnings, /"minimal" for question "b"/i ) ).to.equal( true );
-            expect( arrContains( result.warnings, /"compact-2" for question "b"/i ) ).to.equal( true );
+            expect( arrContains( result.warnings, /"minimal" for "b"/i ) ).to.equal( true );
+            expect( arrContains( result.warnings, /"compact-2" for "b"/i ) ).to.equal( true );
             expect( arrContains( result.warnings, /"maximal" for question "c"/i ) ).to.equal( true );
-            expect( arrContains( result.warnings, /"hide-input" for question "d"/i ) ).to.equal( true );
+            expect( arrContains( result.warnings, /"hide-input" for "d"/i ) ).to.equal( true );
             expect( arrContains( result.warnings, /"search" for question "d" .+ deprecated.+"autocomplete"/i ) ).to.equal( true );
-            expect( arrContains( result.warnings, /"compact" for question "e"/i ) ).to.equal( true );
+            expect( arrContains( result.warnings, /"compact" for "e"/i ) ).to.equal( true );
             expect( arrContains( result.warnings, /"compact-19" for question "f"/i ) ).to.equal( true );
             expect( arrContains( result.warnings, /"numbers" for question "g"/i ) ).to.equal( true );
             expect( arrContains( result.warnings, /"no-ticks" for question "g"/i ) ).to.equal( true );
             expect( arrContains( result.warnings, /"maps" for question "h"/i ) ).to.equal( true );
-            expect( arrContains( result.warnings, /"signature" for question "h"/i ) ).to.equal( true );
+            expect( arrContains( result.warnings, /"signature" for "h"/i ) ).to.equal( true );
             expect( arrContains( result.warnings, /"pulldown" for question "i"/i ) ).to.equal( true );
             expect( arrContains( result.warnings, /"horizontal-compact" for question "k" .+ deprecated.+"columns-pack"/i ) ).to.equal( true );
-            expect( arrContains( result.warnings, /"field-list" for question "two"/i ) ).to.equal( true );
+            expect( arrContains( result.warnings, /"field-list" for "two"/i ) ).to.equal( true );
         } );
 
-        it( 'outputs 1 error', async() => {
+        it( 'returns 1 error', async() => {
             const result = await validation;
             expect( result.errors.length ).to.equal( ERRORS );
             expect( arrContains( result.errors, /"search" for question "l"/i ) ).to.equal( true );
         } );
 
-        it( 'outputs 1 error with --oc flag', async() => {
+        it( 'returns 1 error with --oc flag', async() => {
             const resultOc = await validationOc;
             expect( resultOc.errors.length ).to.equal( ERRORS );
             expect( arrContains( resultOc.errors, /"search" for question "l"/i ) ).to.equal( true );
         } );
 
-        it( 'outputs warnings with --oc flag too', async() => {
+        it( 'returns warnings with --oc flag too', async() => {
             const resultOc = await validationOc;
             //expect( arrContains( result.warnings, /deprecated/ ) ).to.equal( false );
             expect( resultOc.warnings.length ).to.equal( WARNINGS );
         } );
 
-        it( 'including the special case "horizontal" output warnings', async() => {
+        it( 'including the special case "horizontal" return warnings', async() => {
             const result = await validator.validate( loadXForm( 'appearance-horizontal.xml' ) );
 
             expect( result.warnings.length ).to.equal( 4 );
             expect( arrContains( result.warnings, /"horizontal" for question "d" .+ deprecated.+"columns"/i ) ).to.equal( true );
             expect( arrContains( result.warnings, /"horizontal" for question "f" .+ deprecated.+"columns"/i ) ).to.equal( true );
-            expect( arrContains( result.warnings, /"horizontal" for question "i".+not valid/i ) ).to.equal( true );
-            expect( arrContains( result.warnings, /"horizontal" for question "one".+not valid.+\(group\)/i ) ).to.equal( true );
+            expect( arrContains( result.warnings, /"horizontal" for "i".+not valid.+type odkkkkkk:rank/i ) ).to.equal( true );
+            expect( arrContains( result.warnings, /"horizontal" for "one".+not valid.+type group/i ) ).to.equal( true );
         } );
 
         it( 'for custom analog-scale widgets', async() => {
@@ -296,11 +326,49 @@ describe( 'XForm', () => {
 
     } );
 
+    describe( 'with repeats with incorrect w-values for Grid Theme forms', () => {
+        const xf = loadXForm( 'appearances-repeat.xml' );
+        const validation = validator.validate( xf );
+        const WARNINGS = 3;
+
+        it( 'returns warnings', async() => {
+            const result = await validation;
+
+            expect( result.warnings.length ).to.equal( WARNINGS );
+            expect( arrContains( result.warnings, /"w3" for "rep3"/i ) ).to.equal( true );
+            expect( arrContains( result.warnings, /"w1" for "rep2"/i ) ).to.equal( true );
+            expect( arrContains( result.warnings, /"w2" for "rep1"/i ) ).to.equal( true );
+        } );
+    } );
+
+    describe( 'with likely user errors that are not actually XPath syntax errors', () => {
+        const xf = loadXForm( 'user-ues.xml' );
+        const validation = validator.validate( xf );
+
+        it( 'returns warnings', async() => {
+            const result = await validation;
+
+            expect( result.warnings.length ).to.equal( 12 );
+            expect( arrContains( result.warnings, /Constraint .+ "ues"/i ) ).to.equal( true );
+            expect( arrContains( result.warnings, /Relevant .+ "ues"/i ) ).to.equal( true );
+            expect( arrContains( result.warnings, /Required .+ "ues"/i ) ).to.equal( true );
+            expect( arrContains( result.warnings, /Readonly .+ "ues"/i ) ).to.equal( true );
+            expect( arrContains( result.warnings, /Constraint .+ "w6"/i ) ).to.equal( true );
+            expect( arrContains( result.warnings, /Relevant .+ "w6"/i ) ).to.equal( true );
+            expect( arrContains( result.warnings, /Required .+ "w6"/i ) ).to.equal( true );
+            expect( arrContains( result.warnings, /Readonly .+ "w6"/i ) ).to.equal( true );
+            expect( arrContains( result.warnings, /Constraint .+ "true\(\)"/i ) ).to.equal( true );
+            expect( arrContains( result.warnings, /Constraint .+ "false\(\)"/i ) ).to.equal( true );
+            expect( arrContains( result.warnings, /Relevant .+ "true\(\)"/i ) ).to.equal( true );
+            expect( arrContains( result.warnings, /Relevant .+ "false\(\)"/i ) ).to.equal( true );
+        } );
+    } );
+
     describe( 'with unsupported external app launching syntax', () => {
         const xf = loadXForm( 'external-app.xml' );
         const validation = validator.validate( xf );
 
-        it( 'outputs warnings', async() => {
+        it( 'returns warnings', async() => {
             const result = await validation;
 
             expect( result.errors.length ).to.equal( 2 );
@@ -312,7 +380,7 @@ describe( 'XForm', () => {
 
     describe( 'with missing <label> elements', () => {
 
-        it( 'outputs errors', async() => {
+        it( 'returns errors', async() => {
             const result = await validator.validate( loadXForm( 'missing-labels.xml' ) );
             const ISSUES = 6;
             expect( result.errors.length ).to.equal( ISSUES );
@@ -324,7 +392,22 @@ describe( 'XForm', () => {
             expect( arrContains( result.errors, /option for question "i" has no label/i ) ).to.equal( true );
         } );
 
-        it( 'does not output errors for setvalue actions without a label', async() => {
+        it( 'does not return errors for setvalue actions without a label', async() => {
+            const result = await validator.validate( loadXForm( 'setvalue.xml' ) );
+            expect( result.errors.length ).to.equal( 0 );
+        } );
+
+    } );
+
+    describe( 'with missing <value> elements', () => {
+
+        it( 'returns errors', async() => {
+            const result = await validator.validate( loadXForm( 'missing-values.xml' ) );
+            expect( result.errors.length ).to.equal( 1 );
+            expect( arrContains( result.errors, /option for question "k" has no value/i ) ).to.equal( true );
+        } );
+
+        it( 'does not return errors for setvalue actions without a label', async() => {
             const result = await validator.validate( loadXForm( 'setvalue.xml' ) );
             expect( result.errors.length ).to.equal( 0 );
         } );
@@ -333,7 +416,7 @@ describe( 'XForm', () => {
 
     describe( 'with duplicate nodenames', () => {
 
-        it( 'outputs warnings', async() => {
+        it( 'returns warnings', async() => {
             const result = await validator.validate( loadXForm( 'duplicate-nodename.xml' ) );
             expect( result.warnings.length ).to.equal( 2 );
             expect( arrContains( result.warnings, /Duplicate .* name "a" found/i ) ).to.equal( true );
@@ -345,7 +428,7 @@ describe( 'XForm', () => {
 
     describe( 'with nodenames containing underscores', () => {
 
-        it( 'outputs warnings', async() => {
+        it( 'returns warnings', async() => {
             const result = await validator.validate( loadXForm( 'nodename-underscore.xml' ) );
             expect( result.warnings.length ).to.equal( 0 );
             expect( result.errors.length ).to.equal( 0 );
@@ -355,7 +438,7 @@ describe( 'XForm', () => {
 
     describe( 'with nested repeats', () => {
 
-        it( 'outputs warnings', async() => {
+        it( 'returns warnings', async() => {
             const result = await validator.validate( loadXForm( 'nested-repeats.xml' ) );
             expect( result.warnings.length ).to.equal( 2 );
             expect( arrContains( result.warnings, /Repeat "immunization-info" .* nested/i ) ).to.equal( true );
@@ -366,7 +449,7 @@ describe( 'XForm', () => {
 
     xdescribe( 'with disallowed self-referencing', () => {
 
-        it( 'outputs errors for disallowed self-referencing', async() => {
+        it( 'returns errors for disallowed self-referencing', async() => {
             // Unit tests are in xpath.spec.js
             const result = await validator.validate( loadXForm( 'self-reference.xml' ) );
             expect( result.errors.length ).to.equal( 2 );

@@ -9,6 +9,12 @@ const xslModelSheet = libxslt.parse( sheets.xslModel );
 const appearanceRules = require( './appearances' );
 
 /**
+ * @typedef Result
+ * @property {Array<string>} warnings - List of warnings.
+ * @property {Array<string>} errors - List of errors.
+ */
+
+/**
  * @class XForm
  */
 class XForm {
@@ -96,13 +102,9 @@ class XForm {
      * @type {Array<Node>}
      */
     get formControls() {
-        // TODO: wrong to use h: namespace prefix without resolver here!
-        // fix in JSDom might be forthcoming:
-        // * https://github.com/jsdom/jsdom/issues/2159,
-        // * https://github.com/jsdom/jsdom/issues/2028
         // doc.evaluate does not support namespaces at all (nsResolver is not used) in JSDom, hence this clever not() trick
         // to use querySelectorAll instead.
-        this._formControls = this._formControls || [ ...this.doc.querySelectorAll( 'h\\:body *:not(item):not(label):not(hint):not(value):not(itemset):not(output):not(repeat):not(group):not(setvalue)' ) ];
+        this._formControls = this._formControls || [ ...this.doc.querySelectorAll( '*|body *:not(item):not(label):not(hint):not(value):not(itemset):not(output):not(repeat):not(group):not(setvalue)' ) ];
 
         return this._formControls;
     }
@@ -111,12 +113,8 @@ class XForm {
      * @type {Array<Node>}
      */
     get groups() {
-        // TODO: wrong to use h: namespace prefix without resolver here!
-        // fix in JSDom might be forthcoming:
-        // * https://github.com/jsdom/jsdom/issues/2159,
-        // * https://github.com/jsdom/jsdom/issues/2028
         // doc.evaluate does not support namespaces at all (nsResolver is not used) in JSDom
-        this._groups = this._groups || [ ...this.doc.querySelectorAll( 'h\\:body group' ) ];
+        this._groups = this._groups || [ ...this.doc.querySelectorAll( '*|body group' ) ];
 
         return this._groups;
     }
@@ -125,12 +123,8 @@ class XForm {
      * @type {Array<Node>}
      */
     get repeats() {
-        // TODO: wrong to use h: namespace prefix without resolver here!
-        // fix in JSDom might be forthcoming:
-        // * https://github.com/jsdom/jsdom/issues/2159,
-        // * https://github.com/jsdom/jsdom/issues/2028
         // doc.evaluate does not support namespaces at all (nsResolver is not used) in JSDom
-        this._repeats = this._repeats || [ ...this.doc.querySelectorAll( 'h\\:body repeat' ) ];
+        this._repeats = this._repeats || [ ...this.doc.querySelectorAll( '*|body repeat' ) ];
 
         return this._repeats;
     }
@@ -148,12 +142,8 @@ class XForm {
      * @type {Array<Node>}
      */
     get items() {
-        // TODO: wrong to use h: namespace prefix without resolver here!
-        // fix in JSDom might be forthcoming:
-        // * https://github.com/jsdom/jsdom/issues/2159,
-        // * https://github.com/jsdom/jsdom/issues/2028
         // doc.evaluate does not support namespaces at all (nsResolver is not used) in JSDom
-        this._items = this._items || [ ...this.doc.querySelectorAll( 'h\\:body item, h\\:body itemset' ) ];
+        this._items = this._items || [ ...this.doc.querySelectorAll( '*|body item, *|body itemset' ) ];
 
         return this._items;
     }
@@ -254,7 +244,7 @@ class XForm {
                     for ( let i = 0; i < msg.args().length; ++i )
                         console.log( `${i}: ${msg.args()[i]}` );
                 } );
-*/
+                */
 
                 return page.evaluateHandle( ( modelStr,  externalArr, ocExtensions ) => {
                     const parser = new DOMParser();
@@ -330,12 +320,13 @@ class XForm {
     }
 
     /**
-     * Checks if the structure is valid. Modifies provided `warnings` and `errors` arrays.
+     * Checks if the structure is valid.
      *
-     * @param {Array} warnings - Array of existing warnings.
-     * @param {Array} errors - Array of existing errors.
+     * @return {Result} Result object with warnings and errors.
      */
-    checkStructure( warnings, errors ) {
+    checkStructure() {
+        const errors = [];
+        const warnings = [];
         const rootEl = this.doc.documentElement;
         const rootElNodeName = rootEl.nodeName;
         if ( !( /^[A-z]+:html$/.test( rootElNodeName ) ) ) {
@@ -368,16 +359,24 @@ class XForm {
         }
 
         // These are the elements we expect to have a label though we're going slightly beyond spec requirement here.
-        this.formControls.concat( this.items )
-            .forEach( control => {
-                // The selector ":scope > label" fails with namespaced elements such as odk:rank
-                // TODO: after https://github.com/XLSForm/pyxform/issues/439 has been implemented remove "|| el.nodeName === 'hint'".
-                if ( ![ ...control.childNodes ].some( el => el.nodeName === 'label' || el.nodeName === 'hint' ) ) {
-                    const type = control.nodeName === 'item' || control.nodeName === 'itemset' ? 'Select option for question' : 'Question';
-                    const nodeName = this._nodeName( control,'ref' ) || this._nodeName( control.parentElement, 'ref' ) || '?';
-                    errors.push( `${type} "${nodeName}" has no label.` );
-                }
-            } );
+        this.formControls.forEach( control => {
+            // The selector ":scope > label" fails with namespaced elements such as odk:rank
+            if ( ![ ...control.childNodes ].some( el => el.nodeName === 'label' ) ) {
+                const nodeName = this._nodeName( control,'ref' ) || '?';
+                errors.push( `Question "${nodeName}" has no label.` );
+            }
+        } );
+
+        this.items.forEach( item => {
+            if ( ![ ...item.childNodes ].some( el => el.nodeName === 'label' ) ){
+                const nodeName = this._nodeName( item.parentElement, 'ref' ) || '?';
+                errors.push( `Select option for question "${nodeName}" has no label.` );
+            }
+            if ( ![ ...item.childNodes ].some( el => el.nodeName === 'value' ) ){
+                const nodeName = this._nodeName( item.parentElement, 'ref' ) || '?';
+                errors.push( `Select option for question "${nodeName}" has no value.` );
+            }
+        } );
 
         let modelEl;
         if ( headEl ) {
@@ -468,15 +467,18 @@ class XForm {
             warnings.push( 'Found <repeat> that has a parent <group> without a ref attribute. ' +
                 'If the repeat has relevant logic, this will make the form very slow.' );
         }
+
+        return { warnings, errors };
     }
 
     /**
-     * Checks if binds are valid. Modifies provided `warnings` and `errors` arrays.
+     * Checks if binds are valid.
      *
-     * @param {Array} warnings - Array of existing warnings.
-     * @param {Array} errors - Array of existing errors.
+     * @return {Result} Result object with warnings and errors.
      */
-    checkBinds( warnings, errors ) {
+    checkBinds() {
+        const warnings = [];
+        const errors = [];
         // Check for use of form controls with calculations that are not readonly
         this.bindsWithCalc
             .filter( this._withFormControl.bind( this ) )
@@ -489,15 +491,18 @@ class XForm {
             } )
             .map( bind => this._nodeName( bind ) )
             .forEach( nodeName => errors.push( `Question "${nodeName}" has a calculation that is not set to readonly.` ) );
+
+        return { warnings, errors };
     }
 
     /**
-     * Checks if appearances are valid. Modifies provided `warnings` and `errors` arrays.
+     * Checks if appearances are valid.
      *
-     * @param {Array} warnings - Array of existing warnings.
-     * @param {Array} errors - Array of existing errors.
+     * @return {Result} Result object with warnings and errors.
      */
-    checkAppearances( warnings, errors ) {
+    checkAppearances() {
+        const warnings = [];
+        const errors = [];
         this.formControls.concat( this.groups ).concat( this.repeats )
             .forEach( control => {
                 let appearanceVal = control.getAttribute( 'appearance' );
@@ -509,8 +514,9 @@ class XForm {
                 const controlName = controlNsPrefix && /:/.test( control.nodeName ) ? controlNsPrefix + ':' + control.nodeName.split( ':' )[ 1 ] : control.nodeName;
                 const pathAttr = controlName === 'repeat' ? 'nodeset' : 'ref';
                 const ref = control.getAttribute( pathAttr );
+                const friendlyControlName = controlName === 'repeat' || controlName === 'group' ? controlName : 'question';
                 if ( !ref ) {
-                    errors.push( `Question found in body that has no ${pathAttr} attribute (${control.nodeName}).` );
+                    errors.push( `A ${friendlyControlName} found in body that has no ${pathAttr} attribute (${control.nodeName}).` );
 
                     return;
                 }
@@ -523,7 +529,7 @@ class XForm {
 
                 // Special error for use of ex;
                 if ( appearanceVal.trim().startsWith( 'ex:' ) ){
-                    errors.push( `Appearance "ex:" to launch an external app for question "${nodeName}" is not supported.` );
+                    errors.push( `Appearance "ex:" to launch an external app for ${friendlyControlName} "${nodeName}" is not supported.` );
 
                     return;
                 }
@@ -531,7 +537,7 @@ class XForm {
                 const searchMatches = appearanceVal.match( /search\(.+\)/ );
                 if ( searchMatches ){
                     appearanceVal = appearanceVal.replace( searchMatches[0], '' );
-                    errors.push( `Appearance "search" for question "${nodeName}" is not supported.` );
+                    errors.push( `Appearance "search" for ${friendlyControlName} "${nodeName}" is not supported.` );
                 }
                 const appearances = appearanceVal.trim() ? appearanceVal.split( ' ' ) : [];
                 appearances.forEach( appearance => {
@@ -548,14 +554,14 @@ class XForm {
                     }
 
                     if ( rules.length === 0 ) {
-                        warnings.push( `Appearance "${appearance}" for question "${nodeName}" is not supported.` );
+                        warnings.push( `Appearance "${appearance}" for ${friendlyControlName} "${nodeName}" is not supported.` );
 
                         return;
                     }
 
                     const allowedControls = rules.map( rule => rule.controls || [] ).flat();
                     if ( allowedControls.length && !allowedControls.includes( controlName ) ) {
-                        warnings.push( `Appearance "${appearance}" for question "${nodeName}" is not valid for this question type (${control.nodeName}).` );
+                        warnings.push( `Appearance "${appearance}" for "${nodeName}" is not valid for type ${control.nodeName}.` );
 
                         return;
                     }
@@ -564,7 +570,7 @@ class XForm {
                     if ( allowedTypes.length && !allowedTypes.includes( dataType ) ) {
                         // Only check types if controls check passed.
                         // TODO check namespaced types when it becomes applicable (for XML Schema types).
-                        warnings.push( `Appearance "${appearance}" for question "${nodeName}" is not valid for this data type (${dataType}).` );
+                        warnings.push( `Appearance "${appearance}" for ${friendlyControlName} "${nodeName}" is not valid for this data type (${dataType}).` );
 
                         return;
                     }
@@ -576,20 +582,20 @@ class XForm {
                         || rules[0];
 
                     if ( applicableRule && applicableRule.appearances && !applicableRule.appearances.some( appearanceMatch => appearances.includes( appearanceMatch ) ) ) {
-                        warnings.push( `Appearance "${appearance}" for question "${nodeName}" requires any of these appearances: "${this._join( applicableRule.appearances )}".` );
+                        warnings.push( `Appearance "${appearance}" for ${friendlyControlName} "${nodeName}" requires any of these appearances: "${this._join( applicableRule.appearances )}".` );
 
                         return;
                     }
 
                     if ( applicableRule && applicableRule.appearancesConflict && applicableRule.appearancesConflict.some( appearanceMatch => appearances.includes( appearanceMatch ) ) ) {
-                        warnings.push( `Appearance "${appearance}" for question "${nodeName}" cannot be used in combination with any of these appearances: "${this._join( applicableRule.appearancesConflict )}".` );
+                        warnings.push( `Appearance "${appearance}" for ${friendlyControlName} "${nodeName}" cannot be used in combination with any of these appearances: "${this._join( applicableRule.appearancesConflict )}".` );
 
                         return;
                     }
 
 
                     if ( applicableRule && applicableRule.preferred ) {
-                        warnings.push( `Appearance "${appearance}" for question "${nodeName}" is deprecated, use "${applicableRule.preferred}" instead.` );
+                        warnings.push( `Appearance "${appearance}" for ${friendlyControlName} "${nodeName}" is deprecated, use "${applicableRule.preferred}" instead.` );
                     }
                     // Possibilities for future additions:
                     // - check accept/mediaType
@@ -600,15 +606,18 @@ class XForm {
                 } );
 
             } );
+
+        return { warnings, errors };
     }
 
     /**
-     * Checks special OpenClinica rules. Modifies provided `warnings` and `errors` arrays.
+     * Checks special OpenClinica rules.
      *
-     * @param {Array} warnings - Array of existing warnings.
-     * @param {Array} errors - Array of existing errors.
+     * @return {Result} Result object with warnings and errors.
      */
-    checkOpenClinicaRules( warnings, errors ) {
+    checkOpenClinicaRules() {
+        const warnings = [];
+        const errors = [];
         const CLINICALDATA_REF = /instance\(\s*(["'])((?:(?!\1)clinicaldata))\1\s*\)/;
 
         // Check for use of external data in instance "clinicaldata"
@@ -641,8 +650,31 @@ class XForm {
                     ( value && !CLINICALDATA_REF.test( value ) ) ;
             } )
             .map( bind => this._nodeName( bind ) )
-            .forEach( nodeName => errors.push( `Found bind with clinicaldata attribute for question "${nodeName}" that does not ` +
-                'have a calculation referring to instance(\'clinicaldata\').' ) );
+            .forEach( nodeName => errors.push( `Found bind with external attribute with "clinicaldata" value for question "${nodeName}" that does not ` +
+                'have a calculation referring to instance("clinicaldata").' ) );
+
+        const externalSignatureQuestions =  this.binds
+            .filter( bind => bind.getAttributeNS( this.NAMESPACES.oc, 'external' ) === 'signature' );
+
+        if ( externalSignatureQuestions.length > 1 ){
+            errors.push( 'Consent forms can only include one signature item.' );
+        }
+
+        externalSignatureQuestions
+            .forEach( bind => {
+                const path = bind.getAttribute( 'nodeset' );
+                const select = this.doc.querySelector( `select[ref="${path}"]` );
+                const appearanceVal = select ? select.getAttribute( 'appearance' ) : '';
+                const options = select ? select.querySelectorAll( 'item' ) : [];
+                const valueEl = options[0] ? options[0].querySelector( 'value' ) : null;
+
+                if( !select || options.length !== 1 ||
+                    ( appearanceVal && appearanceVal.trim().split( ' ' ).includes( 'minimal' ) ) ){
+                    errors.push( 'Signature items must be of type "select_multiple" with one option.' );
+                } else if ( valueEl && valueEl.textContent !== '1' ){
+                    errors.push( 'Signature items must have choice name set to "1"' );
+                }
+            } );
 
         this.binds
             .forEach( bind => {
@@ -686,6 +718,8 @@ class XForm {
                     errors.push( 'The form includes the use of the "last-saved" feature. This feature is not supported.' );
                 }
             } );
+
+        return { warnings, errors };
     }
 
     /**

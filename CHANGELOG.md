@@ -2,6 +2,71 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+[2.1.1] - 2023-02-03
+--------------------------
+##### Changed
+- Updated dependencies.
+
+[2.1.0] - 2023-02-03
+--------------------------
+##### Added
+- Check for missing value elements in choice options.
+- Check that only one of OpenClinica's _external signature_ questions are present.
+- Check that value of OpenClinica's _external signature_ question is "1".
+
+[2.0.1] - 2022-11-07
+--------------------------
+##### Changed
+- The wording of the error message for OpenClinica's _external signature_ feature.
+
+[2.0.0] - 2022-09-21
+--------------------------
+##### Changed
+- No longer compatible with node 12
+- Updated dependencies
+
+[1.15.3] - 2022-09-21
+--------------------------
+##### Fixed
+- Not working in Node 12
+
+[1.15.2] - 2022-09-07
+--------------------------
+##### Added
+- Check for repeats with w-values less than w4.
+
+##### Changed
+- Tweaked error/warning output messages to use "group" and "repeat" instead of "question" for issues with appearances.
+
+[1.15.1] - 2022-07-28
+-------------------------
+##### Added
+- Check for a custom OpenClinica _external signature_ feature.
+
+##### Changed
+- Updated dependencies
+
+[1.15.0] - 2022-05-30
+-------------------------
+##### Added
+- Basic checks to catch common XLSForm authoring mistakes when adding a value to the wrong column or misspelling a value.
+
+##### Changed
+- Updated dependencies
+
+##### Removed
+- Binary building.
+
+[1.14.2] - 2022-02-11
+---------------------
+##### Changed
+- Updated dependencies.
+
+[1.14.1] - 2021-10-27
+---------------------
+##### Changed
+- Updated dependencies.
+
 [1.14.0] - 2021-08-05
 ---------------------
 ##### Added

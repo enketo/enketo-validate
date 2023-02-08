@@ -14,8 +14,8 @@ const { version } = require( '../package' );
 
 /**
  * @typedef ValidateResult
- * @property {Array} warnings - List of warnings.
- * @property {Array} errors - List of errors.
+ * @property {Array<string>} warnings - List of warnings.
+ * @property {Array<string>} errors - List of errors.
  * @property {string} version - Package version.
  */
 
@@ -37,6 +37,7 @@ const validate = async( xformStr, options = {} ) => {
     const start = Date.now();
     let warnings = [];
     let errors = [];
+    let result = {};
     let xform;
 
     try {
@@ -51,12 +52,22 @@ const validate = async( xformStr, options = {} ) => {
         return Promise.resolve( { warnings, errors, version, duration } );
     }
 
-    xform.checkStructure( warnings, errors );
-    xform.checkBinds( warnings, errors );
-    xform.checkAppearances( warnings, errors );
+    result = xform.checkStructure();
+    warnings = warnings.concat( result.warnings );
+    errors = errors.concat( result.errors );
+
+    result = xform.checkBinds();
+    warnings = warnings.concat( result.warnings );
+    errors = errors.concat( result.errors );
+
+    result = xform.checkAppearances();
+    warnings = warnings.concat( result.warnings );
+    errors = errors.concat( result.errors );
 
     if ( options.openclinica ) {
-        xform.checkOpenClinicaRules( warnings, errors );
+        result = xform.checkOpenClinicaRules(  );
+        warnings = warnings.concat( result.warnings );
+        errors = errors.concat( result.errors );
     }
 
     try{
@@ -70,7 +81,7 @@ const validate = async( xformStr, options = {} ) => {
 
     for( const el of xform.binds.concat( xform.setvalues ) ){
         const type = el.nodeName.toLowerCase();
-        const props = type === 'bind' ? { path: 'nodeset', logic: [ 'calculate', 'constraint', 'relevant', 'required' ]  } : { path: 'ref', logic: [ 'value' ] };
+        const props = type === 'bind' ? { path: 'nodeset', logic: [ 'calculate', 'constraint', 'relevant', 'required', 'readonly' ]  } : { path: 'ref', logic: [ 'value' ] };
         const path = el.getAttribute( props.path );
 
         if ( !path ) {
@@ -104,6 +115,13 @@ const validate = async( xformStr, options = {} ) => {
                         continue;
                     }
                     friendlyLogicName = event.split( ' ' ).includes( 'xforms-value-changed' ) ? 'Triggered calculation' : 'Dynamic default';
+                } else {
+                    // e.g. the results for accidentally writing "ues" instead of "yes", putting an appearance in a logic column, etc
+                    // and accidentally writing 'true' or 'false' or 'yes' or 'no' in the constraint or relevant column in XLSForm
+                    if ( likelyNonSyntaxError( logicExpr )
+                        || [ 'relevant', 'constraint' ].includes( logicName ) && likelyTrueFalseError( logicExpr ) ) {
+                        warnings.push( `${friendlyLogicName} formula "${logicExpr}" for "${nodeName}" is likely meant for something else.` );
+                    }
                 }
 
                 try {
@@ -121,6 +139,14 @@ const validate = async( xformStr, options = {} ) => {
     await xform.exit();
 
     return { warnings, errors, version, duration };
+};
+
+const likelyNonSyntaxError = ( logicExpr ) => {
+    return /^[A-z0-9_]+$/.test( logicExpr.trim() );
+};
+
+const likelyTrueFalseError = ( logicExpr ) => {
+    return /^(true|false)\(\)$/.test( logicExpr.trim() );
 };
 
 module.exports = { validate, version };
