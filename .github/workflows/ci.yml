@@ -13,13 +13,13 @@ jobs:
       matrix:
         node: [ '14', '16' ]
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/cache@v2
+      - uses: actions/checkout@v3
+      - uses: actions/cache@v3
         id: cache
         with:
           path: node_modules
           key: ${{ matrix.node }}-${{ hashFiles('**/package-lock.json') }}
-      - uses: actions/setup-node@v2
+      - uses: actions/setup-node@v3
         with:
           node-version: ${{ matrix.node }}
           registry-url: https://registry.npmjs.org/
