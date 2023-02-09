@@ -112,4 +112,4 @@ See [the license document](https://github.com/enketo/enketo-validate/blob/master
 
 ## Change log
 
-See [change log](https://github.com/enketo/enketo-validate/blob/master/CHANGELOG.md)
+See [change log](https://github.com/enketo/enketo-validate/blob/master/CHANGELOG.md).
