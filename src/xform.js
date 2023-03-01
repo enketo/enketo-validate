@@ -709,6 +709,20 @@ class XForm {
                 missingAttributes.forEach( arr => errors.push( `Missing matching oc:${arr[0]} for oc:${arr[1]} for question "${question}".` ) );
             } );
 
+        // This check is already performed under checkAppearances (which is a more elegant general solution).
+        // However, OpenClinica would like this to be output as an error. Since there isn't a way to only
+        // convert some particular appearance issues from a warning into an error, we duplicate this check here...
+        this.repeats
+            .forEach( repeat => {
+                const appearanceVal =  repeat.getAttribute( 'appearance' );
+                const appearances = appearanceVal ? appearanceVal.trim().split( ' ' ) : [];
+                const notAllowed = [ 'w1', 'w2', 'w3' ];
+                const violation = appearances.filter( appearance => notAllowed.includes( appearance ) )[0];
+                if ( violation ) {
+                    const repeatName = this._nodeName( repeat.getAttribute( 'nodeset' ) );
+                    errors.push( `Appearance "${violation}" for "${repeatName}" is not valid for type repeat.` );
+                }
+            } );
 
         // check for use of last-saved feature
         this.instances
