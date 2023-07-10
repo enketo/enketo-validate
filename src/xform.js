@@ -1,13 +1,14 @@
 global.IntersectionObserver = function(){};
 const utils = require( '../build/utils-cjs-bundle' );
 const { JSDOM } = require( 'jsdom' );
-const puppeteer = require( 'puppeteer' );
+const { BrowserHandler, getBrowser } = require( './headless-browser' );
 const libxslt = require( 'libxslt' );
 const libxmljs = libxslt.libxmljs;
 const path = require( 'path' );
 const sheets = require( 'enketo-transformer' ).sheets;
 const xslModelSheet = libxslt.parse( sheets.xslModel );
 const appearanceRules = require( './appearances' );
+
 
 /**
  * @typedef Result
@@ -24,9 +25,10 @@ class XForm {
      * @constructs
      *
      * @param {string} xformStr - XForm content.
+     * @param browserHandler
      * @param {module:validator~ValidateResult} [options] - Validation options.
      */
-    constructor( xformStr, options = {} ) {
+    constructor( xformStr, browserHandler = new BrowserHandler(), options = {} ) {
         this.options = options;
         if ( !xformStr || !xformStr.trim() ) {
             throw 'Empty form.';
@@ -35,8 +37,9 @@ class XForm {
 
         const dom = this._getDom();
         this.doc = dom.window.document;
-        this.loadBrowserPage = puppeteer.launch( { headless: 'new', devtools: false } )
-            .then( browser => {
+
+        this.loadBrowserPage = getBrowser( browserHandler )
+            .then( browser =>{
                 this.browser = browser;
 
                 return browser.newPage();
@@ -167,10 +170,8 @@ class XForm {
     }
 
     exit(){
-        if ( this.browser ){
-
-            return this.browser.close();
-        }
+        return this.loadBrowserPage
+            .then( page => page.close() );
     }
 
     /**

@@ -1,9 +1,11 @@
 const XForm = require( '../../src/xform' ).XForm;
 const validator = require( '../../src/validator' );
+const { BrowserHandler } = require( '../../src/headless-browser' );
 const expect = require( 'chai' ).expect;
 const fs = require( 'fs' );
 const path = require( 'path' );
 
+const browserHandler = new BrowserHandler();
 const loadXForm = filename => fs.readFileSync( path.join( process.cwd(), 'test/xform', filename ), 'utf-8' );
 const arrContains = ( arr, reg ) => arr.some( item => item.search( reg ) !== -1 );
 
@@ -11,13 +13,13 @@ describe( 'XForm', () => {
 
     describe( 'that is valid', () => {
         const xf = loadXForm( 'model-only.xml' );
-        it( 'returns duration', async() => {
-            const result = await validator.validate( xf );
+        it.only( 'returns duration', async() => {
+            const result = await validator.validate( xf, browserHandler );
             expect( result.duration ).to.be.above( 0 );
         } );
 
         it( 'returns no errors and no warnings', async() => {
-            const result = await validator.validate( xf );
+            const result = await validator.validate( xf, browserHandler );
             expect( result.errors.length ).to.equal( 0 );
             expect( result.warnings.length ).to.equal( 0 );
         } );
@@ -26,7 +28,7 @@ describe( 'XForm', () => {
     describe( 'that is invalid', () => {
         const xf = loadXForm( 'missing-closing-tag.xml' );
         it( 'returns duration', async() => {
-            const result = await validator.validate( xf );
+            const result = await validator.validate( xf, browserHandler );
             expect( result.duration ).to.be.above( 0 );
         } );
     } );
@@ -35,7 +37,7 @@ describe( 'XForm', () => {
         const xf = loadXForm( 'bind-not-binding.xml' );
 
         it( 'should return an error', async() => {
-            const result = await validator.validate( xf );
+            const result = await validator.validate( xf, browserHandler );
             expect( result.warnings.length ).to.equal( 0 );
             expect( result.errors.length ).to.equal( 1 );
             expect( result.errors[0] ).to.include( 'not exist' );
@@ -45,7 +47,7 @@ describe( 'XForm', () => {
     describe( 'with bind that has no matching primary instance node (instanceID)', () => {
         const xf = loadXForm( 'missing-instanceID.xml' );
         it( 'should return a error', async() => {
-            const result = await validator.validate( xf );
+            const result = await validator.validate( xf, browserHandler );
             expect( result.errors.length ).to.equal( 1 );
             expect( result.errors[0] ).to.include( 'instanceID' );
         } );
@@ -54,7 +56,7 @@ describe( 'XForm', () => {
     describe( 'with bind that has no nodeset', () => {
         const xf = loadXForm( 'bind-without-nodeset.xml' );
         it( 'should return an error', async() => {
-            const result = await validator.validate( xf );
+            const result = await validator.validate( xf, browserHandler );
             expect( result.errors.length ).to.equal( 1 );
             expect( result.errors[0] ).to.include( 'without a nodeset attribute' );
         } );
@@ -63,16 +65,16 @@ describe( 'XForm', () => {
     describe( 'with external instance', () => {
         const xf = loadXForm( 'external-instance.xml' );
         it( 'should not return an error because the instance is empty', async() => {
-            const result = await validator.validate( xf );
+            const result = await validator.validate( xf, browserHandler );
             expect( result.errors.length ).to.equal( 0 );
         } );
     } );
 
     describe( 'with basic XForm structural errors', () => {
-        const validation1 = validator.validate( loadXForm( 'structure-1.xml' ) );
-        const validation2 = validator.validate( loadXForm( 'structure-2.xml' ) );
-        const validation3 = validator.validate( loadXForm( 'structure-3.xml' ) );
-        const validation4 = validator.validate( loadXForm( 'structure-4.xml' ) );
+        const validation1 = validator.validate( loadXForm( 'structure-1.xml' ), browserHandler );
+        const validation2 = validator.validate( loadXForm( 'structure-2.xml' ), browserHandler );
+        const validation3 = validator.validate( loadXForm( 'structure-3.xml' ), browserHandler );
+        const validation4 = validator.validate( loadXForm( 'structure-4.xml' ), browserHandler );
 
         it( 'should return a root nodename error', async() => {
             const result1 = await validation1;
@@ -122,7 +124,7 @@ describe( 'XForm', () => {
     } );
 
     describe( 'with errors in relevant, constraint, calculate and required expressions', () => {
-        const validation = validator.validate( loadXForm( 'xpath-fails.xml' ) );
+        const validation = validator.validate( loadXForm( 'xpath-fails.xml' ), browserHandler );
 
         it( 'should be detected', async() => {
             const result = await validation;
@@ -139,7 +141,7 @@ describe( 'XForm', () => {
     } );
 
     describe( 'with errors in setvalue expressions and attributes', () => {
-        const validation = validator.validate( loadXForm( 'setvalue-fails.xml' ) );
+        const validation = validator.validate( loadXForm( 'setvalue-fails.xml' ), browserHandler );
 
         it( 'should be detected', async() => {
             const result = await validation;
@@ -154,7 +156,7 @@ describe( 'XForm', () => {
     } );
 
     describe( 'with calculations on a form control that are not set to readonly', () => {
-        const validation = validator.validate( loadXForm( 'calculation-not-readonly.xml' ) );
+        const validation = validator.validate( loadXForm( 'calculation-not-readonly.xml' ), browserHandler );
 
         it( 'returns errors', async() => {
             const result = await validation;
@@ -165,7 +167,7 @@ describe( 'XForm', () => {
     describe( 'validated with custom OpenClinica rules', () => {
 
         describe( 'forms with special clinicaldata extensions', () => {
-            const validation = validator.validate( loadXForm( 'openclinica-clinicaldata.xml' ), {
+            const validation = validator.validate( loadXForm( 'openclinica-clinicaldata.xml' ), browserHandler, {
                 openclinica: true
             } );
 
@@ -193,10 +195,10 @@ describe( 'XForm', () => {
         } );
 
         describe( 'forms with the special signature extensions ', ()=>{
-            const validation1 = validator.validate( loadXForm( 'openclinica-external-signature-invalid.xml' ), {
+            const validation1 = validator.validate( loadXForm( 'openclinica-external-signature-invalid.xml' ), browserHandler, {
                 openclinica: true
             } );
-            const validation2 = validator.validate( loadXForm( 'openclinica-external-signature-valid.xml' ), {
+            const validation2 = validator.validate( loadXForm( 'openclinica-external-signature-valid.xml' ), browserHandler, {
                 openclinica: true
             } );
 
@@ -217,7 +219,7 @@ describe( 'XForm', () => {
         } );
 
         describe( 'forms with special multiple constraints extensions', () => {
-            const validation = validator.validate( loadXForm( 'openclinica-multiple-constraints-fails.xml' ), {
+            const validation = validator.validate( loadXForm( 'openclinica-multiple-constraints-fails.xml' ), browserHandler, {
                 openclinica: true
             } );
 
@@ -237,7 +239,7 @@ describe( 'XForm', () => {
         } );
 
         describe( 'forms using the special last-saved instance', () => {
-            const validation = validator.validate( loadXForm( 'last-saved.xml' ), {
+            const validation = validator.validate( loadXForm( 'last-saved.xml' ), browserHandler, {
                 openclinica: true
             } );
 
@@ -252,7 +254,7 @@ describe( 'XForm', () => {
 
     // This test is to confirm the opposite behavior of the behavior in OpenClinica mode to ensure that behavior is isolated.
     describe( 'forms using the special last-saved instance', () => {
-        const validation = validator.validate( loadXForm( 'last-saved.xml' ) );
+        const validation = validator.validate( loadXForm( 'last-saved.xml' ), browserHandler );
 
         it( 'does not return an error', async() => {
             const result = await validation;
@@ -262,8 +264,8 @@ describe( 'XForm', () => {
 
     describe( 'with incorrect appearance usage', () => {
         const xf = loadXForm( 'appearances.xml' );
-        const validation = validator.validate( xf );
-        const validationOc = validator.validate( xf, {
+        const validation = validator.validate( xf, browserHandler );
+        const validationOc = validator.validate( xf, browserHandler, {
             openclinica: true
         } );
         const WARNINGS = 14;
@@ -308,7 +310,7 @@ describe( 'XForm', () => {
         } );
 
         it( 'including the special case "horizontal" return warnings', async() => {
-            const result = await validator.validate( loadXForm( 'appearance-horizontal.xml' ) );
+            const result = await validator.validate( loadXForm( 'appearance-horizontal.xml' ), browserHandler );
 
             expect( result.warnings.length ).to.equal( 4 );
             expect( arrContains( result.warnings, /"horizontal" for question "d" .+ deprecated.+"columns"/i ) ).to.equal( true );
@@ -318,7 +320,7 @@ describe( 'XForm', () => {
         } );
 
         it( 'for custom analog-scale widgets', async() => {
-            const result = await validator.validate( loadXForm( 'openclinica-analog-scale.xml' ) );
+            const result = await validator.validate( loadXForm( 'openclinica-analog-scale.xml' ), browserHandler );
             expect( result.warnings.length ).to.equal( 2 );
             expect( arrContains( result.warnings, /"show-scale" for question "d" .+ combination .+no-ticks/i ) ).to.equal( true );
             expect( arrContains( result.warnings, /"show-scale" for question "e" .+ combination .+horizontal/i ) ).to.equal( true );
@@ -328,7 +330,7 @@ describe( 'XForm', () => {
 
     describe( 'with repeats with incorrect w-values for Grid Theme forms', () => {
         const xf = loadXForm( 'appearances-repeat.xml' );
-        const validation = validator.validate( xf );
+        const validation = validator.validate( xf, browserHandler );
         const WARNINGS = 3;
 
         it( 'returns warnings', async() => {
@@ -343,7 +345,7 @@ describe( 'XForm', () => {
 
     describe( 'with likely user errors that are not actually XPath syntax errors', () => {
         const xf = loadXForm( 'user-ues.xml' );
-        const validation = validator.validate( xf );
+        const validation = validator.validate( xf, browserHandler );
 
         it( 'returns warnings', async() => {
             const result = await validation;
@@ -366,7 +368,7 @@ describe( 'XForm', () => {
 
     describe( 'with unsupported external app launching syntax', () => {
         const xf = loadXForm( 'external-app.xml' );
-        const validation = validator.validate( xf );
+        const validation = validator.validate( xf, browserHandler );
 
         it( 'returns warnings', async() => {
             const result = await validation;
@@ -381,7 +383,7 @@ describe( 'XForm', () => {
     describe( 'with missing <label> elements', () => {
 
         it( 'returns errors', async() => {
-            const result = await validator.validate( loadXForm( 'missing-labels.xml' ) );
+            const result = await validator.validate( loadXForm( 'missing-labels.xml' ), browserHandler );
             const ISSUES = 6;
             expect( result.errors.length ).to.equal( ISSUES );
             expect( arrContains( result.errors, /"a" has no label/i ) ).to.equal( true );
@@ -393,7 +395,7 @@ describe( 'XForm', () => {
         } );
 
         it( 'does not return errors for setvalue actions without a label', async() => {
-            const result = await validator.validate( loadXForm( 'setvalue.xml' ) );
+            const result = await validator.validate( loadXForm( 'setvalue.xml' ), browserHandler );
             expect( result.errors.length ).to.equal( 0 );
         } );
 
@@ -402,13 +404,13 @@ describe( 'XForm', () => {
     describe( 'with missing <value> elements', () => {
 
         it( 'returns errors', async() => {
-            const result = await validator.validate( loadXForm( 'missing-values.xml' ) );
+            const result = await validator.validate( loadXForm( 'missing-values.xml' ), browserHandler );
             expect( result.errors.length ).to.equal( 1 );
             expect( arrContains( result.errors, /option for question "k" has no value/i ) ).to.equal( true );
         } );
 
         it( 'does not return errors for setvalue actions without a label', async() => {
-            const result = await validator.validate( loadXForm( 'setvalue.xml' ) );
+            const result = await validator.validate( loadXForm( 'setvalue.xml' ), browserHandler );
             expect( result.errors.length ).to.equal( 0 );
         } );
 
@@ -417,7 +419,7 @@ describe( 'XForm', () => {
     describe( 'with duplicate nodenames', () => {
 
         it( 'returns warnings', async() => {
-            const result = await validator.validate( loadXForm( 'duplicate-nodename.xml' ) );
+            const result = await validator.validate( loadXForm( 'duplicate-nodename.xml' ), browserHandler );
             expect( result.warnings.length ).to.equal( 2 );
             expect( arrContains( result.warnings, /Duplicate .* name "a" found/i ) ).to.equal( true );
             expect( arrContains( result.warnings, /Duplicate .* name "g" found/i ) ).to.equal( true );
@@ -429,7 +431,7 @@ describe( 'XForm', () => {
     describe( 'with nodenames containing underscores', () => {
 
         it( 'returns warnings', async() => {
-            const result = await validator.validate( loadXForm( 'nodename-underscore.xml' ) );
+            const result = await validator.validate( loadXForm( 'nodename-underscore.xml' ), browserHandler );
             expect( result.warnings.length ).to.equal( 0 );
             expect( result.errors.length ).to.equal( 0 );
         } );
@@ -439,7 +441,7 @@ describe( 'XForm', () => {
     describe( 'with nested repeats', () => {
 
         it( 'returns warnings', async() => {
-            const result = await validator.validate( loadXForm( 'nested-repeats.xml' ) );
+            const result = await validator.validate( loadXForm( 'nested-repeats.xml' ), browserHandler );
             expect( result.warnings.length ).to.equal( 2 );
             expect( arrContains( result.warnings, /Repeat "immunization-info" .* nested/i ) ).to.equal( true );
             expect( arrContains( result.warnings, /Repeat "kids-details" .* nested/i ) ).to.equal( true );
@@ -451,7 +453,7 @@ describe( 'XForm', () => {
 
         it( 'returns errors for disallowed self-referencing', async() => {
             // Unit tests are in xpath.spec.js
-            const result = await validator.validate( loadXForm( 'self-reference.xml' ) );
+            const result = await validator.validate( loadXForm( 'self-reference.xml' ), browserHandler );
             expect( result.errors.length ).to.equal( 2 );
             expect( arrContains( result.errors, /Calculation formula for "calc1".*refers to itself/i ) ).to.equal( true );
             expect( arrContains( result.errors, /Relevant formula for "rel".*refers to itself/i ) ).to.equal( true );
@@ -468,7 +470,7 @@ describe( 'XForm Class', () => {
     } );
 
     describe( 'nsPrefixResolver method', () => {
-        const xf = new XForm( loadXForm( 'model-only.xml' ) );
+        const xf = new XForm( loadXForm( 'model-only.xml' ), browserHandler );
         it( 'should return namespace prefix', () => {
             expect( xf.nsPrefixResolver( 'http://enketo.org/xforms' ) ).to.equal( 'enk' );
         } );
@@ -478,7 +480,7 @@ describe( 'XForm Class', () => {
     } );
 
     describe( 'enketoEvaluate method', () => {
-        const xf = new XForm( loadXForm( 'model-only.xml' ) );
+        const xf = new XForm( loadXForm( 'model-only.xml' ), browserHandler );
         it( 'should parse model if it wasn\'t parsed already', async() => {
             expect( typeof xf.modelHandle === 'undefined' ).to.equal( true );
             await xf.enketoEvaluate( 'floor(1)' );

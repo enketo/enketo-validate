@@ -8,6 +8,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ##### Changed
 - Updated dependencies.
+- Improved performance of tests and using this library as a JS module
 
 [2.1.2] - 2023-03-01
 --------------------------
