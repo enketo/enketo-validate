@@ -31,7 +31,6 @@ const { version } = require( '../package' );
  *
  * @static
  * @param {string} xformStr - XForm content.
- * @param browserHandler
  * @param {ValidationOptions} [options] - Validation options.
  * @return {ValidateResult} validation results.
  */

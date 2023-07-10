@@ -25,7 +25,6 @@ class XForm {
      * @constructs
      *
      * @param {string} xformStr - XForm content.
-     * @param browserHandler
      * @param {module:validator~ValidateResult} [options] - Validation options.
      */
     constructor( xformStr, options = {} ) {
