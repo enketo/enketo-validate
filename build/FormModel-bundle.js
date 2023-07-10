@@ -41667,6 +41667,788 @@
 	    this.xml.jsEvaluate = evaluator.evaluate;
 	}
 
+	// @ts-check
+
+	/**
+	 * @typedef {TreeWalker & { set currentNode(node: Node); get currentNode():  Comment }} CommentTreeWalker
+	 */
+
+	const commentTreeWalker = /** @type {CommentTreeWalker} */ (
+	    document.createTreeWalker(document.documentElement, NodeFilter.SHOW_COMMENT)
+	);
+
+	/**
+	 * @typedef FindMarkerCommentsOptions
+	 * @property {number} [maxItems]
+	 * @property {Element | null} [startElement]
+	 */
+
+	/**
+	 * @typedef {import('./collections').RefIndexedDOMCollection} RefIndexedDOMCollection
+	 */
+
+	/**
+	 * @typedef {import('../form-model').FormModel} FormModel
+	 */
+
+	/**
+	 * Finds comments which have been added to the DOM as markers to locate
+	 * associated form features, e.g. view elements of a certain role/type and ref (@see {@link RefIndexedDOMCollection}) or insertion points for repeat instance model elements (@see {@link FormModel['getRepeatCommentNode']}).
+	 *
+	 * @param {Element} parentElement
+	 * @param {(commentValue: string) => boolean} filter
+	 * @param {FindMarkerCommentsOptions} [options]
+	 */
+	const findMarkerComments = (parentElement, filter, options = {}) => {
+	    const { maxItems, startElement } = options;
+	    const initialCurrentNode = commentTreeWalker.currentNode;
+
+	    commentTreeWalker.currentNode = startElement ?? parentElement;
+
+	    /** @type {Comment[]} */
+	    const comments = [];
+
+	    while (commentTreeWalker.nextNode() != null) {
+	        const comment = commentTreeWalker.currentNode;
+
+	        if (!parentElement.contains(comment)) {
+	            break;
+	        }
+
+	        if (filter(comment.data)) {
+	            comments.push(comment);
+
+	            if (maxItems != null && comments.length === maxItems) {
+	                break;
+	            }
+	        }
+	    }
+
+	    commentTreeWalker.currentNode = initialCurrentNode;
+
+	    return comments;
+	};
+
+	/**
+	 * @param {Element} element
+	 * @param {string} value
+	 * @param {number} index
+	 */
+	const findMarkerComment = (element, value, index) => {
+	    // const comments = findMarkerComments(
+	    //     element,
+	    //     (commentValue) => commentValue === value,
+	    //     { maxItems: index + 1 }
+	    // );
+
+	    // return comments[index];
+	    const initialCurrentNode = commentTreeWalker.currentNode;
+
+	    commentTreeWalker.currentNode = element;
+
+	    let found = -1;
+
+	    /** @type {Comment | null} */
+	    let result = null;
+
+	    while (found < index && commentTreeWalker.nextNode() != null) {
+	        const comment = /** @type {Comment} */ (commentTreeWalker.currentNode);
+
+	        if (comment.data === value) {
+	            found += 1;
+
+	            if (found === index) {
+	                result = comment;
+
+	                break;
+	            }
+	        }
+	    }
+
+	    commentTreeWalker.currentNode = initialCurrentNode;
+
+	    return result;
+	};
+
+	// @ts-check
+
+
+	/**
+	 * @typedef {import('./tree-walker').CommentTreeWalker} CommentTreeWalker
+	 */
+
+	/**
+	 * @typedef {import('../form').Form} Form
+	 */
+
+	/**
+	 * @typedef {TreeWalker & { currentNode: ProcessingInstruction }} ProcessingInstructionTreeWalker
+	 */
+
+	const BREAK = Symbol('BREAK');
+
+	/**
+	 * @typedef {typeof BREAK} Break
+	 */
+
+	/** @type {Set<string>} */
+	let activeIds = new Set();
+
+	/** @type {Set<RefIndexedDOMCollection>} */
+	let collections = new Set();
+
+	/**
+	 * Provides consistent, efficient access to common operations on DOM collections which:
+	 *
+	 * - Have an identifiable role or type
+	 * - Have been transformed by Enketo Transformer to have a known attribute name
+	 *   whose value is a stable model nodeset reference, where existing form logic
+	 *   is concerned with:
+	 *     - finding elements of a given role by a given reference
+	 *     - identifying the presence of said reference in a form, or in another
+	 *       element's hierarchy
+	 * - Are indexed by their [containing] repeat instance on forms with repeats,
+	 *   where existing form logic is concerned with:
+	 *     - determining their current index position
+	 *     - finding an element with a given role/reference at a specified index
+	 *       position
+	 *
+	 * These collections are looked up, and cached, by their role/type, as well as
+	 * by their model nodeset reference. For forms with repeat functionality, their
+	 * repeat index positions are also cached, invalidating caches of repeats and
+	 * their descendants when instances are added or removed. For forms without
+	 * repet functionality, each collection is cached for the duration of form entry.
+	 *
+	 * @package - exported only for unit tests
+	 * @template {string} [CollectionID=string]
+	 */
+	class RefIndexedDOMCollection {
+	    /**
+	     * @param {CollectionID} id
+	     * @param {Form} form
+	     * @param {HTMLElement} rootElement
+	     * @param {string} selector
+	     * @param {string} [refAttr]
+	     */
+	    constructor(id, form, rootElement, selector, refAttr) {
+	        if (activeIds.has(id)) {
+	            throw new Error(
+	                `The id parameter must be unique per form, "${id}" is already used`
+	            );
+	        }
+
+	        collections.add(this);
+
+	        /** @type {string} */
+	        this.id = id;
+
+	        /** @type {Form} */
+	        this.form = form;
+
+	        /** @type {HTMLElement} */
+	        this.rootElement = rootElement;
+
+	        /** @type {string} */
+	        this.prefix = `${id}:`;
+
+	        /** @type {string} */
+	        this.selector = selector;
+
+	        /** @type {string | null} */
+	        this.refAttr = refAttr ?? null;
+
+	        /** @type {Set<string>} */
+	        this.refs = new Set();
+
+	        /** @type {Set<string>} */
+	        this.repeatDescendantRefs = new Set();
+
+	        /** @type {Set<string>} */
+	        this.topLevelGroupRefs = new Set();
+
+	        /**
+	         * @private
+	         * @type {Map<string, WeakMap<HTMLElement, number>>}
+	         */
+	        this.refIndexCache = new Map([['', new WeakMap()]]);
+
+	        /**
+	         * @private
+	         * @type {Map<string, HTMLElement[]>}
+	         */
+	        this.refElementsCache = new Map();
+
+	        const { refs } = this;
+
+	        const elements = /** @type {NodeListOf<HTMLElement>} */ (
+	            rootElement.querySelectorAll(selector)
+	        );
+	        const firstElement = elements[0];
+
+	        const isNoop =
+	            firstElement == null || firstElement.parentElement == null;
+
+	        /** @type {boolean} */
+	        this.isNoop = isNoop;
+
+	        /** @type {HTMLElement} */
+	        this.startElement = isNoop
+	            ? rootElement
+	            : /** @type {HTMLElement} */ (
+	                  firstElement?.previousElementSibling ?? rootElement
+	              );
+
+	        /** @type {HTMLElement} */
+	        this.startElementContainer = isNoop
+	            ? rootElement
+	            : this.startElement.closest('.or-group') ?? rootElement;
+
+	        const elementName = firstElement?.nodeName.toLowerCase();
+
+	        /**
+	         * @private
+	         * @type {'nextElementSibling' | 'parentElement'}
+	         */
+	        this.commentToElementKey =
+	            elementName === 'input' ? 'nextElementSibling' : 'parentElement';
+
+	        /**
+	         * Inserts `comment` into the DOM so `element` can be efficiently found
+	         * with a tree walker. In most cases `comment` is prepended to `element`
+	         * so it will be included in clones. The exception is for input
+	         * elements, which are not supposed to have child elements.
+	         *
+	         * @type {(element: HTMLElement, comment: Comment) => void}
+	         */
+	        const insert =
+	            elementName === 'input'
+	                ? (element, comment) => {
+	                      element.before(comment);
+	                  }
+	                : (element, comment) => {
+	                      element.prepend(comment);
+	                  };
+
+	        const isFormStatic = form.initialized
+	            ? !form.features.repeat
+	            : rootElement.querySelector('.or-repeat') == null;
+
+	        elements.forEach((element) => {
+	            const ref = refAttr == null ? '' : element.getAttribute(refAttr);
+
+	            if (ref == null) {
+	                return;
+	            }
+
+	            if (!this.refs.has(ref)) {
+	                refs.add(ref);
+
+	                if (!isFormStatic && element.closest('.or-repeat') != null) {
+	                    this.repeatDescendantRefs.add(ref);
+	                    this.refIndexCache.set(ref, new WeakMap());
+	                } else {
+	                    this.refElementsCache.set(ref, [element]);
+	                    this.refIndexCache.set(ref, new WeakMap([[element, 0]]));
+	                }
+	            }
+
+	            const comment = document.createComment(`${id}:${ref}`);
+
+	            insert(element, comment);
+	        });
+
+	        /** @type {boolean} */
+	        this.isStatic =
+	            this.isNoop ||
+	            (form.initialized
+	                ? !form.features.repeat
+	                : rootElement.querySelector('.or-repeat') == null) ||
+	            this.repeatDescendantRefs.size === 0;
+	    }
+
+	    reset() {
+	        this.isNoop = true;
+	        this.isStatic = true;
+	        this.refs = new Set();
+	        this.repeatDescendantRefs = new Set();
+	        this.topLevelGroupRefs = new Set();
+	        this.refIndexCache = new Map([['', new WeakMap()]]);
+	        this.refElementsCache = new Map();
+	        this.rootElement = document.createElement('no-op');
+	    }
+	    /**
+	     * @param {string} repeatPath
+	     */
+
+	    invalidate(repeatPath) {
+	        if (this.isNoop || this.isStatic) {
+	            return;
+	        }
+
+	        this.refElementsCache.delete('');
+	        this.refIndexCache.set('', new WeakMap());
+
+	        let affectedRefs = Array.from(this.repeatDescendantRefs);
+
+	        if (repeatPath != null) {
+	            const prefix = `${repeatPath}/`;
+
+	            affectedRefs = affectedRefs.filter((ref) => {
+	                const isAffected = ref === repeatPath || ref.startsWith(prefix);
+
+	                return isAffected;
+	            });
+	        }
+
+	        for (const ref of affectedRefs) {
+	            this.refElementsCache.delete(ref);
+	            this.refIndexCache.set(ref, new WeakMap());
+	        }
+	    }
+
+	    /**
+	     * @param {string} ref
+	     */
+	    hasRef(ref) {
+	        return this.refs.has(ref);
+	    }
+
+	    /**
+	     * @private
+	     * @param {(element: HTMLElement, index: number) => Break | void} callback
+	     * @param {{ matchRef?: string | null }} [options]
+	     */
+	    walk(callback, options = {}) {
+	        const { isNoop, prefix, rootElement } = this;
+
+	        if (isNoop) {
+	            return;
+	        }
+
+	        const { matchRef } = options;
+	        let index = 0;
+	        let { startElement, startElementContainer } = this;
+
+	        if (!startElementContainer.isConnected) {
+	            startElementContainer = rootElement;
+	            this.startElementContainer = startElementContainer;
+	        }
+
+	        if (!startElement.isConnected) {
+	            startElement = startElementContainer.isConnected
+	                ? startElementContainer
+	                : this.rootElement;
+
+	            this.startElement = startElement;
+	        }
+
+	        const matchData = matchRef ? `${prefix}${matchRef}` : null;
+	        const comments = findMarkerComments(
+	            rootElement,
+	            matchData == null
+	                ? (commentData) => commentData.startsWith(prefix)
+	                : (commentData) => commentData === matchData,
+	            { startElement }
+	        );
+
+	        const { commentToElementKey } = this;
+
+	        for (const comment of comments) {
+	            const element = /** @type {HTMLElement} */ (
+	                comment[commentToElementKey]
+	            );
+	            const result = callback(element, index);
+
+	            if (result === BREAK) {
+	                break;
+	            }
+
+	            index += 1;
+	        }
+	    }
+
+	    /**
+	     * @private
+	     * @param {{ cacheIndexes?: boolean; matchRef?: string | null; }} [options]
+	     */
+	    collect(options = {}) {
+	        const { cacheIndexes = false, matchRef } = options;
+
+	        /** @type {HTMLElement[]} */
+	        const elements = [];
+
+	        this.walk(
+	            (element, index) => {
+	                elements.push(element);
+
+	                if (cacheIndexes) {
+	                    this.setRefIndexCache(element, index);
+	                }
+	            },
+	            { matchRef }
+	        );
+
+	        return elements;
+	    }
+
+	    /**
+	     * @private
+	     * @param {HTMLElement} element
+	     * @param {{ cacheIndexes?: boolean; matchRef?: string | null; }} [options]
+	     */
+	    getIndex(element, options = {}) {
+	        const { matchRef, cacheIndexes = matchRef != null } = options;
+	        let result = -1;
+
+	        this.walk(
+	            (item, index) => {
+	                if (cacheIndexes) {
+	                    this.setRefIndexCache(item, index, matchRef ?? '');
+	                }
+
+	                if (item === element) {
+	                    result = index;
+
+	                    return BREAK;
+	                }
+	            },
+	            { matchRef }
+	        );
+
+	        return result;
+	    }
+
+	    getElements() {
+	        return this.getElementsByRef('');
+	    }
+
+	    getElement(index = 0) {
+	        return this.getElements()[index];
+	    }
+
+	    /**
+	     * @param {string} ref
+	     */
+	    getElementsByRef(ref) {
+	        if (this.isNoop) {
+	            return [];
+	        }
+
+	        let elements = this.refElementsCache.get(ref);
+
+	        if (elements == null) {
+	            const cacheIndexes = ref !== '' || this.refAttr == null;
+	            const matchRef = ref || null;
+
+	            elements = this.collect({
+	                cacheIndexes,
+	                matchRef,
+	            });
+
+	            this.refElementsCache.set(ref, elements);
+	        }
+
+	        return elements;
+	    }
+
+	    /**
+	     * @param {string} ref
+	     */
+	    getElementByRef(ref, index = 0) {
+	        return this.getElementsByRef(ref)[index];
+	    }
+
+	    /**
+	     * @param {HTMLElement} element
+	     */
+	    indexOf(element) {
+	        if (this.isNoop) {
+	            return 0;
+	        }
+
+	        return this.getIndex(element);
+	    }
+
+	    /**
+	     * @param {HTMLElement} element
+	     * @param {number} index
+	     * @param {string} [ref]
+	     */
+	    setRefIndexCache(
+	        element,
+	        index,
+	        ref = this.refAttr == null
+	            ? ''
+	            : element.getAttribute(this.refAttr) ?? ''
+	    ) {
+	        let cache = this.refIndexCache.get(ref);
+
+	        if (cache == null) {
+	            cache = new WeakMap();
+
+	            this.refIndexCache.set(ref, cache);
+	        }
+
+	        cache.set(element, index);
+	    }
+
+	    /**
+	     * @param {HTMLElement} element
+	     * @param {string} ref
+	     */
+	    refIndexOf(element, ref) {
+	        if (this.isNoop) {
+	            return 0;
+	        }
+
+	        let index = this.refIndexCache.get(ref)?.get(element);
+
+	        if (
+	            index == null ||
+	            (index === -1 && this.rootElement.contains(element))
+	        ) {
+	            index = this.getIndex(element, {
+	                matchRef: ref,
+	            });
+
+	            this.setRefIndexCache(element, index);
+	        }
+
+	        return index;
+	    }
+	}
+
+	/**
+	 * Initializes collections of stable or highly cacheable DOM elements. @see {@link RefIndexedDOMCollection}
+	 *
+	 * @param {Form} form
+	 */
+	const initCollections = (form) => {
+	    const rootElement = form.view.html;
+
+	    commentTreeWalker.currentNode = rootElement;
+
+	    while (commentTreeWalker.nextNode() != null) {
+	        // Perhaps counterintuitively, performing an initial walk can sometimes improve form load time by ~500ms for large forms!
+	    }
+
+	    const actions = {
+	        valueChanged: form.features.valueChangedAction
+	            ? new RefIndexedDOMCollection(
+	                  'valueChangedActions',
+	                  form,
+	                  rootElement,
+	                  '.xforms-value-changed',
+	                  'name'
+	              )
+	            : null,
+	    };
+	    const groups = new RefIndexedDOMCollection(
+	        'groups',
+	        form,
+	        rootElement,
+	        '.or-group, .or-group-data',
+	        'name'
+	    );
+	    const refTargetContainers = new RefIndexedDOMCollection(
+	        'refTargetContainers',
+	        form,
+	        rootElement,
+	        '.contains-ref-target',
+	        'data-contains-ref-target'
+	    );
+	    const repeats = new RefIndexedDOMCollection(
+	        'repeats',
+	        form,
+	        rootElement,
+	        '.or-repeat',
+	        'name'
+	    );
+	    const repeatInfos = new RefIndexedDOMCollection(
+	        'repeatInfos',
+	        form,
+	        rootElement,
+	        '.or-repeat-info',
+	        'data-name'
+	    );
+
+	    return {
+	        actions,
+	        groups,
+	        refTargetContainers,
+	        repeats,
+	        repeatInfos,
+	    };
+	};
+
+	/**
+	 * @param {string} repeatPath
+	 */
+	const invalidateRepeatCaches = (repeatPath) => {
+	    for (const collection of collections) {
+	        collection.invalidate(repeatPath);
+	    }
+	};
+
+	const resetCollections = () => {
+	    for (const collection of collections) {
+	        collection.reset();
+	    }
+
+	    activeIds = new Set();
+	    collections = new Set();
+	};
+
+	// @ts-check
+
+	/**
+	 * @typedef {import('../form').Form} Form
+	 */
+
+	/**
+	 * Detects statically identifiable (during init) features which may used by a
+	 * given form, allowing forms without certain features to skip
+	 * unused-but-expensive functionality.
+	 *
+	 * @param {HTMLFormElement} formElement
+	 */
+	const detectFeatures = (formElement) => {
+	    const action = formElement.querySelector('.action') != null;
+	    const calculate =
+	        action || formElement.querySelector('[data-calculate]') != null;
+	    const instanceFirstLoadAction =
+	        action && formElement.querySelector('.odk-instance-first-load') != null;
+	    const itemset = formElement.querySelector('.itemset-template') != null;
+	    const newRepeatAction =
+	        action && formElement.querySelector('.odk-new-repeat') != null;
+	    const output = formElement.querySelector('.or-output') != null;
+	    const pagination = formElement.classList.contains('pages');
+	    const relevant = formElement.querySelector('[data-relevant]') != null;
+	    const repeat = formElement.querySelector('.or-repeat') != null;
+	    const repeatCount =
+	        repeat &&
+	        formElement.querySelector('.or-repeat-info[data-repeat-count]') != null;
+	    const required = formElement.querySelector('[data-required]') != null;
+	    const valueChangedAction =
+	        formElement.querySelector('.xforms-value-changed') != null;
+
+	    return {
+	        action,
+	        calculate,
+	        instanceFirstLoadAction,
+	        itemset,
+	        newRepeatAction,
+	        output,
+	        pagination,
+	        relevant,
+	        repeatCount,
+	        repeat,
+	        required,
+	        valueChangedAction,
+	    };
+	};
+
+	// @ts-check
+
+	/**
+	 * @typedef {import('../form').Form} Form
+	 */
+
+	/**
+	 * Sets convenience classes and related annotations on DOM elements with model
+	 * references, to optimize:
+	 *
+	 * - identifying action references (and their event types) and distinguish them
+	 *   from non-action references
+	 * - identifying controls and their pertinent container elements by their
+	 *   reference
+	 *
+	 * These annotations allow simplification of many DOM lookups, and in many cases
+	 * allow formerly dynamic queries to be static.
+	 *
+	 * @param {Form} form
+	 */
+	const setRefTypeClasses = (form) => {
+	    const rootElement = form.view.html;
+
+	    const hasActions =
+	        rootElement.querySelector('[data-setvalue], [data-setgeopoint]') !=
+	        null;
+
+	    const selector = hasActions
+	        ? '[name], [data-name], [data-setvalue], [data-setgeopoint]'
+	        : '.question [name], .question [data-name]';
+
+	    const elements = /** @type {NodeListOf<HTMLElement>} */ (
+	        rootElement.querySelectorAll(selector)
+	    );
+
+	    const eventTypes = [
+	        'odk-instance-first-load',
+	        'odk-new-repeat',
+	        'xforms-value-changed',
+	    ];
+
+	    const nonEventClasses = eventTypes.map((event) => `non-${event}`);
+
+	    /** @type {string[]} */
+	    let classes = [];
+
+	    for (const element of elements) {
+	        if (hasActions) {
+	            const isAction =
+	                element.dataset.setvalue != null ||
+	                element.dataset.setgeopoint != null;
+	            const isFormControlAction =
+	                isAction && element.closest('.question') != null;
+	            const actionClasses = [
+	                isAction ? 'action' : 'non-action',
+	                isFormControlAction
+	                    ? 'form-control-action'
+	                    : 'non-form-control-action',
+	            ];
+	            const elementEvents = isAction
+	                ? element.dataset.event?.trim()?.split(/\s+/) ?? []
+	                : [];
+	            const eventClasses = isAction
+	                ? eventTypes.map((event, index) =>
+	                      elementEvents.includes(event)
+	                          ? event
+	                          : nonEventClasses[index]
+	                  )
+	                : nonEventClasses;
+
+	            classes = [...actionClasses, ...eventClasses];
+
+	            element.classList.add(...classes);
+	        }
+
+	        if (
+	            !hasActions ||
+	            !element.matches(
+	                '.or-group, .or-group-data, .or-repeat, .or-repeat-info, .question [data-event="xforms-value-changed"]'
+	            )
+	        ) {
+	            const ref = element.dataset.name ?? element.getAttribute('name');
+
+	            if (ref == null) {
+	                return;
+	            }
+
+	            const container = /** @type {HTMLElement} */ (
+	                element.closest('.itemset-template') ??
+	                    // @ts-ignore
+	                    form.input.getWrapNode(element)
+	            );
+
+	            element.classList.add('ref-target');
+	            container.classList.add('contains-ref-target');
+	            container.dataset.containsRefTarget = ref;
+	            element.dataset.ref = ref;
+	        }
+	    }
+	};
+
 	/**
 	 * Various utilities.
 	 *
@@ -42394,6 +43176,34 @@
 	    }
 	}
 
+	/** @type {HTMLElement | null} */
+	let scrollIntoViewTarget = null;
+
+	const intersectionObserver = new IntersectionObserver((records) => {
+	    for (const { target, isIntersecting } of records) {
+	        if (target === scrollIntoViewTarget && !isIntersecting) {
+	            target.scrollIntoView({
+	                block: 'nearest',
+	                inline: 'nearest',
+	            });
+	        }
+
+	        intersectionObserver.unobserve(target);
+	    }
+	});
+
+	/**
+	 * Roughly equivalent to the non-standard
+	 * {@link https://developer.mozilla.org/en-US/docs/Web/API/Element/scrollIntoViewIfNeeded | Element.scrollIntoViewIfNeeded},
+	 * but scrolls to the nearest edges of the viewport.
+	 *
+	 * @param {HTMLElement} element
+	 */
+	const scrollIntoViewIfNeeded = (element) => {
+	    scrollIntoViewTarget = element;
+	    intersectionObserver.observe(element);
+	};
+
 	/**
 	 * A custom error type for form logic
 	 *
@@ -42485,27 +43295,49 @@
 	}
 
 	/**
+	 * @typedef {'magic' | 'user' | 'count' | 'model'} AddRepeatTrigger
+	 */
+
+	/**
+	 * @typedef AddRepeatDetail
+	 * @property {string} repeatPath
+	 * @property {number} repeatIndex
+	 * @property {AddRepeatTrigger} trigger
+	 */
+
+	/**
 	 * The addrepeat event is similar but fired under different circumstances.
 	 *
-	 * @param {{repeatPath: string, repeatIndex: number, trigger: string}} detail - Data to be passed with event.
-	 * @return {CustomEvent} Custom "odk-new-repeat" event (bubbling)
+	 * @param {AddRepeatDetail} [detail] - Data to be passed with event.
+	 * @return {CustomEvent<AddRepeatDetail> & { type: 'addrepeat' }} Custom "odk-new-repeat" event (bubbling)
 	 */
-	function AddRepeat(detail) {
+	function AddRepeat(detail = {}) {
 	    return new CustomEvent('addrepeat', { detail, bubbles: true });
 	}
 
 	/**
-	 * @typedef RemoveRepeatDetail
+	 * @typedef InitRemoveRepeatDetail
 	 * @property {object} [initRepeatInfo]
 	 * @property {string} [initRepeatInfo.repeatPath]
 	 * @property {number} [initRepeatInfo.repeatIndex]
 	 */
 
 	/**
+	 * @typedef PostInitRemoveRepeatDetail
+	 * @property {object} [initRepeatInfo]
+	 * @property {string} [initRepeatInfo.repeatPath]
+	 * @property {number} [initRepeatInfo.repeatIndex]
+	 */
+
+	/**
+	 * @typedef {InitRemoveRepeatDetail | PostInitRemoveRepeatDetail} RemoveRepeatDetail
+	 */
+
+	/**
 	 * Remove repeat event.
 	 *
 	 * @param {RemoveRepeatDetail} [detail]
-	 * @return {CustomEvent} Custom "removerepeat" event (bubbling)
+	 * @return {CustomEvent<RemoveRepeatDetail> & { type: 'removerepeat' }} Custom "removerepeat" event (bubbling)
 	 */
 	function RemoveRepeat(detail) {
 	    return new CustomEvent('removerepeat', { detail, bubbles: true });
@@ -42681,6 +43513,7 @@
 	 * @module format
 	 */
 
+
 	/**
 	 * @typedef LocaleState
 	 * @property {string[]} locales
@@ -42787,6 +43620,7 @@
 	 *
 	 * @module types
 	 */
+
 
 	/**
 	 * @namespace types
@@ -43263,6 +44097,11 @@
 	 * @description Updates branches
 	 */
 
+
+	/**
+	 * @typedef {import('./form').Form} Form
+	 */
+
 	/**
 	 * @typedef RelevanceState
 	 * @property {boolean} isParentNonRelevant
@@ -43313,16 +44152,33 @@
 
 	var relevantModule = {
 	    /**
-	     * @param {UpdatedDataNodes | null} [updated] - The object containing info on updated data nodes.
-	     * @param {boolean} [forceClearNonRelevant] -  whether to empty the values of non-relevant nodes
+	     * @type {Form}
 	     */
-	    update(updated, forceClearNonRelevant = config.forceClearNonRelevant) {
+	    // @ts-expect-error - this will be populated during form init, but assigning
+	    // its type here improves intellisense.
+	    form: null,
+
+	    init() {
 	        if (!this.form) {
 	            throw new Error(
 	                'Branch module not correctly instantiated with form property.'
 	            );
 	        }
 
+	        if (!this.form.features.relevant) {
+	            this.update = () => {};
+
+	            return;
+	        }
+
+	        this.update();
+	    },
+
+	    /**
+	     * @param {UpdatedDataNodes | null} [updated] - The object containing info on updated data nodes.
+	     * @param {boolean} [forceClearNonRelevant] -  whether to empty the values of non-relevant nodes
+	     */
+	    update(updated, forceClearNonRelevant = config.forceClearNonRelevant) {
 	        const nodes = this.form
 	            .getRelatedNodes('data-relevant', '', updated)
 	            .get();
@@ -43339,9 +44195,8 @@
 	        let branchChange = false;
 	        const relevantCache = {};
 	        const alreadyCovered = [];
-	        const clonedRepeatsPresent =
-	            this.form.repeatsPresent &&
-	            this.form.view.html.querySelector('.or-repeat.clone');
+	        const repeatsPresent = this.form.features.repeat;
+	        const { groups, repeats } = this.form.collections;
 
 	        nodes.forEach((node) => {
 	            // Note that node.getAttribute('name') is not the same as p.path for repeated radiobuttons!
@@ -43351,12 +44206,6 @@
 
 	            // Since this result is almost certainly not empty, closest() is the most efficient
 	            const branchNode = node.closest('.or-branch');
-
-	            const p = {};
-	            let cacheIndex = null;
-
-	            p.relevant = this.form.input.getRelevant(node);
-	            p.path = this.form.input.getName(node);
 
 	            if (!branchNode) {
 	                if (
@@ -43370,39 +44219,40 @@
 	                return;
 	            }
 
+	            const relevant = this.form.input.getRelevant(node);
+	            const path = this.form.input.getName(node);
+	            let cacheIndex = null;
+
 	            const { repeatIndex } = options;
 	            let { repeatPath } = options;
 
-	            if (this.form.repeatsPresent) {
-	                if (repeatPath == null) {
-	                    repeatPath = this.form.nodePathToRepeatPath[p.path];
-	                }
+	            if (repeatsPresent && repeatPath == null) {
+	                repeatPath = this.form.nodePathToRepeatPath[path];
 
 	                if (repeatPath == null) {
 	                    for (const prefix of this.form.repeatPathPrefixes) {
-	                        if (p.path.startsWith(prefix)) {
+	                        if (path.startsWith(prefix)) {
 	                            repeatPath = prefix.substring(0, prefix.length - 1);
 
 	                            break;
 	                        }
 	                    }
 
-	                    this.form.nodePathToRepeatPath[p.path] = repeatPath ?? null;
+	                    this.form.nodePathToRepeatPath[path] = repeatPath ?? null;
 	                }
+	            }
 
+	            if (repeatPath != null) {
 	                /*
 	                 * Check if the (calculate without form control) node is part of a repeat that has no instances
 	                 */
-	                const pathParts = p.path.split('/');
+	                const pathParts = path.split('/');
 	                if (pathParts.length > 3 && repeatPath == null) {
 	                    const parentPath = pathParts
 	                        .splice(0, pathParts.length - 1)
 	                        .join('/');
-	                    const parentGroups = [
-	                        ...this.form.view.html.querySelectorAll(
-	                            `.or-group[name="${parentPath}"],.or-group-data[name="${parentPath}"]`
-	                        ),
-	                    ]
+	                    const parentGroups = groups
+	                        .getElementsByRef(parentPath)
 	                        // now remove the groups that have a repeat-info child without repeat instance siblings
 	                        .filter(
 	                            (group) =>
@@ -43424,10 +44274,8 @@
 	             * (6-7 seconds of loading time on the bench6 form)
 	             */
 	            const insideRepeat =
-	                repeatPath != null && p.path.startsWith(`${repeatPath}`);
-	            const repeatParent = clonedRepeatsPresent
-	                ? branchNode.closest('.or-repeat')
-	                : null;
+	                repeatPath != null && path.startsWith(`${repeatPath}/`);
+	            const repeatParent = branchNode.closest('.or-repeat');
 
 	            /**
 	             * Determines the current repeat index position for nodes with no view control.
@@ -43438,31 +44286,24 @@
 	                repeatParent == null &&
 	                typeof repeatIndex === 'number' &&
 	                repeatPath != null &&
-	                p.path.startsWith(`${repeatPath}/`)
+	                path.startsWith(`${repeatPath}/`)
 	                    ? repeatIndex
 	                    : null;
-
-	            const insideRepeatClone =
-	                hiddenInputRepeatIndex > 0 ||
-	                (clonedRepeatsPresent &&
-	                    branchNode.closest('.or-repeat.clone'));
 
 	            /*
 	             * If the relevant is placed on a group and that group contains repeats with the same name,
 	             * but currently has 0 repeats, the context will not be available. This same logic is applied in output.js.
 	             */
-	            let context = p.path;
+	            let context = path;
 	            if (
-	                (getChild(node, `.or-repeat-info[data-name="${p.path}"]`) &&
-	                    !getChild(node, `.or-repeat[name="${p.path}"]`)) ||
+	                (getChild(node, `.or-repeat-info[data-name="${path}"]`) &&
+	                    !getChild(node, `.or-repeat[name="${path}"]`)) ||
 	                // Special cases below for model nodes with no visible form control: if repeat instance removed or if
 	                // no instances at all (e.g. during load with `jr:count="0"`)
 	                (insideRepeat &&
 	                    repeatParent == null &&
 	                    (options.removed ||
-	                        this.form.view.html.querySelector(
-	                            `.or-repeat[name="${CSS.escape(repeatPath)}"]`
-	                        ) == null))
+	                        repeats.getElementByRef(repeatPath) == null))
 	            ) {
 	                context = null;
 	            }
@@ -43471,11 +44312,9 @@
 	             * Determining the index is expensive, so we only do this when the branch is inside a cloned repeat.
 	             * It can be safely set to 0 for other branches.
 	             */
-	            p.ind =
+	            const ind =
 	                hiddenInputRepeatIndex ??
-	                (context && insideRepeatClone
-	                    ? this.form.input.getIndex(node)
-	                    : 0);
+	                this.form.repeats.getIndex(repeatParent);
 
 	            /*
 	             * Caching is only possible for expressions that do not contain relative paths to nodes.
@@ -43483,17 +44322,17 @@
 	             * This check assumes that child nodes (e.g. "mychild = 'bob'") are NEVER used in a relevant
 	             * expression, which may prove to be incorrect.
 	             */
-	            if (p.relevant.indexOf('..') === -1) {
+	            if (relevant.indexOf('..') === -1) {
 	                if (!insideRepeat) {
-	                    cacheIndex = p.relevant;
+	                    cacheIndex = relevant;
 	                } else {
 	                    // The path is stripped of the last nodeName to record the context.
 	                    // This might be dangerous, but until we find a bug, it helps in those forms where one group contains
 	                    // many sibling questions that each have the same relevant.
-	                    cacheIndex = `${p.relevant}__${p.path.substring(
+	                    cacheIndex = `${relevant}__${path.substring(
                         0,
-                        p.path.lastIndexOf('/')
-                    )}__${p.ind}`;
+                        path.lastIndexOf('/')
+                    )}__${ind}`;
 	                }
 	            }
 	            let result;
@@ -43503,7 +44342,7 @@
 	            ) {
 	                result = relevantCache[cacheIndex];
 	            } else {
-	                result = this.evaluate(p.relevant, context, p.ind);
+	                result = this.evaluate(relevant, context, ind);
 	                relevantCache[cacheIndex] = result;
 	            }
 
@@ -43512,23 +44351,17 @@
 	            }
 
 	            if (
-	                this.process(
-	                    branchNode,
-	                    p.path,
-	                    result,
-	                    forceClearNonRelevant,
-	                    {
-	                        ...options,
-	                        repeatIndex: p.ind,
-	                        repeatPath,
-	                    }
-	                ) === true
+	                this.process(branchNode, path, result, forceClearNonRelevant, {
+	                    ...options,
+	                    repeatIndex: ind,
+	                    repeatPath,
+	                }) === true
 	            ) {
 	                branchChange = true;
 	            }
 	        });
 
-	        if (branchChange) {
+	        if (branchChange && this.form.features.pagination) {
 	            this.form.view.$.trigger('changebranch');
 	        }
 	    },
@@ -43672,11 +44505,14 @@
 	            for (const node of modelNodes) {
 	                const isLeafNode = node.children.length === 0;
 	                const isReferencedNode = referencedModelNodes.has(node);
+	                const { textContent } = node;
 	                const currentValue = isLeafNode
-	                    ? node.textContent ||
-	                      (relevanceState.get(node)?.currentValue ??
-	                          node.textContent)
+	                    ? textContent ||
+	                      (relevanceState.get(node)?.currentValue ?? textContent)
 	                    : null;
+	                const isChanged = setRelevant
+	                    ? textContent !== currentValue
+	                    : textContent !== '';
 	                const currentRelevanceState = relevanceState.get(node);
 	                const isParentNonRelevant = Boolean(
 	                    currentRelevanceState?.isParentNonRelevant
@@ -43688,6 +44524,7 @@
 	                if (setRelevant) {
 	                    if (
 	                        isLeafNode &&
+	                        textContent !== currentValue &&
 	                        (isReferencedNode || !isSelfNonRelevant)
 	                    ) {
 	                        node.textContent = currentValue;
@@ -43706,7 +44543,7 @@
 	                            : currentValue,
 	                    });
 	                } else {
-	                    if (isLeafNode) {
+	                    if (isLeafNode && textContent !== '') {
 	                        node.textContent = '';
 	                    }
 
@@ -43722,7 +44559,7 @@
 	                    });
 	                }
 
-	                if (isLeafNode) {
+	                if (isLeafNode && isChanged) {
 	                    updatedElements.unshift(node);
 	                }
 	            }
@@ -43735,6 +44572,8 @@
 	                    })
 	                );
 	            }
+	        } else {
+	            this.toggleNonRelevantModelNodes = () => {};
 	        }
 	    },
 
@@ -43764,8 +44603,7 @@
 	                relevantPath: path,
 	            });
 	            // Update outputs that are children of branch
-	            // TODO this re-evaluates all outputs in the form which is not efficient!
-	            this.form.output.update();
+	            this.form.output.update({ rootNode: branchNode });
 	            this.form.widgets.enable(branchNode);
 	            this.activate(branchNode);
 	        }
@@ -44917,19 +45755,17 @@
 	/**
 	 * @param {string} repeatPath - path to repeat
 	 * @param {number} repeatSeriesIndex - index of repeat series
-	 * @return {Element} node
+	 * @return {Node} node
 	 */
-	FormModel.prototype.getRepeatCommentEl = function (
+	FormModel.prototype.getRepeatCommentNode = function (
 	    repeatPath,
 	    repeatSeriesIndex
 	) {
-	    return this.evaluate(
-	        this.getRepeatCommentSelector(repeatPath),
-	        'nodes-ordered',
-	        null,
-	        null,
-	        true
-	    )[repeatSeriesIndex];
+	    return findMarkerComment(
+	        this.xml.documentElement,
+	        this.getRepeatCommentText(repeatPath),
+	        repeatSeriesIndex
+	    );
 	};
 
 	/**
@@ -44958,7 +45794,7 @@
 	    const repeatSeries = this.getRepeatSeries(repeatPath, repeatSeriesIndex);
 	    const insertAfterNode = repeatSeries.length
 	        ? repeatSeries[repeatSeries.length - 1]
-	        : this.getRepeatCommentEl(repeatPath, repeatSeriesIndex);
+	        : this.getRepeatCommentNode(repeatPath, repeatSeriesIndex);
 
 	    // if not exists and not a merge operation
 	    if (!merge) {
@@ -45007,7 +45843,6 @@
 	    repeat,
 	    firstRepeatInSeries
 	) {
-	    this.getNamespacePrefix(ENKETO_XFORMS_NS);
 	};
 
 	/**
@@ -45029,7 +45864,7 @@
 	    let pathSegments;
 	    let nodeName;
 	    let checkEl;
-	    const repeatCommentEl = this.getRepeatCommentEl(
+	    const repeatCommentEl = this.getRepeatCommentNode(
 	        repeatPath,
 	        repeatSeriesIndex
 	    );
@@ -45823,10 +46658,22 @@
 	 * @module input
 	 */
 
+
+	/**
+	 * @typedef {import('./form').Form} Form
+	 */
+
 	var inputHelper = {
 	    /**
-	     * @param {Element} control - form control HTML element
-	     * @return {Element} Wrap node
+	     * @type {Form}
+	     */
+	    // @ts-expect-error - this will be populated during form init, but assigning
+	    // its type here improves intellisense.
+	    form: null,
+
+	    /**
+	     * @param {HTMLElement} control - form control HTML element
+	     * @return {HTMLElement} Wrap node
 	     */
 	    getWrapNode(control) {
 	        return control.closest(
@@ -45917,13 +46764,18 @@
 	        return control.dataset.constraint;
 	    },
 	    /**
-	     * @param {Element} control - form control HTML element
+	     * @param {HTMLElement} control - form control HTML element
 	     * @return {string|undefined} required expression
 	     */
 	    getRequired(control) {
+	        const { required } = control.dataset;
+
 	        // only return value if input is not a table heading input
-	        if (!closestAncestorUntil(control, '.or-appearance-label', '.or')) {
-	            return control.dataset.required;
+	        if (
+	            required != null &&
+	            !closestAncestorUntil(control, '.or-appearance-label', '.or')
+	        ) {
+	            return required;
 	        }
 	    },
 	    /**
@@ -46054,22 +46906,9 @@
 	     * @return {Element} found element
 	     */
 	    find(name, index = 0) {
-	        let attr = 'name';
-	        if (
-	            this.form.view.html.querySelector(
-	                `input[type="radio"][data-name="${name}"]:not(.ignore)`
-	            )
-	        ) {
-	            attr = 'data-name';
-	        }
-	        const selector = `[${attr}="${name}"]:not([data-event="xforms-value-changed"])`;
-	        const question = this.getWrapNodes(
-	            this.form.view.html.querySelectorAll(selector)
-	        )[index];
-
-	        return question
-	            ? question.querySelector(`[${attr}="${name}"]:not(.ignore)`)
-	            : null;
+	        return this.form.collections.refTargetContainers
+	            .getElementByRef(name, index)
+	            ?.querySelector('.ref-target:not(.ignore)');
 	    },
 	    /**
 	     * Sets the value of a form control (or group like radiobuttons)
@@ -46134,12 +46973,16 @@
 	                    // Use today's date to incorporate daylight savings changes,
 	                    // Strip the thousands of a second, because most browsers fail to parse such a time.
 	                    // Add a space before the timezone offset to satisfy some browsers.
-	                    const ds = `${new Date().toLocaleDateString('en', {
-                        month: 'short',
-                        day: 'numeric',
-                        year: 'numeric',
-                    })}`;
-	                    const d = new Date(ds);
+	                    const todayDate = new Date().toLocaleDateString('en', {
+	                        month: 'short',
+	                        day: 'numeric',
+	                        year: 'numeric',
+	                    });
+	                    const valueTime = value.replace(
+	                        /(\d\d:\d\d:\d\d)(\.\d{1,3})(\s?((\+|-)\d\d))(:)?(\d\d)?/,
+	                        '$1 GMT$3$7'
+	                    );
+	                    const d = new Date(`${todayDate} ${valueTime}`);
 	                    if (d.toString() !== 'Invalid Date') {
 	                        value = `${d.getHours().toString().padStart(2, '0')}:${d
                             .getMinutes()
@@ -46329,6 +47172,11 @@
 	 * @module itemset
 	 */
 
+
+	/**
+	 * @typedef {import('./form').Form} Form
+	 */
+
 	/**
 	 * This function tries to determine whether an XPath expression for a nodeset from an external instance is static.
 	 * Hopefully in the future it can do this properly, but for now it considers any expression
@@ -46355,18 +47203,35 @@
 
 	var itemsetModule = {
 	    /**
+	     * @type {Form}
+	     */
+	    // @ts-expect-error - this will be populated during form init, but assigning
+	    // its type here improves intellisense.
+	    form: null,
+
+	    init() {
+	        if (!this.form) {
+	            throw new Error(
+	                'Itemset module not correctly instantiated with form property.'
+	            );
+	        }
+
+	        if (!this.form.features.itemset) {
+	            this.update = () => {};
+
+	            return;
+	        }
+
+	        this.update();
+	    },
+
+	    /**
 	     * @param {UpdatedDataNodes} [updated] - The object containing info on updated data nodes.
 	     */
 	    update(updated = {}) {
 	        const that = this;
 	        const fragmentsCache = {};
 	        let nodes;
-
-	        if (!this.form) {
-	            throw new Error(
-	                'Output module not correctly instantiated with form property.'
-	            );
-	        }
 
 	        if (updated.relevantPath) {
 	            // Questions that are descendants of a group:
@@ -46412,20 +47277,21 @@
 	                .get();
 	        }
 
-	        const clonedRepeatsPresent =
-	            this.form.repeatsPresent &&
-	            this.form.view.html.querySelector('.or-repeat.clone');
+	        if (nodes.length === 0) {
+	            return;
+	        }
+
 	        const alerts = [];
 
 	        nodes.forEach((template) => {
+	            // Nodes are in document order, so we discard any nodes in questions/groups that have a disabled parent
+	            if (template.closest('.disabled')) {
+	                return;
+	            }
+
 	            const shared =
 	                template.parentElement.parentElement.matches('.or-repeat-info');
 	            const inputAttributes = {};
-
-	            // Nodes are in document order, so we discard any nodes in questions/groups that have a disabled parent
-	            if (closestAncestorUntil(template, '.disabled', '.or')) {
-	                return;
-	            }
 
 	            const newItems = {};
 	            const prevItems = elementDataStore.get(template, 'items') || {};
@@ -46486,14 +47352,13 @@
 	             * Determining the index is expensive, so we only do this when the itemset is inside a cloned repeat and not shared.
 	             * It can be safely set to 0 for other branches.
 	             */
-	            const index =
-	                !shared &&
-	                clonedRepeatsPresent &&
-	                closestAncestorUntil(input, '.or-repeat.clone', '.or')
-	                    ? that.form.input.getIndex(input)
-	                    : 0;
+	            const index = !shared ? that.form.input.getIndex(input) : 0;
 	            const safeToTryNative = true;
-	            // Caching has no advantage here. This is a very quick query (natively).
+	            // Caching has no advantage here. This is a very quick query
+	            // (natively).
+	            // TODO: ^ this is definitely not true when adding
+	            // multiple count-controlled repeats where the result can be
+	            // expected to be the same for each.
 	            const instanceItems = this.form.model.evaluate(
 	                itemsXpath,
 	                'nodes',
@@ -46501,7 +47366,6 @@
 	                index,
 	                safeToTryNative
 	            );
-
 	            // This property allows for more efficient 'itemschanged' detection
 	            newItems.length = instanceItems.length;
 	            // TODO: This may cause problems for large itemsets. Use md5 instead?
@@ -46863,9 +47727,21 @@
 	 * @module repeat
 	 */
 
+
+	/**
+	 * @typedef {import('./form').Form} Form
+	 */
+
 	const disableFirstRepeatRemoval = config.repeatOrdinals === true;
 
 	var repeatModule = {
+	    /**
+	     * @type {Form}
+	     */
+	    // @ts-expect-error - this will be populated during form init, but assigning
+	    // its type here improves intellisense.
+	    form: null,
+
 	    /**
 	     * Initializes all Repeat Groups in form (only called once).
 	     */
@@ -46881,8 +47757,22 @@
 	            );
 	        }
 
+	        if (!this.form.features.repeat) {
+	            this.getIndex = () => 0;
+	            this.form.input.getIndex = () => 0;
+
+	            return;
+	        }
+
+	        if (!this.form.features.repeatCount) {
+	            this.countUpdate = () => {};
+	            this.updateRepeatInstancesFromCount = () => {};
+	        }
+
 	        $repeatInfos = this.form.view.$.find('.or-repeat-info');
 	        this.templates = {};
+	        this.templateStrings = {};
+	        this.optionWrapperContainers = new Set();
 	        // Add repeat numbering elements
 	        $repeatInfos
 	            .siblings('.or-repeat')
@@ -46933,7 +47823,16 @@
 	            .reverse()
 	            .each(function () {
 	                const templateEl = this.cloneNode(true);
+	                that.form.langs.setFormUi(
+	                    that.form.currentLanguage,
+	                    templateEl
+	                );
 	                const xPath = templateEl.getAttribute('name');
+
+	                if (templateEl.querySelector('.option-wrapper') != null) {
+	                    that.optionWrapperContainers.add(xPath);
+	                }
+
 	                this.remove();
 	                jquery(templateEl)
 	                    .removeClass('contains-current current')
@@ -46943,6 +47842,7 @@
 	                // The default values will be added anyway in the repeats.add function.
 	                that.form.input.clear(templateEl);
 	                that.templates[xPath] = templateEl;
+	                that.templateStrings[xPath] = templateEl.outerHTML;
 	            });
 
 	        $repeatInfos
@@ -46997,7 +47897,8 @@
 	            })
 	            .catch(console.error);
 	    },
-	    /*
+
+	    /**
 	     * Obtains the 0-based absolute index of the provided repeat or repeat-info element
 	     * The goal of this function is to make non-nested repeat index determination as fast as possible.
 	     *
@@ -47008,36 +47909,24 @@
 	     *
 	     * The repeat-info concept was added in the context of supporting zero instances of a repeat. It would be good
 	     * to expand on its documentation.
+	     *
+	     * @param {HTMLElement} el
 	     */
 	    getIndex(el) {
-	        if (!el || !this.form.repeatsPresent) {
+	        if (!el) {
 	            return 0;
 	        }
 
 	        const isInfoElement = el.classList.contains('or-repeat-info');
+	        const repeatPath = isInfoElement
+	            ? el.dataset.name
+	            : el.getAttribute('name');
+	        const collection = isInfoElement
+	            ? this.form.collections.repeatInfos
+	            : this.form.collections.repeats;
+	        const index = Math.max(0, collection.refIndexOf(el, repeatPath));
 
-	        const toCountSelector = isInfoElement
-	            ? `.or-repeat-info[data-name="${el.dataset.name}"]`
-	            : `.or-repeat[name="${el.getAttribute('name')}"]`;
-	        let predecessorCount = isInfoElement
-	            ? 0
-	            : Number(el.querySelector('.repeat-number').textContent) - 1;
-
-	        let checkEl = el;
-	        while (checkEl) {
-	            while (
-	                checkEl.previousElementSibling &&
-	                checkEl.previousElementSibling.matches('.or-repeat')
-	            ) {
-	                checkEl = checkEl.previousElementSibling;
-	                predecessorCount +=
-	                    checkEl.querySelectorAll(toCountSelector).length;
-	            }
-	            const parent = checkEl.parentElement;
-	            checkEl = parent ? parent.closest('.or-repeat') : null;
-	        }
-
-	        return predecessorCount;
+	        return index;
 	    },
 	    /**
 	     * [updateViewInstancesFromModel description]
@@ -47154,7 +48043,7 @@
 	                    ? -numRepsInView + (0)
 	                    : toCreate;
 	            for (; toCreate < 0; toCreate++) {
-	                const $last = jquery(repeatInfo).siblings('.or-repeat').last();
+	                const $last = jquery(repeatInfo.previousElementSibling);
 	                this.remove($last);
 	            }
 	        }
@@ -47187,10 +48076,17 @@
 	     * @param {UpdatedDataNodes} updated - The object containing info on updated data nodes.
 	     */
 	    countUpdate(updated = {}) {
-	        const repeatInfos = this.form
-	            .getRelatedNodes('data-repeat-count', '.or-repeat-info', updated)
-	            .get();
-	        repeatInfos.forEach(this.updateRepeatInstancesFromCount.bind(this));
+	        if (this.form.features.repeatCount) {
+	            const repeatInfos = this.form
+	                .getRelatedNodes(
+	                    'data-repeat-count',
+	                    '.or-repeat-info',
+	                    updated
+	                )
+	                .get();
+
+	            repeatInfos.forEach(this.updateRepeatInstancesFromCount.bind(this));
+	        }
 	    },
 	    /**
 	     * Clone a repeat group/node.
@@ -47207,11 +48103,17 @@
 	            return false;
 	        }
 
-	        let repeatIndex;
 	        const repeatPath = repeatInfo.dataset.name;
-
 	        const repeats = getSiblingElements(repeatInfo, '.or-repeat');
-	        let clone = this.templates[repeatPath].cloneNode(true);
+
+	        /** @type {number} */
+	        let repeatIndex;
+
+	        const previousRepeat = repeats[repeats.length - 1];
+
+	        if (previousRepeat != null) {
+	            repeatIndex = this.getIndex(previousRepeat) + 1;
+	        }
 
 	        // Determine the index of the repeat series.
 	        const repeatSeriesIndex = this.getIndex(repeatInfo);
@@ -47219,6 +48121,7 @@
 	            repeatPath,
 	            repeatSeriesIndex
 	        ).length;
+
 	        // Determine the index of the repeat inside its series
 	        const prevSibling = repeatInfo.previousElementSibling;
 	        let repeatIndexInSeries =
@@ -47228,25 +48131,34 @@
 	                  )
 	                : 0;
 
+	        const templateString = this.templateStrings[repeatPath];
+	        const range = document.createRange();
+	        const templates = Array(toCreate)
+	            .fill(null)
+	            .map(() => templateString)
+	            .join('');
+	        const clones = Array.from(
+	            range.createContextualFragment(templates).children
+	        );
+
 	        // Add required number of repeats
-	        for (let i = 0; i < toCreate; i++) {
+	        for (const [i, clone] of clones.entries()) {
 	            // Fix names of radio button groups
-	            clone
-	                .querySelectorAll('.option-wrapper')
-	                .forEach(this.fixRadioName);
-	            this.processDatalists(
-	                clone.querySelectorAll('datalist'),
-	                repeatInfo
-	            );
+	            if (this.optionWrapperContainers.has(repeatPath)) {
+	                clone
+	                    .querySelectorAll('.option-wrapper')
+	                    .forEach(this.fixRadioName);
+	            }
+
+	            if (this.form.features.itemset) {
+	                this.processDatalists(
+	                    clone.querySelectorAll('datalist'),
+	                    repeatInfo
+	                );
+	            }
 
 	            // Insert the clone
-	            repeatInfo.parentElement.insertBefore(clone, repeatInfo);
-
-	            if (repeatIndexInSeries > 0) {
-	                // Also add the clone class for all 2+ numbers as this is
-	                // used for performance optimization in several places.
-	                clone.classList.add('clone');
-	            }
+	            repeatInfo.before(clone);
 
 	            // Update the repeat number
 	            clone.querySelector('.repeat-number').textContent =
@@ -47254,6 +48166,8 @@
 
 	            // Update the variable containing the view repeats in the current series.
 	            repeats.push(clone);
+
+	            invalidateRepeatCaches(repeatPath);
 
 	            // Create a repeat in the model if it doesn't already exist
 	            if (repeats.length > modelRepeatSeriesLength) {
@@ -47263,10 +48177,18 @@
 
 	            // This is the index of the new repeat in relation to all other repeats of the same name,
 	            // even if they are in different series.
-	            repeatIndex = repeatIndex || this.getIndex(clone);
+	            repeatIndex = repeatIndex ?? this.getIndex(clone);
+
+	            this.form.collections.repeats.setRefIndexCache(
+	                clone,
+	                repeatIndex,
+	                repeatPath
+	            );
 
 	            const updated = {
 	                repeatIndex,
+	                repeatInstance: clone,
+	                repeatInfo,
 	                repeatPath,
 	                trigger,
 	                cloned: true,
@@ -47282,13 +48204,16 @@
 	            // Initialize widgets in clone after default values have been set
 	            if (this.form.widgetsInitialized) {
 	                this.form.widgets.init(jquery(clone), this.form.options);
+
+	                if (trigger === 'user' && i === 0) {
+	                    this.form.goToTarget(clone);
+	                }
 	            }
+
 	            // now create the first instance of any nested repeats if necessary
 	            clone
 	                .querySelectorAll('.or-repeat-info:not([data-repeat-count])')
 	                .forEach(this.updateDefaultFirstRepeatInstance.bind(this));
-
-	            clone = this.templates[repeatPath].cloneNode(true);
 
 	            repeatIndex++;
 	            repeatIndexInSeries++;
@@ -47307,11 +48232,14 @@
 	        const repeatInfo = $repeat.siblings('.or-repeat-info')[0];
 
 	        $repeat.remove();
+
+	        invalidateRepeatCaches(repeatPath);
+
 	        that.numberRepeats(repeatInfo);
 	        that.toggleButtons(repeatInfo);
 
 	        const detail = this.form.initialized
-	            ? {}
+	            ? { removed: { repeatPath, repeatIndex } }
 	            : { initRepeatInfo: { repeatPath, repeatIndex } };
 	        // Trigger the removerepeat on the next repeat or repeat-info(always present)
 	        // so that removerepeat handlers know where the repeat was removed
@@ -47407,6 +48335,7 @@
 	 *
 	 * @module toc
 	 */
+
 
 	var tocModule = {
 	    /**
@@ -47610,7 +48539,19 @@
 	 * @module pages
 	 */
 
+
+	/**
+	 * @typedef {import('./form').Form} Form
+	 */
+
 	var pageModule = {
+	    /**
+	     * @type {Form}
+	     */
+	    // @ts-expect-error - this will be populated during form init, but assigning
+	    // its type here improves intellisense.
+	    form: null,
+
 	    /**
 	     * @type {boolean}
 	     * @default
@@ -47634,7 +48575,7 @@
 	                'Repeats module not correctly instantiated with form property.'
 	            );
 	        }
-	        if (this.form.view.html.classList.contains('pages')) {
+	        if (this.form.features.pagination) {
 	            const allPages = [
 	                ...this.form.view.html.querySelectorAll(
 	                    '.question, .or-appearance-field-list'
@@ -48004,6 +48945,7 @@
 	            '.or'
 	        ).forEach((el) => el.classList.add('contains-current'));
 	        this.current = pageEl;
+	        this.form.goToTarget(pageEl, { isPageFlip: true });
 	    },
 	    /**
 	     * Switches to a page
@@ -48027,12 +48969,14 @@
 	                this._focusOnFirstQuestion(pageEl);
 	                this._toggleButtons(newIndex);
 	                pageEl.dispatchEvent(events.PageFlip());
+	                this.form.goToTarget(pageEl, { isPageFlip: true });
 	            }
 	        } else if (pageEl) {
 	            this._setToCurrent(pageEl);
 	            this._focusOnFirstQuestion(pageEl);
 	            this._toggleButtons(newIndex);
 	            pageEl.dispatchEvent(events.PageFlip());
+	            this.form.goToTarget(pageEl, { isPageFlip: true });
 	            pageEl.setAttribute('tabindex', 1);
 	        }
 	    },
@@ -48111,6 +49055,7 @@
 	 * @module progress
 	 */
 
+
 	/**
 	 * Maintains progress state of user traversing through form, using
 	 * currently focused input or the last changed input as the indicator for the current location.
@@ -48138,12 +49083,34 @@
 	            ),
 	        ].filter((question) => !question.closest('.disabled'));
 	    },
+
+	    isUpdateScheduled: false,
+
+	    /** @type {HTMLElement | null} */
+	    scheduledUpdateElement: null,
+
 	    /**
 	     * Updates rounded % value of progress and triggers event if changed.
 	     *
 	     * @param {Element} el - the element that represent the current state of progress
 	     */
-	    update(el) {
+	    update(el, isScheduledCall = false) {
+	        this.scheduledUpdateElement = el;
+
+	        if (!isScheduledCall) {
+	            if (!this.isUpdateScheduled) {
+	                this.isUpdateScheduled = true;
+
+	                queueMicrotask(() => {
+	                    this.update(this.scheduledUpdateElement, true);
+	                    this.isUpdateScheduled = false;
+	                    this.scheduledUpdateElement = null;
+	                });
+	            }
+
+	            return;
+	        }
+
 	        let status;
 
 	        if (!this.all || !el) {
@@ -48186,6 +49153,33 @@
 	 * A Widget class that can be extended to provide some of the basic widget functionality out of the box.
 	 */
 	class Widget {
+	    /**
+	     * @param {import('./form').Form} form
+	     * @param {HTMLFormElement} rootElement
+	     */
+	    static globalInit(form, rootElement) {
+	        this.form = form;
+	        this.rootElement = rootElement;
+
+	        if (form.features.relevant) {
+	            this.implementsDisable =
+	                this.prototype.disable !== Widget.prototype.disable;
+	            this.implementsEnable =
+	                this.prototype.enable !== Widget.prototype.enable;
+	        }
+	    }
+
+	    static globalReset() {
+	        const { form, rootElement } = this;
+
+	        delete this.form;
+	        delete this.rootElement;
+	        delete this.implementsDisable;
+	        delete this.implementsEnable;
+
+	        return { form, rootElement };
+	    }
+
 	    /**
 	     * @class
 	     * @param {Element} element - The DOM element the widget is applied on
@@ -48378,6 +49372,10 @@
 	}
 
 	/**
+	 * @typedef {(new (...args: any[]) => Widget & Pick<typeof Widget, keyof typeof Widget>)} WidgetClass
+	 */
+
+	/**
 	 * @module sniffer
 	 * */
 
@@ -48436,6 +49434,7 @@
 	 * @module support
 	 */
 
+
 	const inputTypes = {};
 	let mobile = false;
 
@@ -48471,6 +49470,7 @@
 	};
 
 	// Copied from Bootstrap
+
 
 	const backdrop = '.dropdown-backdrop';
 	const toggle = '[data-toggle=dropdown]';
@@ -48652,6 +49652,7 @@
 	 * This widget is one gigantic mess. It should be replaced entirely.
 	 * The replacement should have and use getters and setters for `value` and `originalInputValue`
 	 */
+
 
 	const range = document.createRange();
 
@@ -48986,6 +49987,7 @@
 	}
 
 	// from: https://github.com/CSS-Tricks/Relevant-Dropdowns/blob/master/js/jquery.relevant-dropdown.js
+
 
 	const pluginName = 'relevantDropdown';
 
@@ -49430,14 +50432,14 @@
 
 	var leafletSrc = createCommonjsModule(function (module, exports) {
 	/* @preserve
-	 * Leaflet 1.9.3, a JS library for interactive maps. https://leafletjs.com
-	 * (c) 2010-2022 Vladimir Agafonkin, (c) 2010-2011 CloudMade
+	 * Leaflet 1.9.4, a JS library for interactive maps. https://leafletjs.com
+	 * (c) 2010-2023 Vladimir Agafonkin, (c) 2010-2011 CloudMade
 	 */
 
 	(function (global, factory) {
 	  factory(exports) ;
 	})(commonjsGlobal, (function (exports) {
-	  var version = "1.9.3";
+	  var version = "1.9.4";
 
 	  /*
 	   * @namespace Util
@@ -52054,8 +53056,8 @@
 	  	if (!element.style) { return; }
 	  	restoreOutline();
 	  	_outlineElement = element;
-	  	_outlineStyle = element.style.outline;
-	  	element.style.outline = 'none';
+	  	_outlineStyle = element.style.outlineStyle;
+	  	element.style.outlineStyle = 'none';
 	  	on(window, 'keydown', restoreOutline);
 	  }
 
@@ -52063,7 +53065,7 @@
 	  // Cancels the effects of a previous [`L.DomUtil.preventOutline`]().
 	  function restoreOutline() {
 	  	if (!_outlineElement) { return; }
-	  	_outlineElement.style.outline = _outlineStyle;
+	  	_outlineElement.style.outlineStyle = _outlineStyle;
 	  	_outlineElement = undefined;
 	  	_outlineStyle = undefined;
 	  	off(window, 'keydown', restoreOutline);
@@ -54216,7 +55218,7 @@
 
 	  		requestAnimFrame(function () {
 	  			this
-	  			    ._moveStart(true, false)
+	  			    ._moveStart(true, options.noMoveStart || false)
 	  			    ._animateZoom(center, zoom, true);
 	  		}, this);
 
@@ -54539,6 +55541,7 @@
 	  		this._layers = [];
 	  		this._lastZIndex = 0;
 	  		this._handlingClick = false;
+	  		this._preventClick = false;
 
 	  		for (var i in baseLayers) {
 	  			this._addLayer(baseLayers[i], i);
@@ -54814,6 +55817,11 @@
 	  	},
 
 	  	_onInputClick: function () {
+	  		// expanding the control on mobile with a click can cause adding a layer - we don't want this
+	  		if (this._preventClick) {
+	  			return;
+	  		}
+
 	  		var inputs = this._layerControlInputs,
 	  		    input, layer;
 	  		var addedLayers = [],
@@ -54873,10 +55881,13 @@
 
 	  	_expandSafely: function () {
 	  		var section = this._section;
+	  		this._preventClick = true;
 	  		on(section, 'click', preventDefault);
 	  		this.expand();
+	  		var that = this;
 	  		setTimeout(function () {
 	  			off(section, 'click', preventDefault);
+	  			that._preventClick = false;
 	  		});
 	  	}
 
@@ -55565,8 +56576,12 @@
 	  		enableImageDrag();
 	  		enableTextSelection();
 
-	  		if (this._moved && this._moving) {
+	  		var fireDragend = this._moved && this._moving;
 
+	  		this._moving = false;
+	  		Draggable._dragging = false;
+
+	  		if (fireDragend) {
 	  			// @event dragend: DragEndEvent
 	  			// Fired when the drag ends.
 	  			this.fire('dragend', {
@@ -55574,12 +56589,142 @@
 	  				distance: this._newPos.distanceTo(this._startPos)
 	  			});
 	  		}
-
-	  		this._moving = false;
-	  		Draggable._dragging = false;
 	  	}
 
 	  });
+
+	  /*
+	   * @namespace PolyUtil
+	   * Various utility functions for polygon geometries.
+	   */
+
+	  /* @function clipPolygon(points: Point[], bounds: Bounds, round?: Boolean): Point[]
+	   * Clips the polygon geometry defined by the given `points` by the given bounds (using the [Sutherland-Hodgman algorithm](https://en.wikipedia.org/wiki/Sutherland%E2%80%93Hodgman_algorithm)).
+	   * Used by Leaflet to only show polygon points that are on the screen or near, increasing
+	   * performance. Note that polygon points needs different algorithm for clipping
+	   * than polyline, so there's a separate method for it.
+	   */
+	  function clipPolygon(points, bounds, round) {
+	  	var clippedPoints,
+	  	    edges = [1, 4, 2, 8],
+	  	    i, j, k,
+	  	    a, b,
+	  	    len, edge, p;
+
+	  	for (i = 0, len = points.length; i < len; i++) {
+	  		points[i]._code = _getBitCode(points[i], bounds);
+	  	}
+
+	  	// for each edge (left, bottom, right, top)
+	  	for (k = 0; k < 4; k++) {
+	  		edge = edges[k];
+	  		clippedPoints = [];
+
+	  		for (i = 0, len = points.length, j = len - 1; i < len; j = i++) {
+	  			a = points[i];
+	  			b = points[j];
+
+	  			// if a is inside the clip window
+	  			if (!(a._code & edge)) {
+	  				// if b is outside the clip window (a->b goes out of screen)
+	  				if (b._code & edge) {
+	  					p = _getEdgeIntersection(b, a, edge, bounds, round);
+	  					p._code = _getBitCode(p, bounds);
+	  					clippedPoints.push(p);
+	  				}
+	  				clippedPoints.push(a);
+
+	  			// else if b is inside the clip window (a->b enters the screen)
+	  			} else if (!(b._code & edge)) {
+	  				p = _getEdgeIntersection(b, a, edge, bounds, round);
+	  				p._code = _getBitCode(p, bounds);
+	  				clippedPoints.push(p);
+	  			}
+	  		}
+	  		points = clippedPoints;
+	  	}
+
+	  	return points;
+	  }
+
+	  /* @function polygonCenter(latlngs: LatLng[], crs: CRS): LatLng
+	   * Returns the center ([centroid](http://en.wikipedia.org/wiki/Centroid)) of the passed LatLngs (first ring) from a polygon.
+	   */
+	  function polygonCenter(latlngs, crs) {
+	  	var i, j, p1, p2, f, area, x, y, center;
+
+	  	if (!latlngs || latlngs.length === 0) {
+	  		throw new Error('latlngs not passed');
+	  	}
+
+	  	if (!isFlat(latlngs)) {
+	  		console.warn('latlngs are not flat! Only the first ring will be used');
+	  		latlngs = latlngs[0];
+	  	}
+
+	  	var centroidLatLng = toLatLng([0, 0]);
+
+	  	var bounds = toLatLngBounds(latlngs);
+	  	var areaBounds = bounds.getNorthWest().distanceTo(bounds.getSouthWest()) * bounds.getNorthEast().distanceTo(bounds.getNorthWest());
+	  	// tests showed that below 1700 rounding errors are happening
+	  	if (areaBounds < 1700) {
+	  		// getting a inexact center, to move the latlngs near to [0, 0] to prevent rounding errors
+	  		centroidLatLng = centroid(latlngs);
+	  	}
+
+	  	var len = latlngs.length;
+	  	var points = [];
+	  	for (i = 0; i < len; i++) {
+	  		var latlng = toLatLng(latlngs[i]);
+	  		points.push(crs.project(toLatLng([latlng.lat - centroidLatLng.lat, latlng.lng - centroidLatLng.lng])));
+	  	}
+
+	  	area = x = y = 0;
+
+	  	// polygon centroid algorithm;
+	  	for (i = 0, j = len - 1; i < len; j = i++) {
+	  		p1 = points[i];
+	  		p2 = points[j];
+
+	  		f = p1.y * p2.x - p2.y * p1.x;
+	  		x += (p1.x + p2.x) * f;
+	  		y += (p1.y + p2.y) * f;
+	  		area += f * 3;
+	  	}
+
+	  	if (area === 0) {
+	  		// Polygon is so small that all points are on same pixel.
+	  		center = points[0];
+	  	} else {
+	  		center = [x / area, y / area];
+	  	}
+
+	  	var latlngCenter = crs.unproject(toPoint(center));
+	  	return toLatLng([latlngCenter.lat + centroidLatLng.lat, latlngCenter.lng + centroidLatLng.lng]);
+	  }
+
+	  /* @function centroid(latlngs: LatLng[]): LatLng
+	   * Returns the 'center of mass' of the passed LatLngs.
+	   */
+	  function centroid(coords) {
+	  	var latSum = 0;
+	  	var lngSum = 0;
+	  	var len = 0;
+	  	for (var i = 0; i < coords.length; i++) {
+	  		var latlng = toLatLng(coords[i]);
+	  		latSum += latlng.lat;
+	  		lngSum += latlng.lng;
+	  		len++;
+	  	}
+	  	return toLatLng([latSum / len, lngSum / len]);
+	  }
+
+	  var PolyUtil = {
+	    __proto__: null,
+	    clipPolygon: clipPolygon,
+	    polygonCenter: polygonCenter,
+	    centroid: centroid
+	  };
 
 	  /*
 	   * @namespace LineUtil
@@ -55835,12 +56980,22 @@
 	  		latlngs = latlngs[0];
 	  	}
 
-	  	var points = [];
-	  	for (var j in latlngs) {
-	  		points.push(crs.project(toLatLng(latlngs[j])));
+	  	var centroidLatLng = toLatLng([0, 0]);
+
+	  	var bounds = toLatLngBounds(latlngs);
+	  	var areaBounds = bounds.getNorthWest().distanceTo(bounds.getSouthWest()) * bounds.getNorthEast().distanceTo(bounds.getNorthWest());
+	  	// tests showed that below 1700 rounding errors are happening
+	  	if (areaBounds < 1700) {
+	  		// getting a inexact center, to move the latlngs near to [0, 0] to prevent rounding errors
+	  		centroidLatLng = centroid(latlngs);
 	  	}
 
-	  	var len = points.length;
+	  	var len = latlngs.length;
+	  	var points = [];
+	  	for (i = 0; i < len; i++) {
+	  		var latlng = toLatLng(latlngs[i]);
+	  		points.push(crs.project(toLatLng([latlng.lat - centroidLatLng.lat, latlng.lng - centroidLatLng.lng])));
+	  	}
 
 	  	for (i = 0, halfDist = 0; i < len - 1; i++) {
 	  		halfDist += points[i].distanceTo(points[i + 1]) / 2;
@@ -55866,7 +57021,9 @@
 	  			}
 	  		}
 	  	}
-	  	return crs.unproject(toPoint(center));
+
+	  	var latlngCenter = crs.unproject(toPoint(center));
+	  	return toLatLng([latlngCenter.lat + centroidLatLng.lat, latlngCenter.lng + centroidLatLng.lng]);
 	  }
 
 	  var LineUtil = {
@@ -55881,109 +57038,6 @@
 	    isFlat: isFlat,
 	    _flat: _flat,
 	    polylineCenter: polylineCenter
-	  };
-
-	  /*
-	   * @namespace PolyUtil
-	   * Various utility functions for polygon geometries.
-	   */
-
-	  /* @function clipPolygon(points: Point[], bounds: Bounds, round?: Boolean): Point[]
-	   * Clips the polygon geometry defined by the given `points` by the given bounds (using the [Sutherland-Hodgman algorithm](https://en.wikipedia.org/wiki/Sutherland%E2%80%93Hodgman_algorithm)).
-	   * Used by Leaflet to only show polygon points that are on the screen or near, increasing
-	   * performance. Note that polygon points needs different algorithm for clipping
-	   * than polyline, so there's a separate method for it.
-	   */
-	  function clipPolygon(points, bounds, round) {
-	  	var clippedPoints,
-	  	    edges = [1, 4, 2, 8],
-	  	    i, j, k,
-	  	    a, b,
-	  	    len, edge, p;
-
-	  	for (i = 0, len = points.length; i < len; i++) {
-	  		points[i]._code = _getBitCode(points[i], bounds);
-	  	}
-
-	  	// for each edge (left, bottom, right, top)
-	  	for (k = 0; k < 4; k++) {
-	  		edge = edges[k];
-	  		clippedPoints = [];
-
-	  		for (i = 0, len = points.length, j = len - 1; i < len; j = i++) {
-	  			a = points[i];
-	  			b = points[j];
-
-	  			// if a is inside the clip window
-	  			if (!(a._code & edge)) {
-	  				// if b is outside the clip window (a->b goes out of screen)
-	  				if (b._code & edge) {
-	  					p = _getEdgeIntersection(b, a, edge, bounds, round);
-	  					p._code = _getBitCode(p, bounds);
-	  					clippedPoints.push(p);
-	  				}
-	  				clippedPoints.push(a);
-
-	  			// else if b is inside the clip window (a->b enters the screen)
-	  			} else if (!(b._code & edge)) {
-	  				p = _getEdgeIntersection(b, a, edge, bounds, round);
-	  				p._code = _getBitCode(p, bounds);
-	  				clippedPoints.push(p);
-	  			}
-	  		}
-	  		points = clippedPoints;
-	  	}
-
-	  	return points;
-	  }
-
-	  /* @function polygonCenter(latlngs: LatLng[] crs: CRS): LatLng
-	   * Returns the center ([centroid](http://en.wikipedia.org/wiki/Centroid)) of the passed LatLngs (first ring) from a polygon.
-	   */
-	  function polygonCenter(latlngs, crs) {
-	  	var i, j, p1, p2, f, area, x, y, center;
-
-	  	if (!latlngs || latlngs.length === 0) {
-	  		throw new Error('latlngs not passed');
-	  	}
-
-	  	if (!isFlat(latlngs)) {
-	  		console.warn('latlngs are not flat! Only the first ring will be used');
-	  		latlngs = latlngs[0];
-	  	}
-
-	  	var points = [];
-	  	for (var k in latlngs) {
-	  		points.push(crs.project(toLatLng(latlngs[k])));
-	  	}
-
-	  	var len = points.length;
-	  	area = x = y = 0;
-
-	  	// polygon centroid algorithm;
-	  	for (i = 0, j = len - 1; i < len; j = i++) {
-	  		p1 = points[i];
-	  		p2 = points[j];
-
-	  		f = p1.y * p2.x - p2.y * p1.x;
-	  		x += (p1.x + p2.x) * f;
-	  		y += (p1.y + p2.y) * f;
-	  		area += f * 3;
-	  	}
-
-	  	if (area === 0) {
-	  		// Polygon is so small that all points are on same pixel.
-	  		center = points[0];
-	  	} else {
-	  		center = [x / area, y / area];
-	  	}
-	  	return crs.unproject(toPoint(center));
-	  }
-
-	  var PolyUtil = {
-	    __proto__: null,
-	    clipPolygon: clipPolygon,
-	    polygonCenter: polygonCenter
 	  };
 
 	  /*
@@ -58558,7 +59612,7 @@
 	  			latLngToCoords(latlngs[i], precision));
 	  	}
 
-	  	if (!levelsDeep && closed) {
+	  	if (!levelsDeep && closed && coords.length > 0) {
 	  		coords.push(coords[0].slice());
 	  	}
 
@@ -60361,7 +61415,7 @@
 	  	},
 
 	  	_addFocusListenersOnLayer: function (layer) {
-	  		var el = layer.getElement();
+	  		var el = typeof layer.getElement === 'function' && layer.getElement();
 	  		if (el) {
 	  			on(el, 'focus', function () {
 	  				this._tooltip._source = layer;
@@ -60372,7 +61426,7 @@
 	  	},
 
 	  	_setAriaDescribedByOnLayer: function (layer) {
-	  		var el = layer.getElement();
+	  		var el = typeof layer.getElement === 'function' && layer.getElement();
 	  		if (el) {
 	  			el.setAttribute('aria-describedby', this._tooltip._container.id);
 	  		}
@@ -60380,9 +61434,21 @@
 
 
 	  	_openTooltip: function (e) {
-	  		if (!this._tooltip || !this._map || (this._map.dragging && this._map.dragging.moving())) {
+	  		if (!this._tooltip || !this._map) {
 	  			return;
 	  		}
+
+	  		// If the map is moving, we will show the tooltip after it's done.
+	  		if (this._map.dragging && this._map.dragging.moving() && !this._openOnceFlag) {
+	  			this._openOnceFlag = true;
+	  			var that = this;
+	  			this._map.once('moveend', function () {
+	  				that._openOnceFlag = false;
+	  				that._openTooltip(e);
+	  			});
+	  			return;
+	  		}
+
 	  		this._tooltip._source = e.layer || e.target;
 
 	  		this.openTooltip(this._tooltip.options.sticky ? e.latlng : undefined);
@@ -61847,9 +62913,8 @@
 	  		if (!this._container) {
 	  			this._initContainer(); // defined by renderer implementations
 
-	  			if (this._zoomAnimated) {
-	  				addClass(this._container, 'leaflet-zoom-animated');
-	  			}
+	  			// always keep transform-origin as 0 0
+	  			addClass(this._container, 'leaflet-zoom-animated');
 	  		}
 
 	  		this.getPane().appendChild(this._container);
@@ -63983,7 +65048,7 @@
 	     * @type {string}
 	     */
 	    static get selector() {
-	        return '.question input[data-type-xml="geopoint"]:not([data-setvalue], [data-setgeopoint]), .question input[data-type-xml="geotrace"]:not([data-setvalue], [data-setgeopoint]), .question input[data-type-xml="geoshape"]:not([data-setvalue], [data-setgeopoint])';
+	        return '.question input[data-type-xml="geopoint"]:not([data-setvalue]):not([data-setgeopoint]), .question input[data-type-xml="geotrace"]:not([data-setvalue]):not([data-setgeopoint]), .question input[data-type-xml="geoshape"]:not([data-setvalue]):not([data-setgeopoint])';
 	    }
 
 	    /**
@@ -68470,17 +69535,6 @@
 	                return;
 	            }
 
-	            this.$element.trigger({
-	                type: 'hide.timepicker',
-	                time: {
-	                    value: this.getTime(),
-	                    hours: this.hour,
-	                    minutes: this.minute,
-	                    seconds: this.second,
-	                    meridian: this.meridian,
-	                },
-	            });
-
 	            this.$widget.removeClass('open');
 
 	            $(document).off(
@@ -69119,17 +70173,6 @@
 	                this.handleDocumentClick
 	            );
 
-	            this.$element.trigger({
-	                type: 'show.timepicker',
-	                time: {
-	                    value: this.getTime(),
-	                    hours: this.hour,
-	                    minutes: this.minute,
-	                    seconds: this.second,
-	                    meridian: this.meridian,
-	                },
-	            });
-
 	            this.place();
 	            if (this.disableFocus) {
 	                this.$element.blur();
@@ -69160,17 +70203,6 @@
 	            if (!ignoreWidget) {
 	                this.updateWidget();
 	            }
-
-	            this.$element.trigger({
-	                type: 'changeTime.timepicker',
-	                time: {
-	                    value: this.getTime(),
-	                    hours: this.hour,
-	                    minutes: this.minute,
-	                    seconds: this.second,
-	                    meridian: this.meridian,
-	                },
-	            });
 	        },
 
 	        updateElement() {
@@ -69815,6 +70847,7 @@
 	 * types.
 	 */
 
+
 	const fileManager = {};
 	const URL_RE = /[a-zA-Z0-9+-.]+?:\/\//;
 
@@ -70442,689 +71475,1210 @@
 	}
 
 	/*!
-	 * Signature Pad v2.3.2
-	 * https://github.com/szimek/signature_pad
-	 *
-	 * Copyright 2017 Szymon Nowak
-	 * Released under the MIT license
-	 *
-	 * The main idea and some parts of the code (e.g. drawing variable width Bézier curve) are taken from:
-	 * http://corner.squareup.com/2012/07/smoother-signatures.html
-	 *
-	 * Implementation of interpolation using cubic Bézier curves is taken from:
-	 * http://benknowscode.wordpress.com/2012/09/14/path-interpolation-using-cubic-bezier-and-control-point-estimation-in-javascript
-	 *
-	 * Algorithm for approximated length of a Bézier curve is taken from:
-	 * http://www.lemoda.net/maths/bezier-length/index.html
-	 *
+	 * Signature Pad v4.1.5 | https://github.com/szimek/signature_pad
+	 * (c) 2023 Szymon Nowak | Released under the MIT license
 	 */
 
-	function Point(x, y, time) {
-	  this.x = x;
-	  this.y = y;
-	  this.time = time || new Date().getTime();
-	}
-
-	Point.prototype.velocityFrom = function (start) {
-	  return this.time !== start.time ? this.distanceTo(start) / (this.time - start.time) : 1;
-	};
-
-	Point.prototype.distanceTo = function (start) {
-	  return Math.sqrt(Math.pow(this.x - start.x, 2) + Math.pow(this.y - start.y, 2));
-	};
-
-	Point.prototype.equals = function (other) {
-	  return this.x === other.x && this.y === other.y && this.time === other.time;
-	};
-
-	function Bezier(startPoint, control1, control2, endPoint) {
-	  this.startPoint = startPoint;
-	  this.control1 = control1;
-	  this.control2 = control2;
-	  this.endPoint = endPoint;
-	}
-
-	// Returns approximated length.
-	Bezier.prototype.length = function () {
-	  var steps = 10;
-	  var length = 0;
-	  var px = void 0;
-	  var py = void 0;
-
-	  for (var i = 0; i <= steps; i += 1) {
-	    var t = i / steps;
-	    var cx = this._point(t, this.startPoint.x, this.control1.x, this.control2.x, this.endPoint.x);
-	    var cy = this._point(t, this.startPoint.y, this.control1.y, this.control2.y, this.endPoint.y);
-	    if (i > 0) {
-	      var xdiff = cx - px;
-	      var ydiff = cy - py;
-	      length += Math.sqrt(xdiff * xdiff + ydiff * ydiff);
-	    }
-	    px = cx;
-	    py = cy;
-	  }
-
-	  return length;
-	};
-
-	/* eslint-disable no-multi-spaces, space-in-parens */
-	Bezier.prototype._point = function (t, start, c1, c2, end) {
-	  return start * (1.0 - t) * (1.0 - t) * (1.0 - t) + 3.0 * c1 * (1.0 - t) * (1.0 - t) * t + 3.0 * c2 * (1.0 - t) * t * t + end * t * t * t;
-	};
-
-	/* eslint-disable */
-
-	// http://stackoverflow.com/a/27078401/815507
-	function throttle$1(func, wait, options) {
-	  var context, args, result;
-	  var timeout = null;
-	  var previous = 0;
-	  if (!options) options = {};
-	  var later = function later() {
-	    previous = options.leading === false ? 0 : Date.now();
-	    timeout = null;
-	    result = func.apply(context, args);
-	    if (!timeout) context = args = null;
-	  };
-	  return function () {
-	    var now = Date.now();
-	    if (!previous && options.leading === false) previous = now;
-	    var remaining = wait - (now - previous);
-	    context = this;
-	    args = arguments;
-	    if (remaining <= 0 || remaining > wait) {
-	      if (timeout) {
-	        clearTimeout(timeout);
-	        timeout = null;
-	      }
-	      previous = now;
-	      result = func.apply(context, args);
-	      if (!timeout) context = args = null;
-	    } else if (!timeout && options.trailing !== false) {
-	      timeout = setTimeout(later, remaining);
-	    }
-	    return result;
-	  };
-	}
-
-	function SignaturePad(canvas, options) {
-	  var self = this;
-	  var opts = options || {};
-
-	  this.velocityFilterWeight = opts.velocityFilterWeight || 0.7;
-	  this.minWidth = opts.minWidth || 0.5;
-	  this.maxWidth = opts.maxWidth || 2.5;
-	  this.throttle = 'throttle' in opts ? opts.throttle : 16; // in miliseconds
-	  this.minDistance = 'minDistance' in opts ? opts.minDistance : 5;
-
-	  if (this.throttle) {
-	    this._strokeMoveUpdate = throttle$1(SignaturePad.prototype._strokeUpdate, this.throttle);
-	  } else {
-	    this._strokeMoveUpdate = SignaturePad.prototype._strokeUpdate;
-	  }
-
-	  this.dotSize = opts.dotSize || function () {
-	    return (this.minWidth + this.maxWidth) / 2;
-	  };
-	  this.penColor = opts.penColor || 'black';
-	  this.backgroundColor = opts.backgroundColor || 'rgba(0,0,0,0)';
-	  this.onBegin = opts.onBegin;
-	  this.onEnd = opts.onEnd;
-
-	  this._canvas = canvas;
-	  this._ctx = canvas.getContext('2d');
-	  this.clear();
-
-	  // We need add these inline so they are available to unbind while still having
-	  // access to 'self' we could use _.bind but it's not worth adding a dependency.
-	  this._handleMouseDown = function (event) {
-	    if (event.which === 1) {
-	      self._mouseButtonDown = true;
-	      self._strokeBegin(event);
-	    }
-	  };
-
-	  this._handleMouseMove = function (event) {
-	    if (self._mouseButtonDown) {
-	      self._strokeMoveUpdate(event);
-	    }
-	  };
-
-	  this._handleMouseUp = function (event) {
-	    if (event.which === 1 && self._mouseButtonDown) {
-	      self._mouseButtonDown = false;
-	      self._strokeEnd(event);
-	    }
-	  };
-
-	  this._handleTouchStart = function (event) {
-	    if (event.targetTouches.length === 1) {
-	      var touch = event.changedTouches[0];
-	      self._strokeBegin(touch);
-	    }
-	  };
-
-	  this._handleTouchMove = function (event) {
-	    // Prevent scrolling.
-	    event.preventDefault();
-
-	    var touch = event.targetTouches[0];
-	    self._strokeMoveUpdate(touch);
-	  };
-
-	  this._handleTouchEnd = function (event) {
-	    var wasCanvasTouched = event.target === self._canvas;
-	    if (wasCanvasTouched) {
-	      event.preventDefault();
-	      self._strokeEnd(event);
-	    }
-	  };
-
-	  // Enable mouse and touch event handlers
-	  this.on();
-	}
-
-	// Public methods
-	SignaturePad.prototype.clear = function () {
-	  var ctx = this._ctx;
-	  var canvas = this._canvas;
-
-	  ctx.fillStyle = this.backgroundColor;
-	  ctx.clearRect(0, 0, canvas.width, canvas.height);
-	  ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-	  this._data = [];
-	  this._reset();
-	  this._isEmpty = true;
-	};
-
-	SignaturePad.prototype.fromDataURL = function (dataUrl) {
-	  var _this = this;
-
-	  var options = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {};
-
-	  var image = new Image();
-	  var ratio = options.ratio || window.devicePixelRatio || 1;
-	  var width = options.width || this._canvas.width / ratio;
-	  var height = options.height || this._canvas.height / ratio;
-
-	  this._reset();
-	  image.src = dataUrl;
-	  image.onload = function () {
-	    _this._ctx.drawImage(image, 0, 0, width, height);
-	  };
-	  this._isEmpty = false;
-	};
-
-	SignaturePad.prototype.toDataURL = function (type) {
-	  var _canvas;
-
-	  switch (type) {
-	    case 'image/svg+xml':
-	      return this._toSVG();
-	    default:
-	      for (var _len = arguments.length, options = Array(_len > 1 ? _len - 1 : 0), _key = 1; _key < _len; _key++) {
-	        options[_key - 1] = arguments[_key];
-	      }
-
-	      return (_canvas = this._canvas).toDataURL.apply(_canvas, [type].concat(options));
-	  }
-	};
-
-	SignaturePad.prototype.on = function () {
-	  this._handleMouseEvents();
-	  this._handleTouchEvents();
-	};
-
-	SignaturePad.prototype.off = function () {
-	  this._canvas.removeEventListener('mousedown', this._handleMouseDown);
-	  this._canvas.removeEventListener('mousemove', this._handleMouseMove);
-	  document.removeEventListener('mouseup', this._handleMouseUp);
-
-	  this._canvas.removeEventListener('touchstart', this._handleTouchStart);
-	  this._canvas.removeEventListener('touchmove', this._handleTouchMove);
-	  this._canvas.removeEventListener('touchend', this._handleTouchEnd);
-	};
-
-	SignaturePad.prototype.isEmpty = function () {
-	  return this._isEmpty;
-	};
-
-	// Private methods
-	SignaturePad.prototype._strokeBegin = function (event) {
-	  this._data.push([]);
-	  this._reset();
-	  this._strokeUpdate(event);
-
-	  if (typeof this.onBegin === 'function') {
-	    this.onBegin(event);
-	  }
-	};
-
-	SignaturePad.prototype._strokeUpdate = function (event) {
-	  var x = event.clientX;
-	  var y = event.clientY;
-
-	  var point = this._createPoint(x, y);
-	  var lastPointGroup = this._data[this._data.length - 1];
-	  var lastPoint = lastPointGroup && lastPointGroup[lastPointGroup.length - 1];
-	  var isLastPointTooClose = lastPoint && point.distanceTo(lastPoint) < this.minDistance;
-
-	  // Skip this point if it's too close to the previous one
-	  if (!(lastPoint && isLastPointTooClose)) {
-	    var _addPoint = this._addPoint(point),
-	        curve = _addPoint.curve,
-	        widths = _addPoint.widths;
-
-	    if (curve && widths) {
-	      this._drawCurve(curve, widths.start, widths.end);
-	    }
-
-	    this._data[this._data.length - 1].push({
-	      x: point.x,
-	      y: point.y,
-	      time: point.time,
-	      color: this.penColor
-	    });
-	  }
-	};
-
-	SignaturePad.prototype._strokeEnd = function (event) {
-	  var canDrawCurve = this.points.length > 2;
-	  var point = this.points[0]; // Point instance
-
-	  if (!canDrawCurve && point) {
-	    this._drawDot(point);
-	  }
-
-	  if (point) {
-	    var lastPointGroup = this._data[this._data.length - 1];
-	    var lastPoint = lastPointGroup[lastPointGroup.length - 1]; // plain object
-
-	    // When drawing a dot, there's only one point in a group, so without this check
-	    // such group would end up with exactly the same 2 points.
-	    if (!point.equals(lastPoint)) {
-	      lastPointGroup.push({
-	        x: point.x,
-	        y: point.y,
-	        time: point.time,
-	        color: this.penColor
-	      });
-	    }
-	  }
-
-	  if (typeof this.onEnd === 'function') {
-	    this.onEnd(event);
-	  }
-	};
-
-	SignaturePad.prototype._handleMouseEvents = function () {
-	  this._mouseButtonDown = false;
-
-	  this._canvas.addEventListener('mousedown', this._handleMouseDown);
-	  this._canvas.addEventListener('mousemove', this._handleMouseMove);
-	  document.addEventListener('mouseup', this._handleMouseUp);
-	};
-
-	SignaturePad.prototype._handleTouchEvents = function () {
-	  // Pass touch events to canvas element on mobile IE11 and Edge.
-	  this._canvas.style.msTouchAction = 'none';
-	  this._canvas.style.touchAction = 'none';
-
-	  this._canvas.addEventListener('touchstart', this._handleTouchStart);
-	  this._canvas.addEventListener('touchmove', this._handleTouchMove);
-	  this._canvas.addEventListener('touchend', this._handleTouchEnd);
-	};
-
-	SignaturePad.prototype._reset = function () {
-	  this.points = [];
-	  this._lastVelocity = 0;
-	  this._lastWidth = (this.minWidth + this.maxWidth) / 2;
-	  this._ctx.fillStyle = this.penColor;
-	};
-
-	SignaturePad.prototype._createPoint = function (x, y, time) {
-	  var rect = this._canvas.getBoundingClientRect();
-
-	  return new Point(x - rect.left, y - rect.top, time || new Date().getTime());
-	};
-
-	SignaturePad.prototype._addPoint = function (point) {
-	  var points = this.points;
-	  var tmp = void 0;
-
-	  points.push(point);
-
-	  if (points.length > 2) {
-	    // To reduce the initial lag make it work with 3 points
-	    // by copying the first point to the beginning.
-	    if (points.length === 3) points.unshift(points[0]);
-
-	    tmp = this._calculateCurveControlPoints(points[0], points[1], points[2]);
-	    var c2 = tmp.c2;
-	    tmp = this._calculateCurveControlPoints(points[1], points[2], points[3]);
-	    var c3 = tmp.c1;
-	    var curve = new Bezier(points[1], c2, c3, points[2]);
-	    var widths = this._calculateCurveWidths(curve);
-
-	    // Remove the first element from the list,
-	    // so that we always have no more than 4 points in points array.
-	    points.shift();
-
-	    return { curve: curve, widths: widths };
-	  }
-
-	  return {};
-	};
-
-	SignaturePad.prototype._calculateCurveControlPoints = function (s1, s2, s3) {
-	  var dx1 = s1.x - s2.x;
-	  var dy1 = s1.y - s2.y;
-	  var dx2 = s2.x - s3.x;
-	  var dy2 = s2.y - s3.y;
-
-	  var m1 = { x: (s1.x + s2.x) / 2.0, y: (s1.y + s2.y) / 2.0 };
-	  var m2 = { x: (s2.x + s3.x) / 2.0, y: (s2.y + s3.y) / 2.0 };
-
-	  var l1 = Math.sqrt(dx1 * dx1 + dy1 * dy1);
-	  var l2 = Math.sqrt(dx2 * dx2 + dy2 * dy2);
-
-	  var dxm = m1.x - m2.x;
-	  var dym = m1.y - m2.y;
-
-	  var k = l2 / (l1 + l2);
-	  var cm = { x: m2.x + dxm * k, y: m2.y + dym * k };
-
-	  var tx = s2.x - cm.x;
-	  var ty = s2.y - cm.y;
-
-	  return {
-	    c1: new Point(m1.x + tx, m1.y + ty),
-	    c2: new Point(m2.x + tx, m2.y + ty)
-	  };
-	};
-
-	SignaturePad.prototype._calculateCurveWidths = function (curve) {
-	  var startPoint = curve.startPoint;
-	  var endPoint = curve.endPoint;
-	  var widths = { start: null, end: null };
-
-	  var velocity = this.velocityFilterWeight * endPoint.velocityFrom(startPoint) + (1 - this.velocityFilterWeight) * this._lastVelocity;
-
-	  var newWidth = this._strokeWidth(velocity);
-
-	  widths.start = this._lastWidth;
-	  widths.end = newWidth;
-
-	  this._lastVelocity = velocity;
-	  this._lastWidth = newWidth;
-
-	  return widths;
-	};
-
-	SignaturePad.prototype._strokeWidth = function (velocity) {
-	  return Math.max(this.maxWidth / (velocity + 1), this.minWidth);
-	};
-
-	SignaturePad.prototype._drawPoint = function (x, y, size) {
-	  var ctx = this._ctx;
-
-	  ctx.moveTo(x, y);
-	  ctx.arc(x, y, size, 0, 2 * Math.PI, false);
-	  this._isEmpty = false;
-	};
-
-	SignaturePad.prototype._drawCurve = function (curve, startWidth, endWidth) {
-	  var ctx = this._ctx;
-	  var widthDelta = endWidth - startWidth;
-	  var drawSteps = Math.floor(curve.length());
-
-	  ctx.beginPath();
-
-	  for (var i = 0; i < drawSteps; i += 1) {
-	    // Calculate the Bezier (x, y) coordinate for this step.
-	    var t = i / drawSteps;
-	    var tt = t * t;
-	    var ttt = tt * t;
-	    var u = 1 - t;
-	    var uu = u * u;
-	    var uuu = uu * u;
-
-	    var x = uuu * curve.startPoint.x;
-	    x += 3 * uu * t * curve.control1.x;
-	    x += 3 * u * tt * curve.control2.x;
-	    x += ttt * curve.endPoint.x;
-
-	    var y = uuu * curve.startPoint.y;
-	    y += 3 * uu * t * curve.control1.y;
-	    y += 3 * u * tt * curve.control2.y;
-	    y += ttt * curve.endPoint.y;
-
-	    var width = startWidth + ttt * widthDelta;
-	    this._drawPoint(x, y, width);
-	  }
-
-	  ctx.closePath();
-	  ctx.fill();
-	};
-
-	SignaturePad.prototype._drawDot = function (point) {
-	  var ctx = this._ctx;
-	  var width = typeof this.dotSize === 'function' ? this.dotSize() : this.dotSize;
-
-	  ctx.beginPath();
-	  this._drawPoint(point.x, point.y, width);
-	  ctx.closePath();
-	  ctx.fill();
-	};
-
-	SignaturePad.prototype._fromData = function (pointGroups, drawCurve, drawDot) {
-	  for (var i = 0; i < pointGroups.length; i += 1) {
-	    var group = pointGroups[i];
-
-	    if (group.length > 1) {
-	      for (var j = 0; j < group.length; j += 1) {
-	        var rawPoint = group[j];
-	        var point = new Point(rawPoint.x, rawPoint.y, rawPoint.time);
-	        var color = rawPoint.color;
-
-	        if (j === 0) {
-	          // First point in a group. Nothing to draw yet.
-
-	          // All points in the group have the same color, so it's enough to set
-	          // penColor just at the beginning.
-	          this.penColor = color;
-	          this._reset();
-
-	          this._addPoint(point);
-	        } else if (j !== group.length - 1) {
-	          // Middle point in a group.
-	          var _addPoint2 = this._addPoint(point),
-	              curve = _addPoint2.curve,
-	              widths = _addPoint2.widths;
-
-	          if (curve && widths) {
-	            drawCurve(curve, widths, color);
-	          }
-	        } else ;
-	      }
-	    } else {
-	      this._reset();
-	      var _rawPoint = group[0];
-	      drawDot(_rawPoint);
-	    }
-	  }
-	};
-
-	SignaturePad.prototype._toSVG = function () {
-	  var _this2 = this;
-
-	  var pointGroups = this._data;
-	  var canvas = this._canvas;
-	  var ratio = Math.max(window.devicePixelRatio || 1, 1);
-	  var minX = 0;
-	  var minY = 0;
-	  var maxX = canvas.width / ratio;
-	  var maxY = canvas.height / ratio;
-	  var svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-
-	  svg.setAttributeNS(null, 'width', canvas.width);
-	  svg.setAttributeNS(null, 'height', canvas.height);
-
-	  this._fromData(pointGroups, function (curve, widths, color) {
-	    var path = document.createElement('path');
-
-	    // Need to check curve for NaN values, these pop up when drawing
-	    // lines on the canvas that are not continuous. E.g. Sharp corners
-	    // or stopping mid-stroke and than continuing without lifting mouse.
-	    if (!isNaN(curve.control1.x) && !isNaN(curve.control1.y) && !isNaN(curve.control2.x) && !isNaN(curve.control2.y)) {
-	      var attr = 'M ' + curve.startPoint.x.toFixed(3) + ',' + curve.startPoint.y.toFixed(3) + ' ' + ('C ' + curve.control1.x.toFixed(3) + ',' + curve.control1.y.toFixed(3) + ' ') + (curve.control2.x.toFixed(3) + ',' + curve.control2.y.toFixed(3) + ' ') + (curve.endPoint.x.toFixed(3) + ',' + curve.endPoint.y.toFixed(3));
-
-	      path.setAttribute('d', attr);
-	      path.setAttribute('stroke-width', (widths.end * 2.25).toFixed(3));
-	      path.setAttribute('stroke', color);
-	      path.setAttribute('fill', 'none');
-	      path.setAttribute('stroke-linecap', 'round');
-
-	      svg.appendChild(path);
-	    }
-	  }, function (rawPoint) {
-	    var circle = document.createElement('circle');
-	    var dotSize = typeof _this2.dotSize === 'function' ? _this2.dotSize() : _this2.dotSize;
-	    circle.setAttribute('r', dotSize);
-	    circle.setAttribute('cx', rawPoint.x);
-	    circle.setAttribute('cy', rawPoint.y);
-	    circle.setAttribute('fill', rawPoint.color);
-
-	    svg.appendChild(circle);
-	  });
-
-	  var prefix = 'data:image/svg+xml;base64,';
-	  var header = '<svg' + ' xmlns="http://www.w3.org/2000/svg"' + ' xmlns:xlink="http://www.w3.org/1999/xlink"' + (' viewBox="' + minX + ' ' + minY + ' ' + maxX + ' ' + maxY + '"') + (' width="' + maxX + '"') + (' height="' + maxY + '"') + '>';
-	  var body = svg.innerHTML;
-
-	  // IE hack for missing innerHTML property on SVGElement
-	  if (body === undefined) {
-	    var dummy = document.createElement('dummy');
-	    var nodes = svg.childNodes;
-	    dummy.innerHTML = '';
-
-	    for (var i = 0; i < nodes.length; i += 1) {
-	      dummy.appendChild(nodes[i].cloneNode(true));
-	    }
-
-	    body = dummy.innerHTML;
-	  }
-
-	  var footer = '</svg>';
-	  var data = header + body + footer;
-
-	  return prefix + btoa(data);
-	};
-
-	SignaturePad.prototype.fromData = function (pointGroups) {
-	  var _this3 = this;
-
-	  this.clear();
-
-	  this._fromData(pointGroups, function (curve, widths) {
-	    return _this3._drawCurve(curve, widths.start, widths.end);
-	  }, function (rawPoint) {
-	    return _this3._drawDot(rawPoint);
-	  });
-
-	  this._data = pointGroups;
-	};
-
-	SignaturePad.prototype.toData = function () {
-	  return this._data;
-	};
-
-	const DELAY = 1500;
-
-	/**
-	 * SignaturePad.prototype.fromDataURL is asynchronous and does not return
-	 * a Promise. This is a rewrite returning a promise and the objectUrl.
-	 * In addition it also fixes a bug where a loaded image is stretched to fit
-	 * the canvas.
-	 *
-	 * @function external:SignaturePad#fromObjectURL
-	 * @param {*} objectUrl - ObjectURL
-	 * @param {object} options - options
-	 * @param {number} [options.ratio] - ratio
-	 * @param {number} [options.width] - width
-	 * @param {number} [options.height] - height
-	 * @return {Promise} a promise that resolves with an objectURL
-	 */
-	SignaturePad.prototype.fromObjectURL = function (objectUrl, options) {
-	    const image = new Image();
-	    options = options || {};
-	    const deviceRatio = options.ratio || window.devicePixelRatio || 1;
-	    const width = options.width || this._canvas.width / deviceRatio;
-	    const height = options.height || this._canvas.height / deviceRatio;
-	    const that = this;
-
-	    this._reset();
-
-	    return new Promise((resolve) => {
-	        image.src = objectUrl;
-	        image.onload = () => {
-	            const imgWidth = image.width;
-	            const imgHeight = image.height;
-	            const hRatio = width / imgWidth;
-	            const vRatio = height / imgHeight;
-	            let left;
-	            let top;
-
-	            if (hRatio < 1 || vRatio < 1) {
-	                // if image is bigger than canvas then fit within the canvas
-	                const ratio = Math.min(hRatio, vRatio);
-	                left = (width - imgWidth * ratio) / 2;
-	                top = (height - imgHeight * ratio) / 2;
-	                that._ctx.drawImage(
-	                    image,
-	                    0,
-	                    0,
-	                    imgWidth,
-	                    imgHeight,
-	                    left,
-	                    top,
-	                    imgWidth * ratio,
-	                    imgHeight * ratio
-	                );
-	            } else {
-	                // if image is smaller than canvas then show it in the center and don't stretch it
-	                left = (width - imgWidth) / 2;
-	                top = (height - imgHeight) / 2;
-	                that._ctx.drawImage(image, left, top, imgWidth, imgHeight);
-	            }
-	            resolve(objectUrl);
-	        };
-	        that._isEmpty = false;
-	    });
-	};
-
-	/**
-	 * Similar to SignaturePad.prototype.fromData except that it doesn't clear the canvas.
-	 * This is to facilitate undoing a drawing stroke over a background (bitmap) image.
-	 *
-	 * @function external:SignaturePad#updateData
-	 * @param {*} pointGroups - pointGroups
-	 */
-	SignaturePad.prototype.updateData = function (pointGroups) {
-	    const that = this;
-	    this._fromData(
-	        pointGroups,
-	        (curve, widths) => {
-	            that._drawCurve(curve, widths.start, widths.end);
-	        },
-	        (rawPoint) => {
-	            that._drawDot(rawPoint);
+	class Point {
+	    constructor(x, y, pressure, time) {
+	        if (isNaN(x) || isNaN(y)) {
+	            throw new Error(`Point is invalid: (${x}, ${y})`);
 	        }
-	    );
+	        this.x = +x;
+	        this.y = +y;
+	        this.pressure = pressure || 0;
+	        this.time = time || Date.now();
+	    }
+	    distanceTo(start) {
+	        return Math.sqrt(Math.pow(this.x - start.x, 2) + Math.pow(this.y - start.y, 2));
+	    }
+	    equals(other) {
+	        return (this.x === other.x &&
+	            this.y === other.y &&
+	            this.pressure === other.pressure &&
+	            this.time === other.time);
+	    }
+	    velocityFrom(start) {
+	        return this.time !== start.time
+	            ? this.distanceTo(start) / (this.time - start.time)
+	            : 0;
+	    }
+	}
 
-	    this._data = pointGroups;
+	class Bezier {
+	    constructor(startPoint, control2, control1, endPoint, startWidth, endWidth) {
+	        this.startPoint = startPoint;
+	        this.control2 = control2;
+	        this.control1 = control1;
+	        this.endPoint = endPoint;
+	        this.startWidth = startWidth;
+	        this.endWidth = endWidth;
+	    }
+	    static fromPoints(points, widths) {
+	        const c2 = this.calculateControlPoints(points[0], points[1], points[2]).c2;
+	        const c3 = this.calculateControlPoints(points[1], points[2], points[3]).c1;
+	        return new Bezier(points[1], c2, c3, points[2], widths.start, widths.end);
+	    }
+	    static calculateControlPoints(s1, s2, s3) {
+	        const dx1 = s1.x - s2.x;
+	        const dy1 = s1.y - s2.y;
+	        const dx2 = s2.x - s3.x;
+	        const dy2 = s2.y - s3.y;
+	        const m1 = { x: (s1.x + s2.x) / 2.0, y: (s1.y + s2.y) / 2.0 };
+	        const m2 = { x: (s2.x + s3.x) / 2.0, y: (s2.y + s3.y) / 2.0 };
+	        const l1 = Math.sqrt(dx1 * dx1 + dy1 * dy1);
+	        const l2 = Math.sqrt(dx2 * dx2 + dy2 * dy2);
+	        const dxm = m1.x - m2.x;
+	        const dym = m1.y - m2.y;
+	        const k = l2 / (l1 + l2);
+	        const cm = { x: m2.x + dxm * k, y: m2.y + dym * k };
+	        const tx = s2.x - cm.x;
+	        const ty = s2.y - cm.y;
+	        return {
+	            c1: new Point(m1.x + tx, m1.y + ty),
+	            c2: new Point(m2.x + tx, m2.y + ty),
+	        };
+	    }
+	    length() {
+	        const steps = 10;
+	        let length = 0;
+	        let px;
+	        let py;
+	        for (let i = 0; i <= steps; i += 1) {
+	            const t = i / steps;
+	            const cx = this.point(t, this.startPoint.x, this.control1.x, this.control2.x, this.endPoint.x);
+	            const cy = this.point(t, this.startPoint.y, this.control1.y, this.control2.y, this.endPoint.y);
+	            if (i > 0) {
+	                const xdiff = cx - px;
+	                const ydiff = cy - py;
+	                length += Math.sqrt(xdiff * xdiff + ydiff * ydiff);
+	            }
+	            px = cx;
+	            py = cy;
+	        }
+	        return length;
+	    }
+	    point(t, start, c1, c2, end) {
+	        return (start * (1.0 - t) * (1.0 - t) * (1.0 - t))
+	            + (3.0 * c1 * (1.0 - t) * (1.0 - t) * t)
+	            + (3.0 * c2 * (1.0 - t) * t * t)
+	            + (end * t * t * t);
+	    }
+	}
+
+	class SignatureEventTarget {
+	    constructor() {
+	        try {
+	            this._et = new EventTarget();
+	        }
+	        catch (error) {
+	            this._et = document;
+	        }
+	    }
+	    addEventListener(type, listener, options) {
+	        this._et.addEventListener(type, listener, options);
+	    }
+	    dispatchEvent(event) {
+	        return this._et.dispatchEvent(event);
+	    }
+	    removeEventListener(type, callback, options) {
+	        this._et.removeEventListener(type, callback, options);
+	    }
+	}
+
+	function throttle$1(fn, wait = 250) {
+	    let previous = 0;
+	    let timeout = null;
+	    let result;
+	    let storedContext;
+	    let storedArgs;
+	    const later = () => {
+	        previous = Date.now();
+	        timeout = null;
+	        result = fn.apply(storedContext, storedArgs);
+	        if (!timeout) {
+	            storedContext = null;
+	            storedArgs = [];
+	        }
+	    };
+	    return function wrapper(...args) {
+	        const now = Date.now();
+	        const remaining = wait - (now - previous);
+	        storedContext = this;
+	        storedArgs = args;
+	        if (remaining <= 0 || remaining > wait) {
+	            if (timeout) {
+	                clearTimeout(timeout);
+	                timeout = null;
+	            }
+	            previous = now;
+	            result = fn.apply(storedContext, storedArgs);
+	            if (!timeout) {
+	                storedContext = null;
+	                storedArgs = [];
+	            }
+	        }
+	        else if (!timeout) {
+	            timeout = window.setTimeout(later, remaining);
+	        }
+	        return result;
+	    };
+	}
+
+	class SignaturePad extends SignatureEventTarget {
+	    constructor(canvas, options = {}) {
+	        super();
+	        this.canvas = canvas;
+	        this._drawningStroke = false;
+	        this._isEmpty = true;
+	        this._lastPoints = [];
+	        this._data = [];
+	        this._lastVelocity = 0;
+	        this._lastWidth = 0;
+	        this._handleMouseDown = (event) => {
+	            if (event.buttons === 1) {
+	                this._drawningStroke = true;
+	                this._strokeBegin(event);
+	            }
+	        };
+	        this._handleMouseMove = (event) => {
+	            if (this._drawningStroke) {
+	                this._strokeMoveUpdate(event);
+	            }
+	        };
+	        this._handleMouseUp = (event) => {
+	            if (event.buttons === 1 && this._drawningStroke) {
+	                this._drawningStroke = false;
+	                this._strokeEnd(event);
+	            }
+	        };
+	        this._handleTouchStart = (event) => {
+	            if (event.cancelable) {
+	                event.preventDefault();
+	            }
+	            if (event.targetTouches.length === 1) {
+	                const touch = event.changedTouches[0];
+	                this._strokeBegin(touch);
+	            }
+	        };
+	        this._handleTouchMove = (event) => {
+	            if (event.cancelable) {
+	                event.preventDefault();
+	            }
+	            const touch = event.targetTouches[0];
+	            this._strokeMoveUpdate(touch);
+	        };
+	        this._handleTouchEnd = (event) => {
+	            const wasCanvasTouched = event.target === this.canvas;
+	            if (wasCanvasTouched) {
+	                if (event.cancelable) {
+	                    event.preventDefault();
+	                }
+	                const touch = event.changedTouches[0];
+	                this._strokeEnd(touch);
+	            }
+	        };
+	        this._handlePointerStart = (event) => {
+	            this._drawningStroke = true;
+	            event.preventDefault();
+	            this._strokeBegin(event);
+	        };
+	        this._handlePointerMove = (event) => {
+	            if (this._drawningStroke) {
+	                event.preventDefault();
+	                this._strokeMoveUpdate(event);
+	            }
+	        };
+	        this._handlePointerEnd = (event) => {
+	            if (this._drawningStroke) {
+	                event.preventDefault();
+	                this._drawningStroke = false;
+	                this._strokeEnd(event);
+	            }
+	        };
+	        this.velocityFilterWeight = options.velocityFilterWeight || 0.7;
+	        this.minWidth = options.minWidth || 0.5;
+	        this.maxWidth = options.maxWidth || 2.5;
+	        this.throttle = ('throttle' in options ? options.throttle : 16);
+	        this.minDistance = ('minDistance' in options ? options.minDistance : 5);
+	        this.dotSize = options.dotSize || 0;
+	        this.penColor = options.penColor || 'black';
+	        this.backgroundColor = options.backgroundColor || 'rgba(0,0,0,0)';
+	        this._strokeMoveUpdate = this.throttle
+	            ? throttle$1(SignaturePad.prototype._strokeUpdate, this.throttle)
+	            : SignaturePad.prototype._strokeUpdate;
+	        this._ctx = canvas.getContext('2d');
+	        this.clear();
+	        this.on();
+	    }
+	    clear() {
+	        const { _ctx: ctx, canvas } = this;
+	        ctx.fillStyle = this.backgroundColor;
+	        ctx.clearRect(0, 0, canvas.width, canvas.height);
+	        ctx.fillRect(0, 0, canvas.width, canvas.height);
+	        this._data = [];
+	        this._reset(this._getPointGroupOptions());
+	        this._isEmpty = true;
+	    }
+	    fromDataURL(dataUrl, options = {}) {
+	        return new Promise((resolve, reject) => {
+	            const image = new Image();
+	            const ratio = options.ratio || window.devicePixelRatio || 1;
+	            const width = options.width || this.canvas.width / ratio;
+	            const height = options.height || this.canvas.height / ratio;
+	            const xOffset = options.xOffset || 0;
+	            const yOffset = options.yOffset || 0;
+	            this._reset(this._getPointGroupOptions());
+	            image.onload = () => {
+	                this._ctx.drawImage(image, xOffset, yOffset, width, height);
+	                resolve();
+	            };
+	            image.onerror = (error) => {
+	                reject(error);
+	            };
+	            image.crossOrigin = 'anonymous';
+	            image.src = dataUrl;
+	            this._isEmpty = false;
+	        });
+	    }
+	    toDataURL(type = 'image/png', encoderOptions) {
+	        switch (type) {
+	            case 'image/svg+xml':
+	                if (typeof encoderOptions !== 'object') {
+	                    encoderOptions = undefined;
+	                }
+	                return `data:image/svg+xml;base64,${btoa(this.toSVG(encoderOptions))}`;
+	            default:
+	                if (typeof encoderOptions !== 'number') {
+	                    encoderOptions = undefined;
+	                }
+	                return this.canvas.toDataURL(type, encoderOptions);
+	        }
+	    }
+	    on() {
+	        this.canvas.style.touchAction = 'none';
+	        this.canvas.style.msTouchAction = 'none';
+	        this.canvas.style.userSelect = 'none';
+	        const isIOS = /Macintosh/.test(navigator.userAgent) && 'ontouchstart' in document;
+	        if (window.PointerEvent && !isIOS) {
+	            this._handlePointerEvents();
+	        }
+	        else {
+	            this._handleMouseEvents();
+	            if ('ontouchstart' in window) {
+	                this._handleTouchEvents();
+	            }
+	        }
+	    }
+	    off() {
+	        this.canvas.style.touchAction = 'auto';
+	        this.canvas.style.msTouchAction = 'auto';
+	        this.canvas.style.userSelect = 'auto';
+	        this.canvas.removeEventListener('pointerdown', this._handlePointerStart);
+	        this.canvas.removeEventListener('pointermove', this._handlePointerMove);
+	        this.canvas.ownerDocument.removeEventListener('pointerup', this._handlePointerEnd);
+	        this.canvas.removeEventListener('mousedown', this._handleMouseDown);
+	        this.canvas.removeEventListener('mousemove', this._handleMouseMove);
+	        this.canvas.ownerDocument.removeEventListener('mouseup', this._handleMouseUp);
+	        this.canvas.removeEventListener('touchstart', this._handleTouchStart);
+	        this.canvas.removeEventListener('touchmove', this._handleTouchMove);
+	        this.canvas.removeEventListener('touchend', this._handleTouchEnd);
+	    }
+	    isEmpty() {
+	        return this._isEmpty;
+	    }
+	    fromData(pointGroups, { clear = true } = {}) {
+	        if (clear) {
+	            this.clear();
+	        }
+	        this._fromData(pointGroups, this._drawCurve.bind(this), this._drawDot.bind(this));
+	        this._data = this._data.concat(pointGroups);
+	    }
+	    toData() {
+	        return this._data;
+	    }
+	    _getPointGroupOptions(group) {
+	        return {
+	            penColor: group && 'penColor' in group ? group.penColor : this.penColor,
+	            dotSize: group && 'dotSize' in group ? group.dotSize : this.dotSize,
+	            minWidth: group && 'minWidth' in group ? group.minWidth : this.minWidth,
+	            maxWidth: group && 'maxWidth' in group ? group.maxWidth : this.maxWidth,
+	            velocityFilterWeight: group && 'velocityFilterWeight' in group
+	                ? group.velocityFilterWeight
+	                : this.velocityFilterWeight,
+	        };
+	    }
+	    _strokeBegin(event) {
+	        this.dispatchEvent(new CustomEvent('beginStroke', { detail: event }));
+	        const pointGroupOptions = this._getPointGroupOptions();
+	        const newPointGroup = Object.assign(Object.assign({}, pointGroupOptions), { points: [] });
+	        this._data.push(newPointGroup);
+	        this._reset(pointGroupOptions);
+	        this._strokeUpdate(event);
+	    }
+	    _strokeUpdate(event) {
+	        if (this._data.length === 0) {
+	            this._strokeBegin(event);
+	            return;
+	        }
+	        this.dispatchEvent(new CustomEvent('beforeUpdateStroke', { detail: event }));
+	        const x = event.clientX;
+	        const y = event.clientY;
+	        const pressure = event.pressure !== undefined
+	            ? event.pressure
+	            : event.force !== undefined
+	                ? event.force
+	                : 0;
+	        const point = this._createPoint(x, y, pressure);
+	        const lastPointGroup = this._data[this._data.length - 1];
+	        const lastPoints = lastPointGroup.points;
+	        const lastPoint = lastPoints.length > 0 && lastPoints[lastPoints.length - 1];
+	        const isLastPointTooClose = lastPoint
+	            ? point.distanceTo(lastPoint) <= this.minDistance
+	            : false;
+	        const pointGroupOptions = this._getPointGroupOptions(lastPointGroup);
+	        if (!lastPoint || !(lastPoint && isLastPointTooClose)) {
+	            const curve = this._addPoint(point, pointGroupOptions);
+	            if (!lastPoint) {
+	                this._drawDot(point, pointGroupOptions);
+	            }
+	            else if (curve) {
+	                this._drawCurve(curve, pointGroupOptions);
+	            }
+	            lastPoints.push({
+	                time: point.time,
+	                x: point.x,
+	                y: point.y,
+	                pressure: point.pressure,
+	            });
+	        }
+	        this.dispatchEvent(new CustomEvent('afterUpdateStroke', { detail: event }));
+	    }
+	    _strokeEnd(event) {
+	        this._strokeUpdate(event);
+	        this.dispatchEvent(new CustomEvent('endStroke', { detail: event }));
+	    }
+	    _handlePointerEvents() {
+	        this._drawningStroke = false;
+	        this.canvas.addEventListener('pointerdown', this._handlePointerStart);
+	        this.canvas.addEventListener('pointermove', this._handlePointerMove);
+	        this.canvas.ownerDocument.addEventListener('pointerup', this._handlePointerEnd);
+	    }
+	    _handleMouseEvents() {
+	        this._drawningStroke = false;
+	        this.canvas.addEventListener('mousedown', this._handleMouseDown);
+	        this.canvas.addEventListener('mousemove', this._handleMouseMove);
+	        this.canvas.ownerDocument.addEventListener('mouseup', this._handleMouseUp);
+	    }
+	    _handleTouchEvents() {
+	        this.canvas.addEventListener('touchstart', this._handleTouchStart);
+	        this.canvas.addEventListener('touchmove', this._handleTouchMove);
+	        this.canvas.addEventListener('touchend', this._handleTouchEnd);
+	    }
+	    _reset(options) {
+	        this._lastPoints = [];
+	        this._lastVelocity = 0;
+	        this._lastWidth = (options.minWidth + options.maxWidth) / 2;
+	        this._ctx.fillStyle = options.penColor;
+	    }
+	    _createPoint(x, y, pressure) {
+	        const rect = this.canvas.getBoundingClientRect();
+	        return new Point(x - rect.left, y - rect.top, pressure, new Date().getTime());
+	    }
+	    _addPoint(point, options) {
+	        const { _lastPoints } = this;
+	        _lastPoints.push(point);
+	        if (_lastPoints.length > 2) {
+	            if (_lastPoints.length === 3) {
+	                _lastPoints.unshift(_lastPoints[0]);
+	            }
+	            const widths = this._calculateCurveWidths(_lastPoints[1], _lastPoints[2], options);
+	            const curve = Bezier.fromPoints(_lastPoints, widths);
+	            _lastPoints.shift();
+	            return curve;
+	        }
+	        return null;
+	    }
+	    _calculateCurveWidths(startPoint, endPoint, options) {
+	        const velocity = options.velocityFilterWeight * endPoint.velocityFrom(startPoint) +
+	            (1 - options.velocityFilterWeight) * this._lastVelocity;
+	        const newWidth = this._strokeWidth(velocity, options);
+	        const widths = {
+	            end: newWidth,
+	            start: this._lastWidth,
+	        };
+	        this._lastVelocity = velocity;
+	        this._lastWidth = newWidth;
+	        return widths;
+	    }
+	    _strokeWidth(velocity, options) {
+	        return Math.max(options.maxWidth / (velocity + 1), options.minWidth);
+	    }
+	    _drawCurveSegment(x, y, width) {
+	        const ctx = this._ctx;
+	        ctx.moveTo(x, y);
+	        ctx.arc(x, y, width, 0, 2 * Math.PI, false);
+	        this._isEmpty = false;
+	    }
+	    _drawCurve(curve, options) {
+	        const ctx = this._ctx;
+	        const widthDelta = curve.endWidth - curve.startWidth;
+	        const drawSteps = Math.ceil(curve.length()) * 2;
+	        ctx.beginPath();
+	        ctx.fillStyle = options.penColor;
+	        for (let i = 0; i < drawSteps; i += 1) {
+	            const t = i / drawSteps;
+	            const tt = t * t;
+	            const ttt = tt * t;
+	            const u = 1 - t;
+	            const uu = u * u;
+	            const uuu = uu * u;
+	            let x = uuu * curve.startPoint.x;
+	            x += 3 * uu * t * curve.control1.x;
+	            x += 3 * u * tt * curve.control2.x;
+	            x += ttt * curve.endPoint.x;
+	            let y = uuu * curve.startPoint.y;
+	            y += 3 * uu * t * curve.control1.y;
+	            y += 3 * u * tt * curve.control2.y;
+	            y += ttt * curve.endPoint.y;
+	            const width = Math.min(curve.startWidth + ttt * widthDelta, options.maxWidth);
+	            this._drawCurveSegment(x, y, width);
+	        }
+	        ctx.closePath();
+	        ctx.fill();
+	    }
+	    _drawDot(point, options) {
+	        const ctx = this._ctx;
+	        const width = options.dotSize > 0
+	            ? options.dotSize
+	            : (options.minWidth + options.maxWidth) / 2;
+	        ctx.beginPath();
+	        this._drawCurveSegment(point.x, point.y, width);
+	        ctx.closePath();
+	        ctx.fillStyle = options.penColor;
+	        ctx.fill();
+	    }
+	    _fromData(pointGroups, drawCurve, drawDot) {
+	        for (const group of pointGroups) {
+	            const { points } = group;
+	            const pointGroupOptions = this._getPointGroupOptions(group);
+	            if (points.length > 1) {
+	                for (let j = 0; j < points.length; j += 1) {
+	                    const basicPoint = points[j];
+	                    const point = new Point(basicPoint.x, basicPoint.y, basicPoint.pressure, basicPoint.time);
+	                    if (j === 0) {
+	                        this._reset(pointGroupOptions);
+	                    }
+	                    const curve = this._addPoint(point, pointGroupOptions);
+	                    if (curve) {
+	                        drawCurve(curve, pointGroupOptions);
+	                    }
+	                }
+	            }
+	            else {
+	                this._reset(pointGroupOptions);
+	                drawDot(points[0], pointGroupOptions);
+	            }
+	        }
+	    }
+	    toSVG({ includeBackgroundColor = false } = {}) {
+	        const pointGroups = this._data;
+	        const ratio = Math.max(window.devicePixelRatio || 1, 1);
+	        const minX = 0;
+	        const minY = 0;
+	        const maxX = this.canvas.width / ratio;
+	        const maxY = this.canvas.height / ratio;
+	        const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+	        svg.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+	        svg.setAttribute('xmlns:xlink', 'http://www.w3.org/1999/xlink');
+	        svg.setAttribute('viewBox', `${minX} ${minY} ${maxX} ${maxY}`);
+	        svg.setAttribute('width', maxX.toString());
+	        svg.setAttribute('height', maxY.toString());
+	        if (includeBackgroundColor && this.backgroundColor) {
+	            const rect = document.createElement('rect');
+	            rect.setAttribute('width', '100%');
+	            rect.setAttribute('height', '100%');
+	            rect.setAttribute('fill', this.backgroundColor);
+	            svg.appendChild(rect);
+	        }
+	        this._fromData(pointGroups, (curve, { penColor }) => {
+	            const path = document.createElement('path');
+	            if (!isNaN(curve.control1.x) &&
+	                !isNaN(curve.control1.y) &&
+	                !isNaN(curve.control2.x) &&
+	                !isNaN(curve.control2.y)) {
+	                const attr = `M ${curve.startPoint.x.toFixed(3)},${curve.startPoint.y.toFixed(3)} ` +
+	                    `C ${curve.control1.x.toFixed(3)},${curve.control1.y.toFixed(3)} ` +
+	                    `${curve.control2.x.toFixed(3)},${curve.control2.y.toFixed(3)} ` +
+	                    `${curve.endPoint.x.toFixed(3)},${curve.endPoint.y.toFixed(3)}`;
+	                path.setAttribute('d', attr);
+	                path.setAttribute('stroke-width', (curve.endWidth * 2.25).toFixed(3));
+	                path.setAttribute('stroke', penColor);
+	                path.setAttribute('fill', 'none');
+	                path.setAttribute('stroke-linecap', 'round');
+	                svg.appendChild(path);
+	            }
+	        }, (point, { penColor, dotSize, minWidth, maxWidth }) => {
+	            const circle = document.createElement('circle');
+	            const size = dotSize > 0 ? dotSize : (minWidth + maxWidth) / 2;
+	            circle.setAttribute('r', size.toString());
+	            circle.setAttribute('cx', point.x.toString());
+	            circle.setAttribute('cy', point.y.toString());
+	            circle.setAttribute('fill', penColor);
+	            svg.appendChild(circle);
+	        });
+	        return svg.outerHTML;
+	    }
+	}
+
+	// @ts-check
+
+
+	/**
+	 * Gets the theoretical maximum width of a given element, determined by its own
+	 * computed `max-width` style (in `px` units), or that of one of its
+	 * `offsetParent`s. If no such element is found, the element's current
+	 * `offsetWidth` is returned.
+	 *
+	 * Note that this will fail for elements outside the visible DOM tree.
+	 *
+	 * @package - exported only for testing
+	 * @param {HTMLElement} element
+	 */
+	const getMaxWidth = (element) => {
+	    /** @type {HTMLElement | null} */
+	    let clone = null;
+
+	    const { isConnected } = element;
+
+	    if (!isConnected) {
+	        throw new Error(
+	            'Max width cannot be computed for elements outside the visible DOM tree'
+	        );
+	    }
+
+	    let current = element;
+	    let { maxWidth } = getComputedStyle(current);
+
+	    while (maxWidth === 'none' && current.offsetParent != null) {
+	        maxWidth = getComputedStyle(current).maxWidth;
+	        current = /** @type {HTMLElement} */ (current.offsetParent);
+	    }
+
+	    if (maxWidth === 'none') {
+	        return element.offsetWidth;
+	    }
+
+	    const maxPixels = Number(maxWidth.replace(/^(\d+)px$/, '$1'));
+
+	    if (Number.isNaN(maxPixels)) {
+	        return element.offsetWidth;
+	    }
+
+	    if (current !== element) {
+	        element.classList.add('__TEMP_GET_MAX_WIDTH__');
+
+	        if (clone == null) {
+	            clone = /** @type {HTMLElement} */ (current.cloneNode(true));
+
+	            element.classList.remove('__TEMP_GET_MAX_WIDTH__');
+
+	            clone.style.opacity = '0';
+	            clone.style.position = 'absolute';
+	            clone.style.width = maxWidth;
+	            document.body.append(clone);
+	        }
+
+	        const { offsetWidth } = /** @type {HTMLElement} */ (
+	            clone.querySelector('.__TEMP_GET_MAX_WIDTH__')
+	        );
+
+	        clone.remove();
+
+	        return offsetWidth;
+	    }
+
+	    return maxPixels;
 	};
+
+	/**
+	 * @param {HTMLCanvasElement} canvas
+	 * @return {CanvasRenderingContext2D}
+	 */
+	const get2dRenderingContext = (canvas) => {
+	    const context = canvas.getContext('2d');
+
+	    if (context == null) {
+	        throw new Error('Could not get rendering context');
+	    }
+
+	    return context;
+	};
+
+	/**
+	 * For some reason, drawing `ImageBitmap` data to a canvas does nothing when the
+	 * canvas element is detached. As a workaround, we attach the canvas element to
+	 * this visibly hidden container to support that operation.
+	 */
+	const detachedCanvasContainer = document.createElement('div');
+
+	detachedCanvasContainer.ariaHidden = 'true';
+
+	Object.assign(detachedCanvasContainer.style, {
+	    postition: 'absolute',
+	    top: '-1px',
+	    left: '-1px',
+	    opacity: 0,
+	    width: '1px',
+	    height: '1px',
+	    overflow: 'hidden',
+	});
+	document.body.append(detachedCanvasContainer);
+
+	/**
+	 * @typedef {import('signature_pad').Options} SignaturePadOptions
+	 */
+
+	/**
+	 * @typedef {import('signature_pad').PointGroup} PointGroup
+	 */
+
+	/**
+	 * @extends {SignaturePad}
+	 * @implements {SignaturePad}
+	 */
+	class ResizableSignaturePad extends SignaturePad {
+	    /**
+	     * Tracks which `ResizableSignaturePad` is associated with its canvas
+	     * element. This allows more efficient (and idiomatic) use of
+	     * `IntersectionObserver` and `ResizeObserver`, where the same logic is
+	     * attached and detached to individual elements as needed.
+	     *
+	     * @type {WeakMap<Element, ResizableSignaturePad>}
+	     */
+	    static canvasToPad = new WeakMap();
+
+	    /**
+	     * @private
+	     *
+	     * There are several non-obvious implications to how `intersectionObserver`
+	     * and {@link resizeObserver} are used to address, and in some cases improve
+	     * upon, several behaviors previously handled in `draw-widget.js`.
+	     *
+	     * In both this implementation and the prior one, some behavior is deferred
+	     * when the canvas element is determined not to be visible.
+	     *
+	     * - Previously, this determination was based on the canvas having a
+	     *   width/height of 0 (e.g. an inactive question in "pages" mode). When it
+	     *   was determined the canvas element is not visible, resize behavior would
+	     *   be deferred.
+	     *
+	     * - It is now determined by `IntersectionObserver`, now standard for
+	     *   determining element visibility, even if the element is below the fold
+	     *   but would otherwise be visible. While a canvas element is not visible
+	     *   in the viewport, it is removed from resize observation until it becomes
+	     *   visible again.
+	     *
+	     * In both implementations, there is logic to update state specific to
+	     * behaviors of both the HTML canvas API and the underlying `SignaturePad`
+	     * when the canvas element is resized.
+	     *
+	     * - Previously, resize logic was performed:
+	     *
+	     *      - any time the browser window was resized and the canvas element was
+	     *        determined to be visible
+	     *
+	     *      - explicitly when the editing state changes on mobile
+	     *
+	     *      - explicitly when the current page changes in "pages" mode
+	     *
+	     * - It is now determined by the standard `ResizeObserver`, and each canvas
+	     *   element is observed directly.
+	     *
+	     * In both implementations, there is a need to perform the same "resize"
+	     * logic upon initializtion, as the canvas element's default size may not
+	     * match the initial display size.
+	     *
+	     * - Previously, this was performed by explicitly invoking the resize logic
+	     *   at a specific point in the initialization process.
+	     *
+	     * - This initialization is now performed implicitly when each canvas
+	     *   element is observed (i.e. the built-in behavior of both observer APIs).
+	     */
+	    static intersectionObserver = new IntersectionObserver((entries) => {
+	        entries.forEach((entry) => {
+	            const { target: canvas } = entry;
+	            const pad = this.canvasToPad.get(
+	                /** @type {HTMLCanvasElement} */ (canvas)
+	            );
+
+	            if (pad == null) {
+	                return;
+	            }
+
+	            const { isIntersecting: isVisible } = entry;
+
+	            // Note: the reason these observers are static members of
+	            // `ResizableSignatureObserver`, rather than top-level constants, is
+	            // to allow access to private instance members.
+	            pad.isVisible = isVisible;
+
+	            if (isVisible) {
+	                this.resizeObserver.observe(canvas);
+	            } else {
+	                this.resizeObserver.unobserve(canvas);
+	            }
+
+	            /**
+	             * TODO: how (if at all) should we handle removal of the canvas
+	             * element from the visible DOM tree? It seems at least probable
+	             * that:
+	             *
+	             * - The reference in {@link canvasToPad} will be freed eventually.
+	             *
+	             * - We'll detect that the canvas element is no longer visible _if
+	             *   it had been_, and its observation {@link resizeObserver} will
+	             *   be detached, but we won't stop observing visibility in any
+	             *   case. This would be sufficient to detect cases where the canvas
+	             *   may be reattached, but it's not clear how likely that is.
+	             *
+	             * - All other internal references/state will not be freed,
+	             *   potentially causing a leak.
+	             *
+	             * - If the canvas element **were reattached**, it would likely be
+	             *   detected as a **new instance** of the widget, creating a
+	             *   redundant instance of this class.
+	             *
+	             * It seems the most appropriate immediate solution would be to tear
+	             * down everything on DOM removal. This would probably be sufficient
+	             * for the currently implied tight coupling with `DrawWidget`. But
+	             * the design of `ResizableSignaturePad` is very nearly appropriate
+	             * to break that tight coupling and either contribute upstream or
+	             * release as a separate wrapper package. If that were the case,
+	             * we'd want to anticipate the more general case where
+	             * detaching/reattaching arbitrary DOM nodes is quite common.
+	             */
+	        });
+	    });
+
+	    /**
+	     * @private
+	     * @see {@link intersectionObserver}
+	     */
+	    static resizeObserver = new ResizeObserver((entries) => {
+	        const targets = [...new Set(entries.map(({ target }) => target))];
+
+	        targets.forEach((target) => {
+	            const pad = this.canvasToPad.get(target);
+
+	            if (pad == null) {
+	                return;
+	            }
+
+	            pad.redraw();
+	        });
+	    });
+
+	    /** @private */
+	    isChangePending = false;
+
+	    /** @private */
+	    accessorState = {
+	        isVisible: false,
+	        displayCanvasMaxWidth: 0,
+	    };
+
+	    /** @private */
+	    get isVisible() {
+	        return (
+	            this.accessorState.isVisible &&
+	            this.displayCanvas.offsetWidth > 0 &&
+	            this.displayCanvas.offsetHeight > 0
+	        );
+	    }
+
+	    /** @private */
+	    set isVisible(isVisible) {
+	        const wasVisible = this.accessorState.isVisible;
+
+	        this.accessorState.isVisible = isVisible;
+
+	        if (!wasVisible && isVisible && this.isChangePending) {
+	            this.dispatchChangeEvent();
+	        }
+	    }
+
+	    /** @private */
+	    get canvasHeightRatio() {
+	        return this.displayCanvas.offsetHeight / this.displayCanvas.offsetWidth;
+	    }
+
+	    /**
+	     * @private
+	     * @type {number}
+	     */
+	    get displayCanvasMaxWidth() {
+	        const { displayCanvasMaxWidth } = this.accessorState;
+
+	        if (displayCanvasMaxWidth) {
+	            return displayCanvasMaxWidth;
+	        }
+
+	        this.accessorState.displayCanvasMaxWidth = getMaxWidth(
+	            this.displayCanvas
+	        );
+
+	        return this.accessorState.displayCanvasMaxWidth;
+	    }
+
+	    /** @private */
+	    set displayCanvasMaxWidth(maxWidth) {
+	        /** @private */
+	        this.accessorState.displayCanvasMaxWidth = maxWidth;
+	    }
+
+	    /** @private */
+	    get displayCanvasMaxHeight() {
+	        return (this.displayCanvasMaxWidth ?? 0) * this.canvasHeightRatio;
+	    }
+
+	    /**
+	     * @param {HTMLCanvasElement} canvas
+	     * @param {SignaturePadOptions} [options]
+	     */
+	    constructor(canvas, options) {
+	        super(canvas, options);
+
+	        ResizableSignaturePad.canvasToPad.set(canvas, this);
+	        ResizableSignaturePad.intersectionObserver.observe(canvas);
+
+	        /**
+	         * @private
+	         * @readonly
+	         * @type {HTMLCanvasElement}
+	         */
+	        this.displayCanvas = canvas;
+
+	        /**
+	         * @private
+	         * @readonly
+	         * @type {HTMLCanvasElement}
+	         */
+	        this.fullSizeCanvas = document.createElement('canvas');
+
+	        /**
+	         * @see {@link detatchedCanvasContainer}
+	         */
+	        detachedCanvasContainer.append(this.fullSizeCanvas);
+
+	        /**
+	         * @private
+	         * @readonly
+	         * @type {SignaturePad}
+	         */
+	        this.fullSizePad = new SignaturePad(this.fullSizeCanvas, options);
+
+	        /**
+	         * @private
+	         * @type {PointGroup[]}
+	         */
+	        this.pointGroups = [];
+
+	        /**
+	         * @private
+	         * @type {ImageBitmap | null}
+	         * @see {@link drawBaseImage}
+	         */
+	        this.baseImage = null;
+
+	        /**
+	         * @private
+	         * @type {string}
+	         */
+	        this.objectURL = '';
+
+	        this.addEventListener('endStroke', () => {
+	            const maxWidthScale =
+	                this.displayCanvasMaxWidth / this.displayCanvas.offsetWidth;
+
+	            this.pointGroups = this.scalePointGroups(
+	                this.toData(),
+	                maxWidthScale
+	            );
+	            this.dispatchChangeEvent();
+	        });
+	    }
+
+	    /** @private */
+	    dispatchChangeEvent() {
+	        const { objectURL } = this;
+
+	        if (objectURL !== '') {
+	            // This will fail silently if it is performed after the request for
+	            // the current blob state below
+	            URL.revokeObjectURL(objectURL);
+	        }
+
+	        if (!this.isVisible) {
+	            this.isChangePending = true;
+
+	            return;
+	        }
+
+	        this.isChangePending = false;
+	        this.dispatchEvent(new Event('change'));
+	    }
+
+	    /** @private */
+	    resizeDisplayCanvas() {
+	        const { offsetWidth, offsetHeight } = this.displayCanvas;
+	        const ratio = Math.max(window.devicePixelRatio || 1, 1);
+
+	        this.displayCanvas.width =
+	            (offsetWidth || this.displayCanvasMaxWidth) * ratio;
+	        this.displayCanvas.height =
+	            (offsetHeight || this.displayCanvasMaxHeight) * ratio;
+	        get2dRenderingContext(this.displayCanvas).scale(ratio, ratio);
+	    }
+
+	    /** @private */
+	    redraw() {
+	        this.clear();
+	        this.resizeDisplayCanvas();
+	        this.drawBaseImage();
+	        this.setDrawingData(this.pointGroups);
+	    }
+
+	    /**
+	     * @private
+	     * @param {HTMLCanvasElement} [canvas]
+	     *
+	     * While {@link setBaseImage} is inherently asynchronous, `drawBaseImage` is
+	     * able to be synchronous, because it uses a cached `ImageBitmap` instance.
+	     * This API is somewhat obscure, but its use results in significantly better
+	     * performance. The improvement is significant enough to eliminate the need
+	     * for artificial delays on `getObjectURL`. Combined with use of
+	     * `ResizeObserver`, it's also significant enough to eliminate the need for
+	     * throttling.
+	     *
+	     * This approach was discovered when, even with throttling, asynchronously
+	     * redrawing binary image data with the base library's `fromDataURL` would
+	     * cause flickering while resizing.
+	     */
+	    drawBaseImage(canvas = this.displayCanvas) {
+	        const { baseImage: baseImageBitmap } = this;
+
+	        if (baseImageBitmap == null) {
+	            const { width, height } = canvas;
+
+	            get2dRenderingContext(canvas).clearRect(0, 0, width, height);
+
+	            return;
+	        }
+
+	        const { offsetHeight, offsetWidth } = canvas;
+
+	        let { height, width } = baseImageBitmap;
+
+	        const widthRatio = this.displayCanvasMaxWidth / width;
+	        const heightRatio = this.displayCanvasMaxHeight / height;
+	        const bitmapRatio = Math.min(heightRatio, widthRatio);
+	        const canvasRatio = offsetWidth / this.displayCanvasMaxWidth;
+
+	        width = width * bitmapRatio * canvasRatio;
+	        height = height * bitmapRatio * canvasRatio;
+
+	        const xOffset = Math.max(0, (offsetWidth - width) / 2);
+	        const yOffset = Math.max(0, (offsetHeight - height) / 2);
+
+	        get2dRenderingContext(canvas).drawImage(
+	            baseImageBitmap,
+	            xOffset,
+	            yOffset,
+	            width,
+	            height
+	        );
+	    }
+
+	    /**
+	     * @param {string | Blob} image
+	     */
+	    async setBaseImage(image) {
+	        this.baseImage?.close();
+
+	        /** @type {Blob} */
+	        let blob;
+
+	        if (image instanceof Blob) {
+	            blob = image;
+	        } else {
+	            const response = await fetch(image);
+
+	            blob = await response.blob();
+	        }
+
+	        this.baseImage?.close();
+	        this.baseImage = await createImageBitmap(blob);
+	        this.redraw();
+	        this.dispatchChangeEvent();
+	    }
+
+	    /**
+	     * @private
+	     * @param {PointGroup[]} pointGroups
+	     * @param {number} scale
+	     * @param {number} [minLineWidth]
+	     * @param {number} [maxLineWidth]
+	     * @return {PointGroup[]}
+	     */
+	    scalePointGroups(
+	        pointGroups,
+	        scale,
+	        minLineWidth = 0.5,
+	        maxLineWidth = minLineWidth * 5
+	    ) {
+	        return pointGroups.map((group) => ({
+	            ...group,
+	            minWidth: minLineWidth,
+	            maxWidth: maxLineWidth,
+
+	            points: group.points.map((point) => {
+	                const { x, y, pressure, time, ...rest } = point;
+
+	                return {
+	                    ...rest,
+	                    x: x * scale,
+	                    y: y * scale,
+	                    pressure: pressure * scale,
+	                    time: time * scale,
+	                };
+	            }),
+	        }));
+	    }
+
+	    /**
+	     * @private
+	     * @param {PointGroup[]} pointGroups
+	     */
+	    setDrawingData(pointGroups) {
+	        const { displayCanvas, displayCanvasMaxWidth } = this;
+	        const { offsetWidth } = displayCanvas;
+	        const scale =
+	            offsetWidth === 0 ? 1 : offsetWidth / displayCanvasMaxWidth;
+	        const minLineWidth = Math.max(
+	            0.325,
+	            (0.5 * offsetWidth) / displayCanvasMaxWidth
+	        );
+	        const maxLineWidth = minLineWidth * 5;
+
+	        this.minWidth = minLineWidth;
+	        this.maxWidth = maxLineWidth;
+
+	        const scaled = this.scalePointGroups(
+	            pointGroups,
+	            scale,
+	            minLineWidth,
+	            maxLineWidth
+	        );
+
+	        this.pointGroups = pointGroups;
+
+	        this.fromData(scaled, {
+	            clear: false,
+	        });
+	    }
+
+	    /** @private */
+	    clearDrawingData() {
+	        this.clear();
+	        this.setDrawingData([]);
+	        this.drawBaseImage();
+	        this.dispatchChangeEvent();
+	    }
+
+	    undoStroke() {
+	        const { pointGroups } = this;
+
+	        this.setDrawingData(pointGroups.slice(0, pointGroups.length - 1));
+	        this.redraw();
+	        this.dispatchChangeEvent();
+	    }
+
+	    reset() {
+	        this.baseImage?.close();
+	        this.baseImage = null;
+	        this.clearDrawingData();
+	        super.clear();
+	        this.dispatchChangeEvent();
+	    }
+
+	    /** @private */
+	    resizeFullSizeCanvas() {
+	        let {
+	            displayCanvasMaxWidth: canvasWidth,
+	            displayCanvasMaxHeight: canvasHeight,
+	        } = this;
+
+	        if (this.baseImage != null) {
+	            const { canvasHeightRatio } = this;
+	            const { width, height } = this.baseImage;
+	            const heightRatio = height / width;
+
+	            canvasHeight =
+	                heightRatio > canvasHeightRatio
+	                    ? height
+	                    : width * canvasHeightRatio;
+	            canvasWidth = canvasHeight / canvasHeightRatio;
+	        }
+
+	        this.fullSizeCanvas.style.width = `${canvasWidth}px`;
+	        this.fullSizeCanvas.style.height = `${canvasHeight}px`;
+	        this.fullSizeCanvas.width = canvasWidth;
+	        this.fullSizeCanvas.height = canvasHeight;
+	        get2dRenderingContext(this.fullSizeCanvas).scale(1, 1);
+	    }
+
+	    async toObjectURL() {
+	        if (this.baseImage == null && this.pointGroups.length === 0) {
+	            this.objectURL = '';
+
+	            return '';
+	        }
+
+	        this.resizeFullSizeCanvas();
+
+	        const pointGroups = this.scalePointGroups(
+	            this.pointGroups,
+	            this.fullSizeCanvas.width / this.displayCanvasMaxWidth
+	        );
+
+	        this.fullSizePad.clear();
+	        this.drawBaseImage(this.fullSizeCanvas);
+	        this.fullSizePad.fromData(pointGroups, {
+	            clear: false,
+	        });
+
+	        const blob = await new Promise((resolve) => {
+	            this.fullSizeCanvas.toBlob((result) => {
+	                if (result instanceof Blob) {
+	                    resolve(result);
+	                } else {
+	                    resolve(null);
+	                }
+	            });
+	        });
+
+	        if (blob == null) {
+	            this.objectURL = '';
+
+	            return '';
+	        }
+
+	        this.objectURL = URL.createObjectURL(blob);
+
+	        return this.objectURL;
+	    }
+	}
 
 	/**
 	 * Widget to obtain user-provided drawings or signature.
@@ -71156,35 +72710,22 @@
 	        this.$widget = jquery(question.querySelector('.widget'));
 
 	        canvas = this.$widget[0].querySelector('.draw-widget__body__canvas');
-	        this._handleResize(canvas);
-	        this._resizeCanvas(canvas);
 
 	        if (this.props.load) {
 	            this._handleFiles(existingFilename);
 	        }
 
-	        // This listener serves to capture a drawing when the submit button is clicked within [DELAY]
-	        // milliseconds after the last stroke ended. Note that this could be the entire drawing/signature.
-	        canvas.addEventListener('blur', this._forceUpdate.bind(this));
-
-	        // We built a delay in saving on stroke "end", to avoid excessive updating
-	        // This event does not fire on touchscreens for which we use the .hide-canvas-btn click
-	        // to do the same thing.
-
 	        this.initialize = fileManager.init().then(() => {
-	            that.pad = new SignaturePad(canvas, {
-	                onEnd: () => {
-	                    // keep replacing this timer so continuous drawing
-	                    // doesn't update the value after every stroke.
-	                    clearTimeout(that._updateWithDelay);
-	                    that._updateWithDelay = setTimeout(
-	                        that._updateValue.bind(that),
-	                        DELAY
-	                    );
-	                },
+	            this.pad = new ResizableSignaturePad(canvas, {
 	                penColor: that.props.colors[0] || 'black',
 	            });
-	            that.pad.off();
+
+	            this.pad.addEventListener('change', () => {
+	                this._updateValue();
+	            });
+
+	            this.pad.off();
+
 	            if (existingFilename) {
 	                that.element.value = existingFilename;
 
@@ -71195,6 +72736,7 @@
 
 	            return true;
 	        });
+
 	        this.disable();
 	        this.initialize
 	            .then(() => {
@@ -71219,28 +72761,12 @@
 	                    .end()
 	                    .find('.draw-widget__undo')
 	                    .on('click', () => {
-	                        const data = that.pad.toData();
-	                        that.pad.clear();
-	                        const fileInput =
-	                            that.$widget[0].querySelector('input[type=file]');
-	                        // that.element.dataset.loadedFileName will have been removed only after resetting
-	                        const fileToLoad =
-	                            fileInput && fileInput.files[0]
-	                                ? fileInput.files[0]
-	                                : that.element.dataset.loadedFileName;
-	                        that._loadFileIntoPad(fileToLoad).then(() => {
-	                            that.pad.updateData(data.slice(0, -1));
-	                            that._updateValue();
-	                            that.pad.penColor = that.$widget.find(
-	                                '.draw-widget__colorpicker .current'
-	                            )[0].dataset.color;
-	                        });
+	                        this.pad.undoStroke();
 	                    })
 	                    .end()
 	                    .find('.show-canvas-btn')
 	                    .on('click', () => {
 	                        that.$widget.addClass('full-screen');
-	                        that._resizeCanvas(canvas);
 	                        that.enable();
 
 	                        return false;
@@ -71250,47 +72776,21 @@
 	                    .on('click', () => {
 	                        that.$widget.removeClass('full-screen');
 	                        that.pad.off();
-	                        that._forceUpdate();
-	                        that._resizeCanvas(canvas);
+	                        that._updateValue();
 
 	                        return false;
 	                    })
 	                    .click();
 
-	                jquery(canvas).on('canvasreload', () => {
-	                    if (that.cache) {
-	                        that.pad
-	                            .fromObjectURL(that.cache)
-	                            .then(that._updateValue.bind(that, false));
-	                    }
-	                });
 	                that.enable();
 	            })
 	            .catch((error) => {
 	                that._showFeedback(error.message);
 	            });
 
-	        jquery(this.element)
-	            .on('applyfocus', () => {
-	                canvas.focus();
-	            })
-	            .closest('[role="page"]')
-	            .on(events.PageFlip().type, () => {
-	                // When an existing value is loaded into the canvas and is not
-	                // the first page, it won't become visible until the canvas is clicked
-	                // or the window is resized:
-	                // https://github.com/kobotoolbox/enketo-express/issues/895
-	                // This also fixes a similar issue with an empty canvas:
-	                // https://github.com/kobotoolbox/enketo-express/issues/844
-	                that._resizeCanvas(canvas);
-	            });
-	    }
-
-	    _forceUpdate() {
-	        if (this._updateWithDelay) {
-	            clearTimeout(this._updateWithDelay);
-	            this._updateValue();
-	        }
+	        jquery(this.element).on('applyfocus', () => {
+	            canvas.focus();
+	        });
 	    }
 
 	    // All this is copied from the file-picker widget
@@ -71335,7 +72835,7 @@
 	                    // Process the file
 	                    if (!fileManager.isTooLarge(file)) {
 	                        // Update UI
-	                        that.pad.clear();
+	                        that.pad.reset();
 	                        that._loadFileIntoPad(this.files[0]).then(() => {
 	                            that._updateValue.call(that);
 	                            that._showFileName(file.name);
@@ -71463,25 +72963,14 @@
 	        return fragment;
 	    }
 
-	    /**
-	     * Updates value
-	     *
-	     * @param {boolean} [changed] - whether the value has changed
-	     */
-	    _updateValue(changed = true) {
-	        const newValue = this.pad.toDataURL();
+	    async _updateValue() {
+	        const newValue = await this.pad.toObjectURL();
+
 	        if (this.value !== newValue) {
 	            const now = new Date();
 	            const postfix = `-${now.getHours()}_${now.getMinutes()}_${now.getSeconds()}`;
 	            this.element.dataset.filenamePostfix = postfix;
-	            // Note that this.element has become a text input.
-	            // When a default file is loaded this function is called by the canvasreload handler, but the user hasn't changed anything.
-	            // We want to make sure the model remains unchanged in that case.
-	            if (changed) {
-	                this.originalInputValue = this.props.filename;
-	            }
-	            // pad.toData() doesn't seem to work when redrawing on a smaller canvas. Doesn't scale.
-	            // pad.toDataURL() is crude and memory-heavy but the advantage is that it will also work for appearance=annotate
+	            this.originalInputValue = this.props.filename;
 	            this.value = newValue;
 	            this._updateDownloadLink(this.value);
 	        }
@@ -71507,7 +72996,7 @@
 	                    if (!confirmed) {
 	                        return;
 	                    }
-	                    that.pad.clear();
+	                    that.pad.reset();
 	                    that.cache = null;
 	                    // Only upon reset is loadedFileName removed, so that "undo" will work
 	                    // for drawings loaded from storage.
@@ -71515,11 +73004,7 @@
 	                    delete that.element.dataset.loadedUrl;
 	                    that.element.dataset.filenamePostfix = '';
 	                    jquery(that.element).val('').trigger('change');
-	                    if (that._updateWithDelay) {
-	                        // This ensures that an emptied canvas will not be considered a drawing to be captured
-	                        // in _forceUpdate, e.g. after the blur event fires on an empty canvas see issue #924
-	                        that._updateWithDelay = null;
-	                    }
+
 	                    // Annotate file input
 	                    that.$widget
 	                        .find('input[type=file]')
@@ -71533,36 +73018,46 @@
 	    }
 
 	    /**
-	     * @param {string|File} file - Either a filename or a file.
-	     * @return {Promise} promise resolving with a string
+	     * @param {string | File} file - Either a filename or a file.
+	     * @return {Promise<string>} promise resolving with a string
 	     */
-	    _loadFileIntoPad(file) {
-	        const that = this;
+	    async _loadFileIntoPad(file) {
 	        if (!file) {
-	            return Promise.resolve('');
-	        }
-	        if (
-	            typeof file === 'string' &&
-	            file.startsWith('jr://') &&
-	            this.element.dataset.loadedUrl
-	        ) {
-	            file = this.element.dataset.loadedUrl;
+	            this.pad.clearBaseImage();
+
+	            return '';
 	        }
 
-	        return fileManager
-	            .getObjectUrl(file)
-	            .then(that.pad.fromObjectURL.bind(that.pad))
-	            .then((objectUrl) => {
-	                that.cache = objectUrl;
+	        let fileOrURL = file;
 
-	                return objectUrl;
-	            })
-	            .catch(() => {
-	                that._showFeedback(
-	                    'File could not be loaded (leave unchanged if already submitted and you want to preserve it).',
-	                    'error'
-	                );
-	            });
+	        if (typeof file === 'string') {
+	            try {
+	                fileOrURL = await fileManager.getFileUrl(file);
+	            } catch {
+	                // Ignore error, attempt to load
+	            }
+	        }
+
+	        try {
+	            if (
+	                typeof fileOrURL === 'string' &&
+	                fileOrURL.startsWith('jr://') &&
+	                this.element.dataset.loadedUrl
+	            ) {
+	                fileOrURL = this.element.dataset.loadedUrl;
+	            }
+
+	            this.pad.reset();
+
+	            await this.pad.setBaseImage(fileOrURL);
+
+	            return this.pad.toObjectURL();
+	        } catch {
+	            this._showFeedback(
+	                'File could not be loaded (leave unchanged if already submitted and you want to preserve it).',
+	                'error'
+	            );
+	        }
 	    }
 
 	    /**
@@ -71596,41 +73091,6 @@
 	    }
 
 	    /**
-	     * Forces update and resizes canvas on window resize
-	     *
-	     * @param {Element} canvas - Canvas element
-	     */
-	    _handleResize(canvas) {
-	        const that = this;
-	        jquery(window).on('resize', () => {
-	            // that._forceUpdate();
-	            that._resizeCanvas(canvas);
-	        });
-	    }
-
-	    /**
-	     * Adjust canvas coordinate space taking into account pixel ratio,
-	     * to make it look crisp on mobile devices.
-	     * This also causes canvas to be cleared.
-	     *
-	     * @param {Element} canvas - Canvas element
-	     */
-	    _resizeCanvas(canvas) {
-	        // Use a little trick to avoid resizing currently-hidden canvases
-	        // https://github.com/enketo/enketo-core/issues/605
-	        if (canvas.offsetWidth > 0) {
-	            // When zoomed out to less than 100%, for some very strange reason,
-	            // some browsers report devicePixelRatio as less than 1
-	            // and only part of the canvas is cleared then.
-	            const ratio = Math.max(window.devicePixelRatio || 1, 1);
-	            canvas.width = canvas.offsetWidth * ratio;
-	            canvas.height = canvas.offsetHeight * ratio;
-	            canvas.getContext('2d').scale(ratio, ratio);
-	            jquery(canvas).trigger('canvasreload');
-	        }
-	    }
-
-	    /**
 	     * Disables widget
 	     */
 	    disable() {
@@ -71660,13 +73120,6 @@
 	                canvas.classList.remove('disabled');
 	                that.$widget.find('.btn-reset').prop('disabled', false);
 	            }
-	            // https://github.com/enketo/enketo-core/issues/450
-	            // When loading a question with a relevant, it is invisible
-	            // until branch.js removes the "pre-init" class. The rendering of the
-	            // canvas may therefore still be ongoing when this widget is instantiated.
-	            // For that reason we call _resizeCanvas when enable is called to make
-	            // sure the canvas is rendered properly.
-	            that._resizeCanvas(canvas);
 	        });
 	    }
 
@@ -71771,458 +73224,6 @@
 	            // if added to correct question type, add initialized class
 	            this.question.classList.add('or-columns-initialized');
 	        });
-	    }
-	}
-
-	/**
-	 * @augments Widget
-	 */
-	class RangeWidget extends Widget {
-	    /**
-	     * @type {string}
-	     */
-	    static get selector() {
-	        return '.or-appearance-distress input[type="number"], .question:not(.or-appearance-analog-scale):not(.or-appearance-rating) > input[type="number"][min][max][step]';
-	    }
-
-	    _init() {
-	        const that = this;
-
-	        const fragment = document
-	            .createRange()
-	            .createContextualFragment(this._getHtmlStr());
-	        fragment
-	            .querySelector('.range-widget__scale__end')
-	            .before(this.resetButtonHtml);
-	        fragment.querySelector('.range-widget__scale__start').textContent =
-	            this.props.min;
-	        fragment.querySelector('.range-widget__scale__end').textContent =
-	            this.props.max;
-
-	        this.element.after(fragment);
-	        this.element.classList.add('hide');
-	        this.element.addEventListener('applyfocus', () => {
-	            this.range.focus();
-	        });
-
-	        this.widget = this.question.querySelector('.widget');
-	        this.range = this.widget.querySelector('input');
-	        this.current = this.widget.querySelector('.range-widget__current');
-
-	        if (this.props.readonly) {
-	            this.disable();
-	        }
-
-	        this.range.addEventListener('change', () => {
-	            this.current.textContent = this.value;
-	            this._updateMercury(
-	                (this.value - this.props.min) /
-	                    (that.props.max - that.props.min)
-	            );
-
-	            // Avoid unnecessary change events on original input as these can have big negative consequences
-	            // https://github.com/OpenClinica/enketo-express-oc/issues/209
-	            if (this.originalInputValue !== this.value) {
-	                this.originalInputValue = this.value;
-	            }
-	        });
-
-	        // Do not use change handler for this because this doesn't fire if the user clicks on the internal DEFAULT
-	        // value of the range input.
-	        this.widget
-	            .querySelector('input.empty')
-	            .addEventListener('click', () => {
-	                this.range.classList.remove('empty');
-	                this.range.dispatchEvent(events.Change());
-	            });
-	        this.widget
-	            .querySelector('input.empty')
-	            .addEventListener('touchstart', () => {
-	                this.range.classList.remove('empty');
-	                this.range.dispatchEvent(events.Change());
-	            });
-
-	        this.widget
-	            .querySelector('.btn-reset')
-	            .addEventListener('click', this._reset.bind(this));
-
-	        // Loads the default value if exists, else resets
-	        this.update();
-
-	        let ticks = this.props.ticks
-	            ? Math.ceil(
-	                  Math.abs((this.props.max - this.props.min) / this.props.step)
-	              )
-	            : 1;
-	        // Now reduce to a number < 50 to avoid showing a solid black tick line.
-	        let divisor = Math.ceil(ticks / this.props.maxTicks);
-	        while (ticks % divisor && divisor < ticks) {
-	            divisor++;
-	        }
-	        ticks /= divisor;
-
-	        // Various attempts to use more elegant CSS background on the __ticks div, have failed due to little
-	        // issues seemingly related to rounding or browser sloppiness. This is far less elegant but robust:
-	        this.widget
-	            .querySelector('.range-widget__ticks')
-	            .append(
-	                document
-	                    .createRange()
-	                    .createContextualFragment(
-	                        new Array(ticks).fill('<span></span>').join('')
-	                    )
-	            );
-	    }
-
-	    /**
-	     * This is separated so it can be extended (in the analog-scale widget)
-	     *
-	     * @return {string} HTML string
-	     */
-	    _getHtmlStr() {
-	        const html = `<div class="widget range-widget">
-                <div class="range-widget__wrap">
-                    <div class="range-widget__current"></div>
-                    <div class="range-widget__bg"></div>
-                    <div class="range-widget__ticks"></div>
-                    <div class="range-widget__scale">
-                        <span class="range-widget__scale__start"></span>
-                        ${this._stepsBetweenHtmlStr(this.props)}
-                        <span class="range-widget__scale__end"></span>
-                    </div>
-                    <div class="range-widget__bulb">
-                        <div class="range-widget__bulb__inner"></div>
-                        <div class="range-widget__bulb__mercury"></div>
-                    </div>
-                </div>
-                <input type="range" class="ignore empty" min="${
-                    this.props.min
-                }" max="${this.props.max}" step="${this.props.step}"/>
-            </div>`;
-
-	        return html;
-	    }
-
-	    /**
-	     * @param {number} completeness - level of mercury
-	     */
-	    _updateMercury(completeness) {
-	        const trackHeight = this.widget.querySelector(
-	            '.range-widget__ticks'
-	        ).clientHeight;
-	        const bulbHeight = this.widget.querySelector(
-	            '.range-widget__bulb'
-	        ).clientHeight;
-	        this.widget.querySelector(
-	            '.range-widget__bulb__mercury'
-	        ).style.height = `${completeness * trackHeight + 0.5 * bulbHeight}px`;
-	    }
-
-	    /**
-	     * @param {object} props - The range properties.
-	     * @return {string} HTML string
-	     */
-	    _stepsBetweenHtmlStr(props) {
-	        let html = '';
-	        if (props.showScale) {
-	            const stepsCount = (props.max - props.min) / props.step;
-	            if (
-	                stepsCount <= 10 &&
-	                (props.max - props.min) % props.step === 0
-	            ) {
-	                for (
-	                    let i = props.min + props.step;
-	                    i < props.max;
-	                    i += props.step
-	                ) {
-	                    html += `<span class="range-widget__scale__between">${i}</span>`;
-	                }
-	            }
-	        }
-
-	        return html;
-	    }
-
-	    /**
-	     * Resets widget
-	     */
-	    _reset() {
-	        // Update UI stuff before the actual value to avoid issues in custom clients that may want to programmatically undo a reset ("strict required" in OpenClinica)
-	        // as that is subtly different from updating a value with a calculation since this.originalInputValue=  sets the evaluation cascade in motion.
-	        this.current.textContent = '';
-	        this._updateMercury(0);
-	        this.value = '';
-	        this.originalInputValue = '';
-	    }
-
-	    /**
-	     * Disables widget
-	     */
-	    disable() {
-	        this.widget
-	            .querySelectorAll('input, button')
-	            .forEach((el) => (el.disabled = true));
-	    }
-
-	    /**
-	     * Enables widget
-	     */
-	    enable() {
-	        this.widget
-	            .querySelectorAll('input, button')
-	            .forEach((el) => (el.disabled = false));
-	    }
-
-	    /**
-	     * Updates widget
-	     */
-	    update() {
-	        const { value } = this.element;
-
-	        if (isNumber(value)) {
-	            this.value = value;
-	            this.range.dispatchEvent(events.Change());
-	        } else {
-	            this._reset();
-	        }
-	    }
-
-	    /**
-	     * @type {object}
-	     */
-	    get props() {
-	        const props = this._props;
-	        const min = isNumber(this.element.getAttribute('min'))
-	            ? this.element.getAttribute('min')
-	            : 0;
-	        const max = isNumber(this.element.getAttribute('max'))
-	            ? this.element.getAttribute('max')
-	            : 10;
-	        const step = isNumber(this.element.getAttribute('step'))
-	            ? this.element.getAttribute('step')
-	            : 1;
-	        const distress = props.appearances.includes('distress');
-
-	        props.min = Number(min);
-	        props.max = Number(max);
-	        props.step = Number(step);
-	        props.vertical = props.appearances.includes('vertical') || distress;
-	        props.ticks = !props.appearances.includes('no-ticks');
-	        props.showScale = distress;
-	        props.maxTicks = 50;
-
-	        return props;
-	    }
-
-	    /**
-	     * @type {string}
-	     */
-	    get value() {
-	        return this.range.classList.contains('empty') ? '' : this.range.value;
-	    }
-
-	    set value(value) {
-	        this.range.value = value;
-	        // value '' actually sets the value to some default value in html range input, not really helpful
-	        this.range.classList.toggle('empty', value === '');
-	    }
-	}
-
-	/**
-	 * @augments RangeWidget
-	 */
-	class AnalogScaleWidget extends RangeWidget {
-	    /**
-	     * @type {string}
-	     */
-	    static get selector() {
-	        return '.or-appearance-analog-scale input[type="number"]';
-	    }
-
-	    _init() {
-	        super._init();
-	        if (this.props.vertical) {
-	            this.question.classList.add('or-appearance-vertical');
-	        }
-	        this.question.classList.add('or-analog-scale-initialized');
-	        this._renderLabels();
-	        this._setResizeListener();
-	    }
-
-	    /**
-	     * @return {string} HTML string
-	     */
-	    _getHtmlStr() {
-	        const html = `<div class="widget analog-scale-widget">
-                ${super._getHtmlStr()}
-            </div>`;
-
-	        return html;
-	    }
-
-	    _updateMercury() {}
-
-	    /**
-	     * (re-)Renders the widget labels based on the current content of .question-label.active
-	     */
-	    _renderLabels() {
-	        const fragment = document
-	            .createRange()
-	            .createContextualFragment(
-	                '<div class="label-content widget"></div>'
-	            );
-	        const wrapper = fragment.querySelector('.label-content');
-
-	        this.question
-	            .querySelectorAll(
-	                '.question-label, .or-hint, .or-required-msg, [class*="or-constraint"]'
-	            )
-	            .forEach((el) => wrapper.append(el));
-
-	        this.question.prepend(fragment);
-
-	        this.labelContent = this.question.querySelector('.label-content');
-	        this._updateLabels();
-	    }
-
-	    /**
-	     * Updates labels
-	     */
-	    _updateLabels() {
-	        if (!this.question.classList.contains('or-analog-scale-initialized')) {
-	            return;
-	        }
-	        const labelEl = this.labelContent.querySelector(
-	            '.question-label.active:not(.widget)'
-	        );
-	        const labels = labelEl.innerHTML
-	            .split(/\|/)
-	            .map((label) => label.trim());
-
-	        const existingLabel = this.labelContent.querySelector(
-	            '.question-label.widget'
-	        );
-	        if (existingLabel) {
-	            existingLabel.remove();
-	        }
-	        const labelFragment = document
-	            .createRange()
-	            .createContextualFragment(
-	                `<span class="question-label widget active">${labels[0]}</span>`
-	            );
-	        labelEl.after(labelFragment);
-
-	        const existingMaxLabel = this.widget.querySelector('.max-label');
-	        if (existingMaxLabel) {
-	            existingMaxLabel.remove();
-	        }
-	        const maxLabel = document
-	            .createRange()
-	            .createContextualFragment(
-	                `<div class="max-label">${labels[1]}</div>`
-	            );
-	        this.widget.prepend(maxLabel);
-
-	        const existingMinLabel = this.widget.querySelector('.min-label');
-	        if (existingMinLabel) {
-	            existingMinLabel.remove();
-	        }
-	        const minLabel = document
-	            .createRange()
-	            .createContextualFragment(
-	                `<div class="min-label">${labels[2]}</div>`
-	            );
-	        this.widget.append(minLabel);
-
-	        const showValue = this.labelContent.querySelector('.show-value');
-	        if (showValue) {
-	            showValue.remove();
-	        }
-	        if (labels[3]) {
-	            const showValueBox = document
-	                .createRange()
-	                .createContextualFragment(
-	                    `<div class="widget show-value">
-                    <div class="show-value__box">${labels[3]}<span class="show-value__value">${this.value}</span></div>
-                <div>`
-	                );
-	            this.labelContent.append(showValueBox);
-	            this.current =
-	                this.labelContent.querySelector('.show-value__value');
-	        }
-	    }
-
-	    /**
-	     * Stretch the question to full page height.
-	     * Doing this with pure css flexbox using "flex-direction: column" interferes with the Grid theme
-	     * because that theme relies on flexbox with "flex-direction: row".
-	     */
-	    _setResizeListener() {
-	        if (this.props.vertical) {
-	            // Will only be triggered if question by itself constitutes a page.
-	            // It will not be triggered if question is contained inside a group with fieldlist appearance.
-	            this.question.addEventListener(
-	                events.PageFlip().type,
-	                this._stretchHeight.bind(this)
-	            );
-	        }
-	    }
-
-	    /**
-	     * Stretches height
-	     */
-	    _stretchHeight() {
-	        this.question.style['min-height'] = 'auto';
-	    }
-
-	    /**
-	     * Updates with labels
-	     */
-	    update() {
-	        super.update();
-	        this._updateLabels();
-	    }
-
-	    /**
-	     * @type {object}
-	     */
-	    get props() {
-	        const props = this._props;
-	        props.touch = support.touch;
-	        props.vertical = !props.appearances.includes('horizontal');
-	        props.ticks = !props.appearances.includes('no-ticks');
-	        props.showScale =
-	            props.appearances.includes('show-scale') &&
-	            props.vertical &&
-	            props.ticks;
-	        const min = isNumber(this.element.getAttribute('min'))
-	            ? this.element.getAttribute('min')
-	            : 0;
-	        const max = isNumber(this.element.getAttribute('max'))
-	            ? this.element.getAttribute('max')
-	            : 100;
-	        const step = isNumber(this.element.getAttribute('step'))
-	            ? this.element.getAttribute('step')
-	            : props.showScale
-	            ? 10
-	            : 1; // ( props.type === 'decimal' ? 0.1 : 1 );
-	        props.min = Number(min);
-	        props.max = Number(max);
-	        props.step = Number(step);
-	        props.maxTicks = 10;
-
-	        return props;
-	    }
-
-	    /**
-	     * @type {*}
-	     */
-	    get value() {
-	        return super.value;
-	    }
-
-	    set value(value) {
-	        super.value = value;
 	    }
 	}
 
@@ -72816,6 +73817,261 @@
 	    set value(value) {
 	        // This widget is unusual. It would more consistent to set the value in the map perhaps.
 	        this.originalInputValue = value;
+	    }
+	}
+
+	/**
+	 * @augments Widget
+	 */
+	class RangeWidget extends Widget {
+	    /**
+	     * @type {string}
+	     */
+	    static get selector() {
+	        // analog-scale selector is included as courtesy to OpenClinica
+	        return '.or-appearance-distress input[type="number"], .question:not(.or-appearance-analog-scale):not(.or-appearance-rating) > input[type="number"][min][max][step]';
+	    }
+
+	    _init() {
+	        const that = this;
+
+	        const fragment = document
+	            .createRange()
+	            .createContextualFragment(this._getHtmlStr());
+	        fragment
+	            .querySelector('.range-widget__scale__end')
+	            .before(this.resetButtonHtml);
+	        fragment.querySelector('.range-widget__scale__start').textContent =
+	            this.props.min;
+	        fragment.querySelector('.range-widget__scale__end').textContent =
+	            this.props.max;
+
+	        this.element.after(fragment);
+	        this.element.classList.add('hide');
+	        this.element.addEventListener('applyfocus', () => {
+	            this.range.focus();
+	        });
+
+	        this.widget = this.question.querySelector('.widget');
+	        this.range = this.widget.querySelector('input');
+	        this.current = this.widget.querySelector('.range-widget__current');
+
+	        if (this.props.readonly) {
+	            this.disable();
+	        }
+
+	        this.range.addEventListener('change', () => {
+	            this.current.textContent = this.value;
+	            this._updateMercury(
+	                (this.value - this.props.min) /
+	                    (that.props.max - that.props.min)
+	            );
+
+	            // Avoid unnecessary change events on original input as these can have big negative consequences
+	            // https://github.com/OpenClinica/enketo-express-oc/issues/209
+	            if (this.originalInputValue !== this.value) {
+	                this.originalInputValue = this.value;
+	            }
+	        });
+
+	        // Do not use change handler for this because this doesn't fire if the user clicks on the internal DEFAULT
+	        // value of the range input.
+	        this.widget
+	            .querySelector('input.empty')
+	            .addEventListener('click', () => {
+	                this.range.classList.remove('empty');
+	                this.range.dispatchEvent(events.Change());
+	            });
+	        this.widget
+	            .querySelector('input.empty')
+	            .addEventListener('touchstart', () => {
+	                this.range.classList.remove('empty');
+	                this.range.dispatchEvent(events.Change());
+	            });
+
+	        this.widget
+	            .querySelector('.btn-reset')
+	            .addEventListener('click', this._reset.bind(this));
+
+	        // Loads the default value if exists, else resets
+	        this.update();
+
+	        let ticks = this.props.ticks
+	            ? Math.ceil(
+	                  Math.abs((this.props.max - this.props.min) / this.props.step)
+	              )
+	            : 1;
+	        // Now reduce to a number < 50 to avoid showing a solid black tick line.
+	        let divisor = Math.ceil(ticks / this.props.maxTicks);
+	        while (ticks % divisor && divisor < ticks) {
+	            divisor++;
+	        }
+	        ticks /= divisor;
+
+	        // Various attempts to use more elegant CSS background on the __ticks div, have failed due to little
+	        // issues seemingly related to rounding or browser sloppiness. This is far less elegant but robust:
+	        this.widget
+	            .querySelector('.range-widget__ticks')
+	            .append(
+	                document
+	                    .createRange()
+	                    .createContextualFragment(
+	                        new Array(ticks).fill('<span></span>').join('')
+	                    )
+	            );
+	    }
+
+	    /**
+	     * This is separated so it can be extended (in the analog-scale widget)
+	     *
+	     * @return {string} HTML string
+	     */
+	    _getHtmlStr() {
+	        const html = `<div class="widget range-widget">
+                <div class="range-widget__wrap">
+                    <div class="range-widget__current"></div>
+                    <div class="range-widget__bg"></div>
+                    <div class="range-widget__ticks"></div>
+                    <div class="range-widget__scale">
+                        <span class="range-widget__scale__start"></span>
+                        ${this._stepsBetweenHtmlStr(this.props)}
+                        <span class="range-widget__scale__end"></span>
+                    </div>
+                    <div class="range-widget__bulb">
+                        <div class="range-widget__bulb__inner"></div>
+                        <div class="range-widget__bulb__mercury"></div>
+                    </div>
+                </div>
+                <input type="range" class="ignore empty" min="${
+                    this.props.min
+                }" max="${this.props.max}" step="${this.props.step}"/>
+            </div>`;
+
+	        return html;
+	    }
+
+	    /**
+	     * @param {number} completeness - level of mercury
+	     */
+	    _updateMercury(completeness) {
+	        const trackHeight = this.widget.querySelector(
+	            '.range-widget__ticks'
+	        ).clientHeight;
+	        const bulbHeight = this.widget.querySelector(
+	            '.range-widget__bulb'
+	        ).clientHeight;
+	        this.widget.querySelector(
+	            '.range-widget__bulb__mercury'
+	        ).style.height = `${completeness * trackHeight + 0.5 * bulbHeight}px`;
+	    }
+
+	    /**
+	     * @param {object} props - The range properties.
+	     * @return {string} HTML string
+	     */
+	    _stepsBetweenHtmlStr(props) {
+	        let html = '';
+	        if (props.showScale) {
+	            const stepsCount = (props.max - props.min) / props.step;
+	            if (
+	                stepsCount <= 10 &&
+	                (props.max - props.min) % props.step === 0
+	            ) {
+	                for (
+	                    let i = props.min + props.step;
+	                    i < props.max;
+	                    i += props.step
+	                ) {
+	                    html += `<span class="range-widget__scale__between">${i}</span>`;
+	                }
+	            }
+	        }
+
+	        return html;
+	    }
+
+	    /**
+	     * Resets widget
+	     */
+	    _reset() {
+	        // Update UI stuff before the actual value to avoid issues in custom clients that may want to programmatically undo a reset ("strict required" in OpenClinica)
+	        // as that is subtly different from updating a value with a calculation since this.originalInputValue=  sets the evaluation cascade in motion.
+	        this.current.textContent = '';
+	        this._updateMercury(0);
+	        this.value = '';
+	        this.originalInputValue = '';
+	    }
+
+	    /**
+	     * Disables widget
+	     */
+	    disable() {
+	        this.widget
+	            .querySelectorAll('input, button')
+	            .forEach((el) => (el.disabled = true));
+	    }
+
+	    /**
+	     * Enables widget
+	     */
+	    enable() {
+	        this.widget
+	            .querySelectorAll('input, button')
+	            .forEach((el) => (el.disabled = false));
+	    }
+
+	    /**
+	     * Updates widget
+	     */
+	    update() {
+	        const { value } = this.element;
+
+	        if (isNumber(value)) {
+	            this.value = value;
+	            this.range.dispatchEvent(events.Change());
+	        } else {
+	            this._reset();
+	        }
+	    }
+
+	    /**
+	     * @type {object}
+	     */
+	    get props() {
+	        const props = this._props;
+	        const min = isNumber(this.element.getAttribute('min'))
+	            ? this.element.getAttribute('min')
+	            : 0;
+	        const max = isNumber(this.element.getAttribute('max'))
+	            ? this.element.getAttribute('max')
+	            : 10;
+	        const step = isNumber(this.element.getAttribute('step'))
+	            ? this.element.getAttribute('step')
+	            : 1;
+	        const distress = props.appearances.includes('distress');
+
+	        props.min = Number(min);
+	        props.max = Number(max);
+	        props.step = Number(step);
+	        props.vertical = props.appearances.includes('vertical') || distress;
+	        props.ticks = !props.appearances.includes('no-ticks');
+	        props.showScale = distress;
+	        props.maxTicks = 50;
+
+	        return props;
+	    }
+
+	    /**
+	     * @type {string}
+	     */
+	    get value() {
+	        return this.range.classList.contains('empty') ? '' : this.range.value;
+	    }
+
+	    set value(value) {
+	        this.range.value = value;
+	        // value '' actually sets the value to some default value in html range input, not really helpful
+	        this.range.classList.toggle('empty', value === '');
 	    }
 	}
 
@@ -74974,8 +76230,6 @@
 	    }
 
 	    /**
-	     * This is separated so it can be extended (in the analog-scale widget)
-	     *
 	     * @return {string} HTML string
 	     */
 	    _getHtmlStr() {
@@ -75172,90 +76426,172 @@
 	    }
 	}
 
+	/** @type {Set<NumberInput>} */
+	let numberInputInstances = new Set();
+
+	/** @type {WeakMap<HTMLInputElement, HTMLElement>} */
+	let questionsByInput = new WeakMap();
+
+	/**
+	 * @param {HTMLInputElement} input
+	 */
+	const getQuestion = (input) => {
+	    let question = questionsByInput.get(input);
+
+	    if (question == null) {
+	        question = input.closest('.question');
+
+	        if (question != null) {
+	            questionsByInput.set(input, question);
+	        }
+	    }
+
+	    return question;
+	};
+
 	/**
 	 * @abstract
 	 * @extends {Widget<HTMLInputElement>}
 	 */
 	class NumberInput extends Widget {
+	    static languageChanged() {
+	        this._languages = null;
+
+	        const { language, pattern } = this;
+	        const patternStr = pattern.source;
+
+	        Array.from(numberInputInstances.values()).forEach((instance) => {
+	            // Important: this value may become invalid if it isn't accessed
+	            // before setting `lang`. This repros in Firefox if:
+	            //
+	            // 1. Your default language is English
+	            // 2. Set a decimal value
+	            // 3. Switch to French
+	            // 4. Switch back to English
+	            const { element, question } = instance;
+	            const { valueAsNumber } = element;
+
+	            question.setAttribute('lang', language);
+	            element.setAttribute('pattern', patternStr);
+	            instance.setFormattedValue(valueAsNumber);
+	            instance.setValidity();
+	        });
+	    }
+
+	    /**
+	     * @param {import('./form').Form} form
+	     * @param {HTMLFormElement} rootElement
+	     */
+	    static globalInit(form, rootElement) {
+	        super.globalInit(form, rootElement);
+
+	        rootElement.addEventListener(
+	            events.ChangeLanguage().type,
+	            this.languageChanged
+	        );
+	        window.addEventListener('languagechange', this.languageChanged);
+	    }
+
+	    static globalReset() {
+	        const { rootElement } = super.globalReset();
+
+	        if (rootElement) {
+	            rootElement.removeEventListener(
+	                events.ChangeLanguage().type,
+	                this.languageChanged
+	            );
+	            window.removeEventListener('languagechange', this.languageChanged);
+	        }
+
+	        this._languages = null;
+	        numberInputInstances = new Set();
+	        questionsByInput = new WeakMap();
+	    }
+
 	    /**
 	     * @abstract
 	     */
-	    static get numberType() {
-	        throw new Error('Not implemented');
-	    }
-
 	    static get selector() {
-	        return `.question input[type="number"][data-type-xml="${this.numberType}"]`;
+	        throw new Error('Not implemented');
 	    }
 
 	    /**
 	     * @param {HTMLInputElemnt} input
 	     */
 	    static condition(input) {
+	        if (input.classList.contains('ignore')) {
+	            return false;
+	        }
+
 	        const isRange =
 	            input.hasAttribute('min') &&
 	            input.hasAttribute('max') &&
 	            input.hasAttribute('step');
 
-	        if (isRange || input.classList.contains('ignore')) {
+	        if (isRange) {
 	            return false;
 	        }
 
-	        const question = input.closest('.question');
+	        const question = getQuestion(input);
 
-	        return [
+	        // analog-scale is included as a courtesy to OpenClinica
+	        return ![
 	            'or-appearance-analog-scale',
 	            'or-appearance-my-widget',
 	            'or-appearance-distress',
 	            'or-appearance-rating',
-	        ].every((className) => !question.classList.contains(className));
+	        ].some((className) => question.classList.contains(className));
 	    }
 
-	    get languages() {
-	        const formLanguage = this.languageSelect?.value;
+	    /**
+	     * @private
+	     * @type {string[] | null}
+	     */
+	    _languages = null;
+
+	    static get languages() {
+	        let result = this._languages;
+
+	        if (result != null) {
+	            return result;
+	        }
+
+	        const { currentLanguage } = this.form;
 
 	        let validFormLanguage;
 
 	        try {
-	            Intl.getCanonicalLocales(formLanguage);
+	            Intl.getCanonicalLocales(currentLanguage);
 
-	            validFormLanguage = formLanguage;
+	            validFormLanguage = currentLanguage;
 	        } catch {
 	            // If this fails, the form's selected language is likely not a valid
 	            // code and will cause all other `Intl` usage to fail.
 	        }
 
-	        return [validFormLanguage, ...navigator.languages].filter(
+	        result = [validFormLanguage, ...navigator.languages].filter(
 	            (language) => language != null
 	        );
+
+	        this._languages = result;
+
+	        return result;
 	    }
 
-	    get language() {
+	    static get language() {
 	        return this.languages[0] ?? navigator.language;
 	    }
 
-	    /** @type {Set<string>} */
-	    get decimalCharacters() {
-	        return new Set();
+	    static get pattern() {
+	        throw new Error('Not implemented');
 	    }
 
-	    get pattern() {
-	        const { decimalCharacters } = this;
-	        const decimalPattern =
-	            decimalCharacters.size === 0
-	                ? ''
-	                : `([${Array.from(decimalCharacters).join('')}]\\d+)?`;
-	        const pattern = `^-?\\d+${decimalPattern}$`;
-
-	        this.element.setAttribute('pattern', pattern);
-
-	        return new RegExp(pattern);
-	    }
-
-	    get characterPattern() {
-	        const { decimalCharacters } = this;
-
-	        return new RegExp(`[-0-9${Array.from(decimalCharacters).join('')}]`);
+	    /**
+	     * @abstract
+	     * @type {Set<string>}
+	     */
+	    static get validCharacters() {
+	        throw new Error('Not implemented');
 	    }
 
 	    get value() {
@@ -75273,58 +76609,31 @@
 	    constructor(input, options) {
 	        super(input, options);
 
-	        const formElement = input.closest('form.or');
+	        numberInputInstances.add(this);
 
-	        /** @type {HTMLSelectElement | null} */
-	        this.languageSelect =
-	            formElement.parentElement?.querySelector('#form-languages');
-
-	        let { characterPattern } = this;
-
-	        const question = inputHelper.getWrapNode(input);
+	        const question = getQuestion(input);
 	        const message = document.createElement('div');
 
+	        question.setAttribute('lang', this.constructor.language);
 	        message.classList.add('invalid-value-msg', 'active');
 
-	        question.setAttribute('lang', this.language);
 	        question.append(message);
 
 	        this.question = question;
 	        this.message = message;
 
-	        this.setReformattedValue(input.valueAsNumber);
+	        this.setFormattedValue(input.valueAsNumber);
 	        this.setValidity();
 
-	        const languageChanged = () => {
-	            // Important: this value may become invalid if it isn't accessed
-	            // before setting `lang`. This repros in Firefox if:
-	            //
-	            // 1. Your default language is English
-	            // 2. Set a decimal value
-	            // 3. Switch to French
-	            // 4. Switch back to English
-	            const { valueAsNumber } = input;
-
-	            characterPattern = this.characterPattern;
-	            question.setAttribute('lang', this.language);
-	            this.setReformattedValue(valueAsNumber);
-	            this.setValidity();
-	        };
-
-	        formElement.addEventListener(
-	            events.ChangeLanguage().type,
-	            languageChanged
-	        );
-	        window.addEventListener('languagechange', languageChanged);
-
+	        // TODO event delegation?
 	        input.addEventListener('keydown', (event) => {
 	            const { ctrlKey, isComposing, key, metaKey } = event;
 
 	            if (
 	                ctrlKey ||
 	                metaKey ||
-	                (key.length > 1 && key !== 'Spacebar') ||
-	                (!isComposing && characterPattern.test(event.key))
+	                (key && key.length > 1 && key !== 'Spacebar') ||
+	                (!isComposing && this.constructor.validCharacters.has(key))
 	            ) {
 	                return true;
 	            }
@@ -75341,8 +76650,9 @@
 	    /**
 	     * @param {number} value
 	     */
-	    setReformattedValue(value) {
-	        const { element, pattern } = this;
+	    setFormattedValue(value) {
+	        const { pattern } = this.constructor;
+	        const { element } = this;
 
 	        element.removeAttribute('pattern');
 	        element.value = '';
@@ -75351,7 +76661,7 @@
 	            element.value = value;
 	        }
 
-	        element.setAttribute('pattern', pattern);
+	        element.setAttribute('pattern', pattern.source);
 	    }
 
 	    setValidity() {
@@ -75365,19 +76675,115 @@
 	    }
 	}
 
-	class DecimalInput extends NumberInput {
-	    static get numberType() {
-	        return 'decimal';
+	/** @type {Map<string, Set<string>>} */
+	let decimalCharactersByLanguage = new Map();
+
+	/**
+	 * @param {string[]} languages
+	 */
+	const getDecimalCharacters = (languages) => {
+	    const [language] = languages;
+
+	    let characters = decimalCharactersByLanguage.get(language);
+
+	    if (characters != null) {
+	        return characters;
 	    }
 
-	    get decimalCharacters() {
-	        const locales = Intl.getCanonicalLocales(this.languages);
-	        const formatter = Intl.NumberFormat(locales);
-	        const decimal = formatter
-	            .formatToParts(0.1)
-	            .find(({ type }) => type === 'decimal').value;
+	    const locales = Intl.getCanonicalLocales(languages);
+	    const formatter = Intl.NumberFormat(locales);
+	    const decimal = formatter
+	        .formatToParts(0.1)
+	        .find(({ type }) => type === 'decimal').value;
 
-	        return new Set([...super.decimalCharacters, '.', decimal]);
+	    characters = new Set(['.', decimal]);
+	    decimalCharactersByLanguage.set(language, characters);
+
+	    return characters;
+	};
+
+	/** @type {Map<string, Set<string>>} */
+	let validCharactersByLanguage$1 = new Map();
+
+	/**
+	 * @param {string[]} languages
+	 */
+	const getValidCharacters$1 = (languages) => {
+	    const [language] = languages;
+	    let validCharacters = validCharactersByLanguage$1.get(language);
+
+	    if (validCharacters != null) {
+	        return validCharacters;
+	    }
+
+	    const locales = Intl.getCanonicalLocales(languages);
+	    const formatter = Intl.NumberFormat(locales);
+	    const number = -9.012345678;
+
+	    validCharacters = new Set(`${number}${formatter.format(number)}`.split(''));
+	    validCharactersByLanguage$1.set(language, validCharacters);
+
+	    return validCharacters;
+	};
+
+	/** @type {Map<string, RegExp>} */
+	let validityPatternsByLanguage = new Map();
+
+	/**
+	 * @param {string[]} languages
+	 */
+	const getValidityPattern = (languages) => {
+	    const [language] = languages;
+
+	    let validityPattern = validityPatternsByLanguage.get(language);
+
+	    if (validityPattern != null) {
+	        return validityPattern;
+	    }
+
+	    const decimalCharacters = getDecimalCharacters(language);
+	    const decimalPattern = `([${Array.from(decimalCharacters).join('')}]\\d+)?`;
+	    const pattern = `^-?\\d+${decimalPattern}$`;
+
+	    validityPattern = new RegExp(pattern);
+	    validityPatternsByLanguage.set(language, validityPattern);
+
+	    return validityPattern;
+	};
+
+	class DecimalInput extends NumberInput {
+	    /**
+	     * @param {import('./form').Form} form
+	     * @param {HTMLFormElement} rootElement
+	     */
+	    static globalInit(form, rootElement) {
+	        this.languageChanged = this.languageChanged.bind(this);
+	        super.globalInit(form, rootElement);
+	    }
+
+	    /**
+	     * @param {import('./form').Form} form
+	     * @param {HTMLFormElement} rootElement
+	     */
+	    static globalReset(form, rootElement) {
+	        decimalCharactersByLanguage = new Map();
+	        validCharactersByLanguage$1 = new Map();
+	        validityPatternsByLanguage = new Map();
+	        super.globalReset(form, rootElement);
+	    }
+
+	    static selector = '.question input[type="number"][data-type-xml="decimal"]';
+
+	    static get decimalCharacters() {
+	        return getDecimalCharacters(this.languages);
+	    }
+
+	    static get validCharacters() {
+	        return getValidCharacters$1(this.languages);
+	    }
+
+	    static get pattern() {
+	        return getValidityPattern(this.languages);
 	    }
 
 	    get value() {
@@ -75389,10 +76795,56 @@
 	    }
 	}
 
-	class IntegerInput extends NumberInput {
-	    static get numberType() {
-	        return 'int';
+	/** @type {Map<string, Set<string>>} */
+	let validCharactersByLanguage = new Map();
+
+	/**
+	 * @param {string[]} languages
+	 */
+	const getValidCharacters = (languages) => {
+	    const [language] = languages;
+	    let validCharacters = validCharactersByLanguage.get(language);
+
+	    if (validCharacters != null) {
+	        return validCharacters;
 	    }
+
+	    const locales = Intl.getCanonicalLocales(languages);
+	    const formatter = Intl.NumberFormat(locales);
+	    const number = -9012345678;
+
+	    validCharacters = new Set(`${number}${formatter.format(number)}`.split(''));
+	    validCharactersByLanguage.set(language, validCharacters);
+
+	    return validCharacters;
+	};
+
+	class IntegerInput extends NumberInput {
+	    /**
+	     * @param {import('../../js/form').Form} form
+	     * @param {HTMLFormElement} rootElement
+	     */
+	    static globalInit(form, rootElement) {
+	        this.languageChanged = this.languageChanged.bind(this);
+	        super.globalInit(form, rootElement);
+	    }
+
+	    /**
+	     * @param {import('./form').Form} form
+	     * @param {HTMLFormElement} rootElement
+	     */
+	    static globalReset(form, rootElement) {
+	        validCharactersByLanguage = new Map();
+	        super.globalReset(form, rootElement);
+	    }
+
+	    static selector = '.question input[type="number"][data-type-xml="int"]';
+
+	    static get validCharacters() {
+	        return getValidCharacters(this.languages);
+	    }
+
+	    static pattern = /^-?[0-9]+$/;
 
 	    get value() {
 	        return super.value;
@@ -75408,6 +76860,7 @@
 	 *
 	 * @module widgets
 	 */
+
 	// import zz from '../widget/example/my-widget';
 
 	var _widgets = [
@@ -75429,7 +76882,6 @@
 	    DrawWidget,
 	    LikertItem,
 	    Columns,
-	    AnalogScaleWidget,
 	    ImageViewer,
 	    Comment,
 	    ImageMap,
@@ -75449,9 +76901,53 @@
 	 * @module widgets-controller
 	 */
 
-	const widgets = _widgets.filter((widget) => widget.selector);
+
+	/**
+	 * @typedef {import('./widget').WidgetClass} WidgetClass
+	 */
+
+	/** @type {WidgetClass[]} */
+	let widgets = _widgets.filter((widget) => widget.selector);
+
+	/** @type {Set<WidgetClass>} */
+	let widgetsImplementingDisable = new Set();
+
+	/** @type {Set<WidgetClass>} */
+	let widgetsImplementingEnable = new Set();
+
 	let options;
-	let formHtml;
+
+	/** @type {import('./form').Form} */
+	let form;
+
+	/** @type {HTMLFormElement} */
+	let formElement;
+
+	/**
+	 * @param {HTMLFormElement} formElement
+	 */
+	const initForm = (formElement) => {
+	    widgets = _widgets.filter(
+	        (widget) =>
+	            widget.selector &&
+	            formElement.querySelector(widget.selector) != null
+	    );
+
+	    widgetsImplementingDisable = new Set();
+	    widgetsImplementingEnable = new Set();
+
+	    widgets.forEach((Widget) => {
+	        const { implementsDisable, implementsEnable } = Widget;
+
+	        if (implementsDisable) {
+	            widgetsImplementingDisable.add(Widget);
+	        }
+
+	        if (implementsEnable) {
+	            widgetsImplementingEnable.add(Widget);
+	        }
+	    });
+	};
 
 	/**
 	 * Initializes widgets
@@ -75469,9 +76965,10 @@
 	    }
 
 	    options = opts;
-	    formHtml = this.form.view.html; // not sure why this is only available in init
+	    form = this.form;
+	    formElement = this.form.view.html; // not sure why this is only available in init
 
-	    const group = $group && $group.length ? $group[0] : formHtml;
+	    const group = $group && $group.length ? $group[0] : formElement;
 
 	    widgets.forEach((Widget) => {
 	        _instantiate(Widget, group);
@@ -75489,10 +76986,16 @@
 	 * done during create().
 	 *
 	 * @static
-	 * @param {Element} group - HTML element
+	 * @param {HTMLElement} group - HTML element
 	 */
 	function enable(group) {
-	    widgets.forEach((Widget) => {
+	    if (group.closest('.widgets-disabled') == null) {
+	        return;
+	    }
+
+	    group.classList.remove('widgets-disbled');
+
+	    widgetsImplementingEnable.forEach((Widget) => {
 	        const els = _getElements(group, Widget.selector).filter((el) =>
 	            el.nodeName.toLowerCase() === 'select'
 	                ? !el.hasAttribute('readonly')
@@ -75508,11 +77011,18 @@
 	 * the disabled attribute automatically when the branch element provided as parameter becomes non-relevant.
 	 *
 	 * @static
-	 * @param {Element} group - The element inside which all widgets need to be disabled.
+	 * @param {HTMLElement} group - The element inside which all widgets need to be disabled.
 	 */
 	function disable(group) {
-	    widgets.forEach((Widget) => {
+	    if (group.closest('.widgets-disabled') != null) {
+	        return;
+	    }
+
+	    group.classList.add('widgets-disbled');
+
+	    widgetsImplementingDisable.forEach((Widget) => {
 	        const els = _getElements(group, Widget.selector);
+
 	        new Collection(els).disable(Widget);
 	    });
 	}
@@ -75520,14 +77030,14 @@
 	/**
 	 * Returns the elements on which to apply the widget
 	 *
-	 * @param {Element} group - A jQuery-wrapped element
+	 * @param {HTMLElement} group - A jQuery-wrapped element
 	 * @param {string|null} selector - If the selector is `null`, the form element will be returned
-	 * @return {jQuery} A jQuery collection
+	 * @return {HTMLElement[]} A jQuery collection
 	 */
 	function _getElements(group, selector) {
 	    if (selector) {
 	        if (selector === 'form') {
-	            return [formHtml];
+	            return [formElement];
 	        }
 	        // e.g. if the widget selector starts at .question level (e.g. ".or-appearance-draw input")
 	        if (group.classList.contains('question')) {
@@ -75547,7 +77057,7 @@
 	/**
 	 * Instantiate a widget on a group (whole form or newly cloned repeat)
 	 *
-	 * @param {object} Widget - The widget to instantiate
+	 * @param {typeof import('./widget').default} Widget
 	 * @param {Element} group - The element inside which widgets need to be created.
 	 */
 	function _instantiate(Widget, group) {
@@ -75570,12 +77080,31 @@
 	        return;
 	    }
 
+	    if (group === formElement) {
+	        Widget.globalInit(form, formElement);
+	    }
+
 	    new Collection(elements).instantiate(Widget, opts);
 
 	    _setLangChangeListener(Widget, elements);
 	    _setOptionChangeListener(Widget, elements);
 	    _setValChangeListener(Widget, elements);
 	}
+
+	const reset = () => {
+	    widgets.forEach((Widget) => {
+	        Widget.globalReset?.();
+	    });
+
+	    widgets = [..._widgets];
+	    widgetsImplementingDisable = new Set();
+	    widgetsImplementingEnable = new Set();
+	};
+
+	/** @type {Map<typeof Widget, Set<HTMLElement>>} */
+	const languageChangeUpdates = new Map();
+
+	let didSetLanguageChangeListener = false;
 
 	/**
 	 * Calls widget('update') when the language changes. This function is called upon initialization,
@@ -75588,9 +77117,26 @@
 	function _setLangChangeListener(Widget, els) {
 	    // call update for all widgets when language changes
 	    if (els.length > 0) {
-	        formHtml.addEventListener(events.ChangeLanguage().type, () => {
-	            new Collection(els).update(Widget);
+	        let all = languageChangeUpdates.get(Widget);
+
+	        if (all == null) {
+	            all = new Set();
+	            languageChangeUpdates.set(Widget, all);
+	        }
+
+	        els.forEach((el) => {
+	            all.add(el);
 	        });
+
+	        if (!didSetLanguageChangeListener) {
+	            formElement.addEventListener(events.ChangeLanguage().type, () => {
+	                for (const [Widget, els] of languageChangeUpdates) {
+	                    new Collection([...els]).update(Widget);
+	                }
+	            });
+
+	            didSetLanguageChangeListener = true;
+	        }
 	    }
 	}
 
@@ -75707,9 +77253,11 @@
 	}
 
 	var widgetModule = {
+	    initForm,
 	    init,
 	    enable,
 	    disable,
+	    reset,
 	};
 
 	/**
@@ -75718,7 +77266,19 @@
 	 * @module language
 	 */
 
+
+	/**
+	 * @typedef {import('./form').Form} Form
+	 */
+
 	var languageModule = {
+	    /**
+	     * @type {Form}
+	     */
+	    // @ts-expect-error - this will be populated during form init, but assigning
+	    // its type here improves intellisense.
+	    form: null,
+
 	    /**
 	     * @param {string} overrideLang - override language IANA subtag
 	     */
@@ -75812,7 +77372,26 @@
 	    get languagesUsed() {
 	        return this.languages || [];
 	    },
+
+	    /**
+	     * @param {string} lang
+	     * @param {HTMLElement} group
+	     */
 	    setFormUi(lang, group = this.form.view.html) {
+	        if (group.dataset.currentLang === lang) {
+	            return;
+	        }
+
+	        group.dataset.currentLang = lang;
+
+	        if (group === this.form.view.html) {
+	            this.form.collections.repeats
+	                .getElements()
+	                .forEach((repeatInstance) => {
+	                    repeatInstance.dataset.lang = lang;
+	                });
+	        }
+
 	        const dir =
 	            this.formLanguages.querySelector(`[value="${lang}"]`).dataset.dir ||
 	            'ltr';
@@ -75834,9 +77413,11 @@
 	        // Don't even check whether it's a proper subtag or not. It will revert to client locale if it is not recognized.
 	        window.enketoFormLocale = lang;
 
+	        // TODO: can these be restricted to `group`?
 	        this.form.view.html
 	            .querySelectorAll('select, datalist')
 	            .forEach((el) => this.setSelect(el));
+
 	        this.form.view.html.dispatchEvent(events.ChangeLanguage());
 	    },
 	    /**
@@ -75889,6 +77470,7 @@
 	 *
 	 * @module preloader
 	 */
+
 
 	var preloadModule = {
 	    /**
@@ -76067,7 +77649,35 @@
 	 * @module output
 	 */
 
+
+	/**
+	 * @typedef {import('./form').Form} Form
+	 */
+
 	var outputModule = {
+	    /**
+	     * @type {Form}
+	     */
+	    // @ts-expect-error - this will be populated during form init, but assigning
+	    // its type here improves intellisense.
+	    form: null,
+
+	    init() {
+	        if (!this.form) {
+	            throw new Error(
+	                'Output module not correctly instantiated with form property.'
+	            );
+	        }
+
+	        if (!this.form.features.output) {
+	            this.update = () => {};
+
+	            return;
+	        }
+
+	        this.update();
+	    },
+
 	    /**
 	     * Updates output values, optionally filtered by those values that contain a changed node name
 	     *
@@ -76078,21 +77688,11 @@
 	        let val = '';
 	        const that = this;
 
-	        if (!this.form) {
-	            throw new Error(
-	                'Output module not correctly instantiated with form property.'
-	            );
-	        }
-
-	        const $nodes = this.form.getRelatedNodes(
-	            'data-value',
-	            '.or-output',
-	            updated
-	        );
-
-	        const clonedRepeatsPresent =
-	            this.form.repeatsPresent &&
-	            this.form.view.html.querySelector('.or-repeat.clone');
+	        const { rootNode } = updated ?? {};
+	        const $nodes =
+	            rootNode == null
+	                ? this.form.getRelatedNodes('data-value', '.or-output', updated)
+	                : jquery(rootNode.querySelectorAll('.or-output'));
 
 	        $nodes.each(function () {
 	            const $output = jquery(this);
@@ -76136,16 +77736,8 @@
 	                contextPath = null;
 	            }
 
-	            const insideRepeat =
-	                clonedRepeatsPresent &&
-	                $output.parentsUntil('.or', '.or-repeat').length > 0;
-	            const insideRepeatClone =
-	                insideRepeat &&
-	                $output.parentsUntil('.or', '.or-repeat.clone').length > 0;
-	            const index =
-	                insideRepeatClone && contextPath
-	                    ? that.form.input.getIndex(context)
-	                    : 0;
+	            const insideRepeat = output.closest('.or-repeat') != null;
+	            const index = contextPath ? that.form.input.getIndex(context) : 0;
 
 	            if (typeof outputCache[expr] !== 'undefined') {
 	                val = outputCache[expr];
@@ -76172,7 +77764,42 @@
 	 * @module calculate
 	 */
 
+
+	/**
+	 * @typedef {import('./form').Form} Form
+	 */
+
 	var calculationModule = {
+	    /**
+	     * @type {Form}
+	     */
+	    // @ts-expect-error - this will be populated during form init, but assigning
+	    // its type here improves intellisense.
+	    form: null,
+
+	    /** @type {WeakMap<HTMLElement, boolean>} */
+	    preInitRelevance: new WeakMap(),
+
+	    init() {
+	        if (!this.form) {
+	            throw new Error(
+	                'Calculation module not correctly instantiated with form property.'
+	            );
+	        }
+
+	        if (!this.form.features.calculate) {
+	            this.update = () => {};
+	            this.performAction = () => {};
+
+	            return;
+	        }
+
+	        this.initialized = false;
+	        this.preInitRelevance = new WeakMap();
+	        this.update();
+	        this.initialized = true;
+	    },
+
 	    /**
 	     * Updates calculated items.
 	     *
@@ -76182,12 +77809,6 @@
 	     */
 	    update(updated = {}, filter = '', emptyNonRelevant = false) {
 	        let nodes;
-
-	        if (!this.form) {
-	            throw new Error(
-	                'Calculation module not correctly instantiated with form property.'
-	            );
-	        }
 
 	        // Filter is used in custom applications that make a distinction between types of calculations.
 	        if (updated.relevantPath) {
@@ -76306,12 +77927,12 @@
 	            // https://github.com/OpenClinica/enketo-express-oc/issues/355#issuecomment-725640823
 	            return [
 	                ...this.form.view.html.querySelectorAll(
-	                    `.${action} [data-${action}][data-event*="${event.type}"]`
+	                    `.non-form-control-action[data-${action}].odk-instance-first-load`
 	                ),
 	            ].concat(
 	                this.form.filterRadioCheckSiblings([
 	                    ...this.form.view.html.querySelectorAll(
-	                        `.question [data-${action}][data-event*="${event.type}"]`
+	                        `.form-control-action[data-${action}].odk-instance-first-load`
 	                    ),
 	                ])
 	            );
@@ -76325,7 +77946,7 @@
 	            return this.form
 	                .getRelatedNodes(
 	                    `data-${action}`,
-	                    `.${action} [data-event*="${event.type}"]`,
+	                    '.non-form-control-action.odk-new-repeat',
 	                    event.detail
 	                )
 	                .get()
@@ -76333,7 +77954,7 @@
 	                    this.form
 	                        .getRelatedNodes(
 	                            `data-${action}`,
-	                            `.question [data-event*="${event.type}"]`,
+	                            '.form-control-action.odk-new-repeat',
 	                            event.detail
 	                        )
 	                        .get()
@@ -76344,12 +77965,12 @@
 
 	            return question
 	                ? [
-	                      ...question.querySelectorAll(
-	                          `[data-${action}][data-event*="${event.type}"]`
-	                      ),
-	                  ]
+	                      ...question.querySelectorAll('.xforms-value-changed'),
+	                  ].filter((el) => el.dataset[action] != null)
 	                : [];
 	        }
+
+	        return [];
 	    },
 
 	    /**
@@ -76361,12 +77982,6 @@
 	    performAction(action, event) {
 	        if (!event) {
 	            return;
-	        }
-
-	        if (!this.form) {
-	            throw new Error(
-	                `${action} action not correctly instantiated with form property.`
-	            );
 	        }
 
 	        const nodes = this._getNodesForAction(action, event);
@@ -76541,18 +78156,23 @@
 	     * @return {boolean} whether the node is relevant
 	     */
 	    _isRelevant(props) {
-	        let relevant = props.relevantExpr
-	            ? this.form.model.evaluate(
-	                  props.relevantExpr,
-	                  'boolean',
-	                  props.name,
-	                  props.index
-	              )
+	        if (!this.form.features.relevant) {
+	            return true;
+	        }
+
+	        const { groups, repeats } = this.form.collections;
+	        const { relevantExpr, name, index } = props;
+
+	        let relevant = relevantExpr
+	            ? this.form.model.evaluate(relevantExpr, 'boolean', name, index)
 	            : true;
+
+	        /** @type {HTMLElement | null} */
+	        let startElement = null;
 
 	        // Only look at ancestors if self is relevant.
 	        if (relevant) {
-	            const pathParts = props.name.split('/');
+	            const pathParts = name.split('/');
 	            /*
 	             * First determine immediate group parent of node, which will always be in correct location in DOM. This is where
 	             * we can use the index to be guaranteed to get the correct node.
@@ -76567,43 +78187,40 @@
 	            const parentPath = pathParts
 	                .splice(0, pathParts.length - 1)
 	                .join('/');
-	            let startElement;
 
-	            if (props.index === 0) {
-	                startElement = this.form.view.html.querySelector(
-	                    `.or-group[name="${parentPath}"],.or-group-data[name="${parentPath}"]`
-	                );
+	            if (index === 0) {
+	                startElement = groups.getElementByRef(parentPath);
 	            } else {
 	                startElement =
-	                    this.form.view.html.querySelectorAll(
-	                        `.or-repeat[name="${parentPath}"]`
-	                    )[props.index] ||
-	                    this.form.view.html.querySelectorAll(
-	                        `.or-group[name="${parentPath}"],.or-group-data[name="${parentPath}"]`
-	                    )[props.index];
+	                    repeats.getElementByRef(parentPath, index) ||
+	                    groups.getElementByRef(parentPath, index);
 	            }
+
 	            const ancestorGroups = startElement
 	                ? [startElement].concat(
-	                      getAncestors(startElement, '.or-group, .or-group-data')
+	                      getAncestors(
+	                          startElement,
+	                          '.or-group[data-relevant], .or-group-data[data-relevant]'
+	                      )
 	                  )
 	                : [];
 
 	            if (ancestorGroups.length) {
 	                // Start at the highest level, and traverse down to the immediate parent group.
 	                relevant = ancestorGroups
-	                    .filter((el) => el.matches('[data-relevant]'))
-	                    .map((group) => {
-	                        const nm = this.form.input.getName(group);
+	                    .map((ancestor) => {
+	                        const isRepeat =
+	                            ancestor.classList.contains('or-repeat');
+	                        const collection = isRepeat ? repeats : groups;
+	                        const path = this.form.input.getName(ancestor);
+	                        const index = collection.refIndexOf(ancestor, path);
 
 	                        return {
-	                            context: nm,
+	                            element: ancestor,
+	                            context: path,
 	                            // thankfully relevants on repeats are not possible with XLSForm-produced forms
-	                            index: [
-	                                ...this.form.view.html.querySelectorAll(
-	                                    `.or-group[name="${nm}"], .or-group-data[name="${nm}"]`
-	                                ),
-	                            ].indexOf(group), // performance....
-	                            expr: this.form.input.getRelevant(group),
+	                            index,
+	                            expr: this.form.input.getRelevant(ancestor),
 	                        };
 	                    })
 	                    .concat([
@@ -76613,16 +78230,31 @@
 	                            expr: props.relevantExpr,
 	                        },
 	                    ])
-	                    .every((item) =>
-	                        item.expr
+	                    .every((item) => {
+	                        const { element, expr, context, index } = item;
+
+	                        const preInitRelevance =
+	                            this.preInitRelevance.get(element);
+
+	                        if (preInitRelevance != null) {
+	                            return preInitRelevance;
+	                        }
+
+	                        const result = item.expr
 	                            ? this.form.model.evaluate(
-	                                  item.expr,
+	                                  expr,
 	                                  'boolean',
-	                                  item.context,
-	                                  item.index
+	                                  context,
+	                                  index
 	                              )
-	                            : true
-	                    );
+	                            : true;
+
+	                        if (element != null && !this.initialized) {
+	                            this.preInitRelevance.set(element, result);
+	                        }
+
+	                        return result;
+	                    });
 	            }
 	        }
 
@@ -76630,11 +78262,18 @@
 	    },
 
 	    _hasNeverBeenRelevant(control, props) {
+	        if (!this.form.features.relevant) {
+	            return false;
+	        }
+
 	        if (control && control.closest('.pre-init')) {
 	            return true;
 	        }
+
+	        const { name, index } = props;
+
 	        // Check parents including when the calculation has no form control.
-	        const pathParts = props.name.split('/');
+	        const pathParts = name.split('/');
 	        /*
 	         * First determine immediate group parent of node, which will always be in correct location in DOM. This is where
 	         * we can use the index to be guaranteed to get the correct node.
@@ -76647,23 +78286,21 @@
 	         * Note: getting the parents of control wouldn't work for nodes inside #calculated-items!
 	         */
 	        const parentPath = pathParts.splice(0, pathParts.length - 1).join('/');
-	        let startElement;
 
-	        if (props.index === 0) {
-	            startElement = this.form.view.html.querySelector(
-	                `.or-group[name="${parentPath}"],.or-group-data[name="${parentPath}"]`
-	            );
+	        /** @type {HTMLElement | null} */
+	        let startElement = null;
+
+	        const { groups, repeats } = this.form.collections;
+
+	        if (index === 0) {
+	            startElement = groups.getElementByRef(parentPath);
 	        } else {
 	            startElement =
-	                this.form.view.html.querySelectorAll(
-	                    `.or-repeat[name="${parentPath}"]`
-	                )[props.index] ||
-	                this.form.view.html.querySelectorAll(
-	                    `.or-group[name="${parentPath}"],.or-group-data[name="${parentPath}"]`
-	                )[props.index];
+	                repeats.getElementByRef(parentPath, index) ||
+	                groups.getElementByRef(parentPath, index);
 	        }
 
-	        return startElement ? !!startElement.closest('.pre-init') : false;
+	        return startElement ? startElement.closest('.pre-init') != null : false;
 	    },
 	};
 
@@ -76673,7 +78310,33 @@
 	 * @module required
 	 */
 
+
+	/**
+	 * @typedef {import('./form').Form} Form
+	 */
+
 	var requiredModule = {
+	    /**
+	     * @type {Form}
+	     */
+	    // @ts-expect-error - this will be populated during form init, but assigning
+	    // its type here improves intellisense.
+	    form: null,
+
+	    init() {
+	        if (!this.form) {
+	            throw new Error(
+	                'Required module not correctly instantiated with form property.'
+	            );
+	        }
+
+	        if (!this.form.features.required) {
+	            this.update = () => {};
+	        }
+
+	        this.update();
+	    },
+
 	    /**
 	     * Updates readonly
 	     *
@@ -76684,16 +78347,7 @@
 	        // A "required" update will never result in a node value change so the expression evaluation result can be cached fairly aggressively.
 	        const requiredCache = {};
 
-	        if (!this.form) {
-	            throw new Error(
-	                'Required module not correctly instantiated with form property.'
-	            );
-	        }
-
 	        const $nodes = this.form.getRelatedNodes('data-required', '', updated);
-	        const repeatClonesPresent =
-	            this.form.repeatsPresent &&
-	            this.form.view.html.querySelector('.or-repeat.clone');
 
 	        $nodes.each(function () {
 	            const $input = jquery(this);
@@ -76701,9 +78355,7 @@
 	            const requiredExpr = that.form.input.getRequired(input);
 	            const path = that.form.input.getName(input);
 	            // Minimize index determination because it is expensive.
-	            const index = repeatClonesPresent
-	                ? that.form.input.getIndex(input)
-	                : 0;
+	            const index = that.form.input.getIndex(input);
 	            // The path is stripped of the last nodeName to record the context.
 	            // This might be dangerous, but until we find a bug, it improves performance a lot in those forms where one group contains
 	            // many sibling questions that each have the same required expression.
@@ -76730,7 +78382,18 @@
 	 * @module readonly
 	 */
 
+	/**
+	 * @typedef {import('./form').Form} Form
+	 */
+
 	var readonlyModule = {
+	    /**
+	     * @type {Form}
+	     */
+	    // @ts-expect-error - this will be populated during form init, but assigning
+	    // its type here improves intellisense.
+	    form: null,
+
 	    /**
 	     * Updates readonly
 	     *
@@ -76738,13 +78401,14 @@
 	     */
 	    update(updated) {
 	        const nodes = this.form.getRelatedNodes('readonly', '', updated).get();
+
+	        const { valueChanged } = this.form.collections.actions;
+
 	        nodes.forEach((node) => {
 	            node.closest('.question').classList.add('readonly');
 
 	            const path = this.form.input.getName(node);
-	            const action = this.form.view.html.querySelector(
-	                `[data-setvalue][data-event="xforms-value-changed"][name="${path}"], [data-setgeopoint][data-event="xforms-value-changed"][name="${path}"]`
-	            );
+	            const action = valueChanged?.hasRef(path);
 
 	            // Note: the readonly-forced class is added for special readonly views of a form.
 	            const empty =
@@ -76822,7 +78486,7 @@
 	 *
 	 * Most methods are prototype method to facilitate customizations outside of enketo-core.
 	 *
-	 * @param {Element} formEl - HTML form element (a product of Enketo Transformer after transforming a valid ODK XForm)
+	 * @param {HTMLFormElement} formEl - HTML form element (a product of Enketo Transformer after transforming a valid ODK XForm)
 	 * @param {FormDataObj} data - Data object containing XML model, (partial) XML instance-to-load, external data and flag about whether instance-to-load has already been submitted before.
 	 * @param {FormOptions} [options]
 	 * @class
@@ -76842,13 +78506,25 @@
 	    this.all = {};
 	    this.options = options ?? {};
 
+	    const formHTML = formEl.outerHTML;
+
 	    this.view = {
 	        $: $form,
 	        html: formEl,
-	        clone: formEl.cloneNode(true),
+	        get clone() {
+	            const range = document.createRange();
+
+	            return range.createContextualFragment(formHTML).firstElementChild;
+	        },
 	    };
+
+	    /** @type {ReturnType<typeof detectFeatures>} */
+	    this.features = {};
+
+	    /** @type {ReturnType<typeof initCollections>} */
+	    this.collections = {};
+
 	    this.model = new FormModel(data);
-	    this.repeatsPresent = !!this.view.html.querySelector('.or-repeat');
 	    this.widgetsInitialized = false;
 	    this.repeatsInitialized = false;
 	    this.pageNavigationBlocked = false;
@@ -77014,8 +78690,9 @@
 	/**
 	 * Returns a module and adds the form property to it.
 	 *
-	 * @param {object} module - Enketo Core module
-	 * @return {object} updated module
+	 * @template T
+	 * @param {T} module - Enketo Core module
+	 * @return {T & { form: Form }} updated module
 	 */
 	Form.prototype.addModule = function (module) {
 	    return Object.create(module, {
@@ -77053,29 +78730,45 @@
 	    this.required = this.addModule(requiredModule);
 	    this.readonly = this.addModule(readonlyModule);
 
+	    const formEl = this.view.html;
+
+	    setRefTypeClasses(this);
+	    this.features = detectFeatures(formEl);
+	    this.collections = initCollections(this);
+	    widgetModule.initForm(formEl);
+
+	    const { instanceFirstLoadAction, newRepeatAction, valueChangedAction } =
+	        this.features;
+
 	    // Handle odk-instance-first-load event
-	    this.model.events.addEventListener(
-	        events.InstanceFirstLoad().type,
-	        (event) => {
+	    if (instanceFirstLoadAction) {
+	        this.model.events.addEventListener(
+	            events.InstanceFirstLoad().type,
+	            (event) => {
+	                this.calc.performAction('setvalue', event);
+	                this.calc.performAction('setgeopoint', event);
+	            }
+	        );
+	    }
+
+	    if (newRepeatAction) {
+	        // Handle odk-new-repeat event before initializing repeats
+	        this.view.html.addEventListener(events.NewRepeat().type, (event) => {
 	            this.calc.performAction('setvalue', event);
 	            this.calc.performAction('setgeopoint', event);
-	        }
-	    );
+	        });
+	    }
 
-	    // Handle odk-new-repeat event before initializing repeats
-	    this.view.html.addEventListener(events.NewRepeat().type, (event) => {
-	        this.calc.performAction('setvalue', event);
-	        this.calc.performAction('setgeopoint', event);
-	    });
-
-	    // Handle xforms-value-changed
-	    this.view.html.addEventListener(
-	        events.XFormsValueChanged().type,
-	        (event) => {
-	            this.calc.performAction('setvalue', event);
-	            this.calc.performAction('setgeopoint', event);
-	        }
-	    );
+	    if (valueChangedAction) {
+	        // Handle xforms-value-changed
+	        this.view.html.addEventListener(
+	            events.XFormsValueChanged().type,
+	            (event) => {
+	                this.calc.performAction('setvalue', event);
+	                this.calc.performAction('setgeopoint', event);
+	            }
+	        );
+	    }
 
 	    // Before initializing form view and model, passthrough some model events externally
 	    // Because of instance-first-load actions, this should be done before the model is initialized. This is important for custom
@@ -77109,10 +78802,10 @@
 	            instanceID: this.model.instanceID,
 	        });
 
-	        // before calc.update!
+	        // before calc.init!
 	        this.grosslyViolateStandardComplianceByIgnoringCertainCalcs();
 	        // before repeats.init to make sure the jr:repeat-count calculation has been evaluated
-	        this.calc.update();
+	        this.calc.init();
 
 	        // before itemset.update
 	        this.langs.init(this.options.language);
@@ -77209,11 +78902,11 @@
 	            this.all = {};
 	        }
 
-	        // after repeats.init, but before itemset.update
-	        this.output.update();
+	        // after repeats.init, but before itemset.init
+	        this.output.init();
 
 	        // after repeats.init
-	        this.itemset.update();
+	        this.itemset.init();
 
 	        // after repeats.init
 	        this.setAllVals();
@@ -77226,10 +78919,11 @@
 	        this.options.pathToAbsolute = this.pathToAbsolute.bind(this);
 	        this.options.evaluate = this.model.evaluate.bind(this.model);
 	        this.options.getModelValue = this.getModelValue.bind(this);
+
 	        this.widgetsInitialized = this.widgets.init(null, this.options);
 
 	        // after widgets.init(), and after repeats.init(), and after pages.init()
-	        this.relevant.update();
+	        this.relevant.init();
 
 	        // after widgets init to make sure widget handlers are called before
 	        // after loading existing instance to not trigger an 'edit' event
@@ -77239,13 +78933,15 @@
 	        // field values are calculated
 	        this.calc.update();
 
-	        this.required.update();
+	        this.required.init();
 
 	        this.editStatus = false;
 
 	        if (this.options.printRelevantOnly !== false) {
 	            this.view.$.addClass('print-relevant-only');
 	        }
+
+	        this.goToTarget(this.view.html);
 
 	        setTimeout(() => {
 	            that.progress.update();
@@ -77259,7 +78955,7 @@
 	        loadErrors.push(`${e.name}: ${e.message}`);
 	    }
 
-	    document.querySelector('body').scrollIntoView();
+	    document.body.scrollIntoView();
 
 	    return loadErrors;
 	};
@@ -77305,11 +79001,15 @@
 	 * @return {Element} the new form element
 	 */
 	Form.prototype.resetView = function () {
+	    this.widgets.reset();
+
 	    // form language selector was moved outside of <form> so has to be separately removed
 	    if (this.langs.formLanguages) {
 	        this.langs.formLanguages.remove();
 	    }
 	    this.view.html.replaceWith(this.view.clone);
+
+	    resetCollections();
 
 	    return document.querySelector('form.or');
 	};
@@ -77510,12 +79210,11 @@
 	        ];
 	        repeatControls = this.filterRadioCheckSiblings(controls);
 	    } else if (typeof repeatPath !== 'undefined' && updated.repeatIndex >= 0) {
-	        // If the updated node is inside a repeat (and there are multiple repeats present)
-	        const repeatEl = [
-	            ...this.view.html.querySelectorAll(
-	                `.or-repeat[name="${repeatPath}"]`
-	            ),
-	        ][updated.repeatIndex];
+	        const repeatEl = this.collections.repeats.getElementByRef(
+	            repeatPath,
+	            updated.repeatIndex
+	        );
+
 	        controls = repeatEl ? [...repeatEl.querySelectorAll(`[${attr}]`)] : [];
 	        repeatControls = this.filterRadioCheckSiblings(controls);
 	    }
@@ -77554,6 +79253,10 @@
 	        collection = this.all[attr];
 	    }
 
+	    if (collection.length === 0) {
+	        return jquery(collection);
+	    }
+
 	    let selector = [];
 	    // Add selectors based on specific changed nodes
 	    if (!updated.nodes || updated.nodes.length === 0) {
@@ -77578,10 +79281,13 @@
 	        );
 	    }
 
+	    if (selector.length === 0) {
+	        return jquery(collection);
+	    }
+
 	    const selectorStr = selector.join(', ');
-	    collection = selectorStr
-	        ? collection.filter((el) => el.matches(selectorStr))
-	        : collection;
+
+	    collection = collection.filter((el) => el.matches(selectorStr));
 
 	    // TODO: exclude descendents of disabled elements? .find( ':not(:disabled) span.active' )
 	    // TODO: remove jQuery wrapper, just return array of elements
@@ -78015,7 +79721,7 @@
 	        .map(function () {
 	            // only trigger validate on first input and use a **pure CSS** selector (huge performance impact)
 	            const elem = this.querySelector(
-	                'input:not(.ignore):not(:disabled), select:not(.ignore):not(:disabled), textarea:not(.ignore):not(:disabled)'
+	                'input:enabled:not(.ignore), select:enabled:not(.ignore), textarea:enabled:not(.ignore)'
 	            );
 	            if (!elem) {
 	                return Promise.resolve();
@@ -78187,14 +79893,20 @@
 	};
 
 	/**
+	 * @typedef GoToTargetOptions
+	 * @property {boolean} [isPageFlip]
+	 */
+
+	/**
 	 * Scrolls to an HTML question or group element, flips to the page it is on and focuses on the nearest form control.
 	 *
 	 * @param {HTMLElement} target - An HTML question or group element to scroll to
+	 * @param {GoToTargetOptions} [options]
 	 * @return {boolean} whether target found
 	 */
-	Form.prototype.goToTarget = function (target) {
+	Form.prototype.goToTarget = function (target, options = {}) {
 	    if (target) {
-	        if (this.pages.active) {
+	        if (this.pages.active && !options.isPageFlip) {
 	            // Flip to page
 	            this.pages.flipToPageContaining(jquery(target));
 	        }
@@ -78208,16 +79920,22 @@
 	            // It is up to the apps to decide what to do with this event.
 	            target.dispatchEvent(events.GoToIrrelevant());
 	        }
-	        // Scroll to element
-	        target.scrollIntoView();
-	        // Focus on the first non .ignore form control
+
+	        // Focus on the first non .ignore form control which is not currently readonly.
 	        // If the element is hidden (e.g. because it's been replaced by a widget),
 	        // the focus event will not fire, so we also trigger an applyfocus event that widgets can listen for.
 	        const input = target.querySelector(
-	            'input:not(.ignore), textarea:not(.ignore), select:not(.ignore)'
+	            'input:not(.ignore):not([readonly]), textarea:not(.ignore):not([readonly]), select:not(.ignore):not([readonly])'
 	        );
-	        input.focus();
-	        input.dispatchEvent(events.ApplyFocus());
+
+	        if (input != null) {
+	            input.focus();
+	            input.dispatchEvent(events.ApplyFocus());
+	        }
+
+	        // Scroll to element if needed. This will generally be a noop unless no
+	        // focusable control was found (e.g. readonly question in pages mode).
+	        scrollIntoViewIfNeeded(target);
 	    }
 
 	    return !!target;
@@ -78229,7 +79947,7 @@
 	 * @type {string}
 	 * @default
 	 */
-	Form.requiredTransformerVersion = '2.2.1';
+	Form.requiredTransformerVersion = '2.3.0';
 
 	function extendXPath( Evaluator ) {
 
@@ -78370,6 +80088,7 @@
 	 *
 	 * @see {@link https://enketo.github.io/enketo-core/FormModel.html|Enketo Core documentation}
 	 */
+
 
 	const evaluatorOc = openrosaXpath();
 	extendXPath( evaluatorOc );

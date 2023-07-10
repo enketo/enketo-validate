@@ -1,3 +1,4 @@
+global.IntersectionObserver = function(){};
 const utils = require( '../build/utils-cjs-bundle' );
 const { JSDOM } = require( 'jsdom' );
 const puppeteer = require( 'puppeteer' );
@@ -34,7 +35,7 @@ class XForm {
 
         const dom = this._getDom();
         this.doc = dom.window.document;
-        this.loadBrowserPage = puppeteer.launch( { headless: true, devtools: false } )
+        this.loadBrowserPage = puppeteer.launch( { headless: 'new', devtools: false } )
             .then( browser => {
                 this.browser = browser;
 

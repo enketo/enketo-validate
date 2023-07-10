@@ -6,6 +6,7 @@
  * @module utils
  */
 
+
 /**
  * Parses an Expression to extract all function calls and their argument arrays.
  *
@@ -64,6 +65,7 @@ function isNumber(n) {
 /**
  * @module dom-utils
  */
+
 
 /**
  * @param {Element} el - Target node
@@ -188,6 +190,22 @@ function getRepeatIndex(node) {
 
     return index;
 }
+
+/** @type {HTMLElement | null} */
+let scrollIntoViewTarget = null;
+
+const intersectionObserver = new IntersectionObserver((records) => {
+    for (const { target, isIntersecting } of records) {
+        if (target === scrollIntoViewTarget && !isIntersecting) {
+            target.scrollIntoView({
+                block: 'nearest',
+                inline: 'nearest',
+            });
+        }
+
+        intersectionObserver.unobserve(target);
+    }
+});
 
 /**
  * @module utils
