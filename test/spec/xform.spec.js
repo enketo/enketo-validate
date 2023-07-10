@@ -9,11 +9,12 @@ const browserHandler = new BrowserHandler();
 const loadXForm = filename => fs.readFileSync( path.join( process.cwd(), 'test/xform', filename ), 'utf-8' );
 const arrContains = ( arr, reg ) => arr.some( item => item.search( reg ) !== -1 );
 
+
 describe( 'XForm', () => {
 
     describe( 'that is valid', () => {
         const xf = loadXForm( 'model-only.xml' );
-        it.only( 'returns duration', async() => {
+        it( 'returns duration', async() => {
             const result = await validator.validate( xf, browserHandler );
             expect( result.duration ).to.be.above( 0 );
         } );

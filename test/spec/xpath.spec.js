@@ -1,8 +1,10 @@
 const { XForm } = require( '../../src/xform' );
 const expect = require( 'chai' ).expect;
+const { BrowserHandler } = require( '../../src/headless-browser' );
 const fs = require( 'fs' );
 const path = require( 'path' );
 
+const browserHandler = new BrowserHandler();
 const loadXForm = filename => fs.readFileSync( path.join( process.cwd(), 'test/xform', filename ), 'utf-8' );
 const testThrownEvaluation = async( xf, expr ) => {
     let thrown;
@@ -18,7 +20,7 @@ const testThrownEvaluation = async( xf, expr ) => {
 
 describe( 'XPath expressions', () => {
 
-    const xf = new XForm( loadXForm( 'model-only.xml' ) );
+    const xf = new XForm( loadXForm( 'model-only.xml' ), browserHandler );
     const parsing = xf.parseModel();
 
     describe( 'with function calls with an insufficient number of parameters', () => {
@@ -192,7 +194,7 @@ describe( 'XPath expressions', () => {
 
 describe( 'XPath expressions (in custom OpenClinica evaluator)', () => {
 
-    const xf = new XForm( loadXForm( 'model-only.xml' ), { openclinica: true } );
+    const xf = new XForm( loadXForm( 'model-only.xml' ), browserHandler, { openclinica: true } );
     const parsing = xf.parseModel();
 
     describe( 'with comment-status() calls',  () => {
