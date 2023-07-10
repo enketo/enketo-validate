@@ -26,7 +26,9 @@ class BrowserHandler {
     }
 }
 
-const getBrowser = ( handler ) =>
+const handler = new BrowserHandler();
+
+const getBrowser = ( ) =>
     new Promise( ( resolve ) => {
         const browserCheck = setInterval( () => {
             if ( handler.browser !== false ) {
@@ -36,8 +38,11 @@ const getBrowser = ( handler ) =>
         }, 100 );
     } );
 
-const closeBrowser = ( handler ) => {
+
+// TODO: it's weird that after calling this function there is no way to
+// get a browser any more. If getBrowser() is called again a new instance should be created
+const closeBrowser = ( ) => {
     return handler.exit();
 };
 
-module.exports = { BrowserHandler, getBrowser, closeBrowser };
+module.exports = { getBrowser, closeBrowser };

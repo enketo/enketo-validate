@@ -1,7 +1,7 @@
 global.IntersectionObserver = function(){};
 const utils = require( '../build/utils-cjs-bundle' );
 const { JSDOM } = require( 'jsdom' );
-const { BrowserHandler, getBrowser } = require( './headless-browser' );
+const { getBrowser } = require( './headless-browser' );
 const libxslt = require( 'libxslt' );
 const libxmljs = libxslt.libxmljs;
 const path = require( 'path' );
@@ -28,7 +28,7 @@ class XForm {
      * @param browserHandler
      * @param {module:validator~ValidateResult} [options] - Validation options.
      */
-    constructor( xformStr, browserHandler = new BrowserHandler(), options = {} ) {
+    constructor( xformStr, options = {} ) {
         this.options = options;
         if ( !xformStr || !xformStr.trim() ) {
             throw 'Empty form.';
@@ -38,7 +38,7 @@ class XForm {
         const dom = this._getDom();
         this.doc = dom.window.document;
 
-        this.loadBrowserPage = getBrowser( browserHandler )
+        this.loadBrowserPage = getBrowser( )
             .then( browser =>{
                 this.browser = browser;
 

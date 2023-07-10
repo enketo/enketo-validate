@@ -42,19 +42,19 @@ if ( options.me ) {
     process.exit( 0 );
 } else if ( xformFile ) {
     console.log( `Enketo validating ${xformFile}` );
-    const browserHandler = new BrowserHandler();
+
     let exceptions = null;
     let result = null;
 
     _getFileContents( xformFile )
-        .then( xformStr => validator.validate( xformStr, browserHandler, options ) )
+        .then( xformStr => validator.validate( xformStr, options ) )
         .catch( ( errors = [] ) => {
             exceptions = Array.isArray( errors ) ? errors : [ errors ];
         } )
         .then( ( res = {} ) => {
             result = res;
 
-            return closeBrowser( browserHandler );
+            return closeBrowser( );
         } )
         .finally( () => {
             if ( exceptions ){

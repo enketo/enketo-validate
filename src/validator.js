@@ -5,7 +5,7 @@
 'use strict';
 
 const { XForm } = require( './xform' );
-const { BrowserHandler } = require( './headless-browser' );
+
 /**
  * @constant
  * @static
@@ -35,7 +35,7 @@ const { version } = require( '../package' );
  * @param {ValidationOptions} [options] - Validation options.
  * @return {ValidateResult} validation results.
  */
-const validate = async( xformStr, browserHandler = new BrowserHandler(), options = {} ) => {
+const validate = async( xformStr, options = {} ) => {
     const start = Date.now();
     let warnings = [];
     let errors = [];
@@ -43,7 +43,7 @@ const validate = async( xformStr, browserHandler = new BrowserHandler(), options
     let xform;
 
     try {
-        xform = new XForm( xformStr, browserHandler, options );
+        xform = new XForm( xformStr, options );
     } catch ( e ) {
         errors.push( e );
     }
