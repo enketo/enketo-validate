@@ -32,7 +32,7 @@
         "enketo-transformer": "^3.0.0",
         "enketo-xpath-extensions-oc": "git+https://github.com/OpenClinica/enketo-xpath-extensions-oc.git#ab81eeb7d0f1fb34bcf2615d2c6a27c3b0915f56",
         "jsdom": "^22.1.0",
-        "libxslt": "0.10.1",
+        "libxslt": "git+https://github.com/OpenClinica/node-libxslt.git#26664c9dd5d702f8ecc8faa2936f4934e45a0f72",
         "puppeteer": "^20.8.1"
     },
     "devDependencies": {
