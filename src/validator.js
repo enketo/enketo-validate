@@ -5,6 +5,7 @@
 'use strict';
 
 const { XForm } = require( './xform' );
+
 /**
  * @constant
  * @static

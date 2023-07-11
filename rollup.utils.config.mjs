@@ -10,7 +10,8 @@ export default {
         resolve( {
             module: true,
             main: true,
-            browser: true,
+            node: true,
+            browser: false,
         } )
     ]
 };

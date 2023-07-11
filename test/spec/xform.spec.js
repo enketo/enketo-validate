@@ -7,6 +7,7 @@ const path = require( 'path' );
 const loadXForm = filename => fs.readFileSync( path.join( process.cwd(), 'test/xform', filename ), 'utf-8' );
 const arrContains = ( arr, reg ) => arr.some( item => item.search( reg ) !== -1 );
 
+
 describe( 'XForm', () => {
 
     describe( 'that is valid', () => {

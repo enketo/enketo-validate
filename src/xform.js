@@ -1,12 +1,14 @@
+global.IntersectionObserver = function(){};
 const utils = require( '../build/utils-cjs-bundle' );
 const { JSDOM } = require( 'jsdom' );
-const puppeteer = require( 'puppeteer' );
+const { getBrowser } = require( './headless-browser' );
 const libxslt = require( 'libxslt' );
 const libxmljs = libxslt.libxmljs;
 const path = require( 'path' );
 const sheets = require( 'enketo-transformer' ).sheets;
 const xslModelSheet = libxslt.parse( sheets.xslModel );
 const appearanceRules = require( './appearances' );
+
 
 /**
  * @typedef Result
@@ -34,8 +36,9 @@ class XForm {
 
         const dom = this._getDom();
         this.doc = dom.window.document;
-        this.loadBrowserPage = puppeteer.launch( { headless: true, devtools: false } )
-            .then( browser => {
+
+        this.loadBrowserPage = getBrowser( )
+            .then( browser =>{
                 this.browser = browser;
 
                 return browser.newPage();
@@ -166,10 +169,8 @@ class XForm {
     }
 
     exit(){
-        if ( this.browser ){
-
-            return this.browser.close();
-        }
+        return this.loadBrowserPage
+            .then( page => page.close() );
     }
 
     /**
