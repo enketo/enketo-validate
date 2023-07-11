@@ -3,7 +3,7 @@ let program = require( 'commander' );
 const pkg = require( './package' );
 const fs = require( 'fs' );
 const validator = require( './src/validator' );
-const { BrowserHandler, closeBrowser } = require( './src/headless-browser' );
+const { closeBrowser } = require( './src/headless-browser' );
 
 const _getFileContents = filePath => {
     return new Promise( ( resolve, reject ) => {

@@ -40,8 +40,9 @@ const getBrowser = ( ) =>
 
 
 // TODO: it's weird that after calling this function there is no way to
-// get a browser any more. If getBrowser() is called again a new instance should be created
+// get a browser any more. If getBrowser() is called again a new BrowserHandler instance should be created
 const closeBrowser = ( ) => {
+
     return handler.exit();
 };
 
