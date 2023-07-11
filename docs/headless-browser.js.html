@@ -3,7 +3,7 @@
 <head>
     
     <meta charset="utf-8">
-    <title>utils - Enketo Validate</title>
+    <title>headless-browser.js - Enketo Validate</title>
     
     <meta name="description" content="An XForm validator around Enketo's form engine" />
     
@@ -40,186 +40,68 @@
 
 <div id="main">
     
-    <h1 class="page-title">utils</h1>
+    <h1 class="page-title">headless-browser.js</h1>
     
 
     
 
 
 
-
-<section>
-
-<header>
     
-</header>
-
-<article>
-    
-        <div class="container-overview">
-        
-            
-
-<dl class="details">
-    
-    <dt class="tag-description">Description:</dt>
-    <dd class="tag-description"><ul class="dummy"><li><p>Gathers utility functions from third parties.</p></li></ul></dd>
-    
-
-    
-    <dt class="tag-source">Source:</dt>
-    <dd class="tag-source"><ul class="dummy"><li>
-        <a href="utils.js.html">utils.js</a>, <a href="utils.js.html#line4">line 4</a>
-    </li></ul></dd>
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-</dl>
-
-
-
-
-            
-                <div class="description usertext"><p>Gathers utility functions from third parties.</p></div>
-            
-
-            
-        
-        </div>
-    
-
-    
-
-    
-
-    
-    
-    
-
-     
-
-    
-
-    
-        <h3 class="subsection-title">Members</h3>
-
-        
-            
-<h4 class="name" id=".parseFunctionFromExpression"><span class="type-signature type-signature-static">(static) </span>parseFunctionFromExpression<span class="type-signature"> :function</span></h4>
-
-
-
-
-
-<dl class="details">
-    
-
-    
-    <dt class="tag-source">Source:</dt>
-    <dd class="tag-source"><ul class="dummy"><li>
-        <a href="utils.js.html">utils.js</a>, <a href="utils.js.html#line14">line 14</a>
-    </li></ul></dd>
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-    <dt class="tag-see">See:</dt>
-    <dd class="tag-see">
-        <ul>
-            <li><a href="https://enketo.github.io/enketo-core/module-utils.html#~parseFunctionFromExpression">parseFunctionFromExpression</a></li>
-        </ul>
-    </dd>
-    
-
-    
-</dl>
-
-
-
-
-
-
-
-    <h5 class="h5-types">Type:</h5>
-    <ul>
-        <li>
-            
-<span class="param-type">function</span>
-
-
-
-        </li>
-    </ul>
-
-
-
-
-
-
-        
-    
-
-    
-
-    
-
-    
-</article>
-
-</section>
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>const puppeteer = require( 'puppeteer' );
+
+/**
+ * This class approach makes it easy to open multiple browser instances with
+ * different arguments in case that is ever required.
+ */
+class BrowserHandler {
+    constructor() {
+        const launchBrowser = async() => {
+            this.browser = false;
+            this.browser = await puppeteer.launch( {
+                headless: 'new',
+                devtools: false
+            } );
+            this.browser.on( 'disconnected', launchBrowser );
+        };
+
+        this.exit = ()=>{
+            this.browser.off( 'disconnected', launchBrowser );
+            this.browser.close();
+        };
+
+        ( async() => {
+            await launchBrowser();
+        } )();
+    }
+}
+
+const handler = new BrowserHandler();
+
+const getBrowser = ( ) =>
+    new Promise( ( resolve ) => {
+        const browserCheck = setInterval( () => {
+            if ( handler.browser !== false ) {
+                clearInterval( browserCheck );
+                resolve( handler.browser );
+            }
+        }, 100 );
+    } );
+
+
+// TODO: it's weird that after calling this function there is no way to
+// get a browser any more. If getBrowser() is called again a new BrowserHandler instance should be created
+const closeBrowser = ( ) => {
+
+    return handler.exit();
+};
+
+module.exports = { getBrowser, closeBrowser };
+</code></pre>
+        </article>
+    </section>
 
 
 
