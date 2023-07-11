@@ -8,7 +8,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ##### Changed
 - Updated dependencies.
-- Improved performance of tests and using this library as a JS module
+- Improved performance when using this library as a JS module and during running of tests by not instantiating multiple headless Chrome (puppeteer) instances.
 
 [2.1.2] - 2023-03-01
 --------------------------
