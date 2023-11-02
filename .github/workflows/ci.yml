@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        node: [ '16' ]
+        node: [ '16', '18', '20' ]
     steps:
       - uses: actions/checkout@v3
       - uses: actions/cache@v3
@@ -23,7 +23,6 @@ jobs:
         with:
           node-version: ${{ matrix.node }}
           registry-url: https://registry.npmjs.org/
-      - run: npm install -g npm@^6
       - if: steps.cache.outputs.cache-hit != 'true'
         run: npm ci
       - run: npm test
