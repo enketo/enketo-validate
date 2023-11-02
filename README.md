@@ -25,12 +25,7 @@ Live demo web application (meant for testing purposes only) that uses Enketo Val
 
 #### Command-line Install
 
-To make the `enketo-validate` command available from any folder on your machine.
-```bash
-$ npm install -g --production enketo-validate
-```
-
-Alternatively, you can clone the repo and run `npm install --production`. This will make the `./validate` command available from within the clone folder. Running `npm link` makes the `enketo-validate` command available from any folder on your machine.
+Clone the repo and run `yarn install --production`. This will make the `./validate` command available from within the clone folder. Running `yarn link` makes the `enketo-validate` command available from any folder on your machine.
 
 #### Command-line Use
 
@@ -45,16 +40,22 @@ Errors are returned to `stderr` and warnings to `stdout`. If there is no `stderr
 $ enketo-validate --help
 ```
 
-#### Command-line update
-
-1. `npm install -g --production enketo-validate`
-
 ## As NodeJS module
 
 #### Module installation
 
+Add the following yarn resolutions to package.json:
+
+```json
+"resolutions": {
+    "nan": "^2.17.0",
+    "libxslt/nan": "^2.17.0",
+    "node1-libxmljsmt-myh/nan": "^2.17.0"
+},
+```
+
 ```bash
-npm install enketo-validate --save
+yarn add enketo-validate
 ```
 
 #### Module Use
