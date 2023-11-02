@@ -1,6 +1,6 @@
 {
     "name": "enketo-validate",
-    "version": "3.0.1",
+    "version": "4.0.0",
     "description": "An XForm validator around Enketo's form engine",
     "main": "src/validator.js",
     "bin": "./validate",

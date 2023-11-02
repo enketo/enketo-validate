@@ -17,7 +17,7 @@ Live demo web application (meant for testing purposes only) that uses Enketo Val
 
 ## Prerequisites
 
-1. install nodeJS 18 or 20
+1. install Node 18 or 20 and Yarn 1 ("classic")
 2. (if necessary) install build tools for native modules with `apt-get install build-essential`
 3. (if necessary) install puppeteer (headless Chrome) prerequisites as mentioned [here](https://github.com/puppeteer/puppeteer/blob/main/docs/troubleshooting.md#chrome-headless-doesnt-launch-on-unix), e.g. for Ubuntu/Debian do `apt-get install ca-certificates fonts-liberation libappindicator3-1 libasound2 libatk-bridge2.0-0 libatk1.0-0 libc6 libcairo2 libcups2 libdbus-1-3 libexpat1 libfontconfig1 libgbm1 libgcc1 libglib2.0-0 libgtk-3-0 libnspr4 libnss3 libpango-1.0-0 libpangocairo-1.0-0 libstdc++6 libx11-6 libx11-xcb1 libxcb1 libxcomposite1 libxcursor1 libxdamage1 libxext6 libxfixes3 libxi6 libxrandr2 libxrender1 libxss1 libxtst6 lsb-release wget xdg-utils`
 

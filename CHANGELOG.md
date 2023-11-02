@@ -2,10 +2,20 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+[4.0.0] - 2023-11-02
+-------------------------
+##### Removed
+- Support for NodeJS 16.
+
+##### Changed
+- Updated dependencies.
+- Switched to installation with **yarn** instead of npm.
+- Added support for modern npm versions.
+
 [3.0.1] - 2023-07-11
 -------------------------
 ##### Added
-- Support for linux/arm64
+- Support for linux/arm64.
 
 [3.0.0] - 2023-07-10
 -------------------------
