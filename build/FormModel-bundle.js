@@ -17,17 +17,14 @@
 
 	var jquery = createCommonjsModule(function (module) {
 	/*!
-	 * jQuery JavaScript Library v3.6.3
+	 * jQuery JavaScript Library v3.7.1
 	 * https://jquery.com/
-	 *
-	 * Includes Sizzle.js
-	 * https://sizzlejs.com/
 	 *
 	 * Copyright OpenJS Foundation and other contributors
 	 * Released under the MIT license
 	 * https://jquery.org/license
 	 *
-	 * Date: 2022-12-20T21:28Z
+	 * Date: 2023-08-28T13:37Z
 	 */
 	( function( global, factory ) {
 
@@ -158,8 +155,9 @@
 
 
 
-	var
-		version = "3.6.3",
+	var version = "3.7.1",
+
+		rhtmlSuffix = /HTML$/i,
 
 		// Define a local copy of jQuery
 		jQuery = function( selector, context ) {
@@ -405,6 +403,38 @@
 			return obj;
 		},
 
+
+		// Retrieve the text value of an array of DOM nodes
+		text: function( elem ) {
+			var node,
+				ret = "",
+				i = 0,
+				nodeType = elem.nodeType;
+
+			if ( !nodeType ) {
+
+				// If no nodeType, this is expected to be an array
+				while ( ( node = elem[ i++ ] ) ) {
+
+					// Do not traverse comment nodes
+					ret += jQuery.text( node );
+				}
+			}
+			if ( nodeType === 1 || nodeType === 11 ) {
+				return elem.textContent;
+			}
+			if ( nodeType === 9 ) {
+				return elem.documentElement.textContent;
+			}
+			if ( nodeType === 3 || nodeType === 4 ) {
+				return elem.nodeValue;
+			}
+
+			// Do not include comment or processing instruction nodes
+
+			return ret;
+		},
+
 		// results is for internal usage only
 		makeArray: function( arr, results ) {
 			var ret = results || [];
@@ -425,6 +455,15 @@
 
 		inArray: function( elem, arr, i ) {
 			return arr == null ? -1 : indexOf.call( arr, elem, i );
+		},
+
+		isXMLDoc: function( elem ) {
+			var namespace = elem && elem.namespaceURI,
+				docElem = elem && ( elem.ownerDocument || elem ).documentElement;
+
+			// Assume HTML when documentElement doesn't yet exist, such as inside
+			// document fragments.
+			return !rhtmlSuffix.test( namespace || docElem && docElem.nodeName || "HTML" );
 		},
 
 		// Support: Android <=4.0 only, PhantomJS 1 only
@@ -528,43 +567,98 @@
 		return type === "array" || length === 0 ||
 			typeof length === "number" && length > 0 && ( length - 1 ) in obj;
 	}
-	var Sizzle =
-	/*!
-	 * Sizzle CSS Selector Engine v2.3.9
-	 * https://sizzlejs.com/
-	 *
-	 * Copyright JS Foundation and other contributors
-	 * Released under the MIT license
-	 * https://js.foundation/
-	 *
-	 * Date: 2022-12-19
-	 */
-	( function( window ) {
+
+
+	function nodeName( elem, name ) {
+
+		return elem.nodeName && elem.nodeName.toLowerCase() === name.toLowerCase();
+
+	}
+	var pop = arr.pop;
+
+
+	var sort = arr.sort;
+
+
+	var splice = arr.splice;
+
+
+	var whitespace = "[\\x20\\t\\r\\n\\f]";
+
+
+	var rtrimCSS = new RegExp(
+		"^" + whitespace + "+|((?:^|[^\\\\])(?:\\\\.)*)" + whitespace + "+$",
+		"g"
+	);
+
+
+
+
+	// Note: an element does not contain itself
+	jQuery.contains = function( a, b ) {
+		var bup = b && b.parentNode;
+
+		return a === bup || !!( bup && bup.nodeType === 1 && (
+
+			// Support: IE 9 - 11+
+			// IE doesn't have `contains` on SVG.
+			a.contains ?
+				a.contains( bup ) :
+				a.compareDocumentPosition && a.compareDocumentPosition( bup ) & 16
+		) );
+	};
+
+
+
+
+	// CSS string/identifier serialization
+	// https://drafts.csswg.org/cssom/#common-serializing-idioms
+	var rcssescape = /([\0-\x1f\x7f]|^-?\d)|^-$|[^\x80-\uFFFF\w-]/g;
+
+	function fcssescape( ch, asCodePoint ) {
+		if ( asCodePoint ) {
+
+			// U+0000 NULL becomes U+FFFD REPLACEMENT CHARACTER
+			if ( ch === "\0" ) {
+				return "\uFFFD";
+			}
+
+			// Control characters and (dependent upon position) numbers get escaped as code points
+			return ch.slice( 0, -1 ) + "\\" + ch.charCodeAt( ch.length - 1 ).toString( 16 ) + " ";
+		}
+
+		// Other potentially-special ASCII characters get backslash-escaped
+		return "\\" + ch;
+	}
+
+	jQuery.escapeSelector = function( sel ) {
+		return ( sel + "" ).replace( rcssescape, fcssescape );
+	};
+
+
+
+
+	var preferredDoc = document,
+		pushNative = push;
+
+	( function() {
+
 	var i,
-		support,
 		Expr,
-		getText,
-		isXML,
-		tokenize,
-		compile,
-		select,
 		outermostContext,
 		sortInput,
 		hasDuplicate,
+		push = pushNative,
 
 		// Local document vars
-		setDocument,
 		document,
-		docElem,
+		documentElement,
 		documentIsHTML,
 		rbuggyQSA,
-		rbuggyMatches,
 		matches,
-		contains,
 
 		// Instance-specific data
-		expando = "sizzle" + 1 * new Date(),
-		preferredDoc = window.document,
+		expando = jQuery.expando,
 		dirruns = 0,
 		done = 0,
 		classCache = createCache(),
@@ -578,47 +672,22 @@
 			return 0;
 		},
 
-		// Instance methods
-		hasOwn = ( {} ).hasOwnProperty,
-		arr = [],
-		pop = arr.pop,
-		pushNative = arr.push,
-		push = arr.push,
-		slice = arr.slice,
-
-		// Use a stripped-down indexOf as it's faster than native
-		// https://jsperf.com/thor-indexof-vs-for/5
-		indexOf = function( list, elem ) {
-			var i = 0,
-				len = list.length;
-			for ( ; i < len; i++ ) {
-				if ( list[ i ] === elem ) {
-					return i;
-				}
-			}
-			return -1;
-		},
-
-		booleans = "checked|selected|async|autofocus|autoplay|controls|defer|disabled|hidden|" +
-			"ismap|loop|multiple|open|readonly|required|scoped",
+		booleans = "checked|selected|async|autofocus|autoplay|controls|defer|disabled|hidden|ismap|" +
+			"loop|multiple|open|readonly|required|scoped",
 
 		// Regular expressions
-
-		// http://www.w3.org/TR/css3-selectors/#whitespace
-		whitespace = "[\\x20\\t\\r\\n\\f]",
 
 		// https://www.w3.org/TR/css-syntax-3/#ident-token-diagram
 		identifier = "(?:\\\\[\\da-fA-F]{1,6}" + whitespace +
 			"?|\\\\[^\\r\\n\\f]|[\\w-]|[^\0-\\x7f])+",
 
-		// Attribute selectors: http://www.w3.org/TR/selectors/#attribute-selectors
+		// Attribute selectors: https://www.w3.org/TR/selectors/#attribute-selectors
 		attributes = "\\[" + whitespace + "*(" + identifier + ")(?:" + whitespace +
 
 			// Operator (capture 2)
 			"*([*^$|!~]?=)" + whitespace +
 
-			// "Attribute values must be CSS identifiers [capture 5]
-			// or strings [capture 3 or capture 4]"
+			// "Attribute values must be CSS identifiers [capture 5] or strings [capture 3 or capture 4]"
 			"*(?:'((?:\\\\.|[^\\\\'])*)'|\"((?:\\\\.|[^\\\\\"])*)\"|(" + identifier + "))|)" +
 			whitespace + "*\\]",
 
@@ -637,40 +706,36 @@
 
 		// Leading and non-escaped trailing whitespace, capturing some non-whitespace characters preceding the latter
 		rwhitespace = new RegExp( whitespace + "+", "g" ),
-		rtrim = new RegExp( "^" + whitespace + "+|((?:^|[^\\\\])(?:\\\\.)*)" +
-			whitespace + "+$", "g" ),
 
 		rcomma = new RegExp( "^" + whitespace + "*," + whitespace + "*" ),
-		rcombinators = new RegExp( "^" + whitespace + "*([>+~]|" + whitespace + ")" + whitespace +
-			"*" ),
+		rleadingCombinator = new RegExp( "^" + whitespace + "*([>+~]|" + whitespace + ")" +
+			whitespace + "*" ),
 		rdescend = new RegExp( whitespace + "|>" ),
 
 		rpseudo = new RegExp( pseudos ),
 		ridentifier = new RegExp( "^" + identifier + "$" ),
 
 		matchExpr = {
-			"ID": new RegExp( "^#(" + identifier + ")" ),
-			"CLASS": new RegExp( "^\\.(" + identifier + ")" ),
-			"TAG": new RegExp( "^(" + identifier + "|[*])" ),
-			"ATTR": new RegExp( "^" + attributes ),
-			"PSEUDO": new RegExp( "^" + pseudos ),
-			"CHILD": new RegExp( "^:(only|first|last|nth|nth-last)-(child|of-type)(?:\\(" +
-				whitespace + "*(even|odd|(([+-]|)(\\d*)n|)" + whitespace + "*(?:([+-]|)" +
-				whitespace + "*(\\d+)|))" + whitespace + "*\\)|)", "i" ),
-			"bool": new RegExp( "^(?:" + booleans + ")$", "i" ),
+			ID: new RegExp( "^#(" + identifier + ")" ),
+			CLASS: new RegExp( "^\\.(" + identifier + ")" ),
+			TAG: new RegExp( "^(" + identifier + "|[*])" ),
+			ATTR: new RegExp( "^" + attributes ),
+			PSEUDO: new RegExp( "^" + pseudos ),
+			CHILD: new RegExp(
+				"^:(only|first|last|nth|nth-last)-(child|of-type)(?:\\(" +
+					whitespace + "*(even|odd|(([+-]|)(\\d*)n|)" + whitespace + "*(?:([+-]|)" +
+					whitespace + "*(\\d+)|))" + whitespace + "*\\)|)", "i" ),
+			bool: new RegExp( "^(?:" + booleans + ")$", "i" ),
 
 			// For use in libraries implementing .is()
 			// We use this for POS matching in `select`
-			"needsContext": new RegExp( "^" + whitespace +
+			needsContext: new RegExp( "^" + whitespace +
 				"*[>+~]|:(even|odd|eq|gt|lt|nth|first|last)(?:\\(" + whitespace +
 				"*((?:-\\d)?\\d*)" + whitespace + "*\\)|)(?=[^-]|$)", "i" )
 		},
 
-		rhtml = /HTML$/i,
 		rinputs = /^(?:input|select|textarea|button)$/i,
 		rheader = /^h\d$/i,
-
-		rnative = /^[^{]+\{\s*\[native \w/,
 
 		// Easily-parseable/retrievable ID or TAG or CLASS selectors
 		rquickExpr = /^(?:#([\w-]+)|(\w+)|\.([\w-]+))$/,
@@ -678,59 +743,50 @@
 		rsibling = /[+~]/,
 
 		// CSS escapes
-		// http://www.w3.org/TR/CSS21/syndata.html#escaped-characters
-		runescape = new RegExp( "\\\\[\\da-fA-F]{1,6}" + whitespace + "?|\\\\([^\\r\\n\\f])", "g" ),
+		// https://www.w3.org/TR/CSS21/syndata.html#escaped-characters
+		runescape = new RegExp( "\\\\[\\da-fA-F]{1,6}" + whitespace +
+			"?|\\\\([^\\r\\n\\f])", "g" ),
 		funescape = function( escape, nonHex ) {
 			var high = "0x" + escape.slice( 1 ) - 0x10000;
 
-			return nonHex ?
+			if ( nonHex ) {
 
 				// Strip the backslash prefix from a non-hex escape sequence
-				nonHex :
-
-				// Replace a hexadecimal escape sequence with the encoded Unicode code point
-				// Support: IE <=11+
-				// For values outside the Basic Multilingual Plane (BMP), manually construct a
-				// surrogate pair
-				high < 0 ?
-					String.fromCharCode( high + 0x10000 ) :
-					String.fromCharCode( high >> 10 | 0xD800, high & 0x3FF | 0xDC00 );
-		},
-
-		// CSS string/identifier serialization
-		// https://drafts.csswg.org/cssom/#common-serializing-idioms
-		rcssescape = /([\0-\x1f\x7f]|^-?\d)|^-$|[^\0-\x1f\x7f-\uFFFF\w-]/g,
-		fcssescape = function( ch, asCodePoint ) {
-			if ( asCodePoint ) {
-
-				// U+0000 NULL becomes U+FFFD REPLACEMENT CHARACTER
-				if ( ch === "\0" ) {
-					return "\uFFFD";
-				}
-
-				// Control characters and (dependent upon position) numbers get escaped as code points
-				return ch.slice( 0, -1 ) + "\\" +
-					ch.charCodeAt( ch.length - 1 ).toString( 16 ) + " ";
+				return nonHex;
 			}
 
-			// Other potentially-special ASCII characters get backslash-escaped
-			return "\\" + ch;
+			// Replace a hexadecimal escape sequence with the encoded Unicode code point
+			// Support: IE <=11+
+			// For values outside the Basic Multilingual Plane (BMP), manually construct a
+			// surrogate pair
+			return high < 0 ?
+				String.fromCharCode( high + 0x10000 ) :
+				String.fromCharCode( high >> 10 | 0xD800, high & 0x3FF | 0xDC00 );
 		},
 
-		// Used for iframes
-		// See setDocument()
+		// Used for iframes; see `setDocument`.
+		// Support: IE 9 - 11+, Edge 12 - 18+
 		// Removing the function wrapper causes a "Permission Denied"
-		// error in IE
+		// error in IE/Edge.
 		unloadHandler = function() {
 			setDocument();
 		},
 
 		inDisabledFieldset = addCombinator(
 			function( elem ) {
-				return elem.disabled === true && elem.nodeName.toLowerCase() === "fieldset";
+				return elem.disabled === true && nodeName( elem, "fieldset" );
 			},
 			{ dir: "parentNode", next: "legend" }
 		);
+
+	// Support: IE <=9 only
+	// Accessing document.activeElement can throw unexpectedly
+	// https://bugs.jquery.com/ticket/13393
+	function safeActiveElement() {
+		try {
+			return document.activeElement;
+		} catch ( err ) { }
+	}
 
 	// Optimize for push.apply( _, NodeList )
 	try {
@@ -739,32 +795,22 @@
 			preferredDoc.childNodes
 		);
 
-		// Support: Android<4.0
+		// Support: Android <=4.0
 		// Detect silently failing push.apply
 		// eslint-disable-next-line no-unused-expressions
 		arr[ preferredDoc.childNodes.length ].nodeType;
 	} catch ( e ) {
-		push = { apply: arr.length ?
-
-			// Leverage slice if possible
-			function( target, els ) {
+		push = {
+			apply: function( target, els ) {
 				pushNative.apply( target, slice.call( els ) );
-			} :
-
-			// Support: IE<9
-			// Otherwise append directly
-			function( target, els ) {
-				var j = target.length,
-					i = 0;
-
-				// Can't trust NodeList.length
-				while ( ( target[ j++ ] = els[ i++ ] ) ) {}
-				target.length = j - 1;
+			},
+			call: function( target ) {
+				pushNative.apply( target, slice.call( arguments, 1 ) );
 			}
 		};
 	}
 
-	function Sizzle( selector, context, results, seed ) {
+	function find( selector, context, results, seed ) {
 		var m, i, elem, nid, match, groups, newSelector,
 			newContext = context && context.ownerDocument,
 
@@ -798,11 +844,10 @@
 						if ( nodeType === 9 ) {
 							if ( ( elem = context.getElementById( m ) ) ) {
 
-								// Support: IE, Opera, Webkit
-								// TODO: identify versions
+								// Support: IE 9 only
 								// getElementById can match elements by name instead of ID
 								if ( elem.id === m ) {
-									results.push( elem );
+									push.call( results, elem );
 									return results;
 								}
 							} else {
@@ -812,14 +857,13 @@
 						// Element context
 						} else {
 
-							// Support: IE, Opera, Webkit
-							// TODO: identify versions
+							// Support: IE 9 only
 							// getElementById can match elements by name instead of ID
 							if ( newContext && ( elem = newContext.getElementById( m ) ) &&
-								contains( context, elem ) &&
+								find.contains( context, elem ) &&
 								elem.id === m ) {
 
-								results.push( elem );
+								push.call( results, elem );
 								return results;
 							}
 						}
@@ -830,22 +874,15 @@
 						return results;
 
 					// Class selector
-					} else if ( ( m = match[ 3 ] ) && support.getElementsByClassName &&
-						context.getElementsByClassName ) {
-
+					} else if ( ( m = match[ 3 ] ) && context.getElementsByClassName ) {
 						push.apply( results, context.getElementsByClassName( m ) );
 						return results;
 					}
 				}
 
 				// Take advantage of querySelectorAll
-				if ( support.qsa &&
-					!nonnativeSelectorCache[ selector + " " ] &&
-					( !rbuggyQSA || !rbuggyQSA.test( selector ) ) &&
-
-					// Support: IE 8 only
-					// Exclude object elements
-					( nodeType !== 1 || context.nodeName.toLowerCase() !== "object" ) ) {
+				if ( !nonnativeSelectorCache[ selector + " " ] &&
+					( !rbuggyQSA || !rbuggyQSA.test( selector ) ) ) {
 
 					newSelector = selector;
 					newContext = context;
@@ -858,7 +895,7 @@
 					// as such selectors are not recognized by querySelectorAll.
 					// Thanks to Andrew Dupont for this technique.
 					if ( nodeType === 1 &&
-						( rdescend.test( selector ) || rcombinators.test( selector ) ) ) {
+						( rdescend.test( selector ) || rleadingCombinator.test( selector ) ) ) {
 
 						// Expand context for sibling selectors
 						newContext = rsibling.test( selector ) && testContext( context.parentNode ) ||
@@ -866,11 +903,15 @@
 
 						// We can use :scope instead of the ID hack if the browser
 						// supports it & if we're not changing the context.
-						if ( newContext !== context || !support.scope ) {
+						// Support: IE 11+, Edge 17 - 18+
+						// IE/Edge sometimes throw a "Permission denied" error when
+						// strict-comparing two documents; shallow comparisons work.
+						// eslint-disable-next-line eqeqeq
+						if ( newContext != context || !support.scope ) {
 
 							// Capture the context ID, setting it first if necessary
 							if ( ( nid = context.getAttribute( "id" ) ) ) {
-								nid = nid.replace( rcssescape, fcssescape );
+								nid = jQuery.escapeSelector( nid );
 							} else {
 								context.setAttribute( "id", ( nid = expando ) );
 							}
@@ -887,27 +928,6 @@
 					}
 
 					try {
-
-						// `qSA` may not throw for unrecognized parts using forgiving parsing:
-						// https://drafts.csswg.org/selectors/#forgiving-selector
-						// like the `:has()` pseudo-class:
-						// https://drafts.csswg.org/selectors/#relational
-						// `CSS.supports` is still expected to return `false` then:
-						// https://drafts.csswg.org/css-conditional-4/#typedef-supports-selector-fn
-						// https://drafts.csswg.org/css-conditional-4/#dfn-support-selector
-						if ( support.cssSupportsSelector &&
-
-							// eslint-disable-next-line no-undef
-							!CSS.supports( "selector(:is(" + newSelector + "))" ) ) {
-
-							// Support: IE 11+
-							// Throw to get to the same code path as an error directly in qSA.
-							// Note: once we only support browser supporting
-							// `CSS.supports('selector(...)')`, we can most likely drop
-							// the `try-catch`. IE doesn't implement the API.
-							throw new Error();
-						}
-
 						push.apply( results,
 							newContext.querySelectorAll( newSelector )
 						);
@@ -924,7 +944,7 @@
 		}
 
 		// All others
-		return select( selector.replace( rtrim, "$1" ), context, results, seed );
+		return select( selector.replace( rtrimCSS, "$1" ), context, results, seed );
 	}
 
 	/**
@@ -938,7 +958,8 @@
 
 		function cache( key, value ) {
 
-			// Use (key + " ") to avoid collision with native prototype properties (see Issue #157)
+			// Use (key + " ") to avoid collision with native prototype properties
+			// (see https://github.com/jquery/sizzle/issues/157)
 			if ( keys.push( key + " " ) > Expr.cacheLength ) {
 
 				// Only keep the most recent entries
@@ -950,7 +971,7 @@
 	}
 
 	/**
-	 * Mark a function for special use by Sizzle
+	 * Mark a function for special use by jQuery selector module
 	 * @param {Function} fn The function to mark
 	 */
 	function markFunction( fn ) {
@@ -982,55 +1003,12 @@
 	}
 
 	/**
-	 * Adds the same handler for all of the specified attrs
-	 * @param {String} attrs Pipe-separated list of attributes
-	 * @param {Function} handler The method that will be applied
-	 */
-	function addHandle( attrs, handler ) {
-		var arr = attrs.split( "|" ),
-			i = arr.length;
-
-		while ( i-- ) {
-			Expr.attrHandle[ arr[ i ] ] = handler;
-		}
-	}
-
-	/**
-	 * Checks document order of two siblings
-	 * @param {Element} a
-	 * @param {Element} b
-	 * @returns {Number} Returns less than 0 if a precedes b, greater than 0 if a follows b
-	 */
-	function siblingCheck( a, b ) {
-		var cur = b && a,
-			diff = cur && a.nodeType === 1 && b.nodeType === 1 &&
-				a.sourceIndex - b.sourceIndex;
-
-		// Use IE sourceIndex if available on both nodes
-		if ( diff ) {
-			return diff;
-		}
-
-		// Check if b follows a
-		if ( cur ) {
-			while ( ( cur = cur.nextSibling ) ) {
-				if ( cur === b ) {
-					return -1;
-				}
-			}
-		}
-
-		return a ? 1 : -1;
-	}
-
-	/**
 	 * Returns a function to use in pseudos for input types
 	 * @param {String} type
 	 */
 	function createInputPseudo( type ) {
 		return function( elem ) {
-			var name = elem.nodeName.toLowerCase();
-			return name === "input" && elem.type === type;
+			return nodeName( elem, "input" ) && elem.type === type;
 		};
 	}
 
@@ -1040,8 +1018,8 @@
 	 */
 	function createButtonPseudo( type ) {
 		return function( elem ) {
-			var name = elem.nodeName.toLowerCase();
-			return ( name === "input" || name === "button" ) && elem.type === type;
+			return ( nodeName( elem, "input" ) || nodeName( elem, "button" ) ) &&
+				elem.type === type;
 		};
 	}
 
@@ -1077,14 +1055,13 @@
 						}
 					}
 
-					// Support: IE 6 - 11
+					// Support: IE 6 - 11+
 					// Use the isDisabled shortcut property to check for disabled fieldset ancestors
 					return elem.isDisabled === disabled ||
 
 						// Where there is no isDisabled, check manually
-						/* jshint -W018 */
 						elem.isDisabled !== !disabled &&
-						inDisabledFieldset( elem ) === disabled;
+							inDisabledFieldset( elem ) === disabled;
 				}
 
 				return elem.disabled === disabled;
@@ -1124,7 +1101,7 @@
 	}
 
 	/**
-	 * Checks a node for validity as a Sizzle context
+	 * Checks a node for validity as a jQuery selector context
 	 * @param {Element|Object=} context
 	 * @returns {Element|Object|Boolean} The input node if acceptable, otherwise a falsy value
 	 */
@@ -1132,31 +1109,13 @@
 		return context && typeof context.getElementsByTagName !== "undefined" && context;
 	}
 
-	// Expose support vars for convenience
-	support = Sizzle.support = {};
-
-	/**
-	 * Detects XML nodes
-	 * @param {Element|Object} elem An element or a document
-	 * @returns {Boolean} True iff elem is a non-HTML XML node
-	 */
-	isXML = Sizzle.isXML = function( elem ) {
-		var namespace = elem && elem.namespaceURI,
-			docElem = elem && ( elem.ownerDocument || elem ).documentElement;
-
-		// Support: IE <=8
-		// Assume HTML when documentElement doesn't yet exist, such as inside loading iframes
-		// https://bugs.jquery.com/ticket/4833
-		return !rhtml.test( namespace || docElem && docElem.nodeName || "HTML" );
-	};
-
 	/**
 	 * Sets document-related variables once based on the current document
-	 * @param {Element|Object} [doc] An element or document object to use to set the document
+	 * @param {Element|Object} [node] An element or document object to use to set the document
 	 * @returns {Object} Returns the current document
 	 */
-	setDocument = Sizzle.setDocument = function( node ) {
-		var hasCompare, subWindow,
+	function setDocument( node ) {
+		var subWindow,
 			doc = node ? node.ownerDocument || node : preferredDoc;
 
 		// Return early if doc is invalid or already selected
@@ -1170,112 +1129,90 @@
 
 		// Update global variables
 		document = doc;
-		docElem = document.documentElement;
-		documentIsHTML = !isXML( document );
+		documentElement = document.documentElement;
+		documentIsHTML = !jQuery.isXMLDoc( document );
+
+		// Support: iOS 7 only, IE 9 - 11+
+		// Older browsers didn't support unprefixed `matches`.
+		matches = documentElement.matches ||
+			documentElement.webkitMatchesSelector ||
+			documentElement.msMatchesSelector;
 
 		// Support: IE 9 - 11+, Edge 12 - 18+
-		// Accessing iframe documents after unload throws "permission denied" errors (jQuery #13936)
-		// Support: IE 11+, Edge 17 - 18+
-		// IE/Edge sometimes throw a "Permission denied" error when strict-comparing
-		// two documents; shallow comparisons work.
-		// eslint-disable-next-line eqeqeq
-		if ( preferredDoc != document &&
+		// Accessing iframe documents after unload throws "permission denied" errors
+		// (see trac-13936).
+		// Limit the fix to IE & Edge Legacy; despite Edge 15+ implementing `matches`,
+		// all IE 9+ and Edge Legacy versions implement `msMatchesSelector` as well.
+		if ( documentElement.msMatchesSelector &&
+
+			// Support: IE 11+, Edge 17 - 18+
+			// IE/Edge sometimes throw a "Permission denied" error when strict-comparing
+			// two documents; shallow comparisons work.
+			// eslint-disable-next-line eqeqeq
+			preferredDoc != document &&
 			( subWindow = document.defaultView ) && subWindow.top !== subWindow ) {
 
-			// Support: IE 11, Edge
-			if ( subWindow.addEventListener ) {
-				subWindow.addEventListener( "unload", unloadHandler, false );
-
-			// Support: IE 9 - 10 only
-			} else if ( subWindow.attachEvent ) {
-				subWindow.attachEvent( "onunload", unloadHandler );
-			}
+			// Support: IE 9 - 11+, Edge 12 - 18+
+			subWindow.addEventListener( "unload", unloadHandler );
 		}
 
-		// Support: IE 8 - 11+, Edge 12 - 18+, Chrome <=16 - 25 only, Firefox <=3.6 - 31 only,
-		// Safari 4 - 5 only, Opera <=11.6 - 12.x only
-		// IE/Edge & older browsers don't support the :scope pseudo-class.
-		// Support: Safari 6.0 only
-		// Safari 6.0 supports :scope but it's an alias of :root there.
-		support.scope = assert( function( el ) {
-			docElem.appendChild( el ).appendChild( document.createElement( "div" ) );
-			return typeof el.querySelectorAll !== "undefined" &&
-				!el.querySelectorAll( ":scope fieldset div" ).length;
-		} );
-
-		// Support: Chrome 105+, Firefox 104+, Safari 15.4+
-		// Make sure forgiving mode is not used in `CSS.supports( "selector(...)" )`.
-		//
-		// `:is()` uses a forgiving selector list as an argument and is widely
-		// implemented, so it's a good one to test against.
-		support.cssSupportsSelector = assert( function() {
-			/* eslint-disable no-undef */
-
-			return CSS.supports( "selector(*)" ) &&
-
-				// Support: Firefox 78-81 only
-				// In old Firefox, `:is()` didn't use forgiving parsing. In that case,
-				// fail this test as there's no selector to test against that.
-				// `CSS.supports` uses unforgiving parsing
-				document.querySelectorAll( ":is(:jqfake)" ) &&
-
-				// `*` is needed as Safari & newer Chrome implemented something in between
-				// for `:has()` - it throws in `qSA` if it only contains an unsupported
-				// argument but multiple ones, one of which is supported, are fine.
-				// We want to play safe in case `:is()` gets the same treatment.
-				!CSS.supports( "selector(:is(*,:jqfake))" );
-
-			/* eslint-enable */
-		} );
-
-		/* Attributes
-		---------------------------------------------------------------------- */
-
-		// Support: IE<8
-		// Verify that getAttribute really returns attributes and not properties
-		// (excepting IE8 booleans)
-		support.attributes = assert( function( el ) {
-			el.className = "i";
-			return !el.getAttribute( "className" );
-		} );
-
-		/* getElement(s)By*
-		---------------------------------------------------------------------- */
-
-		// Check if getElementsByTagName("*") returns only elements
-		support.getElementsByTagName = assert( function( el ) {
-			el.appendChild( document.createComment( "" ) );
-			return !el.getElementsByTagName( "*" ).length;
-		} );
-
-		// Support: IE<9
-		support.getElementsByClassName = rnative.test( document.getElementsByClassName );
-
-		// Support: IE<10
+		// Support: IE <10
 		// Check if getElementById returns elements by name
 		// The broken getElementById methods don't pick up programmatically-set names,
 		// so use a roundabout getElementsByName test
 		support.getById = assert( function( el ) {
-			docElem.appendChild( el ).id = expando;
-			return !document.getElementsByName || !document.getElementsByName( expando ).length;
+			documentElement.appendChild( el ).id = jQuery.expando;
+			return !document.getElementsByName ||
+				!document.getElementsByName( jQuery.expando ).length;
+		} );
+
+		// Support: IE 9 only
+		// Check to see if it's possible to do matchesSelector
+		// on a disconnected node.
+		support.disconnectedMatch = assert( function( el ) {
+			return matches.call( el, "*" );
+		} );
+
+		// Support: IE 9 - 11+, Edge 12 - 18+
+		// IE/Edge don't support the :scope pseudo-class.
+		support.scope = assert( function() {
+			return document.querySelectorAll( ":scope" );
+		} );
+
+		// Support: Chrome 105 - 111 only, Safari 15.4 - 16.3 only
+		// Make sure the `:has()` argument is parsed unforgivingly.
+		// We include `*` in the test to detect buggy implementations that are
+		// _selectively_ forgiving (specifically when the list includes at least
+		// one valid selector).
+		// Note that we treat complete lack of support for `:has()` as if it were
+		// spec-compliant support, which is fine because use of `:has()` in such
+		// environments will fail in the qSA path and fall back to jQuery traversal
+		// anyway.
+		support.cssHas = assert( function() {
+			try {
+				document.querySelector( ":has(*,:jqfake)" );
+				return false;
+			} catch ( e ) {
+				return true;
+			}
 		} );
 
 		// ID filter and find
 		if ( support.getById ) {
-			Expr.filter[ "ID" ] = function( id ) {
+			Expr.filter.ID = function( id ) {
 				var attrId = id.replace( runescape, funescape );
 				return function( elem ) {
 					return elem.getAttribute( "id" ) === attrId;
 				};
 			};
-			Expr.find[ "ID" ] = function( id, context ) {
+			Expr.find.ID = function( id, context ) {
 				if ( typeof context.getElementById !== "undefined" && documentIsHTML ) {
 					var elem = context.getElementById( id );
 					return elem ? [ elem ] : [];
 				}
 			};
 		} else {
-			Expr.filter[ "ID" ] =  function( id ) {
+			Expr.filter.ID =  function( id ) {
 				var attrId = id.replace( runescape, funescape );
 				return function( elem ) {
 					var node = typeof elem.getAttributeNode !== "undefined" &&
@@ -1286,7 +1223,7 @@
 
 			// Support: IE 6 - 7 only
 			// getElementById is not reliable as a find shortcut
-			Expr.find[ "ID" ] = function( id, context ) {
+			Expr.find.ID = function( id, context ) {
 				if ( typeof context.getElementById !== "undefined" && documentIsHTML ) {
 					var node, i, elems,
 						elem = context.getElementById( id );
@@ -1316,40 +1253,18 @@
 		}
 
 		// Tag
-		Expr.find[ "TAG" ] = support.getElementsByTagName ?
-			function( tag, context ) {
-				if ( typeof context.getElementsByTagName !== "undefined" ) {
-					return context.getElementsByTagName( tag );
+		Expr.find.TAG = function( tag, context ) {
+			if ( typeof context.getElementsByTagName !== "undefined" ) {
+				return context.getElementsByTagName( tag );
 
-				// DocumentFragment nodes don't have gEBTN
-				} else if ( support.qsa ) {
-					return context.querySelectorAll( tag );
-				}
-			} :
-
-			function( tag, context ) {
-				var elem,
-					tmp = [],
-					i = 0,
-
-					// By happy coincidence, a (broken) gEBTN appears on DocumentFragment nodes too
-					results = context.getElementsByTagName( tag );
-
-				// Filter out possible comments
-				if ( tag === "*" ) {
-					while ( ( elem = results[ i++ ] ) ) {
-						if ( elem.nodeType === 1 ) {
-							tmp.push( elem );
-						}
-					}
-
-					return tmp;
-				}
-				return results;
-			};
+			// DocumentFragment nodes don't have gEBTN
+			} else {
+				return context.querySelectorAll( tag );
+			}
+		};
 
 		// Class
-		Expr.find[ "CLASS" ] = support.getElementsByClassName && function( className, context ) {
+		Expr.find.CLASS = function( className, context ) {
 			if ( typeof context.getElementsByClassName !== "undefined" && documentIsHTML ) {
 				return context.getElementsByClassName( className );
 			}
@@ -1360,195 +1275,94 @@
 
 		// QSA and matchesSelector support
 
-		// matchesSelector(:active) reports false when true (IE9/Opera 11.5)
-		rbuggyMatches = [];
-
-		// qSa(:focus) reports false when true (Chrome 21)
-		// We allow this because of a bug in IE8/9 that throws an error
-		// whenever `document.activeElement` is accessed on an iframe
-		// So, we allow :focus to pass through QSA all the time to avoid the IE error
-		// See https://bugs.jquery.com/ticket/13378
 		rbuggyQSA = [];
 
-		if ( ( support.qsa = rnative.test( document.querySelectorAll ) ) ) {
+		// Build QSA regex
+		// Regex strategy adopted from Diego Perini
+		assert( function( el ) {
 
-			// Build QSA regex
-			// Regex strategy adopted from Diego Perini
-			assert( function( el ) {
+			var input;
 
-				var input;
+			documentElement.appendChild( el ).innerHTML =
+				"<a id='" + expando + "' href='' disabled='disabled'></a>" +
+				"<select id='" + expando + "-\r\\' disabled='disabled'>" +
+				"<option selected=''></option></select>";
 
-				// Select is set to empty string on purpose
-				// This is to test IE's treatment of not explicitly
-				// setting a boolean content attribute,
-				// since its presence should be enough
-				// https://bugs.jquery.com/ticket/12359
-				docElem.appendChild( el ).innerHTML = "<a id='" + expando + "'></a>" +
-					"<select id='" + expando + "-\r\\' msallowcapture=''>" +
-					"<option selected=''></option></select>";
+			// Support: iOS <=7 - 8 only
+			// Boolean attributes and "value" are not treated correctly in some XML documents
+			if ( !el.querySelectorAll( "[selected]" ).length ) {
+				rbuggyQSA.push( "\\[" + whitespace + "*(?:value|" + booleans + ")" );
+			}
 
-				// Support: IE8, Opera 11-12.16
-				// Nothing should be selected when empty strings follow ^= or $= or *=
-				// The test attribute must be unknown in Opera but "safe" for WinRT
-				// https://msdn.microsoft.com/en-us/library/ie/hh465388.aspx#attribute_section
-				if ( el.querySelectorAll( "[msallowcapture^='']" ).length ) {
-					rbuggyQSA.push( "[*^$]=" + whitespace + "*(?:''|\"\")" );
-				}
+			// Support: iOS <=7 - 8 only
+			if ( !el.querySelectorAll( "[id~=" + expando + "-]" ).length ) {
+				rbuggyQSA.push( "~=" );
+			}
 
-				// Support: IE8
-				// Boolean attributes and "value" are not treated correctly
-				if ( !el.querySelectorAll( "[selected]" ).length ) {
-					rbuggyQSA.push( "\\[" + whitespace + "*(?:value|" + booleans + ")" );
-				}
+			// Support: iOS 8 only
+			// https://bugs.webkit.org/show_bug.cgi?id=136851
+			// In-page `selector#id sibling-combinator selector` fails
+			if ( !el.querySelectorAll( "a#" + expando + "+*" ).length ) {
+				rbuggyQSA.push( ".#.+[+~]" );
+			}
 
-				// Support: Chrome<29, Android<4.4, Safari<7.0+, iOS<7.0+, PhantomJS<1.9.8+
-				if ( !el.querySelectorAll( "[id~=" + expando + "-]" ).length ) {
-					rbuggyQSA.push( "~=" );
-				}
+			// Support: Chrome <=105+, Firefox <=104+, Safari <=15.4+
+			// In some of the document kinds, these selectors wouldn't work natively.
+			// This is probably OK but for backwards compatibility we want to maintain
+			// handling them through jQuery traversal in jQuery 3.x.
+			if ( !el.querySelectorAll( ":checked" ).length ) {
+				rbuggyQSA.push( ":checked" );
+			}
 
-				// Support: IE 11+, Edge 15 - 18+
-				// IE 11/Edge don't find elements on a `[name='']` query in some cases.
-				// Adding a temporary attribute to the document before the selection works
-				// around the issue.
-				// Interestingly, IE 10 & older don't seem to have the issue.
-				input = document.createElement( "input" );
-				input.setAttribute( "name", "" );
-				el.appendChild( input );
-				if ( !el.querySelectorAll( "[name='']" ).length ) {
-					rbuggyQSA.push( "\\[" + whitespace + "*name" + whitespace + "*=" +
-						whitespace + "*(?:''|\"\")" );
-				}
+			// Support: Windows 8 Native Apps
+			// The type and name attributes are restricted during .innerHTML assignment
+			input = document.createElement( "input" );
+			input.setAttribute( "type", "hidden" );
+			el.appendChild( input ).setAttribute( "name", "D" );
 
-				// Webkit/Opera - :checked should return selected option elements
-				// http://www.w3.org/TR/2011/REC-css3-selectors-20110929/#checked
-				// IE8 throws error here and will not see later tests
-				if ( !el.querySelectorAll( ":checked" ).length ) {
-					rbuggyQSA.push( ":checked" );
-				}
+			// Support: IE 9 - 11+
+			// IE's :disabled selector does not pick up the children of disabled fieldsets
+			// Support: Chrome <=105+, Firefox <=104+, Safari <=15.4+
+			// In some of the document kinds, these selectors wouldn't work natively.
+			// This is probably OK but for backwards compatibility we want to maintain
+			// handling them through jQuery traversal in jQuery 3.x.
+			documentElement.appendChild( el ).disabled = true;
+			if ( el.querySelectorAll( ":disabled" ).length !== 2 ) {
+				rbuggyQSA.push( ":enabled", ":disabled" );
+			}
 
-				// Support: Safari 8+, iOS 8+
-				// https://bugs.webkit.org/show_bug.cgi?id=136851
-				// In-page `selector#id sibling-combinator selector` fails
-				if ( !el.querySelectorAll( "a#" + expando + "+*" ).length ) {
-					rbuggyQSA.push( ".#.+[+~]" );
-				}
+			// Support: IE 11+, Edge 15 - 18+
+			// IE 11/Edge don't find elements on a `[name='']` query in some cases.
+			// Adding a temporary attribute to the document before the selection works
+			// around the issue.
+			// Interestingly, IE 10 & older don't seem to have the issue.
+			input = document.createElement( "input" );
+			input.setAttribute( "name", "" );
+			el.appendChild( input );
+			if ( !el.querySelectorAll( "[name='']" ).length ) {
+				rbuggyQSA.push( "\\[" + whitespace + "*name" + whitespace + "*=" +
+					whitespace + "*(?:''|\"\")" );
+			}
+		} );
 
-				// Support: Firefox <=3.6 - 5 only
-				// Old Firefox doesn't throw on a badly-escaped identifier.
-				el.querySelectorAll( "\\\f" );
-				rbuggyQSA.push( "[\\r\\n\\f]" );
-			} );
+		if ( !support.cssHas ) {
 
-			assert( function( el ) {
-				el.innerHTML = "<a href='' disabled='disabled'></a>" +
-					"<select disabled='disabled'><option/></select>";
-
-				// Support: Windows 8 Native Apps
-				// The type and name attributes are restricted during .innerHTML assignment
-				var input = document.createElement( "input" );
-				input.setAttribute( "type", "hidden" );
-				el.appendChild( input ).setAttribute( "name", "D" );
-
-				// Support: IE8
-				// Enforce case-sensitivity of name attribute
-				if ( el.querySelectorAll( "[name=d]" ).length ) {
-					rbuggyQSA.push( "name" + whitespace + "*[*^$|!~]?=" );
-				}
-
-				// FF 3.5 - :enabled/:disabled and hidden elements (hidden elements are still enabled)
-				// IE8 throws error here and will not see later tests
-				if ( el.querySelectorAll( ":enabled" ).length !== 2 ) {
-					rbuggyQSA.push( ":enabled", ":disabled" );
-				}
-
-				// Support: IE9-11+
-				// IE's :disabled selector does not pick up the children of disabled fieldsets
-				docElem.appendChild( el ).disabled = true;
-				if ( el.querySelectorAll( ":disabled" ).length !== 2 ) {
-					rbuggyQSA.push( ":enabled", ":disabled" );
-				}
-
-				// Support: Opera 10 - 11 only
-				// Opera 10-11 does not throw on post-comma invalid pseudos
-				el.querySelectorAll( "*,:x" );
-				rbuggyQSA.push( ",.*:" );
-			} );
-		}
-
-		if ( ( support.matchesSelector = rnative.test( ( matches = docElem.matches ||
-			docElem.webkitMatchesSelector ||
-			docElem.mozMatchesSelector ||
-			docElem.oMatchesSelector ||
-			docElem.msMatchesSelector ) ) ) ) {
-
-			assert( function( el ) {
-
-				// Check to see if it's possible to do matchesSelector
-				// on a disconnected node (IE 9)
-				support.disconnectedMatch = matches.call( el, "*" );
-
-				// This should fail with an exception
-				// Gecko does not error, returns false instead
-				matches.call( el, "[s!='']:x" );
-				rbuggyMatches.push( "!=", pseudos );
-			} );
-		}
-
-		if ( !support.cssSupportsSelector ) {
-
-			// Support: Chrome 105+, Safari 15.4+
-			// `:has()` uses a forgiving selector list as an argument so our regular
-			// `try-catch` mechanism fails to catch `:has()` with arguments not supported
-			// natively like `:has(:contains("Foo"))`. Where supported & spec-compliant,
-			// we now use `CSS.supports("selector(:is(SELECTOR_TO_BE_TESTED))")`, but
-			// outside that we mark `:has` as buggy.
+			// Support: Chrome 105 - 110+, Safari 15.4 - 16.3+
+			// Our regular `try-catch` mechanism fails to detect natively-unsupported
+			// pseudo-classes inside `:has()` (such as `:has(:contains("Foo"))`)
+			// in browsers that parse the `:has()` argument as a forgiving selector list.
+			// https://drafts.csswg.org/selectors/#relational now requires the argument
+			// to be parsed unforgivingly, but browsers have not yet fully adjusted.
 			rbuggyQSA.push( ":has" );
 		}
 
 		rbuggyQSA = rbuggyQSA.length && new RegExp( rbuggyQSA.join( "|" ) );
-		rbuggyMatches = rbuggyMatches.length && new RegExp( rbuggyMatches.join( "|" ) );
-
-		/* Contains
-		---------------------------------------------------------------------- */
-		hasCompare = rnative.test( docElem.compareDocumentPosition );
-
-		// Element contains another
-		// Purposefully self-exclusive
-		// As in, an element does not contain itself
-		contains = hasCompare || rnative.test( docElem.contains ) ?
-			function( a, b ) {
-
-				// Support: IE <9 only
-				// IE doesn't have `contains` on `document` so we need to check for
-				// `documentElement` presence.
-				// We need to fall back to `a` when `documentElement` is missing
-				// as `ownerDocument` of elements within `<template/>` may have
-				// a null one - a default behavior of all modern browsers.
-				var adown = a.nodeType === 9 && a.documentElement || a,
-					bup = b && b.parentNode;
-				return a === bup || !!( bup && bup.nodeType === 1 && (
-					adown.contains ?
-						adown.contains( bup ) :
-						a.compareDocumentPosition && a.compareDocumentPosition( bup ) & 16
-				) );
-			} :
-			function( a, b ) {
-				if ( b ) {
-					while ( ( b = b.parentNode ) ) {
-						if ( b === a ) {
-							return true;
-						}
-					}
-				}
-				return false;
-			};
 
 		/* Sorting
 		---------------------------------------------------------------------- */
 
 		// Document order sorting
-		sortOrder = hasCompare ?
-		function( a, b ) {
+		sortOrder = function( a, b ) {
 
 			// Flag for duplicate removal
 			if ( a === b ) {
@@ -1582,8 +1396,8 @@
 				// IE/Edge sometimes throw a "Permission denied" error when strict-comparing
 				// two documents; shallow comparisons work.
 				// eslint-disable-next-line eqeqeq
-				if ( a == document || a.ownerDocument == preferredDoc &&
-					contains( preferredDoc, a ) ) {
+				if ( a === document || a.ownerDocument == preferredDoc &&
+					find.contains( preferredDoc, a ) ) {
 					return -1;
 				}
 
@@ -1591,100 +1405,33 @@
 				// IE/Edge sometimes throw a "Permission denied" error when strict-comparing
 				// two documents; shallow comparisons work.
 				// eslint-disable-next-line eqeqeq
-				if ( b == document || b.ownerDocument == preferredDoc &&
-					contains( preferredDoc, b ) ) {
+				if ( b === document || b.ownerDocument == preferredDoc &&
+					find.contains( preferredDoc, b ) ) {
 					return 1;
 				}
 
 				// Maintain original order
 				return sortInput ?
-					( indexOf( sortInput, a ) - indexOf( sortInput, b ) ) :
+					( indexOf.call( sortInput, a ) - indexOf.call( sortInput, b ) ) :
 					0;
 			}
 
 			return compare & 4 ? -1 : 1;
-		} :
-		function( a, b ) {
-
-			// Exit early if the nodes are identical
-			if ( a === b ) {
-				hasDuplicate = true;
-				return 0;
-			}
-
-			var cur,
-				i = 0,
-				aup = a.parentNode,
-				bup = b.parentNode,
-				ap = [ a ],
-				bp = [ b ];
-
-			// Parentless nodes are either documents or disconnected
-			if ( !aup || !bup ) {
-
-				// Support: IE 11+, Edge 17 - 18+
-				// IE/Edge sometimes throw a "Permission denied" error when strict-comparing
-				// two documents; shallow comparisons work.
-				/* eslint-disable eqeqeq */
-				return a == document ? -1 :
-					b == document ? 1 :
-					/* eslint-enable eqeqeq */
-					aup ? -1 :
-					bup ? 1 :
-					sortInput ?
-					( indexOf( sortInput, a ) - indexOf( sortInput, b ) ) :
-					0;
-
-			// If the nodes are siblings, we can do a quick check
-			} else if ( aup === bup ) {
-				return siblingCheck( a, b );
-			}
-
-			// Otherwise we need full lists of their ancestors for comparison
-			cur = a;
-			while ( ( cur = cur.parentNode ) ) {
-				ap.unshift( cur );
-			}
-			cur = b;
-			while ( ( cur = cur.parentNode ) ) {
-				bp.unshift( cur );
-			}
-
-			// Walk down the tree looking for a discrepancy
-			while ( ap[ i ] === bp[ i ] ) {
-				i++;
-			}
-
-			return i ?
-
-				// Do a sibling check if the nodes have a common ancestor
-				siblingCheck( ap[ i ], bp[ i ] ) :
-
-				// Otherwise nodes in our document sort first
-				// Support: IE 11+, Edge 17 - 18+
-				// IE/Edge sometimes throw a "Permission denied" error when strict-comparing
-				// two documents; shallow comparisons work.
-				/* eslint-disable eqeqeq */
-				ap[ i ] == preferredDoc ? -1 :
-				bp[ i ] == preferredDoc ? 1 :
-				/* eslint-enable eqeqeq */
-				0;
 		};
 
 		return document;
+	}
+
+	find.matches = function( expr, elements ) {
+		return find( expr, null, null, elements );
 	};
 
-	Sizzle.matches = function( expr, elements ) {
-		return Sizzle( expr, null, null, elements );
-	};
-
-	Sizzle.matchesSelector = function( elem, expr ) {
+	find.matchesSelector = function( elem, expr ) {
 		setDocument( elem );
 
-		if ( support.matchesSelector && documentIsHTML &&
+		if ( documentIsHTML &&
 			!nonnativeSelectorCache[ expr + " " ] &&
-			( !rbuggyMatches || !rbuggyMatches.test( expr ) ) &&
-			( !rbuggyQSA     || !rbuggyQSA.test( expr ) ) ) {
+			( !rbuggyQSA || !rbuggyQSA.test( expr ) ) ) {
 
 			try {
 				var ret = matches.call( elem, expr );
@@ -1692,9 +1439,9 @@
 				// IE 9's matchesSelector returns false on disconnected nodes
 				if ( ret || support.disconnectedMatch ||
 
-					// As well, disconnected nodes are said to be in a document
-					// fragment in IE 9
-					elem.document && elem.document.nodeType !== 11 ) {
+						// As well, disconnected nodes are said to be in a document
+						// fragment in IE 9
+						elem.document && elem.document.nodeType !== 11 ) {
 					return ret;
 				}
 			} catch ( e ) {
@@ -1702,10 +1449,10 @@
 			}
 		}
 
-		return Sizzle( expr, document, null, [ elem ] ).length > 0;
+		return find( expr, document, null, [ elem ] ).length > 0;
 	};
 
-	Sizzle.contains = function( context, elem ) {
+	find.contains = function( context, elem ) {
 
 		// Set document vars if needed
 		// Support: IE 11+, Edge 17 - 18+
@@ -1715,10 +1462,11 @@
 		if ( ( context.ownerDocument || context ) != document ) {
 			setDocument( context );
 		}
-		return contains( context, elem );
+		return jQuery.contains( context, elem );
 	};
 
-	Sizzle.attr = function( elem, name ) {
+
+	find.attr = function( elem, name ) {
 
 		// Set document vars if needed
 		// Support: IE 11+, Edge 17 - 18+
@@ -1731,25 +1479,19 @@
 
 		var fn = Expr.attrHandle[ name.toLowerCase() ],
 
-			// Don't get fooled by Object.prototype properties (jQuery #13807)
+			// Don't get fooled by Object.prototype properties (see trac-13807)
 			val = fn && hasOwn.call( Expr.attrHandle, name.toLowerCase() ) ?
 				fn( elem, name, !documentIsHTML ) :
 				undefined;
 
-		return val !== undefined ?
-			val :
-			support.attributes || !documentIsHTML ?
-				elem.getAttribute( name ) :
-				( val = elem.getAttributeNode( name ) ) && val.specified ?
-					val.value :
-					null;
+		if ( val !== undefined ) {
+			return val;
+		}
+
+		return elem.getAttribute( name );
 	};
 
-	Sizzle.escape = function( sel ) {
-		return ( sel + "" ).replace( rcssescape, fcssescape );
-	};
-
-	Sizzle.error = function( msg ) {
+	find.error = function( msg ) {
 		throw new Error( "Syntax error, unrecognized expression: " + msg );
 	};
 
@@ -1757,16 +1499,20 @@
 	 * Document sorting and removing duplicates
 	 * @param {ArrayLike} results
 	 */
-	Sizzle.uniqueSort = function( results ) {
+	jQuery.uniqueSort = function( results ) {
 		var elem,
 			duplicates = [],
 			j = 0,
 			i = 0;
 
 		// Unless we *know* we can detect duplicates, assume their presence
-		hasDuplicate = !support.detectDuplicates;
-		sortInput = !support.sortStable && results.slice( 0 );
-		results.sort( sortOrder );
+		//
+		// Support: Android <=4.0+
+		// Testing for detecting duplicates is unpredictable so instead assume we can't
+		// depend on duplicate detection in all browsers without a stable sort.
+		hasDuplicate = !support.sortStable;
+		sortInput = !support.sortStable && slice.call( results, 0 );
+		sort.call( results, sortOrder );
 
 		if ( hasDuplicate ) {
 			while ( ( elem = results[ i++ ] ) ) {
@@ -1775,7 +1521,7 @@
 				}
 			}
 			while ( j-- ) {
-				results.splice( duplicates[ j ], 1 );
+				splice.call( results, duplicates[ j ], 1 );
 			}
 		}
 
@@ -1786,47 +1532,11 @@
 		return results;
 	};
 
-	/**
-	 * Utility function for retrieving the text value of an array of DOM nodes
-	 * @param {Array|Element} elem
-	 */
-	getText = Sizzle.getText = function( elem ) {
-		var node,
-			ret = "",
-			i = 0,
-			nodeType = elem.nodeType;
-
-		if ( !nodeType ) {
-
-			// If no nodeType, this is expected to be an array
-			while ( ( node = elem[ i++ ] ) ) {
-
-				// Do not traverse comment nodes
-				ret += getText( node );
-			}
-		} else if ( nodeType === 1 || nodeType === 9 || nodeType === 11 ) {
-
-			// Use textContent for elements
-			// innerText usage removed for consistency of new lines (jQuery #11153)
-			if ( typeof elem.textContent === "string" ) {
-				return elem.textContent;
-			} else {
-
-				// Traverse its children
-				for ( elem = elem.firstChild; elem; elem = elem.nextSibling ) {
-					ret += getText( elem );
-				}
-			}
-		} else if ( nodeType === 3 || nodeType === 4 ) {
-			return elem.nodeValue;
-		}
-
-		// Do not include comment or processing instruction nodes
-
-		return ret;
+	jQuery.fn.uniqueSort = function() {
+		return this.pushStack( jQuery.uniqueSort( slice.apply( this ) ) );
 	};
 
-	Expr = Sizzle.selectors = {
+	Expr = jQuery.expr = {
 
 		// Can be adjusted by the user
 		cacheLength: 50,
@@ -1847,12 +1557,12 @@
 		},
 
 		preFilter: {
-			"ATTR": function( match ) {
+			ATTR: function( match ) {
 				match[ 1 ] = match[ 1 ].replace( runescape, funescape );
 
 				// Move the given value to match[3] whether quoted or unquoted
-				match[ 3 ] = ( match[ 3 ] || match[ 4 ] ||
-					match[ 5 ] || "" ).replace( runescape, funescape );
+				match[ 3 ] = ( match[ 3 ] || match[ 4 ] || match[ 5 ] || "" )
+					.replace( runescape, funescape );
 
 				if ( match[ 2 ] === "~=" ) {
 					match[ 3 ] = " " + match[ 3 ] + " ";
@@ -1861,7 +1571,7 @@
 				return match.slice( 0, 4 );
 			},
 
-			"CHILD": function( match ) {
+			CHILD: function( match ) {
 
 				/* matches from matchExpr["CHILD"]
 					1 type (only|nth|...)
@@ -1879,29 +1589,30 @@
 
 					// nth-* requires argument
 					if ( !match[ 3 ] ) {
-						Sizzle.error( match[ 0 ] );
+						find.error( match[ 0 ] );
 					}
 
 					// numeric x and y parameters for Expr.filter.CHILD
 					// remember that false/true cast respectively to 0/1
 					match[ 4 ] = +( match[ 4 ] ?
 						match[ 5 ] + ( match[ 6 ] || 1 ) :
-						2 * ( match[ 3 ] === "even" || match[ 3 ] === "odd" ) );
+						2 * ( match[ 3 ] === "even" || match[ 3 ] === "odd" )
+					);
 					match[ 5 ] = +( ( match[ 7 ] + match[ 8 ] ) || match[ 3 ] === "odd" );
 
-					// other types prohibit arguments
+				// other types prohibit arguments
 				} else if ( match[ 3 ] ) {
-					Sizzle.error( match[ 0 ] );
+					find.error( match[ 0 ] );
 				}
 
 				return match;
 			},
 
-			"PSEUDO": function( match ) {
+			PSEUDO: function( match ) {
 				var excess,
 					unquoted = !match[ 6 ] && match[ 2 ];
 
-				if ( matchExpr[ "CHILD" ].test( match[ 0 ] ) ) {
+				if ( matchExpr.CHILD.test( match[ 0 ] ) ) {
 					return null;
 				}
 
@@ -1930,36 +1641,36 @@
 
 		filter: {
 
-			"TAG": function( nodeNameSelector ) {
-				var nodeName = nodeNameSelector.replace( runescape, funescape ).toLowerCase();
+			TAG: function( nodeNameSelector ) {
+				var expectedNodeName = nodeNameSelector.replace( runescape, funescape ).toLowerCase();
 				return nodeNameSelector === "*" ?
 					function() {
 						return true;
 					} :
 					function( elem ) {
-						return elem.nodeName && elem.nodeName.toLowerCase() === nodeName;
+						return nodeName( elem, expectedNodeName );
 					};
 			},
 
-			"CLASS": function( className ) {
+			CLASS: function( className ) {
 				var pattern = classCache[ className + " " ];
 
 				return pattern ||
-					( pattern = new RegExp( "(^|" + whitespace +
-						")" + className + "(" + whitespace + "|$)" ) ) && classCache(
-							className, function( elem ) {
-								return pattern.test(
-									typeof elem.className === "string" && elem.className ||
-									typeof elem.getAttribute !== "undefined" &&
-										elem.getAttribute( "class" ) ||
-									""
-								);
+					( pattern = new RegExp( "(^|" + whitespace + ")" + className +
+						"(" + whitespace + "|$)" ) ) &&
+					classCache( className, function( elem ) {
+						return pattern.test(
+							typeof elem.className === "string" && elem.className ||
+								typeof elem.getAttribute !== "undefined" &&
+									elem.getAttribute( "class" ) ||
+								""
+						);
 					} );
 			},
 
-			"ATTR": function( name, operator, check ) {
+			ATTR: function( name, operator, check ) {
 				return function( elem ) {
-					var result = Sizzle.attr( elem, name );
+					var result = find.attr( elem, name );
 
 					if ( result == null ) {
 						return operator === "!=";
@@ -1970,22 +1681,34 @@
 
 					result += "";
 
-					/* eslint-disable max-len */
+					if ( operator === "=" ) {
+						return result === check;
+					}
+					if ( operator === "!=" ) {
+						return result !== check;
+					}
+					if ( operator === "^=" ) {
+						return check && result.indexOf( check ) === 0;
+					}
+					if ( operator === "*=" ) {
+						return check && result.indexOf( check ) > -1;
+					}
+					if ( operator === "$=" ) {
+						return check && result.slice( -check.length ) === check;
+					}
+					if ( operator === "~=" ) {
+						return ( " " + result.replace( rwhitespace, " " ) + " " )
+							.indexOf( check ) > -1;
+					}
+					if ( operator === "|=" ) {
+						return result === check || result.slice( 0, check.length + 1 ) === check + "-";
+					}
 
-					return operator === "=" ? result === check :
-						operator === "!=" ? result !== check :
-						operator === "^=" ? check && result.indexOf( check ) === 0 :
-						operator === "*=" ? check && result.indexOf( check ) > -1 :
-						operator === "$=" ? check && result.slice( -check.length ) === check :
-						operator === "~=" ? ( " " + result.replace( rwhitespace, " " ) + " " ).indexOf( check ) > -1 :
-						operator === "|=" ? result === check || result.slice( 0, check.length + 1 ) === check + "-" :
-						false;
-					/* eslint-enable max-len */
-
+					return false;
 				};
 			},
 
-			"CHILD": function( type, what, _argument, first, last ) {
+			CHILD: function( type, what, _argument, first, last ) {
 				var simple = type.slice( 0, 3 ) !== "nth",
 					forward = type.slice( -4 ) !== "last",
 					ofType = what === "of-type";
@@ -1998,7 +1721,7 @@
 					} :
 
 					function( elem, _context, xml ) {
-						var cache, uniqueCache, outerCache, node, nodeIndex, start,
+						var cache, outerCache, node, nodeIndex, start,
 							dir = simple !== forward ? "nextSibling" : "previousSibling",
 							parent = elem.parentNode,
 							name = ofType && elem.nodeName.toLowerCase(),
@@ -2013,7 +1736,7 @@
 									node = elem;
 									while ( ( node = node[ dir ] ) ) {
 										if ( ofType ?
-											node.nodeName.toLowerCase() === name :
+											nodeName( node, name ) :
 											node.nodeType === 1 ) {
 
 											return false;
@@ -2032,17 +1755,8 @@
 							if ( forward && useCache ) {
 
 								// Seek `elem` from a previously-cached index
-
-								// ...in a gzip-friendly way
-								node = parent;
-								outerCache = node[ expando ] || ( node[ expando ] = {} );
-
-								// Support: IE <9 only
-								// Defend against cloned attroperties (jQuery gh-1709)
-								uniqueCache = outerCache[ node.uniqueID ] ||
-									( outerCache[ node.uniqueID ] = {} );
-
-								cache = uniqueCache[ type ] || [];
+								outerCache = parent[ expando ] || ( parent[ expando ] = {} );
+								cache = outerCache[ type ] || [];
 								nodeIndex = cache[ 0 ] === dirruns && cache[ 1 ];
 								diff = nodeIndex && cache[ 2 ];
 								node = nodeIndex && parent.childNodes[ nodeIndex ];
@@ -2054,7 +1768,7 @@
 
 									// When found, cache indexes on `parent` and break
 									if ( node.nodeType === 1 && ++diff && node === elem ) {
-										uniqueCache[ type ] = [ dirruns, nodeIndex, diff ];
+										outerCache[ type ] = [ dirruns, nodeIndex, diff ];
 										break;
 									}
 								}
@@ -2063,17 +1777,8 @@
 
 								// Use previously-cached element index if available
 								if ( useCache ) {
-
-									// ...in a gzip-friendly way
-									node = elem;
-									outerCache = node[ expando ] || ( node[ expando ] = {} );
-
-									// Support: IE <9 only
-									// Defend against cloned attroperties (jQuery gh-1709)
-									uniqueCache = outerCache[ node.uniqueID ] ||
-										( outerCache[ node.uniqueID ] = {} );
-
-									cache = uniqueCache[ type ] || [];
+									outerCache = elem[ expando ] || ( elem[ expando ] = {} );
+									cache = outerCache[ type ] || [];
 									nodeIndex = cache[ 0 ] === dirruns && cache[ 1 ];
 									diff = nodeIndex;
 								}
@@ -2087,7 +1792,7 @@
 										( diff = nodeIndex = 0 ) || start.pop() ) ) {
 
 										if ( ( ofType ?
-											node.nodeName.toLowerCase() === name :
+											nodeName( node, name ) :
 											node.nodeType === 1 ) &&
 											++diff ) {
 
@@ -2095,13 +1800,7 @@
 											if ( useCache ) {
 												outerCache = node[ expando ] ||
 													( node[ expando ] = {} );
-
-												// Support: IE <9 only
-												// Defend against cloned attroperties (jQuery gh-1709)
-												uniqueCache = outerCache[ node.uniqueID ] ||
-													( outerCache[ node.uniqueID ] = {} );
-
-												uniqueCache[ type ] = [ dirruns, diff ];
+												outerCache[ type ] = [ dirruns, diff ];
 											}
 
 											if ( node === elem ) {
@@ -2119,19 +1818,19 @@
 					};
 			},
 
-			"PSEUDO": function( pseudo, argument ) {
+			PSEUDO: function( pseudo, argument ) {
 
 				// pseudo-class names are case-insensitive
-				// http://www.w3.org/TR/selectors/#pseudo-classes
+				// https://www.w3.org/TR/selectors/#pseudo-classes
 				// Prioritize by case sensitivity in case custom pseudos are added with uppercase letters
 				// Remember that setFilters inherits from pseudos
 				var args,
 					fn = Expr.pseudos[ pseudo ] || Expr.setFilters[ pseudo.toLowerCase() ] ||
-						Sizzle.error( "unsupported pseudo: " + pseudo );
+						find.error( "unsupported pseudo: " + pseudo );
 
 				// The user may use createPseudo to indicate that
 				// arguments are needed to create the filter function
-				// just as Sizzle does
+				// just as jQuery does
 				if ( fn[ expando ] ) {
 					return fn( argument );
 				}
@@ -2145,7 +1844,7 @@
 								matched = fn( seed, argument ),
 								i = matched.length;
 							while ( i-- ) {
-								idx = indexOf( seed, matched[ i ] );
+								idx = indexOf.call( seed, matched[ i ] );
 								seed[ idx ] = !( matches[ idx ] = matched[ i ] );
 							}
 						} ) :
@@ -2161,14 +1860,14 @@
 		pseudos: {
 
 			// Potentially complex pseudos
-			"not": markFunction( function( selector ) {
+			not: markFunction( function( selector ) {
 
 				// Trim the selector passed to compile
 				// to avoid treating leading and trailing
 				// spaces as combinators
 				var input = [],
 					results = [],
-					matcher = compile( selector.replace( rtrim, "$1" ) );
+					matcher = compile( selector.replace( rtrimCSS, "$1" ) );
 
 				return matcher[ expando ] ?
 					markFunction( function( seed, matches, _context, xml ) {
@@ -2187,22 +1886,23 @@
 						input[ 0 ] = elem;
 						matcher( input, null, xml, results );
 
-						// Don't keep the element (issue #299)
+						// Don't keep the element
+						// (see https://github.com/jquery/sizzle/issues/299)
 						input[ 0 ] = null;
 						return !results.pop();
 					};
 			} ),
 
-			"has": markFunction( function( selector ) {
+			has: markFunction( function( selector ) {
 				return function( elem ) {
-					return Sizzle( selector, elem ).length > 0;
+					return find( selector, elem ).length > 0;
 				};
 			} ),
 
-			"contains": markFunction( function( text ) {
+			contains: markFunction( function( text ) {
 				text = text.replace( runescape, funescape );
 				return function( elem ) {
-					return ( elem.textContent || getText( elem ) ).indexOf( text ) > -1;
+					return ( elem.textContent || jQuery.text( elem ) ).indexOf( text ) > -1;
 				};
 			} ),
 
@@ -2212,12 +1912,12 @@
 			// or beginning with the identifier C immediately followed by "-".
 			// The matching of C against the element's language value is performed case-insensitively.
 			// The identifier C does not have to be a valid language name."
-			// http://www.w3.org/TR/selectors/#lang-pseudo
-			"lang": markFunction( function( lang ) {
+			// https://www.w3.org/TR/selectors/#lang-pseudo
+			lang: markFunction( function( lang ) {
 
 				// lang value must be a valid identifier
 				if ( !ridentifier.test( lang || "" ) ) {
-					Sizzle.error( "unsupported lang: " + lang );
+					find.error( "unsupported lang: " + lang );
 				}
 				lang = lang.replace( runescape, funescape ).toLowerCase();
 				return function( elem ) {
@@ -2236,38 +1936,39 @@
 			} ),
 
 			// Miscellaneous
-			"target": function( elem ) {
+			target: function( elem ) {
 				var hash = window.location && window.location.hash;
 				return hash && hash.slice( 1 ) === elem.id;
 			},
 
-			"root": function( elem ) {
-				return elem === docElem;
+			root: function( elem ) {
+				return elem === documentElement;
 			},
 
-			"focus": function( elem ) {
-				return elem === document.activeElement &&
-					( !document.hasFocus || document.hasFocus() ) &&
+			focus: function( elem ) {
+				return elem === safeActiveElement() &&
+					document.hasFocus() &&
 					!!( elem.type || elem.href || ~elem.tabIndex );
 			},
 
 			// Boolean properties
-			"enabled": createDisabledPseudo( false ),
-			"disabled": createDisabledPseudo( true ),
+			enabled: createDisabledPseudo( false ),
+			disabled: createDisabledPseudo( true ),
 
-			"checked": function( elem ) {
+			checked: function( elem ) {
 
 				// In CSS3, :checked should return both checked and selected elements
-				// http://www.w3.org/TR/2011/REC-css3-selectors-20110929/#checked
-				var nodeName = elem.nodeName.toLowerCase();
-				return ( nodeName === "input" && !!elem.checked ) ||
-					( nodeName === "option" && !!elem.selected );
+				// https://www.w3.org/TR/2011/REC-css3-selectors-20110929/#checked
+				return ( nodeName( elem, "input" ) && !!elem.checked ) ||
+					( nodeName( elem, "option" ) && !!elem.selected );
 			},
 
-			"selected": function( elem ) {
+			selected: function( elem ) {
 
-				// Accessing this property makes selected-by-default
-				// options in Safari work properly
+				// Support: IE <=11+
+				// Accessing the selectedIndex property
+				// forces the browser to treat the default option as
+				// selected when in an optgroup.
 				if ( elem.parentNode ) {
 					// eslint-disable-next-line no-unused-expressions
 					elem.parentNode.selectedIndex;
@@ -2277,9 +1978,9 @@
 			},
 
 			// Contents
-			"empty": function( elem ) {
+			empty: function( elem ) {
 
-				// http://www.w3.org/TR/selectors/#empty-pseudo
+				// https://www.w3.org/TR/selectors/#empty-pseudo
 				// :empty is negated by element (1) or content nodes (text: 3; cdata: 4; entity ref: 5),
 				//   but not by others (comment: 8; processing instruction: 7; etc.)
 				// nodeType < 6 works because attributes (2) do not appear as children
@@ -2291,49 +1992,49 @@
 				return true;
 			},
 
-			"parent": function( elem ) {
-				return !Expr.pseudos[ "empty" ]( elem );
+			parent: function( elem ) {
+				return !Expr.pseudos.empty( elem );
 			},
 
 			// Element/input types
-			"header": function( elem ) {
+			header: function( elem ) {
 				return rheader.test( elem.nodeName );
 			},
 
-			"input": function( elem ) {
+			input: function( elem ) {
 				return rinputs.test( elem.nodeName );
 			},
 
-			"button": function( elem ) {
-				var name = elem.nodeName.toLowerCase();
-				return name === "input" && elem.type === "button" || name === "button";
+			button: function( elem ) {
+				return nodeName( elem, "input" ) && elem.type === "button" ||
+					nodeName( elem, "button" );
 			},
 
-			"text": function( elem ) {
+			text: function( elem ) {
 				var attr;
-				return elem.nodeName.toLowerCase() === "input" &&
-					elem.type === "text" &&
+				return nodeName( elem, "input" ) && elem.type === "text" &&
 
 					// Support: IE <10 only
-					// New HTML5 attribute values (e.g., "search") appear with elem.type === "text"
+					// New HTML5 attribute values (e.g., "search") appear
+					// with elem.type === "text"
 					( ( attr = elem.getAttribute( "type" ) ) == null ||
 						attr.toLowerCase() === "text" );
 			},
 
 			// Position-in-collection
-			"first": createPositionalPseudo( function() {
+			first: createPositionalPseudo( function() {
 				return [ 0 ];
 			} ),
 
-			"last": createPositionalPseudo( function( _matchIndexes, length ) {
+			last: createPositionalPseudo( function( _matchIndexes, length ) {
 				return [ length - 1 ];
 			} ),
 
-			"eq": createPositionalPseudo( function( _matchIndexes, length, argument ) {
+			eq: createPositionalPseudo( function( _matchIndexes, length, argument ) {
 				return [ argument < 0 ? argument + length : argument ];
 			} ),
 
-			"even": createPositionalPseudo( function( matchIndexes, length ) {
+			even: createPositionalPseudo( function( matchIndexes, length ) {
 				var i = 0;
 				for ( ; i < length; i += 2 ) {
 					matchIndexes.push( i );
@@ -2341,7 +2042,7 @@
 				return matchIndexes;
 			} ),
 
-			"odd": createPositionalPseudo( function( matchIndexes, length ) {
+			odd: createPositionalPseudo( function( matchIndexes, length ) {
 				var i = 1;
 				for ( ; i < length; i += 2 ) {
 					matchIndexes.push( i );
@@ -2349,19 +2050,24 @@
 				return matchIndexes;
 			} ),
 
-			"lt": createPositionalPseudo( function( matchIndexes, length, argument ) {
-				var i = argument < 0 ?
-					argument + length :
-					argument > length ?
-						length :
-						argument;
+			lt: createPositionalPseudo( function( matchIndexes, length, argument ) {
+				var i;
+
+				if ( argument < 0 ) {
+					i = argument + length;
+				} else if ( argument > length ) {
+					i = length;
+				} else {
+					i = argument;
+				}
+
 				for ( ; --i >= 0; ) {
 					matchIndexes.push( i );
 				}
 				return matchIndexes;
 			} ),
 
-			"gt": createPositionalPseudo( function( matchIndexes, length, argument ) {
+			gt: createPositionalPseudo( function( matchIndexes, length, argument ) {
 				var i = argument < 0 ? argument + length : argument;
 				for ( ; ++i < length; ) {
 					matchIndexes.push( i );
@@ -2371,7 +2077,7 @@
 		}
 	};
 
-	Expr.pseudos[ "nth" ] = Expr.pseudos[ "eq" ];
+	Expr.pseudos.nth = Expr.pseudos.eq;
 
 	// Add button/input type pseudos
 	for ( i in { radio: true, checkbox: true, file: true, password: true, image: true } ) {
@@ -2386,7 +2092,7 @@
 	setFilters.prototype = Expr.filters = Expr.pseudos;
 	Expr.setFilters = new setFilters();
 
-	tokenize = Sizzle.tokenize = function( selector, parseOnly ) {
+	function tokenize( selector, parseOnly ) {
 		var matched, match, tokens, type,
 			soFar, groups, preFilters,
 			cached = tokenCache[ selector + " " ];
@@ -2414,13 +2120,13 @@
 			matched = false;
 
 			// Combinators
-			if ( ( match = rcombinators.exec( soFar ) ) ) {
+			if ( ( match = rleadingCombinator.exec( soFar ) ) ) {
 				matched = match.shift();
 				tokens.push( {
 					value: matched,
 
 					// Cast descendant combinators to space
-					type: match[ 0 ].replace( rtrim, " " )
+					type: match[ 0 ].replace( rtrimCSS, " " )
 				} );
 				soFar = soFar.slice( matched.length );
 			}
@@ -2447,14 +2153,16 @@
 		// Return the length of the invalid excess
 		// if we're just parsing
 		// Otherwise, throw an error or return tokens
-		return parseOnly ?
-			soFar.length :
-			soFar ?
-				Sizzle.error( selector ) :
+		if ( parseOnly ) {
+			return soFar.length;
+		}
 
-				// Cache the tokens
-				tokenCache( selector, groups ).slice( 0 );
-	};
+		return soFar ?
+			find.error( selector ) :
+
+			// Cache the tokens
+			tokenCache( selector, groups ).slice( 0 );
+	}
 
 	function toSelector( tokens ) {
 		var i = 0,
@@ -2487,7 +2195,7 @@
 
 			// Check against all ancestor/preceding elements
 			function( elem, context, xml ) {
-				var oldCache, uniqueCache, outerCache,
+				var oldCache, outerCache,
 					newCache = [ dirruns, doneName ];
 
 				// We can't set arbitrary data on XML nodes, so they don't benefit from combinator caching
@@ -2504,14 +2212,9 @@
 						if ( elem.nodeType === 1 || checkNonElements ) {
 							outerCache = elem[ expando ] || ( elem[ expando ] = {} );
 
-							// Support: IE <9 only
-							// Defend against cloned attroperties (jQuery gh-1709)
-							uniqueCache = outerCache[ elem.uniqueID ] ||
-								( outerCache[ elem.uniqueID ] = {} );
-
-							if ( skip && skip === elem.nodeName.toLowerCase() ) {
+							if ( skip && nodeName( elem, skip ) ) {
 								elem = elem[ dir ] || elem;
-							} else if ( ( oldCache = uniqueCache[ key ] ) &&
+							} else if ( ( oldCache = outerCache[ key ] ) &&
 								oldCache[ 0 ] === dirruns && oldCache[ 1 ] === doneName ) {
 
 								// Assign to newCache so results back-propagate to previous elements
@@ -2519,7 +2222,7 @@
 							} else {
 
 								// Reuse newcache so results back-propagate to previous elements
-								uniqueCache[ key ] = newCache;
+								outerCache[ key ] = newCache;
 
 								// A match means we're done; a fail means we have to keep checking
 								if ( ( newCache[ 2 ] = matcher( elem, context, xml ) ) ) {
@@ -2551,7 +2254,7 @@
 		var i = 0,
 			len = contexts.length;
 		for ( ; i < len; i++ ) {
-			Sizzle( selector, contexts[ i ], results );
+			find( selector, contexts[ i ], results );
 		}
 		return results;
 	}
@@ -2585,38 +2288,37 @@
 			postFinder = setMatcher( postFinder, postSelector );
 		}
 		return markFunction( function( seed, results, context, xml ) {
-			var temp, i, elem,
+			var temp, i, elem, matcherOut,
 				preMap = [],
 				postMap = [],
 				preexisting = results.length,
 
 				// Get initial elements from seed or context
-				elems = seed || multipleContexts(
-					selector || "*",
-					context.nodeType ? [ context ] : context,
-					[]
-				),
+				elems = seed ||
+					multipleContexts( selector || "*",
+						context.nodeType ? [ context ] : context, [] ),
 
 				// Prefilter to get matcher input, preserving a map for seed-results synchronization
 				matcherIn = preFilter && ( seed || !selector ) ?
 					condense( elems, preMap, preFilter, context, xml ) :
-					elems,
+					elems;
 
-				matcherOut = matcher ?
-
-					// If we have a postFinder, or filtered seed, or non-seed postFilter or preexisting results,
-					postFinder || ( seed ? preFilter : preexisting || postFilter ) ?
-
-						// ...intermediate processing is necessary
-						[] :
-
-						// ...otherwise use results directly
-						results :
-					matcherIn;
-
-			// Find primary matches
 			if ( matcher ) {
+
+				// If we have a postFinder, or filtered seed, or non-seed postFilter
+				// or preexisting results,
+				matcherOut = postFinder || ( seed ? preFilter : preexisting || postFilter ) ?
+
+					// ...intermediate processing is necessary
+					[] :
+
+					// ...otherwise use results directly
+					results;
+
+				// Find primary matches
 				matcher( matcherIn, matcherOut, context, xml );
+			} else {
+				matcherOut = matcherIn;
 			}
 
 			// Apply postFilter
@@ -2654,7 +2356,7 @@
 					i = matcherOut.length;
 					while ( i-- ) {
 						if ( ( elem = matcherOut[ i ] ) &&
-							( temp = postFinder ? indexOf( seed, elem ) : preMap[ i ] ) > -1 ) {
+							( temp = postFinder ? indexOf.call( seed, elem ) : preMap[ i ] ) > -1 ) {
 
 							seed[ temp ] = !( results[ temp ] = elem );
 						}
@@ -2689,15 +2391,21 @@
 				return elem === checkContext;
 			}, implicitRelative, true ),
 			matchAnyContext = addCombinator( function( elem ) {
-				return indexOf( checkContext, elem ) > -1;
+				return indexOf.call( checkContext, elem ) > -1;
 			}, implicitRelative, true ),
 			matchers = [ function( elem, context, xml ) {
-				var ret = ( !leadingRelative && ( xml || context !== outermostContext ) ) || (
+
+				// Support: IE 11+, Edge 17 - 18+
+				// IE/Edge sometimes throw a "Permission denied" error when strict-comparing
+				// two documents; shallow comparisons work.
+				// eslint-disable-next-line eqeqeq
+				var ret = ( !leadingRelative && ( xml || context != outermostContext ) ) || (
 					( checkContext = context ).nodeType ?
 						matchContext( elem, context, xml ) :
 						matchAnyContext( elem, context, xml ) );
 
-				// Avoid hanging onto element (issue #299)
+				// Avoid hanging onto element
+				// (see https://github.com/jquery/sizzle/issues/299)
 				checkContext = null;
 				return ret;
 			} ];
@@ -2722,11 +2430,10 @@
 						i > 1 && elementMatcher( matchers ),
 						i > 1 && toSelector(
 
-						// If the preceding token was a descendant combinator, insert an implicit any-element `*`
-						tokens
-							.slice( 0, i - 1 )
-							.concat( { value: tokens[ i - 2 ].type === " " ? "*" : "" } )
-						).replace( rtrim, "$1" ),
+							// If the preceding token was a descendant combinator, insert an implicit any-element `*`
+							tokens.slice( 0, i - 1 )
+								.concat( { value: tokens[ i - 2 ].type === " " ? "*" : "" } )
+						).replace( rtrimCSS, "$1" ),
 						matcher,
 						i < j && matcherFromTokens( tokens.slice( i, j ) ),
 						j < len && matcherFromTokens( ( tokens = tokens.slice( j ) ) ),
@@ -2752,7 +2459,7 @@
 					contextBackup = outermostContext,
 
 					// We must always have either seed elements or outermost context
-					elems = seed || byElement && Expr.find[ "TAG" ]( "*", outermost ),
+					elems = seed || byElement && Expr.find.TAG( "*", outermost ),
 
 					// Use integer dirruns iff this is the outermost matcher
 					dirrunsUnique = ( dirruns += contextBackup == null ? 1 : Math.random() || 0.1 ),
@@ -2768,8 +2475,9 @@
 				}
 
 				// Add elements passing elementMatchers directly to results
-				// Support: IE<9, Safari
-				// Tolerate NodeList properties (IE: "length"; Safari: <number>) matching elements by id
+				// Support: iOS <=7 - 9 only
+				// Tolerate NodeList properties (IE: "length"; Safari: <number>) matching
+				// elements by id. (see trac-14142)
 				for ( ; i !== len && ( elem = elems[ i ] ) != null; i++ ) {
 					if ( byElement && elem ) {
 						j = 0;
@@ -2784,7 +2492,7 @@
 						}
 						while ( ( matcher = elementMatchers[ j++ ] ) ) {
 							if ( matcher( elem, context || document, xml ) ) {
-								results.push( elem );
+								push.call( results, elem );
 								break;
 							}
 						}
@@ -2847,7 +2555,7 @@
 					if ( outermost && !seed && setMatched.length > 0 &&
 						( matchedCount + setMatchers.length ) > 1 ) {
 
-						Sizzle.uniqueSort( results );
+						jQuery.uniqueSort( results );
 					}
 				}
 
@@ -2865,7 +2573,7 @@
 			superMatcher;
 	}
 
-	compile = Sizzle.compile = function( selector, match /* Internal Use Only */ ) {
+	function compile( selector, match /* Internal Use Only */ ) {
 		var i,
 			setMatchers = [],
 			elementMatchers = [],
@@ -2888,27 +2596,25 @@
 			}
 
 			// Cache the compiled function
-			cached = compilerCache(
-				selector,
-				matcherFromGroupMatchers( elementMatchers, setMatchers )
-			);
+			cached = compilerCache( selector,
+				matcherFromGroupMatchers( elementMatchers, setMatchers ) );
 
 			// Save selector and tokenization
 			cached.selector = selector;
 		}
 		return cached;
-	};
+	}
 
 	/**
-	 * A low-level selection function that works with Sizzle's compiled
+	 * A low-level selection function that works with jQuery's compiled
 	 *  selector functions
 	 * @param {String|Function} selector A selector or a pre-compiled
-	 *  selector function built with Sizzle.compile
+	 *  selector function built with jQuery selector compile
 	 * @param {Element} context
 	 * @param {Array} [results]
 	 * @param {Array} [seed] A set of elements to match against
 	 */
-	select = Sizzle.select = function( selector, context, results, seed ) {
+	function select( selector, context, results, seed ) {
 		var i, tokens, token, type, find,
 			compiled = typeof selector === "function" && selector,
 			match = !seed && tokenize( ( selector = compiled.selector || selector ) );
@@ -2922,10 +2628,12 @@
 			// Reduce context if the leading compound selector is an ID
 			tokens = match[ 0 ] = match[ 0 ].slice( 0 );
 			if ( tokens.length > 2 && ( token = tokens[ 0 ] ).type === "ID" &&
-				context.nodeType === 9 && documentIsHTML && Expr.relative[ tokens[ 1 ].type ] ) {
+					context.nodeType === 9 && documentIsHTML && Expr.relative[ tokens[ 1 ].type ] ) {
 
-				context = ( Expr.find[ "ID" ]( token.matches[ 0 ]
-					.replace( runescape, funescape ), context ) || [] )[ 0 ];
+				context = ( Expr.find.ID(
+					token.matches[ 0 ].replace( runescape, funescape ),
+					context
+				) || [] )[ 0 ];
 				if ( !context ) {
 					return results;
 
@@ -2938,7 +2646,7 @@
 			}
 
 			// Fetch a seed set for right-to-left matching
-			i = matchExpr[ "needsContext" ].test( selector ) ? 0 : tokens.length;
+			i = matchExpr.needsContext.test( selector ) ? 0 : tokens.length;
 			while ( i-- ) {
 				token = tokens[ i ];
 
@@ -2951,8 +2659,8 @@
 					// Search, expanding context for leading sibling combinators
 					if ( ( seed = find(
 						token.matches[ 0 ].replace( runescape, funescape ),
-						rsibling.test( tokens[ 0 ].type ) && testContext( context.parentNode ) ||
-							context
+						rsibling.test( tokens[ 0 ].type ) &&
+							testContext( context.parentNode ) || context
 					) ) ) {
 
 						// If seed is empty or no tokens remain, we can return early
@@ -2979,21 +2687,18 @@
 			!context || rsibling.test( selector ) && testContext( context.parentNode ) || context
 		);
 		return results;
-	};
+	}
 
 	// One-time assignments
 
+	// Support: Android <=4.0 - 4.1+
 	// Sort stability
 	support.sortStable = expando.split( "" ).sort( sortOrder ).join( "" ) === expando;
-
-	// Support: Chrome 14-35+
-	// Always assume duplicates if they aren't passed to the comparison function
-	support.detectDuplicates = !!hasDuplicate;
 
 	// Initialize against the default document
 	setDocument();
 
-	// Support: Webkit<537.32 - Safari 6.0.3/Chrome 25 (fixed in Chrome 27)
+	// Support: Android <=4.0 - 4.1+
 	// Detached nodes confoundingly follow *each other*
 	support.sortDetached = assert( function( el ) {
 
@@ -3001,68 +2706,29 @@
 		return el.compareDocumentPosition( document.createElement( "fieldset" ) ) & 1;
 	} );
 
-	// Support: IE<8
-	// Prevent attribute/property "interpolation"
-	// https://msdn.microsoft.com/en-us/library/ms536429%28VS.85%29.aspx
-	if ( !assert( function( el ) {
-		el.innerHTML = "<a href='#'></a>";
-		return el.firstChild.getAttribute( "href" ) === "#";
-	} ) ) {
-		addHandle( "type|href|height|width", function( elem, name, isXML ) {
-			if ( !isXML ) {
-				return elem.getAttribute( name, name.toLowerCase() === "type" ? 1 : 2 );
-			}
-		} );
-	}
-
-	// Support: IE<9
-	// Use defaultValue in place of getAttribute("value")
-	if ( !support.attributes || !assert( function( el ) {
-		el.innerHTML = "<input/>";
-		el.firstChild.setAttribute( "value", "" );
-		return el.firstChild.getAttribute( "value" ) === "";
-	} ) ) {
-		addHandle( "value", function( elem, _name, isXML ) {
-			if ( !isXML && elem.nodeName.toLowerCase() === "input" ) {
-				return elem.defaultValue;
-			}
-		} );
-	}
-
-	// Support: IE<9
-	// Use getAttributeNode to fetch booleans when getAttribute lies
-	if ( !assert( function( el ) {
-		return el.getAttribute( "disabled" ) == null;
-	} ) ) {
-		addHandle( booleans, function( elem, name, isXML ) {
-			var val;
-			if ( !isXML ) {
-				return elem[ name ] === true ? name.toLowerCase() :
-					( val = elem.getAttributeNode( name ) ) && val.specified ?
-						val.value :
-						null;
-			}
-		} );
-	}
-
-	return Sizzle;
-
-	} )( window );
-
-
-
-	jQuery.find = Sizzle;
-	jQuery.expr = Sizzle.selectors;
+	jQuery.find = find;
 
 	// Deprecated
 	jQuery.expr[ ":" ] = jQuery.expr.pseudos;
-	jQuery.uniqueSort = jQuery.unique = Sizzle.uniqueSort;
-	jQuery.text = Sizzle.getText;
-	jQuery.isXMLDoc = Sizzle.isXML;
-	jQuery.contains = Sizzle.contains;
-	jQuery.escapeSelector = Sizzle.escape;
+	jQuery.unique = jQuery.uniqueSort;
 
+	// These have always been private, but they used to be documented as part of
+	// Sizzle so let's maintain them for now for backwards compatibility purposes.
+	find.compile = compile;
+	find.select = select;
+	find.setDocument = setDocument;
+	find.tokenize = tokenize;
 
+	find.escape = jQuery.escapeSelector;
+	find.getText = jQuery.text;
+	find.isXML = jQuery.isXMLDoc;
+	find.selectors = jQuery.expr;
+	find.support = jQuery.support;
+	find.uniqueSort = jQuery.uniqueSort;
+
+		/* eslint-enable */
+
+	} )();
 
 
 	var dir = function( elem, dir, until ) {
@@ -3096,13 +2762,6 @@
 
 	var rneedsContext = jQuery.expr.match.needsContext;
 
-
-
-	function nodeName( elem, name ) {
-
-		return elem.nodeName && elem.nodeName.toLowerCase() === name.toLowerCase();
-
-	}
 	var rsingleTag = ( /^<([a-z][^\/\0>:\x20\t\r\n\f]*)[\x20\t\r\n\f]*\/?>(?:<\/\1>|)$/i );
 
 
@@ -3353,7 +3012,7 @@
 						if ( cur.nodeType < 11 && ( targets ?
 							targets.index( cur ) > -1 :
 
-							// Don't pass non-elements to Sizzle
+							// Don't pass non-elements to jQuery#find
 							cur.nodeType === 1 &&
 								jQuery.find.matchesSelector( cur, selectors ) ) ) {
 
@@ -3908,7 +3567,7 @@
 
 												if ( jQuery.Deferred.exceptionHook ) {
 													jQuery.Deferred.exceptionHook( e,
-														process.stackTrace );
+														process.error );
 												}
 
 												// Support: Promises/A+ section 2.3.3.3.4.1
@@ -3936,10 +3595,17 @@
 									process();
 								} else {
 
-									// Call an optional hook to record the stack, in case of exception
+									// Call an optional hook to record the error, in case of exception
 									// since it's otherwise lost when execution goes async
-									if ( jQuery.Deferred.getStackHook ) {
-										process.stackTrace = jQuery.Deferred.getStackHook();
+									if ( jQuery.Deferred.getErrorHook ) {
+										process.error = jQuery.Deferred.getErrorHook();
+
+									// The deprecated alias of the above. While the name suggests
+									// returning the stack, not an error instance, jQuery just passes
+									// it directly to `console.warn` so both will work; an instance
+									// just better cooperates with source maps.
+									} else if ( jQuery.Deferred.getStackHook ) {
+										process.error = jQuery.Deferred.getStackHook();
 									}
 									window.setTimeout( process );
 								}
@@ -4114,12 +3780,16 @@
 	// warn about them ASAP rather than swallowing them by default.
 	var rerrorNames = /^(Eval|Internal|Range|Reference|Syntax|Type|URI)Error$/;
 
-	jQuery.Deferred.exceptionHook = function( error, stack ) {
+	// If `jQuery.Deferred.getErrorHook` is defined, `asyncError` is an error
+	// captured before the async barrier to get the original error cause
+	// which may otherwise be hidden.
+	jQuery.Deferred.exceptionHook = function( error, asyncError ) {
 
 		// Support: IE 8 - 9 only
 		// Console exists when dev tools are open, which can happen at any time
 		if ( window.console && window.console.warn && error && rerrorNames.test( error.name ) ) {
-			window.console.warn( "jQuery.Deferred exception: " + error.message, error.stack, stack );
+			window.console.warn( "jQuery.Deferred exception: " + error.message,
+				error.stack, asyncError );
 		}
 	};
 
@@ -5175,25 +4845,6 @@
 		return false;
 	}
 
-	// Support: IE <=9 - 11+
-	// focus() and blur() are asynchronous, except when they are no-op.
-	// So expect focus to be synchronous when the element is already active,
-	// and blur to be synchronous when the element is not already active.
-	// (focus and blur are always synchronous in other supported browsers,
-	// this just defines when we can count on it).
-	function expectSync( elem, type ) {
-		return ( elem === safeActiveElement() ) === ( type === "focus" );
-	}
-
-	// Support: IE <=9 only
-	// Accessing document.activeElement can throw unexpectedly
-	// https://bugs.jquery.com/ticket/13393
-	function safeActiveElement() {
-		try {
-			return document.activeElement;
-		} catch ( err ) { }
-	}
-
 	function on( elem, types, selector, data, fn, one ) {
 		var origFn, type;
 
@@ -5631,7 +5282,7 @@
 						el.click && nodeName( el, "input" ) ) {
 
 						// dataPriv.set( el, "click", ... )
-						leverageNative( el, "click", returnTrue );
+						leverageNative( el, "click", true );
 					}
 
 					// Return false to allow normal processing in the caller
@@ -5682,10 +5333,10 @@
 	// synthetic events by interrupting progress until reinvoked in response to
 	// *native* events that it fires directly, ensuring that state changes have
 	// already occurred before other listeners are invoked.
-	function leverageNative( el, type, expectSync ) {
+	function leverageNative( el, type, isSetup ) {
 
-		// Missing expectSync indicates a trigger call, which must force setup through jQuery.event.add
-		if ( !expectSync ) {
+		// Missing `isSetup` indicates a trigger call, which must force setup through jQuery.event.add
+		if ( !isSetup ) {
 			if ( dataPriv.get( el, type ) === undefined ) {
 				jQuery.event.add( el, type, returnTrue );
 			}
@@ -5697,15 +5348,13 @@
 		jQuery.event.add( el, type, {
 			namespace: false,
 			handler: function( event ) {
-				var notAsync, result,
+				var result,
 					saved = dataPriv.get( this, type );
 
 				if ( ( event.isTrigger & 1 ) && this[ type ] ) {
 
 					// Interrupt processing of the outer synthetic .trigger()ed event
-					// Saved data should be false in such cases, but might be a leftover capture object
-					// from an async native handler (gh-4350)
-					if ( !saved.length ) {
+					if ( !saved ) {
 
 						// Store arguments for use when handling the inner native event
 						// There will always be at least one argument (an event object), so this array
@@ -5714,33 +5363,22 @@
 						dataPriv.set( this, type, saved );
 
 						// Trigger the native event and capture its result
-						// Support: IE <=9 - 11+
-						// focus() and blur() are asynchronous
-						notAsync = expectSync( this, type );
 						this[ type ]();
 						result = dataPriv.get( this, type );
-						if ( saved !== result || notAsync ) {
-							dataPriv.set( this, type, false );
-						} else {
-							result = {};
-						}
+						dataPriv.set( this, type, false );
+
 						if ( saved !== result ) {
 
 							// Cancel the outer synthetic event
 							event.stopImmediatePropagation();
 							event.preventDefault();
 
-							// Support: Chrome 86+
-							// In Chrome, if an element having a focusout handler is blurred by
-							// clicking outside of it, it invokes the handler synchronously. If
-							// that handler calls `.remove()` on the element, the data is cleared,
-							// leaving `result` undefined. We need to guard against this.
-							return result && result.value;
+							return result;
 						}
 
 					// If this is an inner synthetic event for an event with a bubbling surrogate
-					// (focus or blur), assume that the surrogate already propagated from triggering the
-					// native event and prevent that from happening again here.
+					// (focus or blur), assume that the surrogate already propagated from triggering
+					// the native event and prevent that from happening again here.
 					// This technically gets the ordering wrong w.r.t. to `.trigger()` (in which the
 					// bubbling surrogate propagates *after* the non-bubbling base), but that seems
 					// less bad than duplication.
@@ -5750,22 +5388,25 @@
 
 				// If this is a native event triggered above, everything is now in order
 				// Fire an inner synthetic event with the original arguments
-				} else if ( saved.length ) {
+				} else if ( saved ) {
 
 					// ...and capture the result
-					dataPriv.set( this, type, {
-						value: jQuery.event.trigger(
+					dataPriv.set( this, type, jQuery.event.trigger(
+						saved[ 0 ],
+						saved.slice( 1 ),
+						this
+					) );
 
-							// Support: IE <=9 - 11+
-							// Extend with the prototype to reset the above stopImmediatePropagation()
-							jQuery.extend( saved[ 0 ], jQuery.Event.prototype ),
-							saved.slice( 1 ),
-							this
-						)
-					} );
-
-					// Abort handling of the native event
-					event.stopImmediatePropagation();
+					// Abort handling of the native event by all jQuery handlers while allowing
+					// native handlers on the same element to run. On target, this is achieved
+					// by stopping immediate propagation just on the jQuery event. However,
+					// the native event is re-wrapped by a jQuery one on each level of the
+					// propagation so the only way to stop it for jQuery is to stop it for
+					// everyone via native `stopPropagation()`. This is not a problem for
+					// focus/blur which don't bubble, but it does also stop click on checkboxes
+					// and radios. We accept this limitation.
+					event.stopPropagation();
+					event.isImmediatePropagationStopped = returnTrue;
 				}
 			}
 		} );
@@ -5904,18 +5545,73 @@
 	}, jQuery.event.addProp );
 
 	jQuery.each( { focus: "focusin", blur: "focusout" }, function( type, delegateType ) {
+
+		function focusMappedHandler( nativeEvent ) {
+			if ( document.documentMode ) {
+
+				// Support: IE 11+
+				// Attach a single focusin/focusout handler on the document while someone wants
+				// focus/blur. This is because the former are synchronous in IE while the latter
+				// are async. In other browsers, all those handlers are invoked synchronously.
+
+				// `handle` from private data would already wrap the event, but we need
+				// to change the `type` here.
+				var handle = dataPriv.get( this, "handle" ),
+					event = jQuery.event.fix( nativeEvent );
+				event.type = nativeEvent.type === "focusin" ? "focus" : "blur";
+				event.isSimulated = true;
+
+				// First, handle focusin/focusout
+				handle( nativeEvent );
+
+				// ...then, handle focus/blur
+				//
+				// focus/blur don't bubble while focusin/focusout do; simulate the former by only
+				// invoking the handler at the lower level.
+				if ( event.target === event.currentTarget ) {
+
+					// The setup part calls `leverageNative`, which, in turn, calls
+					// `jQuery.event.add`, so event handle will already have been set
+					// by this point.
+					handle( event );
+				}
+			} else {
+
+				// For non-IE browsers, attach a single capturing handler on the document
+				// while someone wants focusin/focusout.
+				jQuery.event.simulate( delegateType, nativeEvent.target,
+					jQuery.event.fix( nativeEvent ) );
+			}
+		}
+
 		jQuery.event.special[ type ] = {
 
 			// Utilize native event if possible so blur/focus sequence is correct
 			setup: function() {
 
+				var attaches;
+
 				// Claim the first handler
 				// dataPriv.set( this, "focus", ... )
 				// dataPriv.set( this, "blur", ... )
-				leverageNative( this, type, expectSync );
+				leverageNative( this, type, true );
 
-				// Return false to allow normal processing in the caller
-				return false;
+				if ( document.documentMode ) {
+
+					// Support: IE 9 - 11+
+					// We use the same native handler for focusin & focus (and focusout & blur)
+					// so we need to coordinate setup & teardown parts between those events.
+					// Use `delegateType` as the key as `type` is already used by `leverageNative`.
+					attaches = dataPriv.get( this, delegateType );
+					if ( !attaches ) {
+						this.addEventListener( delegateType, focusMappedHandler );
+					}
+					dataPriv.set( this, delegateType, ( attaches || 0 ) + 1 );
+				} else {
+
+					// Return false to allow normal processing in the caller
+					return false;
+				}
 			},
 			trigger: function() {
 
@@ -5926,6 +5622,24 @@
 				return true;
 			},
 
+			teardown: function() {
+				var attaches;
+
+				if ( document.documentMode ) {
+					attaches = dataPriv.get( this, delegateType ) - 1;
+					if ( !attaches ) {
+						this.removeEventListener( delegateType, focusMappedHandler );
+						dataPriv.remove( this, delegateType );
+					} else {
+						dataPriv.set( this, delegateType, attaches );
+					}
+				} else {
+
+					// Return false to indicate standard teardown should be applied
+					return false;
+				}
+			},
+
 			// Suppress native focus or blur if we're currently inside
 			// a leveraged native-event stack
 			_default: function( event ) {
@@ -5933,6 +5647,58 @@
 			},
 
 			delegateType: delegateType
+		};
+
+		// Support: Firefox <=44
+		// Firefox doesn't have focus(in | out) events
+		// Related ticket - https://bugzilla.mozilla.org/show_bug.cgi?id=687787
+		//
+		// Support: Chrome <=48 - 49, Safari <=9.0 - 9.1
+		// focus(in | out) events fire after focus & blur events,
+		// which is spec violation - http://www.w3.org/TR/DOM-Level-3-Events/#events-focusevent-event-order
+		// Related ticket - https://bugs.chromium.org/p/chromium/issues/detail?id=449857
+		//
+		// Support: IE 9 - 11+
+		// To preserve relative focusin/focus & focusout/blur event order guaranteed on the 3.x branch,
+		// attach a single handler for both events in IE.
+		jQuery.event.special[ delegateType ] = {
+			setup: function() {
+
+				// Handle: regular nodes (via `this.ownerDocument`), window
+				// (via `this.document`) & document (via `this`).
+				var doc = this.ownerDocument || this.document || this,
+					dataHolder = document.documentMode ? this : doc,
+					attaches = dataPriv.get( dataHolder, delegateType );
+
+				// Support: IE 9 - 11+
+				// We use the same native handler for focusin & focus (and focusout & blur)
+				// so we need to coordinate setup & teardown parts between those events.
+				// Use `delegateType` as the key as `type` is already used by `leverageNative`.
+				if ( !attaches ) {
+					if ( document.documentMode ) {
+						this.addEventListener( delegateType, focusMappedHandler );
+					} else {
+						doc.addEventListener( type, focusMappedHandler, true );
+					}
+				}
+				dataPriv.set( dataHolder, delegateType, ( attaches || 0 ) + 1 );
+			},
+			teardown: function() {
+				var doc = this.ownerDocument || this.document || this,
+					dataHolder = document.documentMode ? this : doc,
+					attaches = dataPriv.get( dataHolder, delegateType ) - 1;
+
+				if ( !attaches ) {
+					if ( document.documentMode ) {
+						this.removeEventListener( delegateType, focusMappedHandler );
+					} else {
+						doc.removeEventListener( type, focusMappedHandler, true );
+					}
+					dataPriv.remove( dataHolder, delegateType );
+				} else {
+					dataPriv.set( dataHolder, delegateType, attaches );
+				}
+			}
 		};
 	} );
 
@@ -6165,7 +5931,7 @@
 				if ( hasScripts ) {
 					doc = scripts[ scripts.length - 1 ].ownerDocument;
 
-					// Reenable scripts
+					// Re-enable scripts
 					jQuery.map( scripts, restoreScript );
 
 					// Evaluate executable scripts on first document insertion
@@ -6236,7 +6002,8 @@
 			if ( !support.noCloneChecked && ( elem.nodeType === 1 || elem.nodeType === 11 ) &&
 					!jQuery.isXMLDoc( elem ) ) {
 
-				// We eschew Sizzle here for performance reasons: https://jsperf.com/getall-vs-sizzle/2
+				// We eschew jQuery#find here for performance reasons:
+				// https://jsperf.com/getall-vs-sizzle/2
 				destElements = getAll( clone );
 				srcElements = getAll( elem );
 
@@ -6512,15 +6279,6 @@
 
 	var rboxStyle = new RegExp( cssExpand.join( "|" ), "i" );
 
-	var whitespace = "[\\x20\\t\\r\\n\\f]";
-
-
-	var rtrimCSS = new RegExp(
-		"^" + whitespace + "+|((?:^|[^\\\\])(?:\\\\.)*)" + whitespace + "+$",
-		"g"
-	);
-
-
 
 
 	( function() {
@@ -6630,7 +6388,7 @@
 					trChild = document.createElement( "div" );
 
 					table.style.cssText = "position:absolute;left:-11111px;border-collapse:separate";
-					tr.style.cssText = "border:1px solid";
+					tr.style.cssText = "box-sizing:content-box;border:1px solid";
 
 					// Support: Chrome 86+
 					// Height set through cssText does not get applied.
@@ -6642,7 +6400,7 @@
 					// In our bodyBackground.html iframe,
 					// display for all div elements is set to "inline",
 					// which causes a problem only in Android 8 Chrome 86.
-					// Ensuring the div is display: block
+					// Ensuring the div is `display: block`
 					// gets around this issue.
 					trChild.style.display = "block";
 
@@ -6829,7 +6587,8 @@
 	function boxModelAdjustment( elem, dimension, box, isBorderBox, styles, computedVal ) {
 		var i = dimension === "width" ? 1 : 0,
 			extra = 0,
-			delta = 0;
+			delta = 0,
+			marginDelta = 0;
 
 		// Adjustment may not be necessary
 		if ( box === ( isBorderBox ? "border" : "content" ) ) {
@@ -6839,8 +6598,10 @@
 		for ( ; i < 4; i += 2 ) {
 
 			// Both box models exclude margin
+			// Count margin delta separately to only add it after scroll gutter adjustment.
+			// This is needed to make negative margins work with `outerHeight( true )` (gh-3982).
 			if ( box === "margin" ) {
-				delta += jQuery.css( elem, box + cssExpand[ i ], true, styles );
+				marginDelta += jQuery.css( elem, box + cssExpand[ i ], true, styles );
 			}
 
 			// If we get here with a content-box, we're seeking "padding" or "border" or "margin"
@@ -6891,7 +6652,7 @@
 			) ) || 0;
 		}
 
-		return delta;
+		return delta + marginDelta;
 	}
 
 	function getWidthOrHeight( elem, dimension, extra ) {
@@ -6989,26 +6750,35 @@
 
 		// Don't automatically add "px" to these possibly-unitless properties
 		cssNumber: {
-			"animationIterationCount": true,
-			"columnCount": true,
-			"fillOpacity": true,
-			"flexGrow": true,
-			"flexShrink": true,
-			"fontWeight": true,
-			"gridArea": true,
-			"gridColumn": true,
-			"gridColumnEnd": true,
-			"gridColumnStart": true,
-			"gridRow": true,
-			"gridRowEnd": true,
-			"gridRowStart": true,
-			"lineHeight": true,
-			"opacity": true,
-			"order": true,
-			"orphans": true,
-			"widows": true,
-			"zIndex": true,
-			"zoom": true
+			animationIterationCount: true,
+			aspectRatio: true,
+			borderImageSlice: true,
+			columnCount: true,
+			flexGrow: true,
+			flexShrink: true,
+			fontWeight: true,
+			gridArea: true,
+			gridColumn: true,
+			gridColumnEnd: true,
+			gridColumnStart: true,
+			gridRow: true,
+			gridRowEnd: true,
+			gridRowStart: true,
+			lineHeight: true,
+			opacity: true,
+			order: true,
+			orphans: true,
+			scale: true,
+			widows: true,
+			zIndex: true,
+			zoom: true,
+
+			// SVG-related
+			fillOpacity: true,
+			floodOpacity: true,
+			stopOpacity: true,
+			strokeMiterlimit: true,
+			strokeOpacity: true
 		},
 
 		// Add in properties whose names you wish to fix before
@@ -8734,9 +8504,39 @@
 
 
 	// Return jQuery for attributes-only inclusion
+	var location = window.location;
+
+	var nonce = { guid: Date.now() };
+
+	var rquery = ( /\?/ );
 
 
-	support.focusin = "onfocusin" in window;
+
+	// Cross-browser xml parsing
+	jQuery.parseXML = function( data ) {
+		var xml, parserErrorElem;
+		if ( !data || typeof data !== "string" ) {
+			return null;
+		}
+
+		// Support: IE 9 - 11 only
+		// IE throws on parseFromString with invalid input.
+		try {
+			xml = ( new window.DOMParser() ).parseFromString( data, "text/xml" );
+		} catch ( e ) {}
+
+		parserErrorElem = xml && xml.getElementsByTagName( "parsererror" )[ 0 ];
+		if ( !xml || parserErrorElem ) {
+			jQuery.error( "Invalid XML: " + (
+				parserErrorElem ?
+					jQuery.map( parserErrorElem.childNodes, function( el ) {
+						return el.textContent;
+					} ).join( "\n" ) :
+					data
+			) );
+		}
+		return xml;
+	};
 
 
 	var rfocusMorph = /^(?:focusinfocus|focusoutblur)$/,
@@ -8922,85 +8722,6 @@
 			}
 		}
 	} );
-
-
-	// Support: Firefox <=44
-	// Firefox doesn't have focus(in | out) events
-	// Related ticket - https://bugzilla.mozilla.org/show_bug.cgi?id=687787
-	//
-	// Support: Chrome <=48 - 49, Safari <=9.0 - 9.1
-	// focus(in | out) events fire after focus & blur events,
-	// which is spec violation - http://www.w3.org/TR/DOM-Level-3-Events/#events-focusevent-event-order
-	// Related ticket - https://bugs.chromium.org/p/chromium/issues/detail?id=449857
-	if ( !support.focusin ) {
-		jQuery.each( { focus: "focusin", blur: "focusout" }, function( orig, fix ) {
-
-			// Attach a single capturing handler on the document while someone wants focusin/focusout
-			var handler = function( event ) {
-				jQuery.event.simulate( fix, event.target, jQuery.event.fix( event ) );
-			};
-
-			jQuery.event.special[ fix ] = {
-				setup: function() {
-
-					// Handle: regular nodes (via `this.ownerDocument`), window
-					// (via `this.document`) & document (via `this`).
-					var doc = this.ownerDocument || this.document || this,
-						attaches = dataPriv.access( doc, fix );
-
-					if ( !attaches ) {
-						doc.addEventListener( orig, handler, true );
-					}
-					dataPriv.access( doc, fix, ( attaches || 0 ) + 1 );
-				},
-				teardown: function() {
-					var doc = this.ownerDocument || this.document || this,
-						attaches = dataPriv.access( doc, fix ) - 1;
-
-					if ( !attaches ) {
-						doc.removeEventListener( orig, handler, true );
-						dataPriv.remove( doc, fix );
-
-					} else {
-						dataPriv.access( doc, fix, attaches );
-					}
-				}
-			};
-		} );
-	}
-	var location = window.location;
-
-	var nonce = { guid: Date.now() };
-
-	var rquery = ( /\?/ );
-
-
-
-	// Cross-browser xml parsing
-	jQuery.parseXML = function( data ) {
-		var xml, parserErrorElem;
-		if ( !data || typeof data !== "string" ) {
-			return null;
-		}
-
-		// Support: IE 9 - 11 only
-		// IE throws on parseFromString with invalid input.
-		try {
-			xml = ( new window.DOMParser() ).parseFromString( data, "text/xml" );
-		} catch ( e ) {}
-
-		parserErrorElem = xml && xml.getElementsByTagName( "parsererror" )[ 0 ];
-		if ( !xml || parserErrorElem ) {
-			jQuery.error( "Invalid XML: " + (
-				parserErrorElem ?
-					jQuery.map( parserErrorElem.childNodes, function( el ) {
-						return el.textContent;
-					} ).join( "\n" ) :
-					data
-			) );
-		}
-		return xml;
-	};
 
 
 	var
@@ -10847,7 +10568,9 @@
 		},
 
 		hover: function( fnOver, fnOut ) {
-			return this.mouseenter( fnOver ).mouseleave( fnOut || fnOver );
+			return this
+				.on( "mouseenter", fnOver )
+				.on( "mouseleave", fnOut || fnOver );
 		}
 	} );
 
@@ -11761,13 +11484,13 @@
 	 * for consistency with historical behavior.
 	 */
 	let BlankDate$1 = class BlankDate extends Date {
-	  constructor() {
-	    super(NaN);
-	  }
+	    constructor() {
+	        super(NaN);
+	    }
 
-	  toString() {
-	    return '';
-	  }
+	    toString() {
+	        return '';
+	    }
 	};
 
 	/**
@@ -11777,20 +11500,20 @@
 	 * @return {string} a datetime string formatted according to RC3339 with local offset
 	 */
 	const toISOLocalString$1 = (date) => {
-	  //2012-09-05T12:57:00.000-04:00 (ODK)
+	    // 2012-09-05T12:57:00.000-04:00 (ODK)
 
-	  if(['Invalid Date', ''].includes(date.toString())) {
-	    return date.toString();
-	  }
+	    if (['Invalid Date', ''].includes(date.toString())) {
+	        return date.toString();
+	    }
 
-	  var dt = new Date(date.getTime() - (date.getTimezoneOffset() * 60 * 1000)).toISOString()
-	      .replace('Z', getTimezoneOffsetAsTime$1(date));
+	    const dt = new Date(date.getTime() - date.getTimezoneOffset() * 60 * 1000)
+	        .toISOString()
+	        .replace('Z', getTimezoneOffsetAsTime$1(date));
 
-	  if(dt.indexOf('T00:00:00.000') > 0) {
-	    return dt.split('T')[0];
-	  } else {
+	    if (dt.indexOf('T00:00:00.000') > 0) {
+	        return dt.split('T')[0];
+	    }
 	    return dt;
-	  }
 	};
 
 	/**
@@ -11798,66 +11521,65 @@
 	 * @return {string}
 	 */
 	const getTimezoneOffsetAsTime$1 = (date) => {
-	  var offsetMinutesTotal;
-	  var hours;
-	  var minutes;
-	  var direction;
-	  var pad2 = function(x) {
-	    return (x < 10) ? '0' + x : x;
-	  };
+	    const pad2 = function (x) {
+	        return x < 10 ? `0${x}` : x;
+	    };
 
-	  if(date.toString() === 'Invalid Date') {
-	    return date.toString();
-	  }
+	    if (date.toString() === 'Invalid Date') {
+	        return date.toString();
+	    }
 
-	  offsetMinutesTotal = date.getTimezoneOffset();
+	    const offsetMinutesTotal = date.getTimezoneOffset();
 
-	  direction = (offsetMinutesTotal < 0) ? '+' : '-';
-	  hours = pad2(Math.floor(Math.abs(offsetMinutesTotal / 60)));
-	  minutes = pad2(Math.floor(Math.abs(offsetMinutesTotal % 60)));
+	    const direction = offsetMinutesTotal < 0 ? '+' : '-';
+	    const hours = pad2(Math.floor(Math.abs(offsetMinutesTotal / 60)));
+	    const minutes = pad2(Math.floor(Math.abs(offsetMinutesTotal % 60)));
 
-	  return direction + hours + ':' + minutes;
+	    return `${direction + hours}:${minutes}`;
 	};
 
 	/**
 	 * @deprecated
 	 * @see {toISOLocalString}
 	 */
-	Date.prototype.toISOLocalString = function() {
-	  return toISOLocalString$1(this);
+	// eslint-disable-next-line no-extend-native
+	Date.prototype.toISOLocalString = function () {
+	    return toISOLocalString$1(this);
 	};
 
 	/**
 	 * @deprecated
 	 * @see {getTimezoneOffsetAsTime}
 	 */
-	Date.prototype.getTimezoneOffsetAsTime = function() {
-	  return getTimezoneOffsetAsTime$1(this);
+	// eslint-disable-next-line no-extend-native
+	Date.prototype.getTimezoneOffsetAsTime = function () {
+	    return getTimezoneOffsetAsTime$1(this);
 	};
 
 	var dateExtensions = {
-	  BlankDate: BlankDate$1,
-	  getTimezoneOffsetAsTime: getTimezoneOffsetAsTime$1,
-	  toISOLocalString: toISOLocalString$1,
+	    BlankDate: BlankDate$1,
+	    getTimezoneOffsetAsTime: getTimezoneOffsetAsTime$1,
+	    toISOLocalString: toISOLocalString$1,
 	};
 	var dateExtensions_2 = dateExtensions.getTimezoneOffsetAsTime;
 	var dateExtensions_3 = dateExtensions.toISOLocalString;
 
-	var DATE_STRING$2 = /^\d\d\d\d-\d{1,2}-\d{1,2}(?:T\d\d:\d\d:\d\d\.?\d?\d?(?:Z|[+-]\d\d:\d\d)|.*)?$/;
+	const DATE_STRING$2 =
+	    /^\d\d\d\d-\d{1,2}-\d{1,2}(?:T\d\d:\d\d:\d\d\.?\d?\d?(?:Z|[+-]\d\d:\d\d)|.*)?$/;
 
 	function dateToDays$2(d) {
-	  return d.getTime() / (1000 * 60 * 60 * 24);
+	    return d.getTime() / (1000 * 60 * 60 * 24);
 	}
 
 	function dateStringToDays$2(d) {
-	  var temp = null;
-	  if(d.indexOf('T') > 0) {
-	    temp = new Date(d);
-	  } else {
-	    temp = d.split('-');
-	    temp = new Date(temp[0], temp[1]-1, temp[2]);
-	  }
-	  return dateToDays$2(temp);
+	    let temp = null;
+	    if (d.indexOf('T') > 0) {
+	        temp = new Date(d);
+	    } else {
+	        temp = d.split('-');
+	        temp = new Date(temp[0], temp[1] - 1, temp[2]);
+	    }
+	    return dateToDays$2(temp);
 	}
 
 	/**
@@ -11867,15 +11589,18 @@
 	 * @param  {integer} y The year
 	 * @return {integer}   The number of days in the month
 	 */
-	var daysInMonth = function (m, y) {
-	  switch (m) {
-	    case 1 :
-	      return (y % 4 == 0 && y % 100) || y % 400 == 0 ? 29 : 28;
-	    case 8 : case 3 : case 5 : case 10 :
-	      return 30;
-	    default :
-	      return 31;
-	  }
+	const daysInMonth = function (m, y) {
+	    switch (m) {
+	        case 1:
+	            return (y % 4 === 0 && y % 100) || y % 400 === 0 ? 29 : 28;
+	        case 8:
+	        case 3:
+	        case 5:
+	        case 10:
+	            return 30;
+	        default:
+	            return 31;
+	    }
 	};
 
 	/**
@@ -11886,60 +11611,67 @@
 	 * @param  {[type]}  d The day
 	 * @return {Boolean}   Returns true if valid
 	 */
-	var isValidDate$1 = function (y, m, d) {
-	  m = parseInt(m, 10) - 1;
-	  return m >= 0 && m < 12 && d > 0 && d <= daysInMonth(m, y);
+	const isValidDate$1 = function (y, m, d) {
+	    m = parseInt(m, 10) - 1;
+	    return m >= 0 && m < 12 && d > 0 && d <= daysInMonth(m, y);
 	};
 
 	var date = {
-	  DATE_STRING: DATE_STRING$2,
-	  dateToDays: dateToDays$2,
-	  dateStringToDays: dateStringToDays$2,
-	  isValidDate: isValidDate$1
+	    DATE_STRING: DATE_STRING$2,
+	    dateToDays: dateToDays$2,
+	    dateStringToDays: dateStringToDays$2,
+	    isValidDate: isValidDate$1,
 	};
 
 	const { DATE_STRING: DATE_STRING$1, dateToDays: dateToDays$1, dateStringToDays: dateStringToDays$1 } = date;
 	const { toISOLocalString } = dateExtensions;
 
 	var xpathCast = {
-	  asBoolean: asBoolean$4,
-	  asNumber: asNumber$5,
-	  asString: asString$6,
+	    asBoolean: asBoolean$4,
+	    asNumber: asNumber$5,
+	    asString: asString$6,
 	};
 
 	// cast to boolean, as per https://www.w3.org/TR/1999/REC-xpath-19991116/#section-Boolean-Functions
 	function asBoolean$4(r) {
-	  if(isDomNode(r)) return !!asString$6(r).trim();
-	  switch(r.t) {
-	    case 'arr':  return !!r.v.length;
-	    case 'date': return !isNaN(r.v); // TODO should be handled in an extension rather than core code
-	    default:     return !!r.v;
-	  }
+	    if (isDomNode(r)) return !!asString$6(r).trim();
+	    switch (r.t) {
+	        case 'arr':
+	            return !!r.v.length;
+	        case 'date':
+	            return !Number.isNaN(Number(r.v)); // TODO should be handled in an extension rather than core code
+	        default:
+	            return !!r.v;
+	    }
 	}
 
 	// cast to number, as per https://www.w3.org/TR/1999/REC-xpath-19991116/#section-Number-Functions
 	function asNumber$5(r) {
-	  if(r.t === 'num')  return r.v;
-	  if(r.t === 'bool') return r.v ? 1 : 0;
-	  if(r.t === 'date') return dateToDays$1(r.v); // TODO should be handled in an extension rather than core code
+	    if (r.t === 'num') return r.v;
+	    if (r.t === 'bool') return r.v ? 1 : 0;
+	    if (r.t === 'date') return dateToDays$1(r.v); // TODO should be handled in an extension rather than core code
 
-	  const str = asString$6(r).trim();
-	  if(str === '') return NaN;
-	  if(DATE_STRING$1.test(str)) return dateStringToDays$1(str); // TODO should be handled in an extension rather than core code
-	  return +str;
+	    const str = asString$6(r).trim();
+	    if (str === '') return NaN;
+	    if (DATE_STRING$1.test(str)) return dateStringToDays$1(str); // TODO should be handled in an extension rather than core code
+	    return +str;
 	}
 
 	// cast to string, as per https://www.w3.org/TR/1999/REC-xpath-19991116/#section-String-Functions
 	function asString$6(r) {
-	  if(isDomNode(r)) return nodeToString(r);
-	  switch(r.t) {
-	    case 'str':  return r.v;
-	    case 'arr':  return r.v.length ? r.v[0].textContent || '' : '';
-	    case 'date': return toISOLocalString(r.v).replace(/T00:00:00.000.*/, ''); // TODO should be handled in an extension rather than core code
-	    case 'num':
-	    case 'bool':
-	    default:     return r.v.toString();
-	  }
+	    if (isDomNode(r)) return nodeToString(r);
+	    switch (r.t) {
+	        case 'str':
+	            return r.v;
+	        case 'arr':
+	            return r.v.length ? r.v[0].textContent || '' : '';
+	        case 'date':
+	            return toISOLocalString(r.v).replace(/T00:00:00.000.*/, ''); // TODO should be handled in an extension rather than core code
+	        case 'num':
+	        case 'bool':
+	        default:
+	            return r.v.toString();
+	    }
 	}
 
 	// Per https://www.w3.org/TR/1999/REC-xpath-19991116/#dt-string-value:
@@ -11951,17 +11683,20 @@
 	// 6. > The string-value of comment is the content of the comment not including the opening <!-- or the closing -->.
 	// 7. > The string-value of a text node is the character data.
 	function nodeToString(node) {
-	  switch(node.nodeType) {
-	    case Node.DOCUMENT_NODE: return node.documentElement.textContent;
-	    case Node.TEXT_NODE:
-	    case Node.CDATA_SECTION_NODE:
-	    case Node.PROCESSING_INSTRUCTION_NODE:
-	    case Node.COMMENT_NODE:
-	    case Node.ELEMENT_NODE:
-	      return node.textContent; // potentially not to spec for Element, but much simpler than recursing
-	    case Node.ATTRIBUTE_NODE: return node.value;
-	    default: throw new Error(`TODO No handling for node type: ${node.nodeType}`);
-	  }
+	    switch (node.nodeType) {
+	        case Node.DOCUMENT_NODE:
+	            return node.documentElement.textContent;
+	        case Node.TEXT_NODE:
+	        case Node.CDATA_SECTION_NODE:
+	        case Node.PROCESSING_INSTRUCTION_NODE:
+	        case Node.COMMENT_NODE:
+	        case Node.ELEMENT_NODE:
+	            return node.textContent; // potentially not to spec for Element, but much simpler than recursing
+	        case Node.ATTRIBUTE_NODE:
+	            return node.value;
+	        default:
+	            throw new Error(`TODO No handling for node type: ${node.nodeType}`);
+	    }
 	}
 
 	/**
@@ -11969,126 +11704,148 @@
 	 * @see https://developer.mozilla.org/en-US/docs/Web/API/Node
 	 */
 	function isDomNode(thing) {
-	  return thing instanceof Node;
+	    return thing instanceof Node;
 	}
 
-	var { asBoolean: asBoolean$3, asNumber: asNumber$4, asString: asString$5 } = xpathCast;
+	const { asBoolean: asBoolean$3, asNumber: asNumber$4, asString: asString$5 } = xpathCast;
 
 	var operation = {
-	  handleOperation:handleOperation$1,
+	    handleOperation: handleOperation$1,
 	};
 
 	// Operator constants copied from extended-xpath.js
-	const OR$1    = 0b00000;
-	const AND$1   = 0b00100;
-	const EQ$2    = 0b01000;
-	const NE$1    = 0b01001;
-	const LT$1    = 0b01100;
-	const LTE$1   = 0b01101;
-	const GT$1    = 0b01110;
-	const GTE$2   = 0b01111;
-	const PLUS$2  = 0b10000;
+	const OR$1 = 0b00000;
+	const AND$1 = 0b00100;
+	const EQ$2 = 0b01000;
+	const NE$1 = 0b01001;
+	const LT$1 = 0b01100;
+	const LTE$1 = 0b01101;
+	const GT$1 = 0b01110;
+	const GTE$2 = 0b01111;
+	const PLUS$2 = 0b10000;
 	const MINUS$2 = 0b10001;
-	const MULT$1  = 0b10100;
-	const DIV$1   = 0b10101;
-	const MOD$1   = 0b10110;
+	const MULT$1 = 0b10100;
+	const DIV$1 = 0b10101;
+	const MOD$1 = 0b10110;
 	const UNION$1 = 0b11000;
 
 	function handleOperation$1(lhs, op, rhs) {
-	  // comparison operators as per: https://www.w3.org/TR/1999/REC-xpath-19991116/#booleans
-	  switch(op) {
-	    case OR$1:    return asBoolean$3(lhs) || asBoolean$3(rhs);
-	    case AND$1:   return asBoolean$3(lhs) && asBoolean$3(rhs);
-	    case EQ$2:    return equalityCompare(lhs, rhs, (a, b) => a === b);
-	    case NE$1:    return equalityCompare(lhs, rhs, (a, b) => a !== b);
-	    case LT$1:    return relationalCompare(lhs, rhs, (a, b) => a <  b);
-	    case LTE$1:   return relationalCompare(lhs, rhs, (a, b) => a <= b);
-	    case GT$1:    return relationalCompare(lhs, rhs, (a, b) => a >  b);
-	    case GTE$2:   return relationalCompare(lhs, rhs, (a, b) => a >= b);
+	    // comparison operators as per: https://www.w3.org/TR/1999/REC-xpath-19991116/#booleans
+	    switch (op) {
+	        case OR$1:
+	            return asBoolean$3(lhs) || asBoolean$3(rhs);
+	        case AND$1:
+	            return asBoolean$3(lhs) && asBoolean$3(rhs);
+	        case EQ$2:
+	            return equalityCompare(lhs, rhs, (a, b) => a === b);
+	        case NE$1:
+	            return equalityCompare(lhs, rhs, (a, b) => a !== b);
+	        case LT$1:
+	            return relationalCompare(lhs, rhs, (a, b) => a < b);
+	        case LTE$1:
+	            return relationalCompare(lhs, rhs, (a, b) => a <= b);
+	        case GT$1:
+	            return relationalCompare(lhs, rhs, (a, b) => a > b);
+	        case GTE$2:
+	            return relationalCompare(lhs, rhs, (a, b) => a >= b);
 
-	    case PLUS$2:  return asNumber$4(lhs) + asNumber$4(rhs);
-	    case MINUS$2: return asNumber$4(lhs) - asNumber$4(rhs);
-	    case MULT$1:  return asNumber$4(lhs) * asNumber$4(rhs);
-	    case DIV$1:   return asNumber$4(lhs) / asNumber$4(rhs);
-	    case MOD$1:   return asNumber$4(lhs) % asNumber$4(rhs);
+	        case PLUS$2:
+	            return asNumber$4(lhs) + asNumber$4(rhs);
+	        case MINUS$2:
+	            return asNumber$4(lhs) - asNumber$4(rhs);
+	        case MULT$1:
+	            return asNumber$4(lhs) * asNumber$4(rhs);
+	        case DIV$1:
+	            return asNumber$4(lhs) / asNumber$4(rhs);
+	        case MOD$1:
+	            return asNumber$4(lhs) % asNumber$4(rhs);
 
-	    case UNION$1: return [...lhs.v, ...rhs.v];
-	    default: throw new Error(`No handling for op ${op}`);
-	  }
+	        case UNION$1:
+	            return [...lhs.v, ...rhs.v];
+	        default:
+	            throw new Error(`No handling for op ${op}`);
+	    }
 	}
 
 	function bothOf(lhs, rhs, t) {
-	  return lhs.t === t && rhs.t === t;
+	    return lhs.t === t && rhs.t === t;
 	}
 
 	function oneOf(lhs, rhs, t) {
-	  return lhs.t === t || rhs.t === t;
+	    return lhs.t === t || rhs.t === t;
 	}
 
 	function castFor(r) {
-	  switch(r.t) {
-	    case 'num': return asNumber$4;
-	    case 'str': return asString$5;
-	    default: throw new Error(`No cast for type: ${r.t}`);
-	  }
+	    switch (r.t) {
+	        case 'num':
+	            return asNumber$4;
+	        case 'str':
+	            return asString$5;
+	        default:
+	            throw new Error(`No cast for type: ${r.t}`);
+	    }
 	}
 
-
 	function relationalCompare(lhs, rhs, compareFn) {
-	  var i, j;
-	  if(bothOf(lhs, rhs, 'arr' )) {
-	    for(i=lhs.v.length-1; i>=0; --i) {
-	      for(j=rhs.v.length-1; j>=0; --j) {
-	        if(compareFn(asNumber$4(lhs.v[i]), asNumber$4(rhs.v[j]))) return true;
-	      }
+	    let i;
+	    let j;
+	    if (bothOf(lhs, rhs, 'arr')) {
+	        for (i = lhs.v.length - 1; i >= 0; --i) {
+	            for (j = rhs.v.length - 1; j >= 0; --j) {
+	                if (compareFn(asNumber$4(lhs.v[i]), asNumber$4(rhs.v[j])))
+	                    return true;
+	            }
+	        }
+	        return false;
 	    }
-	    return false;
-	  }
-	  if(lhs.t === 'arr') {
-	    rhs = asNumber$4(rhs);
-	    return lhs.v.map(asNumber$4).some(v => compareFn(v, rhs));
-	  }
-	  if(rhs.t === 'arr') {
-	    lhs = asNumber$4(lhs);
-	    return rhs.v.map(asNumber$4).some(v => compareFn(lhs, v));
-	  }
-	  return compareFn(asNumber$4(lhs), asNumber$4(rhs));
+	    if (lhs.t === 'arr') {
+	        rhs = asNumber$4(rhs);
+	        return lhs.v.map(asNumber$4).some((v) => compareFn(v, rhs));
+	    }
+	    if (rhs.t === 'arr') {
+	        lhs = asNumber$4(lhs);
+	        return rhs.v.map(asNumber$4).some((v) => compareFn(lhs, v));
+	    }
+	    return compareFn(asNumber$4(lhs), asNumber$4(rhs));
 	}
 
 	function equalityCompare(lhs, rhs, compareFn) {
-	  var i, j;
-	  if(bothOf(lhs, rhs, 'arr' )) {
-	    for(i=lhs.v.length-1; i>=0; --i) {
-	      for(j=rhs.v.length-1; j>=0; --j) {
-	        if(compareFn(lhs.v[i].textContent, rhs.v[j].textContent)) return true;
-	      }
+	    let i;
+	    let j;
+	    if (bothOf(lhs, rhs, 'arr')) {
+	        for (i = lhs.v.length - 1; i >= 0; --i) {
+	            for (j = rhs.v.length - 1; j >= 0; --j) {
+	                if (compareFn(lhs.v[i].textContent, rhs.v[j].textContent))
+	                    return true;
+	            }
+	        }
+	        return false;
 	    }
-	    return false;
-	  }
-	  if(oneOf(lhs, rhs, 'bool')) return compareFn(asBoolean$3(lhs), asBoolean$3(rhs));
-	  if(lhs.t === 'arr') {
-	    const cast = castFor(rhs);
-	    rhs = cast(rhs);
-	    return lhs.v.map(cast).some(v => compareFn(v, rhs));
-	  }
-	  if(rhs.t === 'arr') {
-	    const cast = castFor(lhs);
-	    lhs = cast(lhs);
-	    return rhs.v.map(cast).some(v => compareFn(v, lhs));
-	  }
-	  if(oneOf(lhs, rhs, 'num')) return compareFn(asNumber$4(lhs), asNumber$4(rhs));
-	  if(oneOf(lhs, rhs, 'str')) return compareFn(asString$5(lhs), asString$5(rhs));
-	  throw new Error('not handled yet for these types: ' + compareFn.toString());
+	    if (oneOf(lhs, rhs, 'bool'))
+	        return compareFn(asBoolean$3(lhs), asBoolean$3(rhs));
+	    if (lhs.t === 'arr') {
+	        const cast = castFor(rhs);
+	        rhs = cast(rhs);
+	        return lhs.v.map(cast).some((v) => compareFn(v, rhs));
+	    }
+	    if (rhs.t === 'arr') {
+	        const cast = castFor(lhs);
+	        lhs = cast(lhs);
+	        return rhs.v.map(cast).some((v) => compareFn(v, lhs));
+	    }
+	    if (oneOf(lhs, rhs, 'num')) return compareFn(asNumber$4(lhs), asNumber$4(rhs));
+	    if (oneOf(lhs, rhs, 'str')) return compareFn(asString$5(lhs), asString$5(rhs));
+	    throw new Error(`not handled yet for these types: ${compareFn.toString()}`);
 	}
 
 	/**
 	 * Internal representations of XPathResults
 	 */
 	var xpr = {
-	  boolean: v => ({ t:'bool', v }),
-	  number:  v => ({ t:'num',  v }),
-	  string:  v => ({ t:'str',  v }),
-	  date:    v => ({ t:'date', v }),
+	    boolean: (v) => ({ t: 'bool', v }),
+	    number: (v) => ({ t: 'num', v }),
+	    string: (v) => ({ t: 'str', v }),
+	    date: (v) => ({ t: 'date', v }),
 	};
 	xpr.number;
 	xpr.string;
@@ -12099,126 +11856,138 @@
 
 	var native_1 = { preprocessNativeArgs: preprocessNativeArgs$1 };
 
-	const cast$1 = { num:asNumber$3, str:asString$4 };
+	const cast$1 = { num: asNumber$3, str: asString$4 };
 
 	const fns = {
-	  'ceiling':          { min:1, max:1, cast:['num'] },
-	  'contains':         { min:2, max:2, cast:['str', 'str'] },
-	  'floor':            { min:1, max:1, cast:['num'] },
-	  'id':               { min:1, max:1, conv:r => [ xpr.string(r.t === 'arr' ? r.v.map(asString$4).join(' ') : asString$4(r)) ] },
-	  'lang':             { min:1, max:1, cast:['str'] },
-	  'starts-with':      { min:2, max:2, cast:['str', 'str'] },
-	  'substring':        { min:2, max:3, conv:convertSubstringArgs },
-	  'substring-after':  { min:2, max:2, cast:['str', 'str'] },
-	  'substring-before': { min:2, max:2, cast:['str', 'str'] },
-	  'translate':        { min:3, max:3, cast:['str', 'str', 'str'] },
+	    ceiling: { min: 1, max: 1, cast: ['num'] },
+	    contains: { min: 2, max: 2, cast: ['str', 'str'] },
+	    floor: { min: 1, max: 1, cast: ['num'] },
+	    id: {
+	        min: 1,
+	        max: 1,
+	        conv: (r) => [
+	            xpr.string(
+	                r.t === 'arr' ? r.v.map(asString$4).join(' ') : asString$4(r)
+	            ),
+	        ],
+	    },
+	    lang: { min: 1, max: 1, cast: ['str'] },
+	    'starts-with': { min: 2, max: 2, cast: ['str', 'str'] },
+	    substring: { min: 2, max: 3, conv: convertSubstringArgs },
+	    'substring-after': { min: 2, max: 2, cast: ['str', 'str'] },
+	    'substring-before': { min: 2, max: 2, cast: ['str', 'str'] },
+	    translate: { min: 3, max: 3, cast: ['str', 'str', 'str'] },
 	};
 
 	function preprocessNativeArgs$1(name, args) {
-	  const def = fns[name];
-	  if(!def) return args;
-	  if(args.length < def.min) throw new Error('too few args');
-	  if(args.length > def.max) throw new Error('too many args');
-	  if(def.conv) {
-	    return def.conv(...args);
-	  } else if(def.cast) {
-	    return args
-	      .map((v, i) => {
-	        const t = def.cast[i];
-	        return { t, v:cast$1[t](v) };
-	      });
-	  }
-	  return args;
+	    const def = fns[name];
+	    if (!def) return args;
+	    if (args.length < def.min) throw new Error('too few args');
+	    if (args.length > def.max) throw new Error('too many args');
+	    if (def.conv) {
+	        return def.conv(...args);
+	    }
+	    if (def.cast) {
+	        return args.map((v, i) => {
+	            const t = def.cast[i];
+	            return { t, v: cast$1[t](v) };
+	        });
+	    }
+	    return args;
 	}
 
 	function convertSubstringArgs(str, start, len) {
-	  // special cases explicitly defined in the spec
-	  //
-	  // - substring("12345",      1.5,     2.6) returns "234"
-	  // - substring("12345",        0,       3) returns "12"
-	  // - substring("12345",  0 div 0,       3) returns ""
-	  // - substring("12345",        1, 0 div 0) returns ""
-	  // - substring("12345",      -42, 1 div 0) returns "12345"
-	  // - substring("12345", -1 div 0, 1 div 0) returns ""
-	  //
-	  // see: https://www.w3.org/TR/1999/REC-xpath-19991116/#function-substring
-	  //
-	  // Try digesting this:
-	  //
-	  // > The returned substring contains those characters for which the position
-	  // > of the character is greater than or equal to the rounded value of the
-	  // > second argument and, if the third argument is specified, less than the
-	  // > sum of the rounded value of the second argument and the rounded value
-	  // > of the third argument.
-	  //
-	  // The apparent contradictory nature of the final two examples hinges on
-	  // IEEE 754-1985 section 7.1 "Invalid Operation" which states:
-	  //
-	  // > The invalid operation exception is signaled if an operand is invalid
-	  // > for the operation on to be performed.  The result, when the exception
-	  // > occurs without a trap, shall be a quiet NaN...
-	  // > ...
-	  // > 2) Addition or subtraction—magnitude subtraction of infinites such as, (+∞) + (−∞)
-	  //
-	  // Firefox and Chrome XPath implementations agree that
-	  // (Infinity + -Infinity) evaluates to NaN.
-	  //
-	  // And here's an extra special example not defined in the spec:
-	  //
-	  // - substring("12345", -1 div 0)
-	  //
-	  // IEEE 754-1985 section 6.1 "Infinity Arithmetic" states:
-	  //
-	  // > Infinites shall be interpreted in the affine sense, that is,
-	  // > −∞ < (every finite number) < +∞
-	  //
-	  // By my reading, this means substring("12345", -1 div 0) should return
-	  // "12345".  Firefox and Chrome XPath implementations disagree with this,
-	  // but here we have special handling for it:
+	    // special cases explicitly defined in the spec
+	    //
+	    // - substring("12345",      1.5,     2.6) returns "234"
+	    // - substring("12345",        0,       3) returns "12"
+	    // - substring("12345",  0 div 0,       3) returns ""
+	    // - substring("12345",        1, 0 div 0) returns ""
+	    // - substring("12345",      -42, 1 div 0) returns "12345"
+	    // - substring("12345", -1 div 0, 1 div 0) returns ""
+	    //
+	    // see: https://www.w3.org/TR/1999/REC-xpath-19991116/#function-substring
+	    //
+	    // Try digesting this:
+	    //
+	    // > The returned substring contains those characters for which the position
+	    // > of the character is greater than or equal to the rounded value of the
+	    // > second argument and, if the third argument is specified, less than the
+	    // > sum of the rounded value of the second argument and the rounded value
+	    // > of the third argument.
+	    //
+	    // The apparent contradictory nature of the final two examples hinges on
+	    // IEEE 754-1985 section 7.1 "Invalid Operation" which states:
+	    //
+	    // > The invalid operation exception is signaled if an operand is invalid
+	    // > for the operation on to be performed.  The result, when the exception
+	    // > occurs without a trap, shall be a quiet NaN...
+	    // > ...
+	    // > 2) Addition or subtraction—magnitude subtraction of infinites such as, (+∞) + (−∞)
+	    //
+	    // Firefox and Chrome XPath implementations agree that
+	    // (Infinity + -Infinity) evaluates to NaN.
+	    //
+	    // And here's an extra special example not defined in the spec:
+	    //
+	    // - substring("12345", -1 div 0)
+	    //
+	    // IEEE 754-1985 section 6.1 "Infinity Arithmetic" states:
+	    //
+	    // > Infinites shall be interpreted in the affine sense, that is,
+	    // > −∞ < (every finite number) < +∞
+	    //
+	    // By my reading, this means substring("12345", -1 div 0) should return
+	    // "12345".  Firefox and Chrome XPath implementations disagree with this,
+	    // but here we have special handling for it:
 
-	  str = xpr.string(asString$4(str));
-	  start = asNumber$3(start);
-	  if(len === undefined) {
-	    return [ str, xpr.number(Math.max(0, start)) ];
-	  }
+	    str = xpr.string(asString$4(str));
+	    start = asNumber$3(start);
+	    if (len === undefined) {
+	        return [str, xpr.number(Math.max(0, start))];
+	    }
 
-	  return [ str, xpr.number(start), xpr.number(asNumber$3(len)) ];
+	    return [str, xpr.number(start), xpr.number(asNumber$3(len))];
 	}
 
-	var sortByDocumentOrder = function(ir) {
-	  if(ir.ordrd) return;
-	  ir.v.sort(byDocumentOrder);
+	var sortByDocumentOrder = function (ir) {
+	    if (ir.ordrd) return;
+	    ir.v.sort(byDocumentOrder);
 	};
 
 	function byDocumentOrder(a, b) {
-	  var compare = a.compareDocumentPosition(b);
-	  if(compare & Node.DOCUMENT_POSITION_PRECEDING) {
-	    return 1;
-	  }
-	  if(compare & Node.DOCUMENT_POSITION_FOLLOWING) {
-	    return -1;
-	  }
-	  return 0;
+	    const compare = a.compareDocumentPosition(b);
+	    // eslint-disable-next-line no-bitwise -- expected usage
+	    if (compare & Node.DOCUMENT_POSITION_PRECEDING) {
+	        return 1;
+	    }
+	    // eslint-disable-next-line no-bitwise -- expected usage
+	    if (compare & Node.DOCUMENT_POSITION_FOLLOWING) {
+	        return -1;
+	    }
+	    return 0;
 	}
 
 	var result = { toSnapshotResult: toSnapshotResult$1 };
 
 	function toSnapshotResult$1(arr, resultType, singleItem) {
-	  if( resultType === XPathResult.ORDERED_NODE_ITERATOR_TYPE ||
-	      resultType === XPathResult.ORDERED_NODE_SNAPSHOT_TYPE) {
-	    sortByDocumentOrder(arr);
-	  }
+	    if (
+	        resultType === XPathResult.ORDERED_NODE_ITERATOR_TYPE ||
+	        resultType === XPathResult.ORDERED_NODE_SNAPSHOT_TYPE
+	    ) {
+	        sortByDocumentOrder(arr);
+	    }
 
-	  return (nodes => {
-	    let idx = 0;
-	    return {
-	      resultType,
-	      singleNodeValue: singleItem || nodes[0] || null,
-	      snapshotLength: nodes.length,
-	      snapshotItem: i => nodes[i] || null,
-	      iterateNext: () => nodes[idx++] || null,
-	    };
-	  })(arr.v);
+	    return ((nodes) => {
+	        let idx = 0;
+	        return {
+	            resultType,
+	            singleNodeValue: singleItem || nodes[0] || null,
+	            snapshotLength: nodes.length,
+	            snapshotItem: (i) => nodes[i] || null,
+	            iterateNext: () => nodes[idx++] || null,
+	        };
+	    })(arr.v);
 	}
 
 	const { handleOperation } = operation;
@@ -12235,545 +12004,694 @@
 	 * can be inlined.  Copy/paste the definitions into other files where they are
 	 * used.
 	 */
-	const OR    = 0b00000;
+	const OR = 0b00000;
 	// --- precedence group separator
-	const AND   = 0b00100;
+	const AND = 0b00100;
 	// --- precedence group separator
-	const EQ$1    = 0b01000;
-	const NE    = 0b01001;
+	const EQ$1 = 0b01000;
+	const NE = 0b01001;
 	// --- precedence group separator
-	const LT    = 0b01100;
-	const LTE   = 0b01101;
-	const GT    = 0b01110;
-	const GTE$1   = 0b01111;
+	const LT = 0b01100;
+	const LTE = 0b01101;
+	const GT = 0b01110;
+	const GTE$1 = 0b01111;
 	// --- precedence group separator
-	const PLUS$1  = 0b10000;
+	const PLUS$1 = 0b10000;
 	const MINUS$1 = 0b10001;
 	// --- precedence group separator
-	const MULT  = 0b10100;
-	const DIV   = 0b10101;
-	const MOD   = 0b10110;
+	const MULT = 0b10100;
+	const DIV = 0b10101;
+	const MOD = 0b10110;
 	// --- precedence group separator
 	const UNION = 0b11000;
 	// --- end operators
 
 	const FUNCTION_NAME = /^[a-z]/;
-	const D$1 = 0xDEAD; // dead-end marker for the unevaluated side of a lazy expression
+	const D$1 = 0xdead; // dead-end marker for the unevaluated side of a lazy expression
 
-	var extendedXpath = function(wrapped, extensions) {
-	  const
-	    extendedFuncs = extensions.func || {},
-	    extendedProcessors = extensions.process || {},
-	    toInternalResult = function(r) {
-	      let v, i, ordrd;
-	      switch(r.resultType) {
-	        case XPathResult.NUMBER_TYPE:  return { t:'num',  v:r.numberValue  };
-	        case XPathResult.BOOLEAN_TYPE: return { t:'bool', v:r.booleanValue };
-	        case XPathResult.STRING_TYPE:  return { t:'str',  v:r.stringValue  };
-	        case XPathResult.ORDERED_NODE_ITERATOR_TYPE:
-	          ordrd = true;
-	          /* falls through */
-	        case XPathResult.UNORDERED_NODE_ITERATOR_TYPE:
-	          v = [];
-	          while((i = r.iterateNext())) v.push(i);
-	          return { t:'arr', v, ordrd };
-	        case XPathResult.ORDERED_NODE_SNAPSHOT_TYPE:
-	          ordrd = true;
-	          /* falls through */
-	        case XPathResult.UNORDERED_NODE_SNAPSHOT_TYPE:
-	          v = [];
-	          for(i=0; i<r.snapshotLength; ++i) {
-	            v.push(r.snapshotItem(i));
-	          }
-	          return { t:'arr', v, ordrd };
-	        case XPathResult.ANY_UNORDERED_NODE_TYPE:
-	        case XPathResult.FIRST_ORDERED_NODE_TYPE:
-	          return { t:'arr', v:[r.singleNodeValue] };
-	        default:
-	          throw new Error(`no handling for result type: ${r.resultType}`);
-	      }
-	    },
-	    toExternalResult = function(r, rt) {
-	      if(extendedProcessors.toExternalResult) {
-	        const res = extendedProcessors.toExternalResult(r, rt);
-	        if(res) return res;
-	      }
+	var extendedXpath = function (wrapped, extensions) {
+	    const extendedFuncs = extensions.func || {};
+	    const extendedProcessors = extensions.process || {};
+	    const toInternalResult = function (r) {
+	        let v;
+	        let i;
+	        let ordrd;
+	        switch (r.resultType) {
+	            case XPathResult.NUMBER_TYPE:
+	                return { t: 'num', v: r.numberValue };
+	            case XPathResult.BOOLEAN_TYPE:
+	                return { t: 'bool', v: r.booleanValue };
+	            case XPathResult.STRING_TYPE:
+	                return { t: 'str', v: r.stringValue };
+	            case XPathResult.ORDERED_NODE_ITERATOR_TYPE:
+	                ordrd = true;
+	            /* falls through */
+	            case XPathResult.UNORDERED_NODE_ITERATOR_TYPE:
+	                v = [];
+	                // eslint-disable-next-line no-cond-assign
+	                while ((i = r.iterateNext())) v.push(i);
+	                return { t: 'arr', v, ordrd };
+	            case XPathResult.ORDERED_NODE_SNAPSHOT_TYPE:
+	                ordrd = true;
+	            /* falls through */
+	            case XPathResult.UNORDERED_NODE_SNAPSHOT_TYPE:
+	                v = [];
+	                for (i = 0; i < r.snapshotLength; ++i) {
+	                    v.push(r.snapshotItem(i));
+	                }
+	                return { t: 'arr', v, ordrd };
+	            case XPathResult.ANY_UNORDERED_NODE_TYPE:
+	            case XPathResult.FIRST_ORDERED_NODE_TYPE:
+	                return { t: 'arr', v: [r.singleNodeValue] };
+	            default:
+	                throw new Error(`no handling for result type: ${r.resultType}`);
+	        }
+	    };
+	    const toExternalResult = function (r, rt) {
+	        if (extendedProcessors.toExternalResult) {
+	            const res = extendedProcessors.toExternalResult(r, rt);
+	            if (res) return res;
+	        }
 
-	      switch(rt) {
-	        case null:
-	        case undefined:
-	        case XPathResult.ANY_TYPE:
-	          // derive return type from the return value
-	          switch(r.t) {
-	            case 'num':  return toExternalResult(r, XPathResult.NUMBER_TYPE);
-	            case 'str':  return toExternalResult(r, XPathResult.STRING_TYPE);
-	            case 'bool': return toExternalResult(r, XPathResult.BOOLEAN_TYPE);
-	            case 'arr':  return toExternalResult(r, XPathResult.UNORDERED_NODE_ITERATOR_TYPE);
-	            default: throw new Error('unrecognised internal type: ' + r.t);
-	          }
-	        case XPathResult.NUMBER_TYPE:  return { resultType:rt, stringValue:asString$3(r), numberValue:asNumber$2(r) };
-	        case XPathResult.STRING_TYPE:  return { resultType:rt, stringValue:asString$3(r) };
-	        case XPathResult.BOOLEAN_TYPE: return { resultType:rt, stringValue:asString$3(r), booleanValue:asBoolean$2(r) };
-	        case XPathResult.UNORDERED_NODE_ITERATOR_TYPE:
-	        case XPathResult.ORDERED_NODE_ITERATOR_TYPE:
-	        case XPathResult.UNORDERED_NODE_SNAPSHOT_TYPE:
-	        case XPathResult.ORDERED_NODE_SNAPSHOT_TYPE:
-	        case XPathResult.ANY_UNORDERED_NODE_TYPE:
-	        case XPathResult.FIRST_ORDERED_NODE_TYPE:
-	          return toSnapshotResult(r, rt);
-	        default: throw new Error('unrecognised return type:', rt);
-	      }
-	    },
-	    typefor = function(val) {
-	      if(extendedProcessors.typefor) {
-	        const res = extendedProcessors.typefor(val);
-	        if(res) return res;
-	      }
-	      if(typeof val === 'boolean') return 'bool';
-	      if(typeof val === 'number')  return 'num';
-	      return 'str';
+	        switch (rt) {
+	            case null:
+	            case undefined:
+	            case XPathResult.ANY_TYPE:
+	                // derive return type from the return value
+	                switch (r.t) {
+	                    case 'num':
+	                        return toExternalResult(r, XPathResult.NUMBER_TYPE);
+	                    case 'str':
+	                        return toExternalResult(r, XPathResult.STRING_TYPE);
+	                    case 'bool':
+	                        return toExternalResult(r, XPathResult.BOOLEAN_TYPE);
+	                    case 'arr':
+	                        return toExternalResult(
+	                            r,
+	                            XPathResult.UNORDERED_NODE_ITERATOR_TYPE
+	                        );
+	                    default:
+	                        throw new Error(`unrecognised internal type: ${r.t}`);
+	                }
+	            case XPathResult.NUMBER_TYPE:
+	                return {
+	                    resultType: rt,
+	                    stringValue: asString$3(r),
+	                    numberValue: asNumber$2(r),
+	                };
+	            case XPathResult.STRING_TYPE:
+	                return { resultType: rt, stringValue: asString$3(r) };
+	            case XPathResult.BOOLEAN_TYPE:
+	                return {
+	                    resultType: rt,
+	                    stringValue: asString$3(r),
+	                    booleanValue: asBoolean$2(r),
+	                };
+	            case XPathResult.UNORDERED_NODE_ITERATOR_TYPE:
+	            case XPathResult.ORDERED_NODE_ITERATOR_TYPE:
+	            case XPathResult.UNORDERED_NODE_SNAPSHOT_TYPE:
+	            case XPathResult.ORDERED_NODE_SNAPSHOT_TYPE:
+	            case XPathResult.ANY_UNORDERED_NODE_TYPE:
+	            case XPathResult.FIRST_ORDERED_NODE_TYPE:
+	                return toSnapshotResult(r, rt);
+	            default:
+	                throw new Error('unrecognised return type:', rt);
+	        }
+	    };
+	    const typefor = function (val) {
+	        if (extendedProcessors.typefor) {
+	            const res = extendedProcessors.typefor(val);
+	            if (res) return res;
+	        }
+	        if (typeof val === 'boolean') return 'bool';
+	        if (typeof val === 'number') return 'num';
+	        return 'str';
 	    };
 
-	  /**
-	   * @type {typeof document.evaluate}
-	   * @see https://developer.mozilla.org/en-US/docs/Web/API/Document/evaluate
-	   */
-	  const evaluate = this.evaluate = function(input, cN, nR, rT, _, contextSize=1, contextPosition=1) {
-	    let i, cur;
-	    const stack = [{ t:'root', tokens:[] }],
-	      peek = () => stack[stack.length-1],
-	      pushToken = t => {
-	        const { tokens } = peek();
-	        if(prevToken() !== D$1 || t !== D$1) tokens.push(t);
-	      },
-	      isDeadBranch = () => {
-	        const { dead, t, tokens } = peek();
-	        if(dead) return true;
-	        if(t === 'fn') {
-	          return prevToken() === D$1;
-	        } else {
-	          return tokens.includes(D$1);
-	        }
-	      },
-	      err = m => { throw new Error((m||'') + JSON.stringify({ stack, cur })); },
-	      newCurrent = function() { cur = { v:'' }; },
-	      pushOp = function(t) {
-	        if(t <= AND) {
-	          evalOps(t);
-	        }
-
-	        pushToken({ t:'op', v:t });
-
-	        if(t <= AND) {
-	          const { tokens } = peek();
-	          const prev = asBoolean$2(tokens[tokens.length-2]);
-	          if(t === OR ? prev : !prev) pushToken(D$1);
-	        }
-
-	        newCurrent();
-	      },
-	      callFn = function(name, supplied) {
-	        // Every second arg should be a comma, but we allow for a trailing comma.
-	        // From the spec, this looks valid, if you assume that ExprWhitespace is a
-	        // valid Expr.
-	        // see: https://www.w3.org/TR/1999/REC-xpath-19991116/#section-Function-Calls
-	        const args = [];
-	        for(let i=0; i<supplied.length; ++i) {
-	          if(i % 2) {
-	            if(supplied[i] !== ',') throw new Error('Weird args (should be separated by commas):' + JSON.stringify(supplied));
-	          } else args.push(supplied[i]);
-	        }
-
-	        if(Object.prototype.hasOwnProperty.call(extendedFuncs, name)) {
-	          return extendedFuncs[name].apply({ cN, contextSize, contextPosition }, args);
-	        }
-
-	        return callNative(name, preprocessNativeArgs(name, args));
-	      },
-	      callNative = function(name, args) {
-	        let argString = name + '(';
-	        for(let i=0; i<args.length; ++i) {
-	          if(i) argString += ',';
-	          const arg = args[i];
-	          switch(arg.t) {
-	            case 'arr': throw new Error(`callNative() can't handle nodeset functions yet for ${name}()`);
-	            case 'bool': argString += arg.v + '()'; break;
-	            case 'num':
-	              if     (arg.v ===  Infinity) argString += '( 1 div 0)';
-	              else if(arg.v === -Infinity) argString += '(-1 div 0)';
-	              else                         argString += arg.v.toFixed(20); // Prevent JS from converting to scientific notation
-	              break;
-	            case 'str': {
-	              const quote = arg.quote || (arg.v.indexOf('"') === -1 ? '"' : "'");
-	              // Firefox's native XPath implementation is 3.0, but Chrome's is 1.0.
-	              // XPath 1.0 has no support for escaping quotes in strings, so:
-	              if(arg.v.indexOf(quote) !== -1) throw new Error('Quote character found in String Literal: ' + JSON.stringify(arg.v));
-	              argString += quote + arg.v + quote;
+	    /**
+	     * @type {typeof document.evaluate}
+	     * @see https://developer.mozilla.org/en-US/docs/Web/API/Document/evaluate
+	     */
+	    const evaluate = function (
+	        input,
+	        cN,
+	        nR,
+	        rT,
+	        _,
+	        contextSize = 1,
+	        contextPosition = 1
+	    ) {
+	        let i;
+	        let cur;
+	        const stack = [{ t: 'root', tokens: [] }];
+	        const peek = () => stack[stack.length - 1];
+	        const pushToken = (t) => {
+	            const { tokens } = peek();
+	            if (prevToken() !== D$1 || t !== D$1) tokens.push(t);
+	        };
+	        const isDeadBranch = () => {
+	            const { dead, t, tokens } = peek();
+	            if (dead) return true;
+	            if (t === 'fn') {
+	                return prevToken() === D$1;
 	            }
-	            // there aren't any other native types TODO do we need a hook for allowing date conversion?
-	          }
-	        }
-	        return toInternalResult(wrapped.evaluate(argString + ')', cN, nR, XPathResult.ANY_TYPE, null));
-	      },
-	      evalOp = function(lhs, op, rhs) {
-	        if(op > AND && (lhs === D$1 || rhs === D$1)) {
-	          return D$1;
-	        }
-	        if(extendedProcessors.handleInfix) {
-	          let res = extendedProcessors.handleInfix(err, lhs, op, rhs);
-	          if(res && res.t === 'continue') {
-	            lhs = res.lhs; op = res.op; rhs = res.rhs; res = null;
-	          }
-
-	          if(typeof res !== 'undefined' && res !== null) return res;
-	        }
-	        return handleOperation(lhs, op, rhs);
-	      },
-	      evalOps = function(lastOp) {
-	        const { tokens } = peek();
-
-	        if(tokens.length < 2) return;
-
-	        if(tokens[2] === D$1 && tokens[1].v >= lastOp) {
-	          const endExpr = tokens.indexOf(',', 2);
-	          tokens.splice(0, endExpr === -1 ? tokens.length : endExpr, { t:'bool', v:asBoolean$2(tokens[0]) });
-	        }
-
-	        for(let j=UNION; j>=lastOp; j-=0b100) {
-	          let i = 1;
-	          while(i < tokens.length-1) {
-	            if(tokens[i].t === 'op' && tokens[i].v >= j) {
-	              const res = evalOp(tokens[i-1], tokens[i].v, tokens[i+1]);
-	              tokens.splice(i, 2);
-	              tokens[i-1] = { t:typefor(res), v:res };
-	            } else ++i;
-	          }
-	        }
-	      },
-	      handleXpathExpr = function() {
-	        if(isDeadBranch()) {
-	          newCurrent();
-	          return;
-	        }
-	        let expr = cur.v;
-	        const prev = prevToken();
-	        if(prev && prev.t === 'arr') {
-	          // chop the leading slash from expr
-	          if(expr.charAt(0) !== '/') err(`not sure how to handle expression called on nodeset that doesn't start with a '/': ${expr}`);
-	          // prefix a '.' to make the expression relative to the context node:
-	          expr = wrapped.createExpression('.' + expr, nR);
-	          const newNodeset = [];
-	          prev.v.forEach(node => {
-	            const res = toInternalResult(expr.evaluate(node));
-	            newNodeset.push(...res.v);
-	          });
-	          prev.v = newNodeset;
-	        } else {
-	          // This addresses a bug in Chrome and Safari, where an absolute
-	          // nodeset expression evaluated with an attribute contex node
-	          // does not evaluate to that nodeset as expected. Using the
-	          // attribute's owner document evaluates the expression correctly,
-	          // ensuring consistent behavior between Chrome, Safari and Firefox.
-	          const contextNode = (
-	            cN?.nodeType === Node.ATTRIBUTE_NODE && expr.startsWith('/')
-	              ? cN.ownerDocument
-	              : cN
-	          );
-
-	          pushToken(toInternalResult(wrapped.evaluate(expr, contextNode, nR, XPathResult.ANY_TYPE, null)));
-	        }
-
-	        newCurrent();
-	      },
-	      nextChar = function() {
-	        return input.charAt(i+1);
-	      },
-	      finaliseNum = function() {
-	        cur.v = parseFloat(cur.str);
-	        pushToken(cur);
-	        newCurrent();
-	      },
-	      prevToken = function() {
-	        const peeked = peek().tokens;
-	        return peeked[peeked.length - 1];
-	      },
-	      isNum = function(c) {
-	        return c >= '0' && c <= '9';
-	      };
-
-	    newCurrent();
-
-	    for(i=0; i<input.length; ++i) {
-	      const c = input.charAt(i);
-	      if(cur.t === 'sq') {
-	        // Build the entire expression found within the square brackets:
-	        //
-	        // > A predicate filters a node-set with respect to an axis to produce a
-	        // > new node-set. For each node in the node-set to be filtered, the
-	        // > PredicateExpr is evaluated with that node as the context node, with
-	        // > the number of nodes in the node-set as the context size, and with
-	        // > the proximity position of the node in the node-set with respect to
-	        // > the axis as the context position; if PredicateExpr evaluates to
-	        // > true for that node, the node is included in the new node-set;
-	        // > otherwise, it is not included.
-	        //   - https://www.w3.org/TR/1999/REC-xpath-19991116/#predicates
-	        //
-	        // Note because the ']' character is allowed within a Literal (string),
-	        // there is special handling for tracking when we're within a string.
-	        if(cur.inString) {
-	          if(cur.inString === c) delete cur.inString;
-	        } else if(c === '[') {
-	          ++cur.depth;
-	        } else if(c === '\'' || c === '"') {
-	          cur.inString = c;
-	        } else if(c === ']') {
-	          if(--cur.depth) {
-	            cur.v += c;
-	          } else {
-	            if(isDeadBranch()) {
-	              newCurrent();
-	              continue;
+	            return tokens.includes(D$1);
+	        };
+	        const err = (m) => {
+	            throw new Error((m || '') + JSON.stringify({ stack, cur }));
+	        };
+	        const newCurrent = function () {
+	            cur = { v: '' };
+	        };
+	        const pushOp = function (t) {
+	            if (t <= AND) {
+	                evalOps(t);
 	            }
-	            let contextNodes;
+
+	            pushToken({ t: 'op', v: t });
+
+	            if (t <= AND) {
+	                const { tokens } = peek();
+	                const prev = asBoolean$2(tokens[tokens.length - 2]);
+	                if (t === OR ? prev : !prev) pushToken(D$1);
+	            }
+
+	            newCurrent();
+	        };
+	        const callFn = function (name, supplied) {
+	            // Every second arg should be a comma, but we allow for a trailing comma.
+	            // From the spec, this looks valid, if you assume that ExprWhitespace is a
+	            // valid Expr.
+	            // see: https://www.w3.org/TR/1999/REC-xpath-19991116/#section-Function-Calls
+	            const args = [];
+	            for (let i = 0; i < supplied.length; ++i) {
+	                if (i % 2) {
+	                    if (supplied[i] !== ',')
+	                        throw new Error(
+	                            `Weird args (should be separated by commas):${JSON.stringify(
+                                supplied
+                            )}`
+	                        );
+	                } else args.push(supplied[i]);
+	            }
+
+	            if (Object.prototype.hasOwnProperty.call(extendedFuncs, name)) {
+	                return extendedFuncs[name].apply(
+	                    { cN, contextSize, contextPosition },
+	                    args
+	                );
+	            }
+
+	            return callNative(name, preprocessNativeArgs(name, args));
+	        };
+	        const callNative = function (name, args) {
+	            let argString = `${name}(`;
+	            for (let i = 0; i < args.length; ++i) {
+	                if (i) argString += ',';
+	                const arg = args[i];
+	                switch (arg.t) {
+	                    case 'arr':
+	                        throw new Error(
+	                            `callNative() can't handle nodeset functions yet for ${name}()`
+	                        );
+	                    case 'bool':
+	                        argString += `${arg.v}()`;
+	                        break;
+	                    case 'num':
+	                        if (arg.v === Infinity) argString += '( 1 div 0)';
+	                        else if (arg.v === -Infinity) argString += '(-1 div 0)';
+	                        else argString += arg.v.toFixed(20); // Prevent JS from converting to scientific notation
+	                        break;
+	                    case 'str': {
+	                        const quote =
+	                            arg.quote ||
+	                            (arg.v.indexOf('"') === -1 ? '"' : "'");
+	                        // Firefox's native XPath implementation is 3.0, but Chrome's is 1.0.
+	                        // XPath 1.0 has no support for escaping quotes in strings, so:
+	                        if (arg.v.indexOf(quote) !== -1)
+	                            throw new Error(
+	                                `Quote character found in String Literal: ${JSON.stringify(
+                                    arg.v
+                                )}`
+	                            );
+	                        argString += quote + arg.v + quote;
+
+	                        break;
+	                    }
+	                }
+	            }
+	            return toInternalResult(
+	                wrapped.evaluate(
+	                    `${argString})`,
+	                    cN,
+	                    nR,
+	                    XPathResult.ANY_TYPE,
+	                    null
+	                )
+	            );
+	        };
+	        const evalOp = function (lhs, op, rhs) {
+	            if (op > AND && (lhs === D$1 || rhs === D$1)) {
+	                return D$1;
+	            }
+	            if (extendedProcessors.handleInfix) {
+	                let res = extendedProcessors.handleInfix(err, lhs, op, rhs);
+	                if (res && res.t === 'continue') {
+	                    lhs = res.lhs;
+	                    op = res.op;
+	                    rhs = res.rhs;
+	                    res = null;
+	                }
+
+	                if (typeof res !== 'undefined' && res !== null) return res;
+	            }
+	            return handleOperation(lhs, op, rhs);
+	        };
+	        const evalOps = function (lastOp) {
+	            const { tokens } = peek();
+
+	            if (tokens.length < 2) return;
+
+	            if (tokens[2] === D$1 && tokens[1].v >= lastOp) {
+	                const endExpr = tokens.indexOf(',', 2);
+	                tokens.splice(0, endExpr === -1 ? tokens.length : endExpr, {
+	                    t: 'bool',
+	                    v: asBoolean$2(tokens[0]),
+	                });
+	            }
+
+	            for (let j = UNION; j >= lastOp; j -= 0b100) {
+	                let i = 1;
+	                while (i < tokens.length - 1) {
+	                    if (tokens[i].t === 'op' && tokens[i].v >= j) {
+	                        const res = evalOp(
+	                            tokens[i - 1],
+	                            tokens[i].v,
+	                            tokens[i + 1]
+	                        );
+	                        tokens.splice(i, 2);
+	                        tokens[i - 1] = { t: typefor(res), v: res };
+	                    } else ++i;
+	                }
+	            }
+	        };
+	        const handleXpathExpr = function () {
+	            if (isDeadBranch()) {
+	                newCurrent();
+	                return;
+	            }
+	            let expr = cur.v;
 	            const prev = prevToken();
-	            if(prev.t === 'arr') {
-	              contextNodes = prev.v;
-	            } else throw new Error('Not sure how to handle context node for predicate in this situation.');
-
-	            // > A PredicateExpr is evaluated by evaluating the Expr and converting
-	            // > the result to a boolean. If the result is a number, the result will
-	            // > be converted to true if the number is equal to the context position
-	            // > and will be converted to false otherwise; if the result is not a
-	            // > number, then the result will be converted as if by a call to the
-	            // > boolean function. Thus a location path para[3] is equivalent to
-	            // > para[position()=3].
-	            //   - https://www.w3.org/TR/1999/REC-xpath-19991116/#predicates
-	            const expr = cur.v;
-	            const filteredNodes = contextNodes
-	              .filter((cN, i) => {
-	                const res = toInternalResult(evaluate(expr, cN, nR, XPathResult.ANY_TYPE, null, contextNodes.length, i+1));
-	                return res.t === 'num' ? asNumber$2(res) === 1+i : asBoolean$2(res);
-	              });
-
-	            prev.v = filteredNodes;
-	            newCurrent();
-	          }
-	          continue;
-	        }
-	        cur.v += c;
-	        continue;
-	      }
-	      if(cur.t === 'str') {
-	        if(c === cur.quote) {
-	          pushToken(cur);
-	          newCurrent();
-	        } else cur.v += c;
-	        continue;
-	      }
-	      if(cur.t === 'num') {
-	        if(isNum(c) || c === 'e' ||
-	            (c === '-' && input[i-1] === 'e')) {
-	          cur.str += c;
-	          continue;
-	        } else if(c === ' ' && cur.str === '-') {
-	          continue;
-	        } else if(c === '.' && !cur.decimal) {
-	          cur.decimal = 1;
-	          cur.str += c;
-	        } else finaliseNum();
-	      }
-	      if(isNum(c)) {
-	        if(cur.v === '') {
-	          cur = { t:'num', str:c };
-	        } else cur.v += c;
-	      } else switch(c) {
-	        case "'":
-	        case '"':
-	          if(cur.v === '') {
-	            cur = { t:'str', quote:c, v:'' };
-	          } else err('Not sure how to handle: ' + c);
-	          break;
-	        case '(':
-	          stack.push({ v:cur.v, t:'fn', dead:isDeadBranch(), tokens:[] });
-	          newCurrent();
-	          break;
-	        case ')':
-	          if(cur.v !== '') handleXpathExpr();
-	          evalOps(OR);
-	          cur = stack.pop();
-
-	          if(cur.t !== 'fn') err('")" outside function!');
-	          if(cur.dead) {
-	            pushToken(D$1);
-	          } else if(cur.v) {
-	            if(cur.v.charAt(0) === '/') {
-	              if(cur.tokens.length) err('Unexpected args for node test function!');
-	              cur.v += '()';
-	              handleXpathExpr();
+	            if (prev && prev.t === 'arr') {
+	                // chop the leading slash from expr
+	                if (expr.charAt(0) !== '/')
+	                    err(
+	                        `not sure how to handle expression called on nodeset that doesn't start with a '/': ${expr}`
+	                    );
+	                // prefix a '.' to make the expression relative to the context node:
+	                expr = wrapped.createExpression(`.${expr}`, nR);
+	                const newNodeset = [];
+	                prev.v.forEach((node) => {
+	                    const res = toInternalResult(expr.evaluate(node));
+	                    newNodeset.push(...res.v);
+	                });
+	                prev.v = newNodeset;
 	            } else {
-	              pushToken(callFn(cur.v, cur.tokens));
+	                // This addresses a bug in Chrome and Safari, where an absolute
+	                // nodeset expression evaluated with an attribute contex node
+	                // does not evaluate to that nodeset as expected. Using the
+	                // attribute's owner document evaluates the expression correctly,
+	                // ensuring consistent behavior between Chrome, Safari and Firefox.
+	                const contextNode =
+	                    cN?.nodeType === Node.ATTRIBUTE_NODE && expr.startsWith('/')
+	                        ? cN.ownerDocument
+	                        : cN;
+
+	                pushToken(
+	                    toInternalResult(
+	                        wrapped.evaluate(
+	                            expr,
+	                            contextNode,
+	                            nR,
+	                            XPathResult.ANY_TYPE,
+	                            null
+	                        )
+	                    )
+	                );
 	            }
-	          } else { // bracketed expression
-	            if(cur.tokens.length !== 1) err('Expected one token, but found: ' + cur.tokens.length);
-	            pushToken(cur.tokens[0]);
-	          }
-	          newCurrent();
-	          break;
-	        case ',':
-	          if(peek().t !== 'fn') err('Unexpected comma outside function arguments.');
-	          if(cur.v) handleXpathExpr();
-	          pushToken(',');
-	          break;
-	        case '*': {
-	          // check if part of an XPath expression
-	          const prev = prevToken();
-	          if(!prev || prev === ',' || prev.t === 'op' || cur.v) {
-	            cur.v += c;
-	            break;
-	          }
-	          pushOp(MULT);
-	        } break;
-	        case '-': {
-	          const prev = prevToken();
-	          if(cur.v !== '' && nextChar() !== ' ' && input.charAt(i-1) !== ' ') {
-	            // function name expr
-	            cur.v += c;
-	          } else if(cur.v === '' && (
-	              !prev ||
-	              // match case: ...+-1
-	              prev.t === 'op' ||
-	              // previous was a separate function arg
-	              prev === ',')) {
-	            // -ve number
-	            cur = { t:'num', str:'-' };
-	          } else {
-	            // TODO do we need to check for cur.v here?
-	            pushOp(MINUS$1);
-	          }
-	        } break;
-	        case '=':
-	          switch(cur.v) {
-	            case '<': pushOp(LTE); break;
-	            case '>': pushOp(GTE$1); break;
-	            case '!': pushOp(NE);  break;
-	            default:
-	              if(cur.v) handleXpathExpr();
-	              pushOp(EQ$1);
-	          }
-	          break;
-	        case '!':
-	          if(cur.v) handleXpathExpr();
-	          cur.v = c;
-	          break;
-	        case '>':
-	        case '<':
-	          if(cur.v) handleXpathExpr();
-	          if(nextChar() === '=') {
-	            cur.v = c;
-	          } else {
-	            pushOp(c === '>' ? GT : LT);
-	          }
-	          break;
-	        case '+':
-	          if(cur.v) handleXpathExpr();
-	          pushOp(PLUS$1);
-	          break;
-	        case '|':
-	          if(cur.v) handleXpathExpr();
-	          pushOp(UNION);
-	          break;
-	        case '\n':
-	        case '\r':
-	        case '\t':
-	        case ' ':
-	          // whitespace, as defined at https://www.w3.org/TR/REC-xml/#NT-S
-	          if(cur.v === '') break; // trim leading whitespace
-	          if(!FUNCTION_NAME.test(cur.v)) handleXpathExpr();
-	          break;
-	        case 'v':
-	          // Mad as it seems, according to https://www.w3.org/TR/1999/REC-xpath-19991116/#exprlex,
-	          // there is no requirement for ExprWhitespace before or after any
-	          // ExprToken, including OperatorName.
-	          if(cur.v === 'di') { // OperatorName: 'div'
-	            pushOp(DIV);
-	          } else cur.v += c;
-	          break;
-	        case 'r':
-	          // Mad as it seems, according to https://www.w3.org/TR/1999/REC-xpath-19991116/#exprlex,
-	          // there is no requirement for ExprWhitespace before or after any
-	          // ExprToken, including OperatorName.
-	          if(cur.v === 'o') { // OperatorName: 'or'
-	            pushOp(OR);
-	          } else cur.v += c;
-	          break;
-	        case 'd':
-	          // Mad as it seems, according to https://www.w3.org/TR/1999/REC-xpath-19991116/#exprlex,
-	          // there is no requirement for ExprWhitespace before or after any
-	          // ExprToken, including OperatorName.
-	          if(cur.v === 'an') { // OperatorName: 'and'
-	            pushOp(AND);
-	          } else if(cur.v === 'mo') { // OperatorName: 'mod'
-	            pushOp(MOD);
-	          } else cur.v += c;
-	          break;
-	        case '[':
-	          // evaluate previous part if there is any
-	          if(cur.v) {
-	            handleXpathExpr();
+
 	            newCurrent();
-	          }
-	          cur.t = 'sq';
-	          cur.depth = 1;
-	          break;
-	        case '.':
-	          if(cur.v === '' && isNum(nextChar())) {
-	            cur = { t:'num', str:c };
-	            break;
-	          }
-	          /* falls through */
-	        default:
-	          cur.v += c;
-	      }
-	    }
+	        };
+	        const nextChar = function () {
+	            return input.charAt(i + 1);
+	        };
+	        const finaliseNum = function () {
+	            cur.v = parseFloat(cur.str);
+	            pushToken(cur);
+	            newCurrent();
+	        };
+	        const prevToken = function () {
+	            const peeked = peek().tokens;
+	            return peeked[peeked.length - 1];
+	        };
+	        const isNum = function (c) {
+	            return c >= '0' && c <= '9';
+	        };
 
-	    if(cur.t === 'num') finaliseNum();
-	    if(cur.v) handleXpathExpr();
-	    if(stack.length !== 1) err('Stuff left on stack.');
-	    if(stack[0].t !== 'root') err('Weird stuff on stack.');
-	    if(stack[0].tokens.length === 0) err('No tokens.');
-	    evalOps(OR);
-	    if(stack[0].tokens.length !== 1) err('Too many tokens.');
+	        newCurrent();
 
-	    return toExternalResult(stack[0].tokens[0], rT);
-	  };
+	        for (i = 0; i < input.length; ++i) {
+	            const c = input.charAt(i);
+	            if (cur.t === 'sq') {
+	                // Build the entire expression found within the square brackets:
+	                //
+	                // > A predicate filters a node-set with respect to an axis to produce a
+	                // > new node-set. For each node in the node-set to be filtered, the
+	                // > PredicateExpr is evaluated with that node as the context node, with
+	                // > the number of nodes in the node-set as the context size, and with
+	                // > the proximity position of the node in the node-set with respect to
+	                // > the axis as the context position; if PredicateExpr evaluates to
+	                // > true for that node, the node is included in the new node-set;
+	                // > otherwise, it is not included.
+	                //   - https://www.w3.org/TR/1999/REC-xpath-19991116/#predicates
+	                //
+	                // Note because the ']' character is allowed within a Literal (string),
+	                // there is special handling for tracking when we're within a string.
+	                if (cur.inString) {
+	                    if (cur.inString === c) delete cur.inString;
+	                } else if (c === '[') {
+	                    ++cur.depth;
+	                } else if (c === "'" || c === '"') {
+	                    cur.inString = c;
+	                } else if (c === ']') {
+	                    if (--cur.depth) {
+	                        cur.v += c;
+	                    } else {
+	                        if (isDeadBranch()) {
+	                            newCurrent();
+	                            continue;
+	                        }
+	                        let contextNodes;
+	                        const prev = prevToken();
+	                        if (prev.t === 'arr') {
+	                            contextNodes = prev.v;
+	                        } else
+	                            throw new Error(
+	                                'Not sure how to handle context node for predicate in this situation.'
+	                            );
+
+	                        // > A PredicateExpr is evaluated by evaluating the Expr and converting
+	                        // > the result to a boolean. If the result is a number, the result will
+	                        // > be converted to true if the number is equal to the context position
+	                        // > and will be converted to false otherwise; if the result is not a
+	                        // > number, then the result will be converted as if by a call to the
+	                        // > boolean function. Thus a location path para[3] is equivalent to
+	                        // > para[position()=3].
+	                        //   - https://www.w3.org/TR/1999/REC-xpath-19991116/#predicates
+	                        const expr = cur.v;
+	                        const filteredNodes = contextNodes.filter((cN, i) => {
+	                            const res = toInternalResult(
+	                                evaluate(
+	                                    expr,
+	                                    cN,
+	                                    nR,
+	                                    XPathResult.ANY_TYPE,
+	                                    null,
+	                                    contextNodes.length,
+	                                    i + 1
+	                                )
+	                            );
+	                            return res.t === 'num'
+	                                ? asNumber$2(res) === 1 + i
+	                                : asBoolean$2(res);
+	                        });
+
+	                        prev.v = filteredNodes;
+	                        newCurrent();
+	                    }
+	                    continue;
+	                }
+	                cur.v += c;
+	                continue;
+	            }
+	            if (cur.t === 'str') {
+	                if (c === cur.quote) {
+	                    pushToken(cur);
+	                    newCurrent();
+	                } else cur.v += c;
+	                continue;
+	            }
+	            if (cur.t === 'num') {
+	                if (
+	                    isNum(c) ||
+	                    c === 'e' ||
+	                    (c === '-' && input[i - 1] === 'e')
+	                ) {
+	                    cur.str += c;
+	                    continue;
+	                } else if (c === ' ' && cur.str === '-') {
+	                    continue;
+	                } else if (c === '.' && !cur.decimal) {
+	                    cur.decimal = 1;
+	                    cur.str += c;
+	                } else finaliseNum();
+	            }
+	            if (isNum(c)) {
+	                if (cur.v === '') {
+	                    cur = { t: 'num', str: c };
+	                } else cur.v += c;
+	            } else
+	                switch (c) {
+	                    case "'":
+	                    case '"':
+	                        if (cur.v === '') {
+	                            cur = { t: 'str', quote: c, v: '' };
+	                        } else err(`Not sure how to handle: ${c}`);
+	                        break;
+	                    case '(':
+	                        stack.push({
+	                            v: cur.v,
+	                            t: 'fn',
+	                            dead: isDeadBranch(),
+	                            tokens: [],
+	                        });
+	                        newCurrent();
+	                        break;
+	                    case ')':
+	                        if (cur.v !== '') handleXpathExpr();
+	                        evalOps(OR);
+	                        cur = stack.pop();
+
+	                        if (cur.t !== 'fn') err('")" outside function!');
+	                        if (cur.dead) {
+	                            pushToken(D$1);
+	                        } else if (cur.v) {
+	                            if (cur.v.charAt(0) === '/') {
+	                                if (cur.tokens.length)
+	                                    err(
+	                                        'Unexpected args for node test function!'
+	                                    );
+	                                cur.v += '()';
+	                                handleXpathExpr();
+	                            } else {
+	                                pushToken(callFn(cur.v, cur.tokens));
+	                            }
+	                        } else {
+	                            // bracketed expression
+	                            if (cur.tokens.length !== 1)
+	                                err(
+	                                    `Expected one token, but found: ${cur.tokens.length}`
+	                                );
+	                            pushToken(cur.tokens[0]);
+	                        }
+	                        newCurrent();
+	                        break;
+	                    case ',':
+	                        if (peek().t !== 'fn')
+	                            err('Unexpected comma outside function arguments.');
+	                        if (cur.v) handleXpathExpr();
+	                        pushToken(',');
+	                        break;
+	                    case '*':
+	                        {
+	                            // check if part of an XPath expression
+	                            const prev = prevToken();
+	                            if (
+	                                !prev ||
+	                                prev === ',' ||
+	                                prev.t === 'op' ||
+	                                cur.v
+	                            ) {
+	                                cur.v += c;
+	                                break;
+	                            }
+	                            pushOp(MULT);
+	                        }
+	                        break;
+	                    case '-':
+	                        {
+	                            const prev = prevToken();
+	                            if (
+	                                cur.v !== '' &&
+	                                nextChar() !== ' ' &&
+	                                input.charAt(i - 1) !== ' '
+	                            ) {
+	                                // function name expr
+	                                cur.v += c;
+	                            } else if (
+	                                cur.v === '' &&
+	                                (!prev ||
+	                                    // match case: ...+-1
+	                                    prev.t === 'op' ||
+	                                    // previous was a separate function arg
+	                                    prev === ',')
+	                            ) {
+	                                // -ve number
+	                                cur = { t: 'num', str: '-' };
+	                            } else {
+	                                // TODO do we need to check for cur.v here?
+	                                pushOp(MINUS$1);
+	                            }
+	                        }
+	                        break;
+	                    case '=':
+	                        switch (cur.v) {
+	                            case '<':
+	                                pushOp(LTE);
+	                                break;
+	                            case '>':
+	                                pushOp(GTE$1);
+	                                break;
+	                            case '!':
+	                                pushOp(NE);
+	                                break;
+	                            default:
+	                                if (cur.v) handleXpathExpr();
+	                                pushOp(EQ$1);
+	                        }
+	                        break;
+	                    case '!':
+	                        if (cur.v) handleXpathExpr();
+	                        cur.v = c;
+	                        break;
+	                    case '>':
+	                    case '<':
+	                        if (cur.v) handleXpathExpr();
+	                        if (nextChar() === '=') {
+	                            cur.v = c;
+	                        } else {
+	                            pushOp(c === '>' ? GT : LT);
+	                        }
+	                        break;
+	                    case '+':
+	                        if (cur.v) handleXpathExpr();
+	                        pushOp(PLUS$1);
+	                        break;
+	                    case '|':
+	                        if (cur.v) handleXpathExpr();
+	                        pushOp(UNION);
+	                        break;
+	                    case '\n':
+	                    case '\r':
+	                    case '\t':
+	                    case ' ':
+	                        // whitespace, as defined at https://www.w3.org/TR/REC-xml/#NT-S
+	                        if (cur.v === '') break; // trim leading whitespace
+	                        if (!FUNCTION_NAME.test(cur.v)) handleXpathExpr();
+	                        break;
+	                    case 'v':
+	                        // Mad as it seems, according to https://www.w3.org/TR/1999/REC-xpath-19991116/#exprlex,
+	                        // there is no requirement for ExprWhitespace before or after any
+	                        // ExprToken, including OperatorName.
+	                        if (cur.v === 'di') {
+	                            // OperatorName: 'div'
+	                            pushOp(DIV);
+	                        } else cur.v += c;
+	                        break;
+	                    case 'r':
+	                        // Mad as it seems, according to https://www.w3.org/TR/1999/REC-xpath-19991116/#exprlex,
+	                        // there is no requirement for ExprWhitespace before or after any
+	                        // ExprToken, including OperatorName.
+	                        if (cur.v === 'o') {
+	                            // OperatorName: 'or'
+	                            pushOp(OR);
+	                        } else cur.v += c;
+	                        break;
+	                    case 'd':
+	                        // Mad as it seems, according to https://www.w3.org/TR/1999/REC-xpath-19991116/#exprlex,
+	                        // there is no requirement for ExprWhitespace before or after any
+	                        // ExprToken, including OperatorName.
+	                        if (cur.v === 'an') {
+	                            // OperatorName: 'and'
+	                            pushOp(AND);
+	                        } else if (cur.v === 'mo') {
+	                            // OperatorName: 'mod'
+	                            pushOp(MOD);
+	                        } else cur.v += c;
+	                        break;
+	                    case '[':
+	                        // evaluate previous part if there is any
+	                        if (cur.v) {
+	                            handleXpathExpr();
+	                            newCurrent();
+	                        }
+	                        cur.t = 'sq';
+	                        cur.depth = 1;
+	                        break;
+	                    case '.':
+	                        if (cur.v === '' && isNum(nextChar())) {
+	                            cur = { t: 'num', str: c };
+	                            break;
+	                        }
+	                    /* falls through */
+	                    default:
+	                        cur.v += c;
+	                }
+	        }
+
+	        if (cur.t === 'num') finaliseNum();
+	        if (cur.v) handleXpathExpr();
+	        if (stack.length !== 1) err('Stuff left on stack.');
+	        if (stack[0].t !== 'root') err('Weird stuff on stack.');
+	        if (stack[0].tokens.length === 0) err('No tokens.');
+	        evalOps(OR);
+	        if (stack[0].tokens.length !== 1) err('Too many tokens.');
+
+	        return toExternalResult(stack[0].tokens[0], rT);
+	    };
+
+	    this.evaluate = evaluate;
 	};
 
-	var EARTH_EQUATORIAL_RADIUS_METERS = 6378100;
-	var PRECISION = 100;
+	const EARTH_EQUATORIAL_RADIUS_METERS = 6378100;
+	const PRECISION = 100;
 
-	var { asString: asString$2 } = xpathCast;
+	const { asString: asString$2 } = xpathCast;
 
 	function _toLatLngs(geopoints) {
-	  return geopoints.map(function (geopoint) {
-	    return geopoint.trim().split(' ');
-	  });
+	    return geopoints.map((geopoint) => geopoint.trim().split(' '));
 	}
 
 	// converts degrees to radians
 	function _toRadians(angle) {
-	  return angle * Math.PI / 180;
+	    return (angle * Math.PI) / 180;
 	}
 
 	// check if all geopoints are valid (copied from Enketo FormModel)
 	function _latLngsValid(latLngs) {
-	  return latLngs.every(function (coords) {
-	    return (
-	      (coords[0] !== '' && coords[0] >= -90 && coords[0] <= 90) &&
-	      (coords[1] !== '' && coords[1] >= -180 && coords[1] <= 180) &&
-	      (typeof coords[2] == 'undefined' || !isNaN(coords[2])) &&
-	      (typeof coords[3] == 'undefined' || (!isNaN(coords[3]) && coords[3] >= 0))
+	    return latLngs.every(
+	        (coords) =>
+	            coords[0] !== '' &&
+	            coords[0] >= -90 &&
+	            coords[0] <= 90 &&
+	            coords[1] !== '' &&
+	            coords[1] >= -180 &&
+	            coords[1] <= 180 &&
+	            (typeof coords[2] === 'undefined' ||
+	                !Number.isNaN(Number(coords[2]))) &&
+	            (typeof coords[3] === 'undefined' ||
+	                (!Number.isNaN(Number(coords[3])) && coords[3] >= 0))
 	    );
-	  });
 	}
 
 	/**
@@ -12783,42 +12701,54 @@
 	 * @param {{lat:number, lng: number}} p2
 	 * @returns {number}
 	 */
-	function _distanceBetween(p1,p2) {
-	  var Δλ = _toRadians(p1.lng - p2.lng);
-	  var φ1 = _toRadians(p1.lat);
-	  var φ2 = _toRadians(p2.lat);
-	  return Math.acos(Math.sin(φ1) * Math.sin(φ2) + Math.cos(φ1) * Math.cos(φ2) * Math.cos(Δλ)) * EARTH_EQUATORIAL_RADIUS_METERS;
+	function _distanceBetween(p1, p2) {
+	    const Δλ = _toRadians(p1.lng - p2.lng);
+	    const φ1 = _toRadians(p1.lat);
+	    const φ2 = _toRadians(p2.lat);
+	    return (
+	        Math.acos(
+	            Math.sin(φ1) * Math.sin(φ2) +
+	                Math.cos(φ1) * Math.cos(φ2) * Math.cos(Δλ)
+	        ) * EARTH_EQUATORIAL_RADIUS_METERS
+	    );
 	}
 
 	/**
 	 * Adapted from https://github.com/Leaflet/Leaflet.draw/blob/3cba37065ea5be28f42efe9cc47836c9e3f5db8c/src/ext/GeometryUtil.js#L3-L20
 	 */
 	function area$1(geopoints) {
-	  var latLngs = _toLatLngs(geopoints);
+	    const latLngs = _toLatLngs(geopoints);
 
-	  if (!_latLngsValid(latLngs)) {
-	    return Number.NaN;
-	  }
-
-	  var pointsCount = latLngs.length;
-	  var area = 0.0;
-
-	  if (pointsCount > 2) {
-	    for (var i = 0; i < pointsCount; i++) {
-	      var p1 = {
-	        lat: latLngs[i][0],
-	        lng: latLngs[i][1]
-	      };
-	      var p2 = {
-	        lat: latLngs[(i + 1) % pointsCount][0],
-	        lng: latLngs[(i + 1) % pointsCount][1]
-	      };
-	      area += _toRadians(p2.lng - p1.lng) *
-	          (2 + Math.sin(_toRadians(p1.lat)) + Math.sin(_toRadians(p2.lat)));
+	    if (!_latLngsValid(latLngs)) {
+	        return Number.NaN;
 	    }
-	    area = area * EARTH_EQUATORIAL_RADIUS_METERS * EARTH_EQUATORIAL_RADIUS_METERS / 2.0;
-	  }
-	  return Math.abs(Math.round(area * PRECISION)) / PRECISION;
+
+	    const pointsCount = latLngs.length;
+	    let area = 0.0;
+
+	    if (pointsCount > 2) {
+	        for (let i = 0; i < pointsCount; i++) {
+	            const p1 = {
+	                lat: latLngs[i][0],
+	                lng: latLngs[i][1],
+	            };
+	            const p2 = {
+	                lat: latLngs[(i + 1) % pointsCount][0],
+	                lng: latLngs[(i + 1) % pointsCount][1],
+	            };
+	            area +=
+	                _toRadians(p2.lng - p1.lng) *
+	                (2 +
+	                    Math.sin(_toRadians(p1.lat)) +
+	                    Math.sin(_toRadians(p2.lat)));
+	        }
+	        area =
+	            (area *
+	                EARTH_EQUATORIAL_RADIUS_METERS *
+	                EARTH_EQUATORIAL_RADIUS_METERS) /
+	            2.0;
+	    }
+	    return Math.abs(Math.round(area * PRECISION)) / PRECISION;
 	}
 
 	/**
@@ -12826,44 +12756,44 @@
 	 * @returns
 	 */
 	function distance$1(geopoints) {
-	  var latLngs = _toLatLngs(geopoints);
+	    const latLngs = _toLatLngs(geopoints);
 
-	  if (!_latLngsValid(latLngs)) {
-	    return Number.NaN;
-	  }
-
-	  var pointsCount = latLngs.length;
-	  var distance = 0.0;
-
-	  if (pointsCount > 1) {
-	    for (var i = 1; i < pointsCount; i++) {
-	      var p1 = {
-	        lat: latLngs[i - 1][0],
-	        lng: latLngs[i - 1][1]
-	      };
-	      var p2 = {
-	        lat: latLngs[i][0],
-	        lng: latLngs[i][1]
-	      };
-
-	      distance += _distanceBetween(p1, p2);
+	    if (!_latLngsValid(latLngs)) {
+	        return Number.NaN;
 	    }
-	  }
 
-	  return Math.abs(Math.round(distance * PRECISION)) / PRECISION;
+	    const pointsCount = latLngs.length;
+	    let distance = 0.0;
+
+	    if (pointsCount > 1) {
+	        for (let i = 1; i < pointsCount; i++) {
+	            const p1 = {
+	                lat: latLngs[i - 1][0],
+	                lng: latLngs[i - 1][1],
+	            };
+	            const p2 = {
+	                lat: latLngs[i][0],
+	                lng: latLngs[i][1],
+	            };
+
+	            distance += _distanceBetween(p1, p2);
+	        }
+	    }
+
+	    return Math.abs(Math.round(distance * PRECISION)) / PRECISION;
 	}
 
 	var geo = {
-	  asGeopoints: asGeopoints$1,
-	  area: area$1,
-	  distance: distance$1
+	    asGeopoints: asGeopoints$1,
+	    area: area$1,
+	    distance: distance$1,
 	};
 
 	function asGeopoints$1(r) {
-	  if(r.t === 'arr' && r.v.length > 1) {
-	    return r.v.map(asString$2);
-	  }
-	  return asString$2(r).split(';');
+	    if (r.t === 'arr' && r.v.length > 1) {
+	        return r.v.map(asString$2);
+	    }
+	    return asString$2(r).split(';');
 	}
 
 	/**
@@ -40882,50 +40812,52 @@
 	 * at runtime if the module is not available.
 	 */
 	var digest = (message, algo, encoding) => {
-	  let forge;
-	  try {
-	    forge = lib;
-	  } catch(err) {
-	    throw new Error(`Cannot find module 'node-forge'; this is required to use the digest() function.`);
-	  }
+	    let forge;
+	    try {
+	        // eslint-disable-next-line global-require
+	        forge = lib;
+	    } catch (err) {
+	        throw new Error(
+	            `Cannot find module 'node-forge'; this is required to use the digest() function.`
+	        );
+	    }
 
-	  message = message.v;
-	  algo = algo && algo.v && algo.v.toLowerCase();
-	  encoding = (encoding && encoding.v && encoding.v.toLowerCase()) || 'base64';
-	  if(!algo || !/^(md5|sha-1|sha-256|sha-384|sha-512)$/.test(algo)) {
-	    throw new Error('Invalid algo.');
-	  }
-	  if(!/^(base64|hex)$/.test(encoding)) {
-	    throw new Error('Invalid encoding.');
-	  }
-	  const md = forge.md[algo.replace('-', '')].create();
-	  md.update(message);
-	  const hashBuffer = md.digest();
-	  if(!encoding || encoding === 'base64') {
-	    return forge.util.encode64(hashBuffer.bytes());
-	  }
-	  return md.digest().toHex();
+	    message = message.v;
+	    algo = algo && algo.v && algo.v.toLowerCase();
+	    encoding = (encoding && encoding.v && encoding.v.toLowerCase()) || 'base64';
+	    if (!algo || !/^(md5|sha-1|sha-256|sha-384|sha-512)$/.test(algo)) {
+	        throw new Error('Invalid algo.');
+	    }
+	    if (!/^(base64|hex)$/.test(encoding)) {
+	        throw new Error('Invalid encoding.');
+	    }
+	    const md = forge.md[algo.replace('-', '')].create();
+	    md.update(message);
+	    const hashBuffer = md.digest();
+	    if (!encoding || encoding === 'base64') {
+	        return forge.util.encode64(hashBuffer.bytes());
+	    }
+	    return md.digest().toHex();
 	};
 
 	function _random13chars() {
-	  return Math.random().toString(16).substring(2);
+	    return Math.random().toString(16).substring(2);
 	}
 
 	function randomToken$1(length) {
-	  var loops = Math.ceil(length / 13);
-	  return new Array(loops)
-	    .fill(_random13chars)
-	    .reduce((string, func) => {
-	      return string + func();
-	    }, '').substring(0, length);
+	    const loops = Math.ceil(length / 13);
+	    return new Array(loops)
+	        .fill(_random13chars)
+	        .reduce((string, func) => string + func(), '')
+	        .substring(0, length);
 	}
 
 	var randomToken_1 = {
-	  randomToken: randomToken$1
+	    randomToken: randomToken$1,
 	};
 
-	var MAX_INT32 = 2147483647;
-	var MINSTD = 16807;
+	const MAX_INT32 = 2147483647;
+	const MINSTD = 16807;
 
 	/**
 	 * Performs the "inside-out" variant of the Fisher-Yates array shuffle.
@@ -40937,27 +40869,29 @@
 	 * @return {<*>}        the suffled array
 	 */
 	function shuffle(array, seed) {
-	  var rng;
-	  var result = [];
+	    let rng;
+	    const result = [];
 
-	  if(typeof seed !== 'undefined'){
-	    if(!Number.isInteger(seed)) {
-	      throw new Error('Invalid seed argument. Integer required, but got: ' + seed);
+	    if (typeof seed !== 'undefined') {
+	        if (!Number.isInteger(seed)) {
+	            throw new Error(
+	                `Invalid seed argument. Integer required, but got: ${seed}`
+	            );
+	        }
+	        const rnd = new Random(seed);
+	        rng = rnd.nextFloat.bind(rnd);
+	    } else {
+	        rng = Math.random;
 	    }
-	    var rnd = new Random(seed);
-	    rng = rnd.nextFloat.bind(rnd);
-	  } else {
-	    rng = Math.random;
-	  }
 
-	  for (var i = 0; i < array.length; ++i) {
-	    var j = Math.floor(rng() * (i + 1));
-	    if(j !== i) {
-	      result[i] = result[j];
+	    for (let i = 0; i < array.length; ++i) {
+	        const j = Math.floor(rng() * (i + 1));
+	        if (j !== i) {
+	            result[i] = result[j];
+	        }
+	        result[j] = array[i];
 	    }
-	    result[j] = array[i];
-	  }
-	  return result;
+	    return result;
 	}
 
 	/**
@@ -40968,17 +40902,17 @@
 	 */
 	function Random(seed) {
 	    this._seed = seed % MAX_INT32;
-	  if(this._seed <= 0) {
-	    this._seed += (MAX_INT32 - 1);
-	  }
+	    if (this._seed <= 0) {
+	        this._seed += MAX_INT32 - 1;
+	    }
 	}
 
 	/**
 	 * Returns a pseudo-random integer value.
 	 */
 	Random.prototype.next = function () {
-	  this._seed = this._seed * MINSTD % MAX_INT32;
-	  return this._seed;
+	    this._seed = (this._seed * MINSTD) % MAX_INT32;
+	    return this._seed;
 	};
 
 	/**
@@ -40995,7 +40929,12 @@
 	const { asGeopoints, area, distance } = geo;
 
 	const { randomToken } = randomToken_1;
-	const { DATE_STRING, dateStringToDays, dateToDays, isValidDate } = date;
+	const {
+	    DATE_STRING,
+	    dateStringToDays,
+	    dateToDays,
+	    isValidDate,
+	} = date;
 
 	const { asBoolean: asBoolean$1, asNumber: asNumber$1, asString: asString$1 } = xpathCast;
 
@@ -41004,565 +40943,710 @@
 	const RAW_NUMBER = /^-?[0-9]+(\.[0-9]+)?$/;
 
 	// Operator constants copied from extended-xpath.js
-	const EQ    = 0b01000;
-	const GTE   = 0b01111;
-	const PLUS  = 0b10000;
+	const EQ = 0b01000;
+	const GTE = 0b01111;
+	const PLUS = 0b10000;
 	const MINUS = 0b10001;
 
-	const openrosa_xpath_extensions = function() {
-	  const
-	      TOO_MANY_ARGS = new Error('too many args'),
-	      TOO_FEW_ARGS = new Error('too few args'),
-	      _round = function(num) {
-	        if(num < 0) {
-	          return -Math.round(-num);
+	const openrosaXPathExtensions = function () {
+	    const TOO_MANY_ARGS = new Error('too many args');
+	    const TOO_FEW_ARGS = new Error('too few args');
+	    const _round = function (num) {
+	        if (num < 0) {
+	            return -Math.round(-num);
 	        }
 	        return Math.round(num);
-	      },
-	      format_date = function(date, format) {
+	    };
+	    const formatDate = function (date, format) {
 	        date = asDate(date);
 	        format = asString$1(format);
-	        if('' === date.toString() || isNaN(date)) return '';
-	        let c, i, sb = '';
+	        if (date.toString() === '' || Number.isNaN(Number(date))) return '';
+	        let c;
+	        let i;
+	        let sb = '';
 	        const year = 1900 + date.getYear();
 	        const month = 1 + date.getMonth();
 	        const day = date.getDate();
 	        const hour = date.getHours();
 	        const locale = globalThis.window?.enketoFormLocale;
 
-	        for(i=0; i<format.length; ++i) {
-	          c = format.charAt(i);
-
-	          if (c === '%') {
-	            if(++i >= format.length) {
-	              throw new Error("date format string ends with %");
-	            }
+	        for (i = 0; i < format.length; ++i) {
 	            c = format.charAt(i);
 
-	            if (c === '%') { // literal '%'
-	              sb += '%';
-	            } else if (c === 'Y') {  //4-digit year
-	              sb += _zeroPad(year, 4);
-	            } else if (c === 'y') {  //2-digit year
-	              sb += _zeroPad(year, 4).substring(2);
-	            } else if (c === 'm') {  //0-padded month
-	              sb += _zeroPad(month, 2);
-	            } else if (c === 'n') {  //numeric month
-	              sb += month;
-	            } else if (c === 'b') {  //short text month
-	              sb += date.toLocaleDateString(locale, { month: 'short' });
-	            } else if (c === 'd') {  //0-padded day of month
-	              sb += _zeroPad(day, 2);
-	            } else if (c === 'e') {  //day of month
-	              sb += day;
-	            } else if (c === 'H') {  //0-padded hour (24-hr time)
-	              sb += _zeroPad(hour, 2);
-	            } else if (c === 'h') {  //hour (24-hr time)
-	              sb += hour;
-	            } else if (c === 'M') {  //0-padded minute
-	              sb += _zeroPad(date.getMinutes(), 2);
-	            } else if (c === 'S') {  //0-padded second
-	              sb += _zeroPad(date.getSeconds(), 2);
-	            } else if (c === '3') {  //0-padded millisecond ticks (000-999)
-	              sb += _zeroPad(date.getMilliseconds(), 3);
-	            } else if (c === 'a') {  //Three letter short text day
-	              sb += date.toLocaleDateString(locale, { weekday: 'short' });
-	            } else if (c === 'Z' || c === 'A' || c === 'B') {
-	              throw new Error('unsupported escape in date format string [%' + c + ']');
+	            if (c === '%') {
+	                if (++i >= format.length) {
+	                    throw new Error('date format string ends with %');
+	                }
+	                c = format.charAt(i);
+
+	                if (c === '%') {
+	                    // literal '%'
+	                    sb += '%';
+	                } else if (c === 'Y') {
+	                    // 4-digit year
+	                    sb += _zeroPad(year, 4);
+	                } else if (c === 'y') {
+	                    // 2-digit year
+	                    sb += _zeroPad(year, 4).substring(2);
+	                } else if (c === 'm') {
+	                    // 0-padded month
+	                    sb += _zeroPad(month, 2);
+	                } else if (c === 'n') {
+	                    // numeric month
+	                    sb += month;
+	                } else if (c === 'b') {
+	                    // short text month
+	                    sb += date.toLocaleDateString(locale, { month: 'short' });
+	                } else if (c === 'd') {
+	                    // 0-padded day of month
+	                    sb += _zeroPad(day, 2);
+	                } else if (c === 'e') {
+	                    // day of month
+	                    sb += day;
+	                } else if (c === 'H') {
+	                    // 0-padded hour (24-hr time)
+	                    sb += _zeroPad(hour, 2);
+	                } else if (c === 'h') {
+	                    // hour (24-hr time)
+	                    sb += hour;
+	                } else if (c === 'M') {
+	                    // 0-padded minute
+	                    sb += _zeroPad(date.getMinutes(), 2);
+	                } else if (c === 'S') {
+	                    // 0-padded second
+	                    sb += _zeroPad(date.getSeconds(), 2);
+	                } else if (c === '3') {
+	                    // 0-padded millisecond ticks (000-999)
+	                    sb += _zeroPad(date.getMilliseconds(), 3);
+	                } else if (c === 'a') {
+	                    // Three letter short text day
+	                    sb += date.toLocaleDateString(locale, { weekday: 'short' });
+	                } else if (c === 'Z' || c === 'A' || c === 'B') {
+	                    throw new Error(
+	                        `unsupported escape in date format string [%${c}]`
+	                    );
+	                } else {
+	                    throw new Error(
+	                        `unrecognized escape in date format string [%${c}]`
+	                    );
+	                }
 	            } else {
-	              throw new Error('unrecognized escape in date format string [%' + c + ']');
+	                sb += c;
 	            }
-	          } else {
-	            sb += c;
-	          }
 	        }
 
 	        return sb;
-	      },
-	      ret = {};
+	    };
+	    const ret = {};
 
-	  const func = {
-	    abs: function(r) { return xpr.number(Math.abs(asNumber$1(r))); },
-	    acos: function(r) { return xpr.number(Math.acos(asNumber$1(r))); },
-	    asin: function(r) { return xpr.number(Math.asin(asNumber$1(r))); },
-	    atan: function(r) { return xpr.number(Math.atan(asNumber$1(r))); },
-	    atan2: function(r) {
-	      if(arguments.length > 1) {
-	        const y = asNumber$1(arguments[0]);
-	        const x = asNumber$1(arguments[1]);
-	        return xpr.number(Math.atan2(y, x));
-	      }
-	      return xpr.number(Math.atan2(asNumber$1(r)));
-	    },
-	    boolean: function(r) {
-	      if(arguments.length === 0) throw new Error('too few args');
-	      if(arguments.length > 1) throw new Error('too few args');
-	      return xpr.boolean(asBoolean$1(r));
-	    },
-	    'boolean-from-string': function(r) {
-	      if(r.t === 'num' && r.v > 0 && !r.decimal) {
-	        return xpr.boolean(true);
-	      }
-	      r = asString$1(r);
-	      return xpr.boolean(r === '1' || r === 'true');
-	    },
-	    area: function(r) {
-	      if(arguments.length === 0) throw TOO_FEW_ARGS;
-	      return xpr.number(area(asGeopoints(r)));
-	    },
-	    checklist: function(min, max, ...list) {
-	      min = asNumber$1(min);
-	      max = asNumber$1(max);
-	      const trues = mapFn(asBoolean$1, ...list).reduce((acc, v) => v ? acc + 1 : acc, 0);
-	      return xpr.boolean((min < 0 || trues >= min) && (max < 0 || trues <= max));
-	    },
-	    coalesce: function(a, b) { return xpr.string(asString$1(a) || asString$1(b)); },
-	    concat: function(...args) {
-	      return xpr.string(mapFn(asString$1, ...args).join(''));
-	    },
-	    cos: function(r) { return xpr.number(Math.cos(asNumber$1(r))); },
-	    count: function(selecter) {
-	      // count() is part of XPath 1.0, but Chrome and Firefox disagree on how it should work.
-	      if(arguments.length === 0) throw new Error('too few args');
-	      if(arguments.length > 1) throw new Error('too few args');
-	      if(selecter.t !== 'arr') throw new Error("Unpexpected arg type: '" + selecter.t + "'");
-	      return xpr.number(selecter.v.length);
-	    },
-	    'count-non-empty': function(r) {
-	      if(!arguments.length === 0) throw new Error('too few args');
-	      if(arguments.length > 1) throw new Error('too many args');
-	      if(r.t !== 'arr') throw new Error('wrong arg type:' + JSON.stringify(r));
-	      return xpr.number(mapFn(asString$1, r).reduce((acc, v) => v ? acc + 1 : acc, 0));
-	    },
-	    'count-selected': function(s) {
-	      const parts = asString$1(s).split(' ');
-	      let i = parts.length,
-	          count = 0;
-	      while(--i >= 0) if(parts[i].length) ++count;
-	      return xpr.number(count);
-	    },
-	    date: function(it) {
-	      return xpr.date(asDate(it));
-	    },
-	    'decimal-date-time': function(r) {
-	      if(arguments.length > 1) throw TOO_MANY_ARGS;
+	    const func = {
+	        abs(r) {
+	            return xpr.number(Math.abs(asNumber$1(r)));
+	        },
+	        acos(r) {
+	            return xpr.number(Math.acos(asNumber$1(r)));
+	        },
+	        asin(r) {
+	            return xpr.number(Math.asin(asNumber$1(r)));
+	        },
+	        atan(r) {
+	            return xpr.number(Math.atan(asNumber$1(r)));
+	        },
+	        atan2(r, ...rest) {
+	            if (rest.length > 0) {
+	                const y = asNumber$1(r);
+	                const x = asNumber$1(rest[0]);
+	                return xpr.number(Math.atan2(y, x));
+	            }
+	            return xpr.number(Math.atan2(asNumber$1(r)));
+	        },
+	        boolean(r) {
+	            if (arguments.length === 0) throw new Error('too few args');
+	            if (arguments.length > 1) throw new Error('too few args');
+	            return xpr.boolean(asBoolean$1(r));
+	        },
+	        'boolean-from-string': function (r) {
+	            if (r.t === 'num' && r.v > 0 && !r.decimal) {
+	                return xpr.boolean(true);
+	            }
+	            r = asString$1(r);
+	            return xpr.boolean(r === '1' || r === 'true');
+	        },
+	        area(r) {
+	            if (arguments.length === 0) throw TOO_FEW_ARGS;
+	            return xpr.number(area(asGeopoints(r)));
+	        },
+	        checklist(min, max, ...list) {
+	            min = asNumber$1(min);
+	            max = asNumber$1(max);
+	            const trues = mapFn(asBoolean$1, ...list).reduce(
+	                (acc, v) => (v ? acc + 1 : acc),
+	                0
+	            );
+	            return xpr.boolean(
+	                (min < 0 || trues >= min) && (max < 0 || trues <= max)
+	            );
+	        },
+	        coalesce(a, b) {
+	            return xpr.string(asString$1(a) || asString$1(b));
+	        },
+	        concat(...args) {
+	            return xpr.string(mapFn(asString$1, ...args).join(''));
+	        },
+	        cos(r) {
+	            return xpr.number(Math.cos(asNumber$1(r)));
+	        },
+	        count(selecter) {
+	            // count() is part of XPath 1.0, but Chrome and Firefox disagree on how it should work.
+	            if (arguments.length === 0) throw new Error('too few args');
+	            if (arguments.length > 1) throw new Error('too few args');
+	            if (selecter.t !== 'arr')
+	                throw new Error(`Unpexpected arg type: '${selecter.t}'`);
+	            return xpr.number(selecter.v.length);
+	        },
+	        'count-non-empty': function (r) {
+	            if (!arguments.length === 0) throw new Error('too few args');
+	            if (arguments.length > 1) throw new Error('too many args');
+	            if (r.t !== 'arr')
+	                throw new Error(`wrong arg type:${JSON.stringify(r)}`);
+	            return xpr.number(
+	                mapFn(asString$1, r).reduce((acc, v) => (v ? acc + 1 : acc), 0)
+	            );
+	        },
+	        'count-selected': function (s) {
+	            const parts = asString$1(s).split(' ');
+	            let i = parts.length;
+	            let count = 0;
+	            while (--i >= 0) if (parts[i].length) ++count;
+	            return xpr.number(count);
+	        },
+	        date(it) {
+	            return xpr.date(asDate(it));
+	        },
+	        'decimal-date-time': function (r) {
+	            if (arguments.length > 1) throw TOO_MANY_ARGS;
 
-	      const days = r.t === 'num' ? asNumber$1(r) : dateStringToDays(asString$1(r));
+	            const days =
+	                r.t === 'num' ? asNumber$1(r) : dateStringToDays(asString$1(r));
 
-	      return xpr.number(days);
-	    },
-	    'decimal-time': function(r) {
-	      if(arguments.length > 1) throw TOO_MANY_ARGS;
-	      if(r.t === 'num') return xpr.number(NaN);
-	      const time = asString$1(r);
-	      // There is no Time type, and so far we don't need it so we do all validation
-	      // and conversion here, manually.
-	      const m = time.match(/^(\d\d):(\d\d):(\d\d)(\.\d\d?\d?)?(\+|-)(\d\d):(\d\d)$/);
-	      let dec;
-	      if (m &&
-	        m[1] < 24 && m[1] >= 0 &&
-	        m[2] < 60 && m[2] >= 0 &&
-	        m[3] < 60 && m[3] >= 0 &&
-	        m[6] < 24 && m[6] >= 0 && // this could be tighter
-	        m[7] < 60 && m[7] >= 0 // this is probably either 0 or 30
-	      ) {
-	        const today = new Date(); // use today to cater to daylight savings time.
-	        const d = new Date(today.getFullYear() + '-' + _zeroPad(today.getMonth() + 1) + '-' + _zeroPad(today.getDate()) + 'T' + time);
-	        if(d.toString() === 'Invalid Date'){
-	          dec = NaN;
-	        } else {
-	          dec = (d.getSeconds()/3600 + d.getMinutes()/60 + d.getHours()) / 24;
-	        }
-	      } else {
-	        dec = NaN;
-	      }
-	      return xpr.number(dec);
-	    },
-	    digest: function(msg, algo, encoding) {
-	      return xpr.string(digest(msg, algo, encoding));
-	    },
-	    distance: function(r) {
-	      if(arguments.length === 0) throw TOO_FEW_ARGS;
-	      return xpr.number(distance(asGeopoints(r)));
-	    },
-	    exp: function(r) { return xpr.number(Math.exp(asNumber$1(r))); },
-	    exp10: function(r) { return xpr.number(Math.pow(10, asNumber$1(r))); },
-	    'false': function() {
-	      if(arguments.length) throw TOO_MANY_ARGS;
-	      return xpr.boolean(false);
-	    },
-	    'format-date': function(date, format) {
-	      if(arguments.length < 2) throw new Error('format-date() :: not enough args');
-	      return xpr.string(format_date(date, format)); },
-	    if: function(con, a, b) {
-	      return asBoolean$1(con) ? a : b;
-	    },
-	    'ends-with': function(a, b) {
-	      if(arguments.length > 2) throw TOO_MANY_ARGS;
-	      if(arguments.length < 2) throw TOO_FEW_ARGS;
-	      return xpr.boolean(asString$1(a).endsWith(asString$1(b)));
-	    },
-	    int: function(v) {
-	      return xpr.number(asInteger(v));
-	    },
-	    join: function(delim, ...args) {
-	      return xpr.string(mapFn(asString$1, ...args).join(asString$1(delim)));
-	    },
-	    last: function() {
-	      if(arguments.length) throw new Error(`last() does not take arguments`);
-	      return xpr.number(this.contextSize);
-	    },
-	    'local-name': function(r) {
-	      // This is actually supported natively, but currently it's simpler to implement
-	      // ourselves than convert the supplied nodeset into a single node and pass this
-	      // somehow to the native implementation.
-	      //
-	      // See: https://www.w3.org/TR/1999/REC-xpath-19991116/#function-local-name
-	      const name = getNodeName(this, r);
-	      return xpr.string(name.match(/^(?:[^:]*:)?(.*)/)[1]);
-	    },
-	    name: function(r) {
-	      // This is actually supported natively, but currently it's simpler to implement
-	      // ourselves than convert the supplied nodeset into a single node and pass this
-	      // somehow to the native implementation.
-	      //
-	      // See: https://www.w3.org/TR/1999/REC-xpath-19991116/#function-name
-	      return xpr.string(getNodeName(this, r));
-	    },
-	    log: function(r) { return xpr.number(Math.log(asNumber$1(r))); },
-	    log10: function(r) { return xpr.number(Math.log10(asNumber$1(r))); },
-	    max: function(...args) {
-	      const nums = mapFn(asNumber$1, ...args);
-	      if(!nums.length || nums.some(v => isNaN(v))) return xpr.number(NaN);
-	      return xpr.number(Math.max(...nums));
-	    },
-	    min: function(...args) {
-	      const nums = mapFn(asNumber$1, ...args);
-	      if(!nums.length || nums.some(v => isNaN(v))) return xpr.number(NaN);
-	      return xpr.number(Math.min(...nums));
-	    },
-	    'namespace-uri': function(r) {
-	      // This is actually supported natively, but currently it's simpler to implement
-	      // ourselves than convert the supplied nodeset into a single node and pass this
-	      // somehow to the native implementation.
-	      //
-	      // See: https://www.w3.org/TR/1999/REC-xpath-19991116/#function-namespace-uri
-	      const node = getNode(this, r);
-	      return xpr.string(node && node.namespaceURI || '');
-	    },
-	    'normalize-space': function(r) {
-	      // TODO this seems to do a lot more than the spec at https://www.w3.org/TR/1999/REC-xpath-19991116/#function-normalize-space
-	      // I think we should just be able to return: XPR.string(asString(r || this.cN).replace(/[\t\r\n ]+/g, ' ').trim());
-	      if(arguments.length > 1) throw new Error('too many args');
+	            return xpr.number(days);
+	        },
+	        'decimal-time': function (r) {
+	            if (arguments.length > 1) throw TOO_MANY_ARGS;
+	            if (r.t === 'num') return xpr.number(NaN);
+	            const time = asString$1(r);
+	            // There is no Time type, and so far we don't need it so we do all validation
+	            // and conversion here, manually.
+	            const m = time.match(
+	                /^(\d\d):(\d\d):(\d\d)(\.\d\d?\d?)?(\+|-)(\d\d):(\d\d)$/
+	            );
+	            let dec;
+	            if (
+	                m &&
+	                m[1] < 24 &&
+	                m[1] >= 0 &&
+	                m[2] < 60 &&
+	                m[2] >= 0 &&
+	                m[3] < 60 &&
+	                m[3] >= 0 &&
+	                m[6] < 24 &&
+	                m[6] >= 0 && // this could be tighter
+	                m[7] < 60 &&
+	                m[7] >= 0 // this is probably either 0 or 30
+	            ) {
+	                const today = new Date(); // use today to cater to daylight savings time.
+	                const d = new Date(
+	                    `${today.getFullYear()}-${_zeroPad(
+                        today.getMonth() + 1
+                    )}-${_zeroPad(today.getDate())}T${time}`
+	                );
+	                if (d.toString() === 'Invalid Date') {
+	                    dec = NaN;
+	                } else {
+	                    dec =
+	                        (d.getSeconds() / 3600 +
+	                            d.getMinutes() / 60 +
+	                            d.getHours()) /
+	                        24;
+	                }
+	            } else {
+	                dec = NaN;
+	            }
+	            return xpr.number(dec);
+	        },
+	        digest(msg, algo, encoding) {
+	            return xpr.string(digest(msg, algo, encoding));
+	        },
+	        distance(r) {
+	            if (arguments.length === 0) throw TOO_FEW_ARGS;
+	            return xpr.number(distance(asGeopoints(r)));
+	        },
+	        exp(r) {
+	            return xpr.number(Math.exp(asNumber$1(r)));
+	        },
+	        exp10(r) {
+	            return xpr.number(10 ** asNumber$1(r));
+	        },
+	        false() {
+	            if (arguments.length) throw TOO_MANY_ARGS;
+	            return xpr.boolean(false);
+	        },
+	        'format-date': function (date, format) {
+	            if (arguments.length < 2)
+	                throw new Error('format-date() :: not enough args');
+	            return xpr.string(formatDate(date, format));
+	        },
+	        if(con, a, b) {
+	            return asBoolean$1(con) ? a : b;
+	        },
+	        'ends-with': function (a, b) {
+	            if (arguments.length > 2) throw TOO_MANY_ARGS;
+	            if (arguments.length < 2) throw TOO_FEW_ARGS;
+	            return xpr.boolean(asString$1(a).endsWith(asString$1(b)));
+	        },
+	        int(v) {
+	            return xpr.number(asInteger(v));
+	        },
+	        join(delim, ...args) {
+	            return xpr.string(mapFn(asString$1, ...args).join(asString$1(delim)));
+	        },
+	        last() {
+	            if (arguments.length)
+	                throw new Error(`last() does not take arguments`);
+	            return xpr.number(this.contextSize);
+	        },
+	        'local-name': function (r) {
+	            // This is actually supported natively, but currently it's simpler to implement
+	            // ourselves than convert the supplied nodeset into a single node and pass this
+	            // somehow to the native implementation.
+	            //
+	            // See: https://www.w3.org/TR/1999/REC-xpath-19991116/#function-local-name
+	            const name = getNodeName(this, r);
+	            return xpr.string(name.match(/^(?:[^:]*:)?(.*)/)[1]);
+	        },
+	        name(r) {
+	            // This is actually supported natively, but currently it's simpler to implement
+	            // ourselves than convert the supplied nodeset into a single node and pass this
+	            // somehow to the native implementation.
+	            //
+	            // See: https://www.w3.org/TR/1999/REC-xpath-19991116/#function-name
+	            return xpr.string(getNodeName(this, r));
+	        },
+	        log(r) {
+	            return xpr.number(Math.log(asNumber$1(r)));
+	        },
+	        log10(r) {
+	            return xpr.number(Math.log10(asNumber$1(r)));
+	        },
+	        max(...args) {
+	            const nums = mapFn(asNumber$1, ...args);
+	            if (!nums.length || nums.some((v) => Number.isNaN(Number(v))))
+	                return xpr.number(NaN);
+	            return xpr.number(Math.max(...nums));
+	        },
+	        min(...args) {
+	            const nums = mapFn(asNumber$1, ...args);
+	            if (!nums.length || nums.some((v) => Number.isNaN(Number(v))))
+	                return xpr.number(NaN);
+	            return xpr.number(Math.min(...nums));
+	        },
+	        'namespace-uri': function (r) {
+	            // This is actually supported natively, but currently it's simpler to implement
+	            // ourselves than convert the supplied nodeset into a single node and pass this
+	            // somehow to the native implementation.
+	            //
+	            // See: https://www.w3.org/TR/1999/REC-xpath-19991116/#function-namespace-uri
+	            const node = getNode(this, r);
+	            return xpr.string((node && node.namespaceURI) || '');
+	        },
+	        'normalize-space': function (r) {
+	            // TODO this seems to do a lot more than the spec at https://www.w3.org/TR/1999/REC-xpath-19991116/#function-normalize-space
+	            // I think we should just be able to return: XPR.string(asString(r || this.cN).replace(/[\t\r\n ]+/g, ' ').trim());
+	            if (arguments.length > 1) throw new Error('too many args');
 
-	      let res = asString$1(r || this.cN);
+	            let res = asString$1(r || this.cN);
 
-	      res = res.replace(/\f/g, '\\f');
-	      res = res.replace(/\r\v/g, '\v');
-	      res = res.replace(/\v/g, '\\v');
-	      res = res.replace(/\s+/g, ' ');
-	      res = res.replace(/^\s+|\s+$/g, '');
-	      res = res.replace(/\\v/g, '\v');
-	      res = res.replace(/\\f/g, '\f');
+	            res = res.replace(/\f/g, '\\f');
+	            res = res.replace(/\r\v/g, '\v');
+	            res = res.replace(/\v/g, '\\v');
+	            res = res.replace(/\s+/g, ' ');
+	            res = res.replace(/^\s+|\s+$/g, '');
+	            res = res.replace(/\\v/g, '\v');
+	            res = res.replace(/\\f/g, '\f');
 
-	      return xpr.string(res);
-	    },
-	    /*
-	     * As per https://github.com/alxndrsn/openrosa-xpath-evaluator/issues/15,
-	     * the pass-through to the wrapped implementation always requests
-	     * XPathResult.STRING_TYPE.  This seems to cause an issue with the response
-	     * from `not()` calls, which should ideally be handled by the built-in
-	     * XPath implementation.  The following method is supplied as a workaround,
-	     * and ideally would be unnecessary.
-	     */
-	    not: function(r) {
-	      if(arguments.length === 0) throw TOO_FEW_ARGS;
-	      if(arguments.length > 1) throw TOO_MANY_ARGS;
-	      return xpr.boolean(!asBoolean$1(r));
-	    },
-	    now: function() {
-	      return xpr.date(new Date());
-	    },
-	    number: function(r) {
-	      if(arguments.length > 1) throw new Error(`number() passed wrong arg count (expected 0 or 1, but got ${arguments.length})`);
-	      let arg = arguments.length ? r : this.cN;
-	      const str = asString$1(arg);
-	      if(DATE_STRING.test(str)) { // TODO cleanup regex and splitting
-	        return xpr.number(dateStringToDays(str));
-	      }
-	      return xpr.number(asNumber$1(arg));
-	    },
-	    today: function() {
-	      return xpr.date(ret._now());
-	    },
-	    /**
-	     * The once function returns the value of the parameter if its own value
-	     * is not empty, NaN, [Infinity or -Infinity]. The naming is therefore misleading!
-	     * Also note that the parameter expr is always evaluated.
-	     * This function simply decides whether to return the new result or the old value.
-	     */
-	    once: function(r) {
-	      const current = asString$1(this.cN);
-	      return xpr.string(current || asString$1(r));
-	    },
-	    pi: function() { return xpr.number(Math.PI); },
-	    position: function(r) {
-	      // N.B.: I suspect there is a bug here - this will return position within the parent node, rather than the evaluation context.
-	      // I suspect this is contrary to the spec, which reads:
-	      // > The position function returns a number equal to the context position from the expression evaluation context.
-	      //   - https://www.w3.org/TR/1999/REC-xpath-19991116/#function-position
-	      // I'd have thought e.g. a union of all first-children in a doc would not all have position()=1 within that nodeset
-	      if(arguments.length > 1) throw new Error('too many args');
-	      if(r && r.t !== 'arr') throw new Error('wrong arg type for position() - expected nodeset, but got: ' + r.t);
-	      if(r && !r.v.length) throw new Error('cannot call position() on an empty nodeset');
+	            return xpr.string(res);
+	        },
+	        /*
+	         * As per https://github.com/alxndrsn/openrosa-xpath-evaluator/issues/15,
+	         * the pass-through to the wrapped implementation always requests
+	         * XPathResult.STRING_TYPE.  This seems to cause an issue with the response
+	         * from `not()` calls, which should ideally be handled by the built-in
+	         * XPath implementation.  The following method is supplied as a workaround,
+	         * and ideally would be unnecessary.
+	         */
+	        not(r) {
+	            if (arguments.length === 0) throw TOO_FEW_ARGS;
+	            if (arguments.length > 1) throw TOO_MANY_ARGS;
+	            return xpr.boolean(!asBoolean$1(r));
+	        },
+	        now() {
+	            return xpr.date(new Date());
+	        },
+	        number(r) {
+	            if (arguments.length > 1)
+	                throw new Error(
+	                    `number() passed wrong arg count (expected 0 or 1, but got ${arguments.length})`
+	                );
+	            const arg = arguments.length ? r : this.cN;
+	            const str = asString$1(arg);
+	            if (DATE_STRING.test(str)) {
+	                // TODO cleanup regex and splitting
+	                return xpr.number(dateStringToDays(str));
+	            }
+	            return xpr.number(asNumber$1(arg));
+	        },
+	        today() {
+	            return xpr.date(ret._now());
+	        },
+	        /**
+	         * The once function returns the value of the parameter if its own value
+	         * is not empty, NaN, [Infinity or -Infinity]. The naming is therefore misleading!
+	         * Also note that the parameter expr is always evaluated.
+	         * This function simply decides whether to return the new result or the old value.
+	         */
+	        once(r) {
+	            const current = asString$1(this.cN);
+	            return xpr.string(current || asString$1(r));
+	        },
+	        pi() {
+	            return xpr.number(Math.PI);
+	        },
+	        position(r) {
+	            // N.B.: I suspect there is a bug here - this will return position within the parent node, rather than the evaluation context.
+	            // I suspect this is contrary to the spec, which reads:
+	            // > The position function returns a number equal to the context position from the expression evaluation context.
+	            //   - https://www.w3.org/TR/1999/REC-xpath-19991116/#function-position
+	            // I'd have thought e.g. a union of all first-children in a doc would not all have position()=1 within that nodeset
+	            if (arguments.length > 1) throw new Error('too many args');
+	            if (r && r.t !== 'arr')
+	                throw new Error(
+	                    `wrong arg type for position() - expected nodeset, but got: ${r.t}`
+	                );
+	            if (r && !r.v.length)
+	                throw new Error('cannot call position() on an empty nodeset');
 
-	      if(!r) return xpr.number(this.contextPosition);
+	            if (!r) return xpr.number(this.contextPosition);
 
-	      let position = 1;
-	      let node = r.v[0];
-	      const nodeName = node.tagName;
-	      while (node.previousElementSibling && node.previousElementSibling.tagName === nodeName) {
-	        node = node.previousElementSibling;
-	        position++;
-	      }
+	            let position = 1;
+	            let node = r.v[0];
+	            const nodeName = node.tagName;
+	            while (
+	                node.previousElementSibling &&
+	                node.previousElementSibling.tagName === nodeName
+	            ) {
+	                node = node.previousElementSibling;
+	                position++;
+	            }
 
-	      return xpr.number(position);
-	    },
-	    pow: function(x, y) { return xpr.number(Math.pow(asNumber$1(x), asNumber$1(y))); },
-	    random: function() { return xpr.number(parseFloat(Math.random().toFixed(15))); },
-	    randomize: function(r, seed) {
-	      if(!arguments.length) throw TOO_FEW_ARGS;//only rT passed
-	      if(arguments.length > 2) throw TOO_MANY_ARGS;
-	      if(!r || r.t !== 'arr') throw new Error('randomize() must be called on a nodeset');
+	            return xpr.number(position);
+	        },
+	        pow(x, y) {
+	            return xpr.number(asNumber$1(x) ** asNumber$1(y));
+	        },
+	        random() {
+	            return xpr.number(parseFloat(Math.random().toFixed(15)));
+	        },
+	        randomize(r, seed) {
+	            if (!arguments.length) throw TOO_FEW_ARGS; // only rT passed
+	            if (arguments.length > 2) throw TOO_MANY_ARGS;
+	            if (!r || r.t !== 'arr')
+	                throw new Error('randomize() must be called on a nodeset');
 
+	            seed = seed && asNumber$1(seed);
 
-	      seed = seed && asNumber$1(seed);
+	            return { t: 'arr', v: shuffle_1(r.v, seed) };
+	        },
+	        regex(haystack, pattern) {
+	            return xpr.boolean(
+	                new RegExp(asString$1(pattern)).test(asString$1(haystack))
+	            );
+	        },
+	        round(number, numDigits) {
+	            if (arguments.length === 0) throw TOO_FEW_ARGS;
+	            if (arguments.length > 2) throw TOO_MANY_ARGS;
+	            number = asNumber$1(number);
+	            if (!numDigits) {
+	                return xpr.number(_round(number));
+	            }
+	            numDigits = asInteger(numDigits);
+	            const pow = 10 ** Math.abs(numDigits);
+	            if (numDigits > 0) {
+	                return xpr.number(_round(number * pow) / pow);
+	            }
+	            return xpr.number(pow * _round(number / pow));
+	        },
+	        selected(haystack, needle) {
+	            return xpr.boolean(
+	                asString$1(haystack)
+	                    .split(' ')
+	                    .indexOf(asString$1(needle).trim()) !== -1
+	            );
+	        },
+	        'selected-at': function (list, index) {
+	            if (!index)
+	                throw new Error(
+	                    `No index provided for selected-at() [index=${index}; list=${JSON.stringify(
+                        list
+                    )}`
+	                );
+	            return xpr.string(
+	                asString$1(list).split(' ')[asInteger(index)] || ''
+	            );
+	        },
+	        sin(r) {
+	            return xpr.number(Math.sin(asNumber$1(r)));
+	        },
+	        sqrt(r) {
+	            return xpr.number(Math.sqrt(asNumber$1(r)));
+	        },
+	        string(r) {
+	            if (arguments.length > 1)
+	                throw new Error(
+	                    `string() passed wrong arg count (expected 0 or 1, but got ${arguments.length})`
+	                );
+	            return xpr.string(asString$1(r || this.cN));
+	        }, // TODO this is not an extension - should be a "native" function
+	        'string-length': function (r) {
+	            if (arguments.length > 1) throw new Error('too many args');
+	            const str = asString$1(r || this.cN);
+	            // implemented as per https://www.w3.org/TR/1999/REC-xpath-19991116/#function-string-length, rather than the restricted ODK implementation
+	            return xpr.number(str.length);
+	        },
+	        substr(s, startIndex, endIndex) {
+	            return xpr.string(
+	                asString$1(s).slice(
+	                    asNumber$1(startIndex),
+	                    endIndex && asNumber$1(endIndex)
+	                )
+	            );
+	        },
+	        sum(r) {
+	            if (!r || r.t !== 'arr')
+	                throw new Error('sum() must be called on a nodeset');
+	            let sum = 0;
+	            let i = r.v.length;
+	            while (i--) sum += asNumber$1(r.v[i]);
+	            return xpr.number(sum);
+	        },
+	        tan(r) {
+	            return xpr.number(Math.tan(asNumber$1(r)));
+	        },
+	        true() {
+	            if (arguments.length) throw TOO_MANY_ARGS;
+	            return xpr.boolean(true);
+	        },
+	        uuid(r) {
+	            if (r) return xpr.string(randomToken(asNumber$1(r)));
+	            return xpr.string(uuid());
+	        },
+	        'weighted-checklist': function (min, max, ...list) {
+	            min = asNumber$1(min);
+	            max = asNumber$1(max);
+	            let values = [];
+	            let weights = [];
+	            let weightedTrues = 0;
+	            for (let i = 0; i < list.length; i += 2) {
+	                const v = list[i];
+	                const w = list[i + 1];
+	                if (v && w) {
+	                    // value or weight might be a nodeset
+	                    values = values.concat(mapFn(asBoolean$1, v));
+	                    weights = weights.concat(mapFn(asNumber$1, w));
+	                }
+	            }
+	            for (let i = 0; i < values.length; i++) {
+	                if (values[i]) {
+	                    weightedTrues += weights[i] || 0;
+	                }
+	            }
+	            return xpr.boolean(
+	                (min < 0 || weightedTrues >= min) &&
+	                    (max < 0 || weightedTrues <= max)
+	            );
+	        },
+	    };
 
-	      return { t:'arr', v:shuffle_1(r.v, seed) };
-	    },
-	    regex: function(haystack, pattern) {
-	        return xpr.boolean(new RegExp(asString$1(pattern)).test(asString$1(haystack))); },
-	    round: function(number, num_digits) {
-	      if(arguments.length === 0) throw TOO_FEW_ARGS;
-	      if(arguments.length > 2) throw TOO_MANY_ARGS;
-	      number = asNumber$1(number);
-	      if(!num_digits) {
-	        return xpr.number(_round(number));
-	      }
-	      num_digits = asInteger(num_digits);
-	      const pow = Math.pow(10, Math.abs(num_digits));
-	      if(num_digits > 0) {
-	        return xpr.number(_round(number * pow) / pow);
-	      } else {
-	        return xpr.number(pow * _round(number / pow));
-	      }
-	    },
-	    selected: function(haystack, needle) {
-	      return xpr.boolean(asString$1(haystack).split(' ').indexOf(asString$1(needle).trim()) !== -1);
-	    },
-	    'selected-at': function(list, index) {
-	      if(!index) throw new Error('No index provided for selected-at() [index=' + index + '; list=' + JSON.stringify(list));
-	      return xpr.string(asString$1(list).split(' ')[asInteger(index)] || '');
-	    },
-	    sin: function(r) { return xpr.number(Math.sin(asNumber$1(r))); },
-	    sqrt: function(r) { return xpr.number(Math.sqrt(asNumber$1(r))); },
-	    string: function(r) {
-	      if(arguments.length > 1) throw new Error(`string() passed wrong arg count (expected 0 or 1, but got ${arguments.length})`);
-	      return xpr.string(asString$1(r || this.cN));
-	    }, // TODO this is not an extension - should be a "native" function
-	    'string-length': function(r) {
-	      if(arguments.length > 1) throw new Error('too many args');
-	      const str = asString$1(r || this.cN);
-	      // implemented as per https://www.w3.org/TR/1999/REC-xpath-19991116/#function-string-length, rather than the restricted ODK implementation
-	      return xpr.number(str.length);
-	    },
-	    substr: function(s, startIndex, endIndex) {
-	      return xpr.string(asString$1(s).slice(asNumber$1(startIndex), endIndex && asNumber$1(endIndex)));
-	    },
-	    sum: function(r) {
-	      if(!r || r.t !== 'arr') throw new Error('sum() must be called on a nodeset');
-	      let sum = 0, i = r.v.length;
-	      while(i--) sum += asNumber$1(r.v[i]);
-	      return xpr.number(sum);
-	    },
-	    tan: function(r) { return xpr.number(Math.tan(asNumber$1(r))); },
-	    'true': function() {
-	      if(arguments.length) throw TOO_MANY_ARGS;
-	      return xpr.boolean(true);
-	    },
-	    uuid: function(r) {
-	      if(r) return xpr.string(randomToken(asNumber$1(r)));
-	      return xpr.string(uuid());
-	    },
-	    'weighted-checklist': function(min, max, ...list) {
-	      min = asNumber$1(min);
-	      max = asNumber$1(max);
-	      let values = [], weights = [], weightedTrues = 0;
-	      for(let i=0; i<list.length; i+=2) {
-	        const v = list[i];
-	        const w = list[i+1];
-	        if(v && w) {
-	          // value or weight might be a nodeset
-	          values  = values. concat(mapFn(asBoolean$1, v));
-	          weights = weights.concat(mapFn(asNumber$1,  w));
-	        }
-	      }
-	      for(let i=0; i < values.length; i++) {
-	        if(values[i]) {
-	          weightedTrues += weights[i] || 0;
-	        }
-	      }
-	      return xpr.boolean((min < 0 || weightedTrues >= min) && (max < 0 || weightedTrues <= max));
-	    }
-	  };
+	    // function aliases
+	    func['date-time'] = func.date;
+	    func['format-date-time'] = func['format-date'];
 
-	  // function aliases
-	  func['date-time'] = func.date;
-	  func['format-date-time'] = func['format-date'];
+	    const process = {
+	        toExternalResult(r, resultType) {
+	            if (r.t === 'arr' && resultType === XPathResult.NUMBER_TYPE) {
+	                const str = asString$1(r);
+	                if (DATE_STRING.test(str)) {
+	                    return { resultType, numberValue: dateStringToDays(str) };
+	                }
+	            }
+	            if (r.t === 'date') {
+	                switch (resultType) {
+	                    case XPathResult.BOOLEAN_TYPE:
+	                        return {
+	                            resultType,
+	                            booleanValue: !Number.isNaN(Number(r.v)),
+	                        };
+	                    case XPathResult.NUMBER_TYPE:
+	                        return { resultType, numberValue: asNumber$1(r) };
+	                    case XPathResult.ANY_TYPE:
+	                    case XPathResult.STRING_TYPE:
+	                        return { resultType, stringValue: asString$1(r) };
+	                    default:
+	                        throw new Error(
+	                            `toExternalResult() doesn't know how to convert a date to ${resultType}`
+	                        );
+	                }
+	            }
+	        },
+	        typefor(val) {
+	            if (val instanceof Date) return 'date';
+	        },
+	        handleInfix(err, lhs, op, rhs) {
+	            if (lhs.t === 'date' || rhs.t === 'date') {
+	                if (lhs.t === 'bool' || rhs.t === 'bool') {
+	                    // date comparisons with booleans should be coerced to boolean
+	                    return;
+	                }
 
-	  const process = {
-	      toExternalResult: function(r, resultType) {
-	        if(r.t === 'arr' && resultType === XPathResult.NUMBER_TYPE) {
-	          const str = asString$1(r);
-	          if(DATE_STRING.test(str)) {
-	            return { resultType, numberValue:dateStringToDays(str) };
-	          }
-	        }
-	        if(r.t === 'date') {
-	          switch(resultType) {
-	            case XPathResult.BOOLEAN_TYPE: return { resultType, booleanValue:!isNaN(r.v) };
-	            case XPathResult.NUMBER_TYPE:  return { resultType, numberValue:asNumber$1(r) };
-	            case XPathResult.ANY_TYPE:
-	            case XPathResult.STRING_TYPE:
-	              return { resultType, stringValue:asString$1(r) };
-	            default: throw new Error(`toExternalResult() doesn't know how to convert a date to ${resultType}`);
-	          }
-	        }
-	      },
-	      typefor: function(val) {
-	        if(val instanceof Date) return 'date';
-	      },
-	      handleInfix: function(err, lhs, op, rhs) {
-	        if(lhs.t === 'date' || rhs.t === 'date') {
-	          if(lhs.t === 'bool' || rhs.t === 'bool') {
-	            // date comparisons with booleans should be coerced to boolean
-	            return;
-	          }
+	                // For comparisons and math, we must make sure that both values are numbers
+	                if (lhs.t === 'arr' || lhs.t === 'str')
+	                    lhs = xpr.date(asDate(lhs));
+	                if (rhs.t === 'arr' || rhs.t === 'str')
+	                    rhs = xpr.date(asDate(rhs));
 
-	          // For comparisons and math, we must make sure that both values are numbers
-	          if(lhs.t === 'arr' || lhs.t === 'str') lhs = xpr.date(asDate(lhs));
-	          if(rhs.t === 'arr' || rhs.t === 'str') rhs = xpr.date(asDate(rhs));
-	          
-	          if (lhs.t === 'date') lhs = { t:'num', v:dateToDays(lhs.v) };
-	          if (rhs.t === 'date') rhs = { t:'num', v:dateToDays(rhs.v) };
+	                if (lhs.t === 'date') lhs = { t: 'num', v: dateToDays(lhs.v) };
+	                if (rhs.t === 'date') rhs = { t: 'num', v: dateToDays(rhs.v) };
 
-	          return { t:'continue', lhs:lhs, op:op, rhs:rhs };
-	        }
+	                return { t: 'continue', lhs, op, rhs };
+	            }
 
-	        // try to coerce non-dates into dates :o
-	        if(op === PLUS || op === MINUS) {
-	          const lStr = asString$1(lhs);
-	          if(DATE_STRING.test(lStr)) {
-	            const lDays = dateStringToDays(lStr);
-	            const rDays = asNumber$1(rhs);
-	            const delta = op === PLUS ? lDays + rDays : lDays - rDays;
-	            return delta;
-	          }
+	            // try to coerce non-dates into dates :o
+	            if (op === PLUS || op === MINUS) {
+	                const lStr = asString$1(lhs);
+	                if (DATE_STRING.test(lStr)) {
+	                    const lDays = dateStringToDays(lStr);
+	                    const rDays = asNumber$1(rhs);
+	                    const delta = op === PLUS ? lDays + rDays : lDays - rDays;
+	                    return delta;
+	                }
 
-	          const rStr = asString$1(rhs);
-	          if(DATE_STRING.test(rStr)) {
-	            const rDays = dateStringToDays(rStr);
-	            const lDays = asNumber$1(lhs);
-	            const delta = op === PLUS ? lDays + rDays : lDays - rDays;
-	            return delta;
-	          }
-	        } else if(op >= EQ && op <= GTE) {
-	          const lStr = asString$1(lhs);
-	          if(DATE_STRING.test(lStr)) lhs = xpr.number(dateStringToDays(lStr));
+	                const rStr = asString$1(rhs);
+	                if (DATE_STRING.test(rStr)) {
+	                    const rDays = dateStringToDays(rStr);
+	                    const lDays = asNumber$1(lhs);
+	                    const delta = op === PLUS ? lDays + rDays : lDays - rDays;
+	                    return delta;
+	                }
+	            } else if (op >= EQ && op <= GTE) {
+	                const lStr = asString$1(lhs);
+	                if (DATE_STRING.test(lStr))
+	                    lhs = xpr.number(dateStringToDays(lStr));
 
-	          const rStr = asString$1(rhs);
-	          if(DATE_STRING.test(rStr)) rhs = xpr.number(dateStringToDays(rStr));
+	                const rStr = asString$1(rhs);
+	                if (DATE_STRING.test(rStr))
+	                    rhs = xpr.number(dateStringToDays(rStr));
 
-	          return { t:'continue', lhs, op, rhs };
-	        }
+	                return { t: 'continue', lhs, op, rhs };
+	            }
+	        },
+	    };
 
-	      },
-	  };
+	    ret.func = func;
+	    ret.process = process;
+	    ret.XPR = xpr;
+	    ret._now = function () {
+	        // This is exposed in ret to allow for unit testing, although this is not currently utilised.
+	        const t = new Date();
+	        return new Date(t.getFullYear(), t.getMonth(), t.getDate());
+	    };
 
-	  ret.func = func;
-	  ret.process = process;
-	  ret.XPR = xpr;
-	  ret._now = function() { // This is exposed in ret to allow for unit testing, although this is not currently utilised.
-	    const t = new Date();
-	    return new Date(t.getFullYear(), t.getMonth(), t.getDate());
-	  };
-
-	  return ret;
+	    return ret;
 	};
 
-	var openrosaExtensions = openrosa_xpath_extensions;
+	var openrosaExtensions = openrosaXPathExtensions;
 
-	function mapFn(fn) {
-	  const res = [];
-	  for(let i=1; i<arguments.length; ++i) {
-	    if(arguments[i].t === 'arr') {
-	      for(let j=0; j<arguments[i].v.length; ++j) {
-	        res.push(fn(arguments[i].v[j]));
-	      }
-	    } else res.push(fn(arguments[i]));
-	  }
-	  return res;
+	function mapFn(fn, ...args) {
+	    const res = [];
+	    for (let i = 0; i < args.length; ++i) {
+	        if (args[i].t === 'arr') {
+	            for (let j = 0; j < args[i].v.length; ++j) {
+	                res.push(fn(args[i].v[j]));
+	            }
+	        } else res.push(fn(args[i]));
+	    }
+	    return res;
 	}
 
 	function asInteger(r) {
-	  const num = asNumber$1(r);
-	  return num > 0 ? Math.floor(num) : Math.ceil(num);
+	    const num = asNumber$1(r);
+	    return num > 0 ? Math.floor(num) : Math.ceil(num);
 	}
 
 	function asDate(r) {
-	  let temp;
-	  let timeComponent;
-	  switch(r.t) {
-	    case 'bool': return new Date(NaN);
-	    case 'date': return r.v;
-	    case 'num':  temp = new Date(0); temp.setTime(temp.getTime() + r.v * 24 * 60 * 60 * 1000); return temp;
-	    case 'arr':
-	    case 'str':
-	      r = asString$1(r);
-	      if(r.length === 0) return new BlankDate();
-	      if(RAW_NUMBER.test(r)) {
-	        temp = new Date(0);
-	        temp.setTime(temp.getTime() + parseInt(r, 10) * 24 * 60 * 60 * 1000);
-	        return temp;
-	      } else if(DATE_STRING.test(r)) {
-	        temp = r.indexOf('T');
-	        if(temp !== -1) {
-	          timeComponent = r.substring(temp);
-	          r = r.substring(0, temp);
-	        }
-	        temp = r.split('-');
-	        if(isValidDate(temp[0], temp[1], temp[2])) {
-	          timeComponent = timeComponent ? timeComponent : 'T00:00:00.000' + getTimezoneOffsetAsTime(new Date(r));
-	          const time = `${_zeroPad(temp[0])}-${_zeroPad(temp[1])}-${_zeroPad(temp[2])}`+
-	            timeComponent;
-	          return new Date(time);
-	        }
-	      }
-	      return new Date(r);
-	    default: throw new Error(`asDate() can't handle ${r.t}s yet :-(`);
-	  }
+	    let temp;
+	    let timeComponent;
+	    switch (r.t) {
+	        case 'bool':
+	            return new Date(NaN);
+	        case 'date':
+	            return r.v;
+	        case 'num':
+	            temp = new Date(0);
+	            temp.setTime(temp.getTime() + r.v * 24 * 60 * 60 * 1000);
+	            return temp;
+	        case 'arr':
+	        case 'str':
+	            r = asString$1(r);
+	            if (r.length === 0) return new BlankDate();
+	            if (RAW_NUMBER.test(r)) {
+	                temp = new Date(0);
+	                temp.setTime(
+	                    temp.getTime() + parseInt(r, 10) * 24 * 60 * 60 * 1000
+	                );
+	                return temp;
+	            }
+	            if (DATE_STRING.test(r)) {
+	                temp = r.indexOf('T');
+	                if (temp !== -1) {
+	                    timeComponent = r.substring(temp);
+	                    r = r.substring(0, temp);
+	                }
+	                temp = r.split('-');
+	                if (isValidDate(temp[0], temp[1], temp[2])) {
+	                    timeComponent =
+	                        timeComponent ||
+	                        `T00:00:00.000${getTimezoneOffsetAsTime(new Date(r))}`;
+	                    const time = `${_zeroPad(temp[0])}-${_zeroPad(
+                        temp[1]
+                    )}-${_zeroPad(temp[2])}${timeComponent}`;
+	                    return new Date(time);
+	                }
+	            }
+	            return new Date(r);
+	        default:
+	            throw new Error(`asDate() can't handle ${r.t}s yet :-(`);
+	    }
 	}
 
 	function _zeroPad(n, len) {
-	  len = len || 2;
-	  n = n.toString();
-	  while(n.length < len) n = '0' + n;
-	  return n;
+	    len = len || 2;
+	    n = n.toString();
+	    while (n.length < len) n = `0${n}`;
+	    return n;
 	}
 
 	function getNodeName(ctx, r) {
-	  const node = getNode(ctx, r);
-	  return node ? node.nodeName : '';
+	    const node = getNode(ctx, r);
+	    return node ? node.nodeName : '';
 	}
 
 	/**
@@ -41570,12 +41654,12 @@
 	 * If r is not supplied, returns the ctx iff it is an Element or Attribute.
 	 */
 	function getNode(ctx, r) {
-	  if(arguments.length > 2) throw new Error('too many args');
-	  if(!r) return isNodeish(ctx.cN) ? ctx.cN : null;
-	  if(r.t !== 'arr') throw new Error('wrong arg type');
-	  if(!r.v.length) return;
-	  sortByDocumentOrder({ t:'arr', v:r.v.filter(isNodeish) });
-	  return r.v[0];
+	    if (arguments.length > 2) throw new Error('too many args');
+	    if (!r) return isNodeish(ctx.cN) ? ctx.cN : null;
+	    if (r.t !== 'arr') throw new Error('wrong arg type');
+	    if (!r.v.length) return;
+	    sortByDocumentOrder({ t: 'arr', v: r.v.filter(isNodeish) });
+	    return r.v[0];
 	}
 
 	/**
@@ -41584,13 +41668,13 @@
 	 * @see https://developer.mozilla.org/en-US/docs/Web/API/Node/nodeType
 	 */
 	const NODEISH = {
-	  [Node.ELEMENT_NODE               ]: true,
-	  [Node.ATTRIBUTE_NODE             ]: true,
-	  [Node.PROCESSING_INSTRUCTION_NODE]: true,
-	  [Node.DOCUMENT_TYPE_NODE         ]: true,
+	    [Node.ELEMENT_NODE]: true,
+	    [Node.ATTRIBUTE_NODE]: true,
+	    [Node.PROCESSING_INSTRUCTION_NODE]: true,
+	    [Node.DOCUMENT_TYPE_NODE]: true,
 	};
 	function isNodeish({ nodeType }) {
-	  return NODEISH[nodeType];
+	    return NODEISH[nodeType];
 	}
 
 	/**
@@ -41600,8 +41684,14 @@
 	 * https://stackoverflow.com/posts/2117523/timeline.  Formatting may have been
 	 * changed.
 	 */
+	/* eslint-disable no-bitwise */
 	function uuid() {
-	  return ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g, c => (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16));
+	    return ([1e7] + -1e3 + -4e3 + -8e3 + -1e11).replace(/[018]/g, (c) =>
+	        (
+	            c ^
+	            (crypto.getRandomValues(new Uint8Array(1))[0] & (15 >> (c / 4)))
+	        ).toString(16)
+	    );
 	}
 
 	// TODO remove?
@@ -41612,46 +41702,54 @@
 	const { asBoolean, asNumber, asString } = xpathCast;
 
 	const cast = {
-	  string: asString,
-	  boolean: asBoolean,
-	  number: asNumber,
+	    string: asString,
+	    boolean: asBoolean,
+	    number: asNumber,
 	};
 
-	var openrosaXpath = function() {
-	  const ore = openrosaExtensions();
-	  const evaluator = new extendedXpath(new XPathEvaluator(), ore);
+	var openrosaXpath = function () {
+	    const ore = openrosaExtensions();
+	    const evaluator = new extendedXpath(new XPathEvaluator(), ore);
 
-	  evaluator.customXPathFunction = {
-	    add: (name, { fn, args:_args, ret }) => {
-	      if(Object.prototype.hasOwnProperty.call(ore.func, name)) {
-	        throw new Error(`There is already a function with the name: '${name}'`);
-	      }
+	    evaluator.customXPathFunction = {
+	        add: (name, { fn, args: _args, ret }) => {
+	            if (Object.prototype.hasOwnProperty.call(ore.func, name)) {
+	                throw new Error(
+	                    `There is already a function with the name: '${name}'`
+	                );
+	            }
 
-	      const argTypes = _args.map(a => a.t);
-	      const allowedArgTypes = Object.keys(cast);
-	      const unsupportedArgTypes = argTypes.filter(t => !allowedArgTypes.includes(t));
-	      if(unsupportedArgTypes.length) {
-	        const quoted = unsupportedArgTypes.map(t => `'${t}'`);
-	        throw new Error(`Unsupported arg type(s): ${quoted.join(',')}`);
-	      }
+	            const argTypes = _args.map((a) => a.t);
+	            const allowedArgTypes = Object.keys(cast);
+	            const unsupportedArgTypes = argTypes.filter(
+	                (t) => !allowedArgTypes.includes(t)
+	            );
+	            if (unsupportedArgTypes.length) {
+	                const quoted = unsupportedArgTypes.map((t) => `'${t}'`);
+	                throw new Error(`Unsupported arg type(s): ${quoted.join(',')}`);
+	            }
 
-	      const allowedRetTypes = Object.keys(xpr);
-	      if(!allowedRetTypes.includes(ret)) {
-	        throw new Error(`Unsupported return type: '${ret}'`);
-	      }
+	            const allowedRetTypes = Object.keys(xpr);
+	            if (!allowedRetTypes.includes(ret)) {
+	                throw new Error(`Unsupported return type: '${ret}'`);
+	            }
 
-	      ore.func[name] = (...args) => {
-	        if(args.length !== argTypes.length) {
-	          throw new Error(`Function "${name}" expected ${argTypes.length} arg(s), but got ${args.length}`);
-	        }
+	            ore.func[name] = (...args) => {
+	                if (args.length !== argTypes.length) {
+	                    throw new Error(
+	                        `Function "${name}" expected ${argTypes.length} arg(s), but got ${args.length}`
+	                    );
+	                }
 
-	        const convertedArgs = argTypes.map((type, idx) => cast[type](args[idx]));
-	        return xpr[ret](fn(...convertedArgs));
-	      };
-	    },
-	  };
+	                const convertedArgs = argTypes.map((type, idx) =>
+	                    cast[type](args[idx])
+	                );
+	                return xpr[ret](fn(...convertedArgs));
+	            };
+	        },
+	    };
 
-	  return evaluator;
+	    return evaluator;
 	};
 
 	/**
@@ -42369,6 +42467,10 @@
 	 * @param {Form} form
 	 */
 	const setRefTypeClasses = (form) => {
+	    if (form.input == null) {
+	        throw new Error('Must be called after `form.input` initialization');
+	    }
+
 	    const rootElement = form.view.html;
 
 	    const hasActions =
@@ -42437,7 +42539,6 @@
 
 	            const container = /** @type {HTMLElement} */ (
 	                element.closest('.itemset-template') ??
-	                    // @ts-ignore
 	                    form.input.getWrapNode(element)
 	            );
 
@@ -44166,7 +44267,9 @@
 	        }
 
 	        if (!this.form.features.relevant) {
-	            this.update = () => {};
+	            this.update = () => {
+	                // Form noop
+	            };
 
 	            return;
 	        }
@@ -44573,7 +44676,9 @@
 	                );
 	            }
 	        } else {
-	            this.toggleNonRelevantModelNodes = () => {};
+	            this.toggleNonRelevantModelNodes = () => {
+	                // Configured noop
+	            };
 	        }
 	    },
 
@@ -45171,7 +45276,7 @@
 	    options.full = typeof options.full !== 'undefined' ? options.full : true;
 
 	    this.events = document.createElement('div');
-	    this.convertedExpressions = {};
+	    this.convertedExpressions = new Map();
 	    this.templates = {};
 	    this.loadErrors = [];
 
@@ -46508,7 +46613,9 @@
 	    cacheable = original === expr;
 
 	    // if no cached conversion exists
-	    if (!this.convertedExpressions[cacheKey]) {
+	    const cachedExpr = this.convertedExpressions.get(cacheKey);
+
+	    if (cachedExpr === undefined) {
 	        expr = expr.trim();
 	        expr = this.replaceInstanceFn(expr);
 	        expr = this.replaceVersionFn(expr);
@@ -46523,11 +46630,12 @@
 	        expr = expr.replace(/&lt;/g, '<');
 	        expr = expr.replace(/&gt;/g, '>');
 	        expr = expr.replace(/&quot;/g, '"');
+
 	        if (cacheable) {
-	            this.convertedExpressions[cacheKey] = expr;
+	            this.convertedExpressions.set(cacheKey, expr);
 	        }
 	    } else {
-	        expr = this.convertedExpressions[cacheKey];
+	        expr = cachedExpr;
 	    }
 
 	    resultTypes = {
@@ -46638,12 +46746,16 @@
 	/**
 	 * Placeholder function meant to be overwritten
 	 */
-	FormModel.prototype.getUpdateEventData = () => /* node, type */ {};
+	FormModel.prototype.getUpdateEventData = () => /* node, type */ {
+	    // Part of interface, to be overridden
+	};
 
 	/**
 	 * Placeholder function meant to be overwritten
 	 */
-	FormModel.prototype.getRemovalEventData = () => /* node */ {};
+	FormModel.prototype.getRemovalEventData = () => /* node */ {
+	    // Part of interface, to be overridden
+	};
 
 	/**
 	 * Exposed {@link module:types|types} to facilitate extending with custom types
@@ -47180,8 +47292,15 @@
 	/**
 	 * This function tries to determine whether an XPath expression for a nodeset from an external instance is static.
 	 * Hopefully in the future it can do this properly, but for now it considers any expression
-	 * with a non-numeric (position) predicate to be dynamic.
+	 * it determines to have a non-numeric (position) predicate to be dynamic.
 	 * This function relies on external instances themselves to be static.
+	 *
+	 * Known issues:
+	 *
+	 * - Broadly, this function uses regular expressions to attempt static analysis on an XPath expression. This is prone to false positives *and* negatives, particularly concerning string sub-expressions.
+	 * - The check for a reference to an instance does not handle [non-`instance`] absolute or relative path expressions.
+	 * - The check for a reference to an instance does not account for expressions where that reference may *itself* appear as a sub-expression (e.g. in a predicate, or as a function parameter).
+	 * - At least the numeric predicate does not account for whitespace.
 	 *
 	 * @static
 	 * @param {string} expr - XPath expression to analyze
@@ -47217,7 +47336,9 @@
 	        }
 
 	        if (!this.form.features.itemset) {
-	            this.update = () => {};
+	            this.update = () => {
+	                // Form noop
+	            };
 
 	            return;
 	        }
@@ -47289,8 +47410,31 @@
 	                return;
 	            }
 
-	            const shared =
-	                template.parentElement.parentElement.matches('.or-repeat-info');
+	            const templateParent = template.parentElement;
+	            const isShared =
+	                // Shared itemset datalists and their related DOM elements were
+	                // previously reparented directly under `repeat-info`. They're
+	                // now reparented to a container within `repeat-info` to fix a
+	                // bug when two or more such itemsets are present in the same
+	                // repeat.
+	                //
+	                // The original check for this condition was tightly coupled to
+	                // the previous structure, leading to errors even after the root
+	                // cause had been fixed. This has been revised to check for a
+	                // class explicitly describing the condition it's checking.
+	                //
+	                // TODO (2023-08-16): This continues to add to the view's role
+	                // as a (the) source of truth about both form state and form
+	                // definition. While expedient, it must be acknowledged as
+	                // additional technical debt.
+	                templateParent.classList.contains(
+	                    'repeat-shared-datalist-itemset'
+	                ) ||
+	                // It's currently unclear whether there are other cases this
+	                // would still handle. It's currently preserved in case its
+	                // removal might cause unknown regressions. See
+	                // https://en.wiktionary.org/wiki/Chesterton%27s_fence
+	                templateParent.parentElement.matches('.or-repeat-info');
 	            const inputAttributes = {};
 
 	            const newItems = {};
@@ -47319,7 +47463,7 @@
 	                    inputAttributes.disabled = 'disabled';
 	                }
 	            } else if (list && list.nodeName.toLowerCase() === 'datalist') {
-	                if (shared) {
+	                if (isShared) {
 	                    // only the first input, is that okay?
 	                    input = that.form.view.html.querySelector(
 	                        `input[name="${list.dataset.name}"]`
@@ -47352,7 +47496,7 @@
 	             * Determining the index is expensive, so we only do this when the itemset is inside a cloned repeat and not shared.
 	             * It can be safely set to 0 for other branches.
 	             */
-	            const index = !shared ? that.form.input.getIndex(input) : 0;
+	            const index = !isShared ? that.form.input.getIndex(input) : 0;
 	            const safeToTryNative = true;
 	            // Caching has no advantage here. This is a very quick query
 	            // (natively).
@@ -47719,7 +47863,7 @@
 	 *
 	 * Two important concepts are used:
 	 * 1. The first XLST-added repeat view is cloned to serve as a template of that repeat.
-	 * 2. Each repeat series has a sibling .or-repeat-info element that stores info that is relevant to that series.
+	 * 2. Each repeat series has a sibling .or-repeat-info element that stores info that is relevant to that series. (More details below)
 	 *
 	 * Note that with nested repeats you may have many more series of repeats than templates, because a nested repeat
 	 * may have multiple series.
@@ -47765,8 +47909,12 @@
 	        }
 
 	        if (!this.form.features.repeatCount) {
-	            this.countUpdate = () => {};
-	            this.updateRepeatInstancesFromCount = () => {};
+	            this.countUpdate = () => {
+	                // Form noop
+	            };
+	            this.updateRepeatInstancesFromCount = () => {
+	                // Form noop
+	            };
 	        }
 
 	        $repeatInfos = this.form.view.$.find('.or-repeat-info');
@@ -48279,16 +48427,17 @@
 	                    if (this.staticLists.includes(id)) {
 	                        datalist.remove();
 	                    } else {
-	                        // Let all identical input[list] questions amongst all repeat instances use the same
-	                        // datalist by moving it under repeatInfo.
-	                        // It will survive removal of all repeat instances.
+	                        // Let all identical input[list] questions amongst all
+	                        // repeat instances use the same datalist by moving it
+	                        // under repeatInfo. It will survive removal of all
+	                        // repeat instances.
+
 	                        const parent = datalist.parentElement;
 	                        const { name } = input;
 
 	                        const dl = parent.querySelector('datalist');
 	                        const detachedList = parent.removeChild(dl);
 	                        detachedList.setAttribute('data-name', name);
-	                        repeatInfo.appendChild(detachedList);
 
 	                        const translations = parent.querySelector(
 	                            '.or-option-translations'
@@ -48296,12 +48445,41 @@
 	                        const detachedTranslations =
 	                            parent.removeChild(translations);
 	                        detachedTranslations.setAttribute('data-name', name);
-	                        repeatInfo.appendChild(detachedTranslations);
 
 	                        const labels = parent.querySelector('.itemset-labels');
 	                        const detachedLabels = parent.removeChild(labels);
 	                        detachedLabels.setAttribute('data-name', name);
-	                        repeatInfo.appendChild(detachedLabels);
+
+	                        // Each of these supporting elements are nested in a
+	                        // containing element, so any subsequent DOM queries for
+	                        // their various sibling elements don't mistakenly match
+	                        // those from a previous itemset in the same repeat.
+	                        const sharedItemsetContainer =
+	                            document.createElement('div');
+
+	                        sharedItemsetContainer.style.display = 'none';
+	                        sharedItemsetContainer.append(
+	                            detachedList,
+	                            detachedTranslations,
+	                            detachedLabels
+	                        );
+	                        repeatInfo.append(sharedItemsetContainer);
+
+	                        // Add explicit class which can be used to determine
+	                        // this condition elsewhere. See its usage and
+	                        // commentary in `itemset.js`
+	                        datalist.classList.add(
+	                            'repeat-shared-datalist-itemset'
+	                        );
+	                        // This class currently serves no functional purpose
+	                        // (please do not use it for new functional purposes
+	                        // either). It's included specifically so that the
+	                        // resulting DOM structure has some indication of why
+	                        // it's the way it is, and some way to trace back to
+	                        // this code producing that structure.
+	                        sharedItemsetContainer.classList.add(
+	                            'repeat-shared-datalist-itemset-elements'
+	                        );
 
 	                        this.staticLists.push(id);
 	                        // input.classList.add( 'shared' );
@@ -49160,13 +49338,6 @@
 	    static globalInit(form, rootElement) {
 	        this.form = form;
 	        this.rootElement = rootElement;
-
-	        if (form.features.relevant) {
-	            this.implementsDisable =
-	                this.prototype.disable !== Widget.prototype.disable;
-	            this.implementsEnable =
-	                this.prototype.enable !== Widget.prototype.enable;
-	        }
 	    }
 
 	    static globalReset() {
@@ -49174,8 +49345,6 @@
 
 	        delete this.form;
 	        delete this.rootElement;
-	        delete this.implementsDisable;
-	        delete this.implementsEnable;
 
 	        return { form, rootElement };
 	    }
@@ -49248,7 +49417,9 @@
 	     * Updates form-defined language strings, <option>s (cascading selects, and (calculated) values.
 	     * Most of the times, this function needs to be overridden in the widget.
 	     */
-	    update() {}
+	    update() {
+	        // Part of interface, to be overridden
+	    }
 
 	    /**
 	     * Returns widget properties. May need to be extended.
@@ -49309,7 +49480,9 @@
 	     * @param {*} value - value to set
 	     * @type {*}
 	     */
-	    set value(value) {} // eslint-disable-line no-empty-function -- this is defining the API
+	    set value(value) {
+	        // Part of interface, to be overridden
+	    }
 
 	    /**
 	     * Obtains the value from the original form control the widget is instantiated on.
@@ -49747,8 +49920,8 @@
                             <a class="option-wrapper" tabindex="-1" href="#">
                                 <label>
                                     <input class="ignore" ${inputAttr}${checkedInputAttr} value="${encodeHtmlEntities(
-                        value
-                    )}" />
+                                        value
+                                    )}" />
                                     <span class="option-label">${encodeHtmlEntities(
                                         label
                                     )}</span>
@@ -65201,7 +65374,9 @@
 	                            that._removePoint();
 	                        }
 	                    })
-	                    .catch(() => {});
+	                    .catch(() => {
+	                        // Ignore error
+	                    });
 	            }
 	        });
 
@@ -65305,7 +65480,9 @@
 	                            defaultZoom
 	                        );
 	                    })
-	                    .catch(() => {});
+	                    .catch(() => {
+	                        // Ignore error
+	                    });
 	            }
 	        } else {
 	            // center map around first loaded geopoint value
@@ -65697,7 +65874,9 @@
 	                            'Error. Geocoding service may not be available or app is offline'
 	                        );
 	                    })
-	                    .always(() => {});
+	                    .always(() => {
+	                        // Ignore error
+	                    });
 	            }
 	        });
 	    }
@@ -65753,7 +65932,9 @@
 	                .then(() => {
 	                    that._updateDynamicMapView(latLng, zoom);
 	                })
-	                .catch(() => {});
+	                .catch(() => {
+	                    // Ignore error
+	                });
 	        }
 	    }
 
@@ -66791,9 +66972,9 @@
 
 	createCommonjsModule(function (module, exports) {
 	/*!
-	 * Datepicker for Bootstrap v1.9.0 (https://github.com/uxsolutions/bootstrap-datepicker)
+	 * Datepicker for Bootstrap v1.10.0 (https://github.com/uxsolutions/bootstrap-datepicker)
 	 *
-	 * Licensed under the Apache License v2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+	 * Licensed under the Apache License v2.0 (https://www.apache.org/licenses/LICENSE-2.0)
 	 */
 
 	(function(factory){
@@ -66849,7 +67030,7 @@
 				replace: function(new_array){
 					if (!new_array)
 						return;
-					if (!$.isArray(new_array))
+					if (!Array.isArray(new_array))
 						new_array = [new_array];
 					this.clear();
 					this.push.apply(this, new_array);
@@ -66891,9 +67072,15 @@
 			this.isInput = this.element.is('input');
 			this.inputField = this.isInput ? this.element : this.element.find('input');
 			this.component = this.element.hasClass('date') ? this.element.find('.add-on, .input-group-addon, .input-group-append, .input-group-prepend, .btn') : false;
-			if (this.component && this.component.length === 0)
+			if (this.component && this.component.length === 0){
 				this.component = false;
-			this.isInline = !this.component && this.element.is('div');
+	    }
+
+			if (this.o.isInline === null){
+				this.isInline = !this.component && !this.isInput;
+			} else {
+				this.isInline = this.o.isInline;
+			}
 
 			this.picker = $(DPGlobal.template);
 
@@ -66964,7 +67151,7 @@
 			},
 
 			_resolveDaysOfWeek: function(daysOfWeek){
-				if (!$.isArray(daysOfWeek))
+				if (!Array.isArray(daysOfWeek))
 					daysOfWeek = daysOfWeek.split(/[,\s]*/);
 				return $.map(daysOfWeek, Number);
 			},
@@ -67051,7 +67238,7 @@
 				o.daysOfWeekHighlighted = this._resolveDaysOfWeek(o.daysOfWeekHighlighted||[]);
 
 				o.datesDisabled = o.datesDisabled||[];
-				if (!$.isArray(o.datesDisabled)) {
+				if (!Array.isArray(o.datesDisabled)) {
 					o.datesDisabled = o.datesDisabled.split(',');
 				}
 				o.datesDisabled = $.map(o.datesDisabled, function(d){
@@ -67358,16 +67545,15 @@
 
 			clearDates: function(){
 				this.inputField.val('');
-				this.update();
 				this._trigger('changeDate');
-
+				this.update();
 				if (this.o.autoclose) {
 					this.hide();
 				}
 			},
 
 			setDates: function(){
-				var args = $.isArray(arguments[0]) ? arguments[0] : arguments;
+				var args = Array.isArray(arguments[0]) ? arguments[0] : arguments;
 				this.update.apply(this, args);
 				this._trigger('changeDate');
 				this.setValue();
@@ -67375,7 +67561,7 @@
 			},
 
 			setUTCDates: function(){
-				var args = $.isArray(arguments[0]) ? arguments[0] : arguments;
+				var args = Array.isArray(arguments[0]) ? arguments[0] : arguments;
 				this.setDates.apply(this, $.map(args, this._utc_to_local));
 				return this;
 			},
@@ -67827,7 +68013,7 @@
 
 					//Check if uniqueSort exists (supported by jquery >=1.12 and >=2.2)
 					//Fallback to unique function for older jquery versions
-					if ($.isFunction($.uniqueSort)) {
+					if (typeof $.uniqueSort === "function") {
 						clsName = $.uniqueSort(clsName);
 					} else {
 						clsName = $.unique(clsName);
@@ -68359,12 +68545,12 @@
 
 				if (new_date < this.dates[j]){
 					// Date being moved earlier/left
-					while (j >= 0 && new_date < this.dates[j]){
+					while (j >= 0 && new_date < this.dates[j] && (this.pickers[j].element.val() || "").length > 0) {
 						this.pickers[j--].setUTCDate(new_date);
 					}
 				} else if (new_date > this.dates[k]){
 					// Date being moved later/right
-					while (k < l && new_date > this.dates[k]){
+					while (k < l && new_date > this.dates[k] && (this.pickers[k].element.val() || "").length > 0) {
 						this.pickers[k++].setUTCDate(new_date);
 					}
 				}
@@ -68478,6 +68664,7 @@
 			endDate: Infinity,
 			forceParse: true,
 			format: 'mm/dd/yyyy',
+			isInline: null,
 			keepEmptyValues: false,
 			keyboardNavigation: true,
 			language: 'en',
@@ -68795,7 +68982,7 @@
 
 		/* DATEPICKER VERSION
 		 * =================== */
-		$.fn.datepicker.version = '1.9.0';
+		$.fn.datepicker.version = '1.10.0';
 
 		$.fn.datepicker.deprecated = function(msg){
 			var console = window.console;
@@ -71199,7 +71386,9 @@
 	                                this.originalInputValue = '';
 	                            }
 	                        })
-	                        .catch(() => {});
+	                        .catch(() => {
+	                            // Ignore error
+	                        });
 	                }
 	            });
 	        }
@@ -71256,7 +71445,9 @@
 	                            resizedFile.dataURI;
 	                        file = resizedFile.blob;
 	                    })
-	                    .catch(() => {})
+	                    .catch(() => {
+	                        // Ignore error
+	                    })
 	                    .finally(() => {
 	                        fileManager
 	                            .getFileUrl(file, fileName)
@@ -71475,7 +71666,7 @@
 	}
 
 	/*!
-	 * Signature Pad v4.1.5 | https://github.com/szimek/signature_pad
+	 * Signature Pad v4.1.6 | https://github.com/szimek/signature_pad
 	 * (c) 2023 Szymon Nowak | Released under the MIT license
 	 */
 
@@ -71704,6 +71895,7 @@
 	        this.dotSize = options.dotSize || 0;
 	        this.penColor = options.penColor || 'black';
 	        this.backgroundColor = options.backgroundColor || 'rgba(0,0,0,0)';
+	        this.compositeOperation = options.compositeOperation || 'source-over';
 	        this._strokeMoveUpdate = this.throttle
 	            ? throttle$1(SignaturePad.prototype._strokeUpdate, this.throttle)
 	            : SignaturePad.prototype._strokeUpdate;
@@ -71806,6 +71998,9 @@
 	            velocityFilterWeight: group && 'velocityFilterWeight' in group
 	                ? group.velocityFilterWeight
 	                : this.velocityFilterWeight,
+	            compositeOperation: group && 'compositeOperation' in group
+	                ? group.compositeOperation
+	                : this.compositeOperation,
 	        };
 	    }
 	    _strokeBegin(event) {
@@ -71880,6 +72075,7 @@
 	        this._lastVelocity = 0;
 	        this._lastWidth = (options.minWidth + options.maxWidth) / 2;
 	        this._ctx.fillStyle = options.penColor;
+	        this._ctx.globalCompositeOperation = options.compositeOperation;
 	    }
 	    _createPoint(x, y, pressure) {
 	        const rect = this.canvas.getBoundingClientRect();
@@ -72434,11 +72630,36 @@
 	        const { offsetWidth, offsetHeight } = this.displayCanvas;
 	        const ratio = Math.max(window.devicePixelRatio || 1, 1);
 
-	        this.displayCanvas.width =
-	            (offsetWidth || this.displayCanvasMaxWidth) * ratio;
-	        this.displayCanvas.height =
-	            (offsetHeight || this.displayCanvasMaxHeight) * ratio;
-	        get2dRenderingContext(this.displayCanvas).scale(ratio, ratio);
+	        const width = (offsetWidth || this.displayCanvasMaxWidth) * ratio;
+	        const height = (offsetHeight || this.displayCanvasMaxHeight) * ratio;
+
+	        // https://github.com/enketo/enketo-core/issues/1001
+	        //
+	        // Don't resize for a canvas which is hidden or has non-positive
+	        // dimensions (e.g. in a non-current page in the current pages mode).
+	        // This ensures browser APIs like `canvas.toBlob` continue to work even
+	        // if the pad becomes hidden after use. Otherwise, the behavior
+	        // resembles data loss on form submission (resembles, because the data
+	        // is still present, but the `HTMLCanvasElement` itself does not produce
+	        // data as expected).
+	        //
+	        // Note that this only addresses one bug. A related bug is also likely
+	        // to exist: Enketo Express's `file-manager.js` is still calling into
+	        // the visible canvas to access image data for submission. So even while
+	        // higher fidelity data is preserved while a user is filling a form,
+	        // that fidelty may be lost on smaller screens at submission time.
+	        //
+	        // This particular fix is reasonable regardless, but the other bug would
+	        // be better solved by reconsidering how file data is submitted (i.e. it
+	        // is form state, and it is already known independent of the visible
+	        // canvas element, so that is probably not the best way to produce state
+	        // for submission).
+	        if (width > 0 && height > 0) {
+	            this.displayCanvas.width = width;
+	            this.displayCanvas.height = height;
+
+	            get2dRenderingContext(this.displayCanvas).scale(ratio, ratio);
+	        }
 	    }
 
 	    /** @private */
@@ -76909,12 +77130,6 @@
 	/** @type {WidgetClass[]} */
 	let widgets = _widgets.filter((widget) => widget.selector);
 
-	/** @type {Set<WidgetClass>} */
-	let widgetsImplementingDisable = new Set();
-
-	/** @type {Set<WidgetClass>} */
-	let widgetsImplementingEnable = new Set();
-
 	let options;
 
 	/** @type {import('./form').Form} */
@@ -76930,23 +77145,9 @@
 	    widgets = _widgets.filter(
 	        (widget) =>
 	            widget.selector &&
-	            formElement.querySelector(widget.selector) != null
+	            (widget.selector === 'form' ||
+	                formElement.querySelector(widget.selector) != null)
 	    );
-
-	    widgetsImplementingDisable = new Set();
-	    widgetsImplementingEnable = new Set();
-
-	    widgets.forEach((Widget) => {
-	        const { implementsDisable, implementsEnable } = Widget;
-
-	        if (implementsDisable) {
-	            widgetsImplementingDisable.add(Widget);
-	        }
-
-	        if (implementsEnable) {
-	            widgetsImplementingEnable.add(Widget);
-	        }
-	    });
 	};
 
 	/**
@@ -76989,13 +77190,7 @@
 	 * @param {HTMLElement} group - HTML element
 	 */
 	function enable(group) {
-	    if (group.closest('.widgets-disabled') == null) {
-	        return;
-	    }
-
-	    group.classList.remove('widgets-disbled');
-
-	    widgetsImplementingEnable.forEach((Widget) => {
+	    widgets.forEach((Widget) => {
 	        const els = _getElements(group, Widget.selector).filter((el) =>
 	            el.nodeName.toLowerCase() === 'select'
 	                ? !el.hasAttribute('readonly')
@@ -77014,13 +77209,7 @@
 	 * @param {HTMLElement} group - The element inside which all widgets need to be disabled.
 	 */
 	function disable(group) {
-	    if (group.closest('.widgets-disabled') != null) {
-	        return;
-	    }
-
-	    group.classList.add('widgets-disbled');
-
-	    widgetsImplementingDisable.forEach((Widget) => {
+	    widgets.forEach((Widget) => {
 	        const els = _getElements(group, Widget.selector);
 
 	        new Collection(els).disable(Widget);
@@ -77076,12 +77265,12 @@
 
 	    const elements = _getElements(group, Widget.selector);
 
-	    if (!elements.length) {
-	        return;
-	    }
-
 	    if (group === formElement) {
 	        Widget.globalInit(form, formElement);
+	    }
+
+	    if (!elements.length) {
+	        return;
 	    }
 
 	    new Collection(elements).instantiate(Widget, opts);
@@ -77097,8 +77286,6 @@
 	    });
 
 	    widgets = [..._widgets];
-	    widgetsImplementingDisable = new Set();
-	    widgetsImplementingEnable = new Set();
 	};
 
 	/** @type {Map<typeof Widget, Set<HTMLElement>>} */
@@ -77670,7 +77857,9 @@
 	        }
 
 	        if (!this.form.features.output) {
-	            this.update = () => {};
+	            this.update = () => {
+	                // Form noop
+	            };
 
 	            return;
 	        }
@@ -77788,8 +77977,12 @@
 	        }
 
 	        if (!this.form.features.calculate) {
-	            this.update = () => {};
-	            this.performAction = () => {};
+	            this.update = () => {
+	                // Form noop
+	            };
+	            this.performAction = () => {
+	                // Form noop
+	            };
 
 	            return;
 	        }
@@ -78331,7 +78524,9 @@
 	        }
 
 	        if (!this.form.features.required) {
-	            this.update = () => {};
+	            this.update = () => {
+	                // Form noop
+	            };
 	        }
 
 	        this.update();
@@ -79947,7 +80142,7 @@
 	 * @type {string}
 	 * @default
 	 */
-	Form.requiredTransformerVersion = '2.3.0';
+	Form.requiredTransformerVersion = '4.0.0';
 
 	function extendXPath( Evaluator ) {
 

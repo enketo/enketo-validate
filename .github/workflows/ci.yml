@@ -11,19 +11,18 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        node: [ '16' ]
+        node-version:   ['18.18.2', '20.5.1']
     steps:
       - uses: actions/checkout@v3
+      - uses: volta-cli/action@v4
+        with:
+            node-version: '${{ matrix.node-version }}'
+            yarn-version: '1.22.19'
       - uses: actions/cache@v3
         id: cache
         with:
           path: node_modules
-          key: ${{ matrix.node }}-${{ hashFiles('**/package-lock.json') }}
-      - uses: actions/setup-node@v3
-        with:
-          node-version: ${{ matrix.node }}
-          registry-url: https://registry.npmjs.org/
-      - run: npm install -g npm@^6
+          key: ${{ matrix.node-version }}-${{ hashFiles('**/yarn.lock') }}
       - if: steps.cache.outputs.cache-hit != 'true'
-        run: npm ci
-      - run: npm test
+        run: yarn install
+      - run: yarn test
