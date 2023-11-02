@@ -14,11 +14,15 @@ jobs:
         node: [ '16', '18', '20' ]
     steps:
       - uses: actions/checkout@v3
+      - uses: 'volta-cli/action@v4'
+        with:
+            node-version: '${{ matrix.node-version }}'
+            yarn-version: '1.22.19'
       - uses: actions/cache@v3
         id: cache
         with:
           path: node_modules
-          key: ${{ matrix.node }}-${{ hashFiles('**/package-lock.json') }}
+          key: ${{ matrix.node }}-${{ hashFiles('**/yarn.lock') }}
       - uses: actions/setup-node@v3
         with:
           node-version: ${{ matrix.node }}
