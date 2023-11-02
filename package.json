@@ -21,6 +21,11 @@
         "ODK",
         "Validator"
     ],
+    "resolutions": {
+        "nan": "^2.17.0",
+        "libxslt/nan": "^2.17.0",
+        "node1-libxmljsmt-myh/nan": "^2.17.0"
+    },
     "author": "Martijn van de Rijdt",
     "license": "Apache-2.0",
     "bugs": {
@@ -29,23 +34,28 @@
     "homepage": "https://github.com/enketo/enketo-validate#readme",
     "dependencies": {
         "commander": "^11.1.0",
-        "enketo-transformer": "^3.0.1",
+        "enketo-transformer": "^4.0.0",
         "enketo-xpath-extensions-oc": "git+https://github.com/OpenClinica/enketo-xpath-extensions-oc.git#ab81eeb7d0f1fb34bcf2615d2c6a27c3b0915f56",
         "jsdom": "^22.1.0",
-        "libxslt": "git+https://github.com/OpenClinica/node-libxslt.git#26664c9dd5d702f8ecc8faa2936f4934e45a0f72",
+        "libxslt": "0.10.2",
         "puppeteer": "^20.9.0"
     },
     "devDependencies": {
         "chai": "^4.3.10",
         "docdash": "^2.0.2",
-        "enketo-core": "^7.2.5",
+        "enketo-core": "^8.0.0",
         "eslint": "^8.52.0",
         "eslint-plugin-jsdoc": "^46.8.2",
         "jsdoc": "^4.0.2",
         "mocha": "^10.2.0",
         "rimraf": "^5.0.5",
-        "rollup": "^3.29.4",
+        "rollup": "^4.2.0",
         "rollup-plugin-commonjs": "^10.1.0",
         "rollup-plugin-node-resolve": "^5.2.0"
+    },
+    "volta": {
+        "node": "20.5.1",
+        "yarn": "1.22.19"
     }
+
 }
