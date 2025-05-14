@@ -11,10 +11,6 @@
         "style-fix": "eslint *.js src/**/*.js test/**/*.js --fix",
         "style-check": "eslint *.js src/**/*.js test/**/*.js"
     },
-    "repository": {
-        "type": "git",
-        "url": "git+https://github.com/enketo/enketo-validate.git"
-    },
     "keywords": [
         "Enketo",
         "XForms",
@@ -26,8 +22,6 @@
         "libxslt/nan": "^2.17.0",
         "node1-libxmljsmt-myh/nan": "^2.17.0"
     },
-    "author": "Martijn van de Rijdt",
-    "license": "Apache-2.0",
     "bugs": {
         "url": "https://github.com/enketo/enketo-validate/issues"
     },
@@ -53,9 +47,27 @@
         "rollup-plugin-commonjs": "^10.1.0",
         "rollup-plugin-node-resolve": "^5.2.0"
     },
+    "repository": "https://github.com/enketo/enketo-validate",
+    "license": "Apache-2.0",
+    "author": {
+        "name": "KoboToolbox",
+        "email": "enketo@kobotoolbox.org",
+        "url": "https://www.kobotoolbox.org/about-us/meet-the-team"
+    },
+    "contributors": [
+        {
+            "name": "ODK",
+            "email": "support@getodk.org",
+            "url": "https://getodk.org/about/team"
+        },
+        {
+            "name": "Martijn van de Rijdt",
+            "email": "martijn@enketo.org",
+            "url": "https://github.com/MartijnR"
+        }
+    ],
     "volta": {
         "node": "20.5.1",
         "yarn": "1.22.19"
     }
-
 }
