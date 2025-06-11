@@ -12,10 +12,9 @@ describe( 'XForm', () => {
 
     describe( 'that is valid', () => {
         const xf = loadXForm( 'model-only.xml' );
-        it( 'returns duration', async(done) => {
+        it( 'returns duration', async() => {
             const result = await validator.validate( xf );
-            expect(result.duration).to.be.above(0);
-            done()
+            expect( result.duration ).to.be.above( 0 );
         } );
 
         it( 'returns no errors and no warnings', async() => {
