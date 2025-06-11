@@ -1,6 +1,6 @@
 const XForm = require( '../../src/xform' ).XForm;
 const validator = require( '../../src/validator' );
-const expect = require( 'chai' ).expect;
+const {expect} = require( 'chai' );
 const fs = require( 'fs' );
 const path = require( 'path' );
 
@@ -8,20 +8,20 @@ const loadXForm = filename => fs.readFileSync( path.join( process.cwd(), 'test/x
 const arrContains = ( arr, reg ) => arr.some( item => item.search( reg ) !== -1 );
 
 
+const beforeAllReturn = (fn, timeout) => {
+    const box = { current: null }
+    before(async () => box.current = await fn(), timeout)
+    return box
+}
+const beforeValidateLoadXForm = (path, timeout) => beforeAllReturn(() => validator.validate(loadXForm(path)), timeout)
+
 describe( 'XForm', () => {
 
     describe( 'that is valid', () => {
-        const xf = loadXForm( 'model-only.xml' );
-        it( 'returns duration', async() => {
-            const result = await validator.validate( xf );
-            expect( result.duration ).to.be.above( 0 );
-        } );
-
-        it( 'returns no errors and no warnings', async() => {
-            const result = await validator.validate( xf );
-            expect( result.errors.length ).to.equal( 0 );
-            expect( result.warnings.length ).to.equal( 0 );
-        } );
+        const result = beforeValidateLoadXForm('model-only.xml', 1000)
+        it( 'returns no errors and no warnings', async() => expect( result.current.errors.length ).to.equal( 0 ))
+        it( 'returns no warnings', async() => expect( result.current.warnings.length ).to.equal( 0 ))
+        it( 'returns duration', async() => expect( result.current.duration ).to.be.above( 0 ))
     } );
 
     describe( 'that is invalid', () => {
