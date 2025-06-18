@@ -26,15 +26,19 @@ const { version } = require( '../package' );
  * @property {boolean} openclinica - Run validator in OpenClinica mode.
  */
 
+let incCounter = 0
+const inc = () => incCounter++
+
 /**
  * The validate function. Relies heavily on the {@link XForm} class.
  *
  * @static
  * @param {string} xformStr - XForm content.
  * @param {ValidationOptions} [options] - Validation options.
- * @return {ValidateResult} validation results.
+ * @return {Promise<ValidateResult>} validation results.
  */
 const validate = async( xformStr, options = {} ) => {
+    console.log(`validate a`)
     const start = Date.now();
     let warnings = [];
     let errors = [];
@@ -46,12 +50,14 @@ const validate = async( xformStr, options = {} ) => {
     } catch ( e ) {
         errors.push( e );
     }
+    console.log(`validate b`)
 
     if ( !xform ){
         const duration = Date.now() - start;
 
         return Promise.resolve( { warnings, errors, version, duration } );
     }
+    console.log(`validate b`)
 
     result = xform.checkStructure();
     warnings = warnings.concat( result.warnings );
@@ -70,6 +76,7 @@ const validate = async( xformStr, options = {} ) => {
         warnings = warnings.concat( result.warnings );
         errors = errors.concat( result.errors );
     }
+    console.log(`validate d`)
 
     try{
         await xform.parseModel();
@@ -77,10 +84,12 @@ const validate = async( xformStr, options = {} ) => {
         let ers = Array.isArray( e ) ? e : [ e ];
         errors = errors.concat( ers );
     }
+    console.log(`validate e`)
 
     // Check logic
 
     for( const el of xform.binds.concat( xform.setvalues ) ){
+        console.log(`validate inner f ${String(el).slice(0, 99)}`)
         const type = el.nodeName.toLowerCase();
         const props = type === 'bind' ? { path: 'nodeset', logic: [ 'calculate', 'constraint', 'relevant', 'required', 'readonly' ]  } : { path: 'ref', logic: [ 'value' ] };
         const path = el.getAttribute( props.path );
@@ -91,25 +100,31 @@ const validate = async( xformStr, options = {} ) => {
             continue;
         }
 
+        console.log(`validate inner g`)
         const nodeName = xform._nodeName( path );
         // Note: using enketoEvaluate here, would be much slower
         const nodeExists = await xform.nodeExists( path );
+        console.log(`validate inner h`)
 
         if ( !nodeExists ) {
             errors.push( `Found ${type} for "${nodeName}" that does not exist in the model.` );
 
             continue;
         }
+        console.log(`validate inner h`)
 
         for ( const logicName of props.logic ){
+            console.log(`validate inner logicName=${logicName}`)
             const logicExpr = el.getAttribute( logicName );
             const calculation = logicName === 'calculate';
 
             if ( logicExpr ) {
                 let friendlyLogicName = logicName[ 0 ].toUpperCase() + logicName.substring( 1 );
                 if ( calculation ){
+            console.log(`validate inner logic i`)
                     friendlyLogicName = 'Calculation';
                 } else if ( type === 'setvalue' ){
+            console.log(`validate inner logic j`)
                     const event = el.getAttribute( 'event' );
                     if ( !event ){
                         errors.push( 'Found ${type} without event attribute.' );
@@ -117,6 +132,7 @@ const validate = async( xformStr, options = {} ) => {
                     }
                     friendlyLogicName = event.split( ' ' ).includes( 'xforms-value-changed' ) ? 'Triggered calculation' : 'Dynamic default';
                 } else {
+            console.log(`validate inner logic k`)
                     // e.g. the results for accidentally writing "ues" instead of "yes", putting an appearance in a logic column, etc
                     // and accidentally writing 'true' or 'false' or 'yes' or 'no' in the constraint or relevant column in XLSForm
                     if ( likelyNonSyntaxError( logicExpr )
@@ -126,9 +142,11 @@ const validate = async( xformStr, options = {} ) => {
                 }
 
                 try {
+            console.log(`validate inner logic l`)
                     await xform.enketoEvaluate( logicExpr, ( calculation ? 'string' : 'boolean' ), path );
                 }
                 catch( e ){
+            console.log(`validate inner logic m`)
                     errors.push( `${friendlyLogicName} formula for "${nodeName}": ${e}` );
                 }
                 // TODO: check for cyclic dependencies within single expression and between calculations, e.g. triangular calculation dependencies
@@ -137,7 +155,9 @@ const validate = async( xformStr, options = {} ) => {
     }
     const duration = Date.now() - start;
 
+    console.log(`validate y`)
     await xform.exit();
+    console.log(`validate z`)
 
     return { warnings, errors, version, duration };
 };
