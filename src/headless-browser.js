@@ -5,50 +5,43 @@ const puppeteer = require( 'puppeteer' );
  * different arguments in case that is ever required.
  */
 class BrowserHandler {
-    constructor() {
-        const launchBrowser = async() => {
-            console.log('launchBrowser')
-            this.browser = false;
-            this.browser = await puppeteer.launch( {
-                headless: 'new',
-                devtools: false
-            } );
-            console.log('launchBrowser this.browser', this.browser)
-            this.browser.on( 'disconnected', launchBrowser );
-        };
+    /**
+     * @type Promise<import( 'puppeteer' ).Browser | null>
+     */
+    _instance = Promise.resolve(null)
 
-        this.exit = ()=>{
-            this.browser.off( 'disconnected', launchBrowser );
-            this.browser.close();
-        };
+    get instance() {
+        return this._instance
+    }
 
-        ( async() => {
-            console.log('getBrowser')
-            await launchBrowser();
-        } )();
+    async setup() {
+        console.log('BrowserHandler.setup')
+        const instance = await this._instance
+        if(instance) return instance
+
+        const newInstance = puppeteer.launch( {
+            headless: 'new',
+            devtools: false
+        } ).then((pupeteerInstance) => {
+            pupeteerInstance.on( 'disconnected', this.setup.bind(this) );
+            return pupeteerInstance
+        })
+        this._instance = newInstance
+        return await newInstance
+    }
+
+    async teardown() {
+        const instance = await this._instance
+        if(!instance) return
+        this._instance = Promise.resolve(null)
+
+        instance.off( 'disconnected', this.setup.bind(this) );
+        instance.close()
     }
 }
 
 const handler = new BrowserHandler();
 
-const getBrowser = ( ) =>
-    new Promise( ( resolve ) => {
-        console.log('getBrowser')
-        const browserCheck = setInterval( () => {
-            console.log('getBrowser handler.browser', handler.browser)
-            if ( handler.browser !== false ) {
-                clearInterval( browserCheck );
-                resolve( handler.browser );
-            }
-        }, 100 );
-    } );
-
-
-// TODO: it's weird that after calling this function there is no way to
-// get a browser any more. If getBrowser() is called again a new BrowserHandler instance should be created
-const closeBrowser = ( ) => {
-
-    return handler.exit();
-};
-
+const getBrowser = ( ) => handler.setup()
+const closeBrowser = ( ) => handler.teardown()
 module.exports = { getBrowser, closeBrowser };
