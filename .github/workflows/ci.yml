@@ -25,3 +25,4 @@ jobs:
           key: ${{ matrix.node-version }}-${{ hashFiles('**/yarn.lock') }}
       - if: steps.cache.outputs.cache-hit != 'true'
         run: yarn install
+      - run: yarn test
