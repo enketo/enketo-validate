@@ -13,7 +13,7 @@ class BrowserHandler {
             this.browser = await puppeteer.launch( {
                 // Disable Chrome sandbox on CI. For running tests locally, it should work or you *should* configure it!
                 // See https://pptr.dev/troubleshooting#setting-up-chrome-linux-sandbox
-                ...(CI ? {args: ['--no-sandbox']} : {}),
+                args: CI ? ['--no-sandbox'] : undefined,
                 headless: 'new',
                 devtools: false
             } );

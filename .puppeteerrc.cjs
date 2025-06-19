@@ -7,5 +7,5 @@ const CI = !!process.env.CI
  */
 module.exports = {
   // On CI, cache puppeteer in a Github-cache-able location.
-  ...(CI ? {cacheDirectory: join(__dirname, '.cache', 'puppeteer')} : {})
+  cacheDirectory: CI ? join(__dirname, '.cache', 'puppeteer') : undefined,
 };
