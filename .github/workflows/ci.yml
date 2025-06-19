@@ -23,8 +23,8 @@ jobs:
         id: cache-puppeteer
         with:
           path: .cache
-          key: ${{ matrix.node-version }}
-      - name: Cache node_modules and puppeteer
+          key: ${{ matrix.node-version }}-puppeteer
+      - name: Cache node_modules
         uses: actions/cache@v3
         id: cache-node_modules
         with:
