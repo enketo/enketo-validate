@@ -1,6 +1,6 @@
 const {join} = require('path');
 
-const CI = process.env.CI
+const CI = !!process.env.CI
 
 /**
  * @type {import("puppeteer").Configuration}
