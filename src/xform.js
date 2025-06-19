@@ -39,11 +39,13 @@ class XForm {
 
         this.loadBrowserPage = getBrowser( )
             .then( browser =>{
+                console.log('loadBrowserPage browser', browser)
                 this.browser = browser;
 
                 return browser.newPage();
             } )
             .then( page => {
+                console.log('loadBrowserPage page', page)
 
                 return page.addScriptTag( { path: path.join( __dirname, '../build/FormModel-bundle.js' ) } )
                     .then( () => page );
@@ -234,6 +236,7 @@ class XForm {
 
         return this.loadBrowserPage
             .then( p => {
+                console.log('parseModel p', p)
                 page = p;
                 // Get a serialized model with namespaces in locations that Enketo can deal with.
                 const modelStr = this._extractModelStr().root().get( '*' ).toString( false );
@@ -268,13 +271,23 @@ class XForm {
                 }, modelStr, externalArr, !!this.options.openclinica );
             } )
             .then( modelHandle => {
+                console.log('parseModel modelHandle', modelHandle)
 
                 this.modelHandle = modelHandle;
 
-                return page.evaluateHandle( model => model.init(), modelHandle );
+                const z = page.evaluateHandle( model => model.init(), modelHandle );
+                console.log('parseModel modelHandle end')
+                return z
             } )
-            .then( loadErrorsHandle => loadErrorsHandle.jsonValue() )
+            .then( loadErrorsHandle => {
+                console.log('parseModel loadErrorsHandle', loadErrorsHandle)
+                const json = loadErrorsHandle.jsonValue()
+
+                console.log('parseModel loadErrorsHandle json')
+                return json
+    })
             .then( loadErrors => {
+                console.log('parseModel loadErrors', loadErrors)
                 if ( loadErrors.length ) {
                     throw loadErrors;
                 }
@@ -282,6 +295,7 @@ class XForm {
                 return page;
             } )
             .catch( e => {
+                console.log('parseModel catch')
                 throw e;
             } );
     }

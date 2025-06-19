@@ -7,11 +7,13 @@ const puppeteer = require( 'puppeteer' );
 class BrowserHandler {
     constructor() {
         const launchBrowser = async() => {
+            console.log('launchBrowser')
             this.browser = false;
             this.browser = await puppeteer.launch( {
                 headless: 'new',
                 devtools: false
             } );
+            console.log('launchBrowser this.browser', this.browser)
             this.browser.on( 'disconnected', launchBrowser );
         };
 
@@ -21,6 +23,7 @@ class BrowserHandler {
         };
 
         ( async() => {
+            console.log('getBrowser')
             await launchBrowser();
         } )();
     }
@@ -30,7 +33,9 @@ const handler = new BrowserHandler();
 
 const getBrowser = ( ) =>
     new Promise( ( resolve ) => {
+        console.log('getBrowser')
         const browserCheck = setInterval( () => {
+            console.log('getBrowser handler.browser', handler.browser)
             if ( handler.browser !== false ) {
                 clearInterval( browserCheck );
                 resolve( handler.browser );
