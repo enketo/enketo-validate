@@ -1,8 +1,5 @@
 const puppeteer = require( 'puppeteer' );
 
-const CI = !!process.env.CI
-console.log(process.env.CI, CI)
-
 /**
  * This class approach makes it easy to open multiple browser instances with
  * different arguments in case that is ever required.
@@ -18,14 +15,11 @@ class BrowserHandler {
     }
 
     async setup() {
-        console.log('BrowserHandler.setup', CI)
+        console.log('BrowserHandler.setup')
         const instance = await this._instance
         if(instance) return instance
 
         const newInstance = puppeteer.launch( {
-            // Disable Chrome sandbox on CI. For running tests locally, it should work or you *should* configure it!
-            // See https://pptr.dev/troubleshooting#setting-up-chrome-linux-sandbox
-            ...(CI ? {args: ['--no-sandbox']} : {}),
             headless: 'new',
             devtools: false
         } ).then((pupeteerInstance) => {
