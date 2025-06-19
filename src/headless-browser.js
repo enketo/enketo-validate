@@ -1,49 +1,53 @@
 const puppeteer = require( 'puppeteer' );
 
+const CI = !!process.env.CI
+console.log(process.env.CI, CI)
+
 /**
  * This class approach makes it easy to open multiple browser instances with
  * different arguments in case that is ever required.
  */
 class BrowserHandler {
-    constructor() {
-        const launchBrowser = async() => {
-            this.browser = false;
-            this.browser = await puppeteer.launch( {
-                headless: 'new',
-                devtools: false
-            } );
-            this.browser.on( 'disconnected', launchBrowser );
-        };
+    /**
+     * @type Promise<import( 'puppeteer' ).Browser | null>
+     */
+    _instance = Promise.resolve(null)
 
-        this.exit = ()=>{
-            this.browser.off( 'disconnected', launchBrowser );
-            this.browser.close();
-        };
+    get instance() {
+        return this._instance
+    }
 
-        ( async() => {
-            await launchBrowser();
-        } )();
+    async setup() {
+        console.log('BrowserHandler.setup', CI)
+        const instance = await this._instance
+        if(instance) return instance
+
+        const newInstance = puppeteer.launch( {
+            // Disable Chrome sandbox on CI. For running tests locally, it should work or you *should* configure it!
+            // See https://pptr.dev/troubleshooting#setting-up-chrome-linux-sandbox
+            ...(CI ? {args: ['--no-sandbox']} : {}),
+            headless: 'new',
+            devtools: false
+        } ).then((pupeteerInstance) => {
+            pupeteerInstance.on( 'disconnected', this.setup.bind(this) );
+            return pupeteerInstance
+        })
+        this._instance = newInstance
+        return await newInstance
+    }
+
+    async teardown() {
+        const instance = await this._instance
+        if(!instance) return
+        this._instance = Promise.resolve(null)
+
+        instance.off( 'disconnected', this.setup.bind(this) );
+        instance.close()
     }
 }
 
 const handler = new BrowserHandler();
 
-const getBrowser = ( ) =>
-    new Promise( ( resolve ) => {
-        const browserCheck = setInterval( () => {
-            if ( handler.browser !== false ) {
-                clearInterval( browserCheck );
-                resolve( handler.browser );
-            }
-        }, 100 );
-    } );
-
-
-// TODO: it's weird that after calling this function there is no way to
-// get a browser any more. If getBrowser() is called again a new BrowserHandler instance should be created
-const closeBrowser = ( ) => {
-
-    return handler.exit();
-};
-
+const getBrowser = ( ) => handler.setup()
+const closeBrowser = ( ) => handler.teardown()
 module.exports = { getBrowser, closeBrowser };

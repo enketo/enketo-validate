@@ -5,7 +5,7 @@
     "main": "src/validator.js",
     "bin": "./validate",
     "scripts": {
-        "test": "mocha test/spec/*.spec.js --exit --timeout 9000 && npm run style-check",
+        "test": "mocha test/spec/*.spec.js --exit --timeout 59000 --bail && npm run style-check",
         "build-docs": "rimraf docs && ./node_modules/.bin/jsdoc -c jsdoc.config.js",
         "prepare": "rollup --config && rollup --config rollup.utils.config.mjs",
         "style-fix": "eslint *.js src/**/*.js test/**/*.js --fix",
@@ -69,5 +69,6 @@
     "volta": {
         "node": "20.5.1",
         "yarn": "1.22.19"
-    }
+    },
+    "packageManager": "yarn@1.22.22+sha512.a6b2f7906b721bba3d67d4aff083df04dad64c399707841b7acf00f6b133b7ac24255f2652fa22ae3534329dc6180534e98d17432037ff6fd140556e2bb3137e"
 }
