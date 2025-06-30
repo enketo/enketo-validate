@@ -49,9 +49,9 @@ class XForm {
                     .then( () => page );
             } )
             .catch( error => {
-                console.error(error)
-                process.exit(1) // TODO: crash or something, because a sync constructor can't propogate an async error.
-            })
+                console.error( error );
+                process.exit( 1 ); // TODO: crash or something, because a sync constructor can't propogate an async error.
+            } );
     }
 
     /*

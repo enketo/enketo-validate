@@ -8,42 +8,45 @@ const CI = !!process.env.CI;
  */
 class BrowserHandler {
     /**
-     * @type Promise<import( 'puppeteer' ).Browser | null>
+     * @type {Promise<import( 'puppeteer' ).Browser | null>}
      */
-    _instance = Promise.resolve(null)
+    _instance = Promise.resolve( null );
     get instance() {
-        return this._instance
+        return this._instance;
     }
 
     async setup() {
-        const instance = await this._instance
-        if(instance) return instance
+        const instance = await this._instance;
+        if( instance ) return instance;
 
         const newInstance = puppeteer.launch( {
             args: CI ? [ '--no-sandbox' ] : undefined,
             headless: 'new',
             devtools: false
-        } ).then((pupeteerInstance) => {
-            pupeteerInstance.on( 'disconnected', this.setup.bind(this) );
-            return pupeteerInstance
-        })
-        this._instance = newInstance
-        return await newInstance
+        } ).then( ( pupeteerInstance ) => {
+            pupeteerInstance.on( 'disconnected', this.setup.bind( this ) );
+
+            return pupeteerInstance;
+        } );
+        this._instance = newInstance;
+
+        return await newInstance;
     }
 
     async teardown() {
-        const instance = await this._instance
-        if(!instance) return null
+        const instance = await this._instance;
+        if( !instance ) return null;
 
-        this._instance = Promise.resolve(null)
-        instance.off( 'disconnected', this.setup.bind(this) );
-        instance.close()
-        return null
+        this._instance = Promise.resolve( null );
+        instance.off( 'disconnected', this.setup.bind( this ) );
+        instance.close();
+
+        return null;
     }
 }
 
 const handler = new BrowserHandler();
 
-const getBrowser = ( ) => handler.setup()
-const closeBrowser = ( ) => handler.teardown()
+const getBrowser = ( ) => handler.setup();
+const closeBrowser = ( ) => handler.teardown();
 module.exports = { getBrowser, closeBrowser };
