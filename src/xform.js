@@ -47,6 +47,10 @@ class XForm {
 
                 return page.addScriptTag( { path: path.join( __dirname, '../build/FormModel-bundle.js' ) } )
                     .then( () => page );
+            } )
+            .catch( error => {
+                console.error( error );
+                process.exit( 1 ); // TODO: crash or something, because a sync constructor can't propogate an async error.
             } );
     }
 
