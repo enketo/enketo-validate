@@ -982,10 +982,10 @@ end-of-stream@^1.1.0:
   dependencies:
     once "^1.4.0"
 
-enketo-core@^8.0.0:
-  version "8.0.0"
-  resolved "https://registry.yarnpkg.com/enketo-core/-/enketo-core-8.0.0.tgz#3a976e9391a54bc60e35b92b91a21053c6f9bf6a"
-  integrity sha512-wOSPIQ4Eix7FunAxZjkd6fQxKiX1zchGDKuI7vEoq4eBdKN9oJOM8Utvwoc3Pleq9VpknaU8pBLuPBEETJyaxg==
+enketo-core@^9.0.1:
+  version "9.0.1"
+  resolved "https://registry.yarnpkg.com/enketo-core/-/enketo-core-9.0.1.tgz#1e8bcf957e18807800276b52451c2d711644dc33"
+  integrity sha512-TjN3cEPbr9JLiG7GPgUN2mrI/x0GQr7NGqtMry2tBPqoiVtyVX808yyusICLkdh2GaGEfrPyA3d5dwzTKqjpoQ==
   dependencies:
     bootstrap-datepicker "^1.10.0"
     drag-drop-touch "^1.3.1"
@@ -997,8 +997,8 @@ enketo-core@^8.0.0:
     leaflet.gridlayer.googlemutant "^0.13.5"
     mergexml "1.2.3"
     node-forge "^1.3.1"
-    openrosa-xpath-evaluator "3.0.0"
-    signature_pad "^4.1.6"
+    openrosa-xpath-evaluator "3.2.0"
+    signature_pad "^5.0.2"
 
 enketo-transformer@^4.0.0:
   version "4.2.0"
@@ -2272,10 +2272,10 @@ once@^1.3.0, once@^1.3.1, once@^1.4.0:
   dependencies:
     wrappy "1"
 
-openrosa-xpath-evaluator@3.0.0:
-  version "3.0.0"
-  resolved "https://registry.yarnpkg.com/openrosa-xpath-evaluator/-/openrosa-xpath-evaluator-3.0.0.tgz#7443da4246ab4c843603fb3d7fbd00d3b81b5ad3"
-  integrity sha512-XM80wZYTOcT94BknDwNjLibk7/34R3qucNuJMriWwDtCWxiikDvk3HwivA6WcZsnAcPNljp+z8JxgBvkFk5bUA==
+openrosa-xpath-evaluator@3.2.0:
+  version "3.2.0"
+  resolved "https://registry.yarnpkg.com/openrosa-xpath-evaluator/-/openrosa-xpath-evaluator-3.2.0.tgz#0014d3f8c174b504be47c89ca38fb24aeb0f3e1c"
+  integrity sha512-NdzC+Ch3FsNBRnPXGGabnDmxeIBYOsx0XR7hazodeMOpePT2Jm+qblmW6aWM26YPwvUBfiYbbc0PSgeTbhHRyg==
 
 optionator@^0.9.3:
   version "0.9.3"
@@ -2782,10 +2782,10 @@ signal-exit@^4.0.1:
   resolved "https://registry.yarnpkg.com/signal-exit/-/signal-exit-4.1.0.tgz#952188c1cbd546070e2dd20d0f41c0ae0530cb04"
   integrity sha512-bzyZ1e88w9O1iNJbKnOlvYTrWPDl46O1bG0D3XInv+9tkPrxrN8jUUTiFlDkkmKWgn1M6CfIA13SuGqOa9Korw==
 
-signature_pad@^4.1.6:
-  version "4.1.6"
-  resolved "https://registry.yarnpkg.com/signature_pad/-/signature_pad-4.1.6.tgz#5778531cce2e1a43207d50bb3fc332de02583609"
-  integrity sha512-eoZB8qFPfCs7o00weajp5roNnE2gY2kTNjZsh805L8V+lYPagxoZi9qrBFS3A6sgbVq++ukdzgruK7tuv3JFXQ==
+signature_pad@^5.0.2:
+  version "5.0.10"
+  resolved "https://registry.yarnpkg.com/signature_pad/-/signature_pad-5.0.10.tgz#765a8e2ebab2999ab9244de6c2ffb7e868d1cbb9"
+  integrity sha512-t7rLjpAtxYAIrTHr7EKfY8ulTWF+G/LFMto502a61KZvZNWZSwhTPeLE6171YMDd2sSYRBwQ17ENK5huAi9Rsg==
 
 smart-buffer@^4.2.0:
   version "4.2.0"
