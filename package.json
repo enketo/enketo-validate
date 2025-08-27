@@ -41,7 +41,7 @@
         "eslint": "^8.52.0",
         "eslint-plugin-jsdoc": "^46.8.2",
         "jsdoc": "^4.0.2",
-        "mocha": "^10.2.0",
+        "mocha": "^11.7.1",
         "rimraf": "^5.0.5",
         "rollup": "^4.2.0",
         "rollup-plugin-commonjs": "^10.1.0",
