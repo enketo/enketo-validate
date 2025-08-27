@@ -39,7 +39,7 @@
         "docdash": "^2.0.2",
         "enketo-core": "^8.0.0",
         "eslint": "^8.52.0",
-        "eslint-plugin-jsdoc": "^46.8.2",
+        "eslint-plugin-jsdoc": "^54.1.1",
         "jsdoc": "^4.0.2",
         "mocha": "^10.2.0",
         "rimraf": "^5.0.5",
